@@ -87,6 +87,9 @@
     <ClCompile Include="OpenGL\VertexBufferGL.cpp">
       <Filter>Source Files\OpenGL</Filter>
     </ClCompile>
+    <ClCompile Include="Vulkan\VulkanRenderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Renderer.h">
@@ -160,6 +163,9 @@
     </ClInclude>
     <ClInclude Include="OpenGL\VertexBufferGL.h">
       <Filter>Source Files\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="Vulkan\VulkanRenderer.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
