@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Renderer.h"
+#include <vulkan/vulkan.h>
 
 class VulkanRenderer : public Renderer
 {

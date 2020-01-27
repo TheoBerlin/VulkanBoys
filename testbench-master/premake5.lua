@@ -56,18 +56,21 @@ workspace "gl_Testbench"
             "GLEW/include",
             "include",
             "SDL/include",
+            "C:/VulkanSDK/1.1.108.0/Include",
         }
 
         libdirs
         {
+            "C:/VulkanSDK/1.1.108.0/Lib",
             "GLEW/lib/Release/64",
-            "SDL/lib/64"
+            "SDL/lib/64",
         }
 
         links
         {
             "SDL2",
-            "glew32"
+            "glew32",
+            "vulkan-1",
         }
     project "*"
 
