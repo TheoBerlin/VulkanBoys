@@ -1,0 +1,14 @@
+*.obj
+*.idb
+*.pdb
+*.exe
+*.ilk
+*.db
+*.log
+*.tlog
+*.tlog/
+*.lastbuildstate
+*.*~
+\.vs*
+*.opendb
+/uml.png
