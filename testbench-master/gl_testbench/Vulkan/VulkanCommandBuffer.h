@@ -16,9 +16,6 @@ private:
     VkCommandPool commandPool;
     VkCommandBuffer commandBuffer;
 
-    // Is equal to frameBufferCount - 1
-    uint32_t maxFramesInFlight;
-
     VkFence inFlightFence;
 
     // Needed for deleting pool
