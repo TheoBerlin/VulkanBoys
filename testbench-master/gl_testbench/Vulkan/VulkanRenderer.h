@@ -5,6 +5,7 @@
 
 #include "../Renderer.h"
 
+#include "VulkanCommandBuffer.h"
 #include "VulkanDevice.h"
 
 #define MAX_FRAMES_IN_FLIGHT 3
@@ -48,9 +49,10 @@ private:
 	SDL_Window* m_pWindow;
 	
 	VulkanDevice m_VulkanDevice;
+	VulkanCommandBuffer m_VulkanCommandBuffers[MAX_FRAMES_IN_FLIGHT];
 
 	VkRenderPass m_RenderPass;
-	
+
 	std::vector<VkSemaphore> m_ImageAvailableSemaphores;
 	std::vector<VkSemaphore> m_RenderFinishedSemaphores;
 };

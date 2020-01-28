@@ -69,6 +69,11 @@ int VulkanRenderer::initialize(unsigned width, unsigned height)
 	m_pWindow = SDL_CreateWindow("OpenGL", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL);
 	
 	m_VulkanDevice.initialize("Prankster");
+
+	for (auto& commandBuffer : m_VulkanCommandBuffers) {
+		commandBuffer.initialize(&m_VulkanDevice);
+	}
+
 	return 0;
 }
 
