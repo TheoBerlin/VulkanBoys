@@ -99,6 +99,8 @@ int VulkanRenderer::shutdown()
 	{
 		vkDestroySemaphore(m_VulkanDevice.getDevice(), m_RenderFinishedSemaphores[i], nullptr);
 		vkDestroySemaphore(m_VulkanDevice.getDevice(), m_ImageAvailableSemaphores[i], nullptr);
+
+		m_VulkanCommandBuffers[i].release();
 	}
 	
 	vkDestroyRenderPass(m_VulkanDevice.getDevice(), m_RenderPass, nullptr);

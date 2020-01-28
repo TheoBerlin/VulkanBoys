@@ -12,12 +12,14 @@ public:
 
     void initialize(VulkanDevice* device);
 
-private:
-    VkCommandPool m_commandPool;
-    VkCommandBuffer m_commandBuffer;
+    void release();
 
-    VkFence m_inFlightFence;
+private:
+    VkCommandPool m_CommandPool;
+    VkCommandBuffer m_CommandBuffer;
+
+    VkFence m_InFlightFence;
 
     // Needed for deleting pool
-    VkDevice m_device;
+    VkDevice m_Device;
 };
