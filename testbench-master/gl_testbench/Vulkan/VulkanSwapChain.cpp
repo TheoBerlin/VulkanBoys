@@ -1,8 +1,11 @@
 #include "VulkanSwapChain.h"
+#include "VulkanDevice.h"
 
 #include <iostream>
 #include <numeric>
 #include <algorithm>
+#include <SDL.h>
+#include <SDL_syswm.h>
 
 #ifdef min
 	#undef min
@@ -12,30 +15,47 @@
 	#undef max
 #endif
 
-VulkanSwapChain::VulkanSwapChain(VulkanDevice* pDevice, VkFormat requestedFormat, uint32_t imageCount, bool verticalSync)
+VulkanSwapChain::VulkanSwapChain()
 	: m_pDevice(nullptr),
 	m_SwapChain(VK_NULL_HANDLE),
 	m_Surface(VK_NULL_HANDLE),
 	m_DepthStencilImage(VK_NULL_HANDLE),
 	m_DepthStencilImageView(VK_NULL_HANDLE),
+	m_Renderpass(VK_NULL_HANDLE),
+	m_ImageMemory(VK_NULL_HANDLE),
 	m_Extent(),
 	m_Images(),
 	m_ImageViews(),
 	m_Framebuffers(),
 	m_ImageIndex(UINT32_MAX),
-	m_ImageCount(imageCount)
+	m_ImageCount(0)
 {
+}
+
+VulkanSwapChain::~VulkanSwapChain()
+{
+}
+
+void VulkanSwapChain::initialize(VulkanDevice* pDevice, SDL_Window* pWindow, VkRenderPass renderpass, VkFormat requestedFormat, uint32_t imageCount, bool verticalSync)
+{
+	m_pDevice = pDevice;
+	m_ImageCount = imageCount;
+	m_Renderpass = renderpass;
+
+	SDL_SysWMinfo wmInfo;
+	SDL_VERSION(&wmInfo.version);
+	SDL_GetWindowWMInfo(pWindow, &wmInfo);
+	createSurface(wmInfo.info.win.window);
+
 	//Check for presentationsupport
 	VkBool32 presentSupport = false;
-	//QueueFamilyIndices familyIndices = m_pDevice->GetQueueFamilyIndices();
-	//vkGetPhysicalDeviceSurfaceSupportKHR(m_pDevice->GetVkPhysicalDevice(), familyIndices.PresentFamily, m_Surface, &presentSupport);
+	QueueFamilyIndices familyIndices = m_pDevice->getQueueFamilyIndices();
+	vkGetPhysicalDeviceSurfaceSupportKHR(m_pDevice->getPhysicalDevice(), familyIndices.presentFamily.value(), m_Surface, &presentSupport);
 	if (presentSupport)
 	{
-		createSurface();
-
-		//TODO: Get window size
-		uint32_t width	= 0;
-		uint32_t height	= 0;
+		int32_t width = 0;
+		int32_t height = 0;
+		SDL_GetWindowSize(pWindow, &width, &height);
 
 		selectFormat(requestedFormat);
 		selectPresentationMode(verticalSync);
@@ -51,20 +71,20 @@ VulkanSwapChain::VulkanSwapChain(VulkanDevice* pDevice, VkFormat requestedFormat
 	}
 }
 
-VulkanSwapChain::~VulkanSwapChain()
+void VulkanSwapChain::release()
 {
-	release();
+	releaseResources();
 
 	if (m_Surface != VK_NULL_HANDLE)
 	{
-		//vkDestroySurfaceKHR(, m_Surface, nullptr);
+		vkDestroySurfaceKHR(m_pDevice->getInstance(), m_Surface, nullptr);
 		m_Surface = VK_NULL_HANDLE;
 	}
 }
 
-VkResult VulkanSwapChain::aquireNextImage(VkSemaphore imageSemaphore)
+VkResult VulkanSwapChain::acquireNextImage(VkSemaphore imageSemaphore)
 {
-	//VkResult result = vkAcquireNextImageKHR(, m_SwapChain, UINT64_MAX, imageSemaphore, VK_NULL_HANDLE, &m_ImageIndex);
+	VkResult result = vkAcquireNextImageKHR(m_pDevice->getDevice(), m_SwapChain, UINT64_MAX, imageSemaphore, VK_NULL_HANDLE, &m_ImageIndex);
 	return VK_SUCCESS;
 }
 
@@ -82,7 +102,7 @@ VkResult VulkanSwapChain::present(VkSemaphore renderSemaphore)
 	presentInfo.pResults			= nullptr;
 	presentInfo.pImageIndices		= &m_ImageIndex;
 
-	//VkResult result = vkQueuePresentKHR(, &presentInfo);
+	VkResult result = vkQueuePresentKHR(m_pDevice->getPresentQueue(), &presentInfo);
 	return VK_SUCCESS;
 }
 
@@ -91,7 +111,7 @@ void VulkanSwapChain::resize(uint32_t width, uint32_t height)
 	//Handle minimize
 	if (width != 0 && height != 0)
 	{
-		//vkDeviceWaitIdle();
+		vkDeviceWaitIdle(m_pDevice->getDevice());
 	
 		release();
 
@@ -102,16 +122,16 @@ void VulkanSwapChain::resize(uint32_t width, uint32_t height)
 	}
 }
 
-void VulkanSwapChain::createSurface()
+void VulkanSwapChain::createSurface(HWND hwnd)
 {
 	VkWin32SurfaceCreateInfoKHR info = {};
 	info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 	info.pNext = nullptr;
 	info.flags = 0;
-	//swapChainInfo.hwnd = reinterpret_cast<HWND>(desc.pWindowHandle);
+	info.hwnd = hwnd;
 	info.hinstance = (HINSTANCE)GetModuleHandle(nullptr);
 	
-	VkResult result;// = vkCreateWin32SurfaceKHR(m_pDevice->GetVkInstance(), &swapChainInfo, nullptr, &m_Surface);
+	VkResult result = vkCreateWin32SurfaceKHR(m_pDevice->getInstance(), &info, nullptr, &m_Surface);
 	if (result != VK_SUCCESS)
 	{
 		m_Surface = VK_NULL_HANDLE;
@@ -126,9 +146,9 @@ void VulkanSwapChain::createSurface()
 void VulkanSwapChain::selectPresentationMode(bool verticalSync)
 {
 	uint32_t presentModeCount = 0;
-	//vkGetPhysicalDeviceSurfacePresentModesKHR(, m_Surface, &formatCount, nullptr);
+	vkGetPhysicalDeviceSurfacePresentModesKHR(m_pDevice->getPhysicalDevice(), m_Surface, &presentModeCount, nullptr);
 	std::vector<VkPresentModeKHR> presentModes(presentModeCount);
-	//vkGetPhysicalDeviceSurfacePresentModesKHR(, m_Surface, &formatCount, presentModes.data());
+	vkGetPhysicalDeviceSurfacePresentModesKHR(m_pDevice->getPhysicalDevice(), m_Surface, &presentModeCount, presentModes.data());
 
 	m_PresentationMode = VK_PRESENT_MODE_FIFO_KHR;
 	if (!verticalSync)
@@ -161,9 +181,9 @@ void VulkanSwapChain::selectPresentationMode(bool verticalSync)
 void VulkanSwapChain::selectFormat(VkFormat requestedFormat)
 {
 	uint32_t formatCount = 0;
-	//vkGetPhysicalDeviceSurfaceFormatsKHR(, m_Surface, &formatCount, nullptr);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(m_pDevice->getPhysicalDevice(), m_Surface, &formatCount, nullptr);
 	std::vector<VkSurfaceFormatKHR> formats(formatCount);
-	//vkGetPhysicalDeviceSurfaceFormatsKHR(, m_Surface, &formatCount, formats.data());
+	vkGetPhysicalDeviceSurfaceFormatsKHR(m_pDevice->getPhysicalDevice(), m_Surface, &formatCount, formats.data());
 
 	m_Format = { VK_FORMAT_UNDEFINED, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
 	for (VkSurfaceFormatKHR& availableFormat : formats)
@@ -184,7 +204,7 @@ void VulkanSwapChain::selectFormat(VkFormat requestedFormat)
 void VulkanSwapChain::createSwapChain(uint32_t width, uint32_t height)
 {
 	VkSurfaceCapabilitiesKHR capabilities = {};
-	//vkGetPhysicalDeviceSurfaceCapabilitiesKHR(, m_Surface, &capabilities);
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_pDevice->getPhysicalDevice(), m_Surface, &capabilities);
 
 	VkExtent2D newExtent = {};
 	if (capabilities.currentExtent.width	!= std::numeric_limits<uint32_t>::max() ||
@@ -220,7 +240,7 @@ void VulkanSwapChain::createSwapChain(uint32_t width, uint32_t height)
 	swapChainInfo.clipped			= VK_TRUE;
 	swapChainInfo.oldSwapchain		= VK_NULL_HANDLE;
 
-	VkResult result;// = vkCreateSwapchainKHR(, &swapChainInfo, nullptr, &m_SwapChain);
+	VkResult result = vkCreateSwapchainKHR(m_pDevice->getDevice(), &swapChainInfo, nullptr, &m_SwapChain);
 	if (result != VK_SUCCESS)
 	{
 		std::cerr << "vkCreateSwapchainKHR failed" << std::endl;
@@ -235,22 +255,37 @@ void VulkanSwapChain::createImageViews()
 {
 	//Get SwapChain images
 	uint32_t imageCount = 0;
-	//vkGetSwapchainImagesKHR(, m_SwapChain, &imageCount, nullptr);
+	vkGetSwapchainImagesKHR(m_pDevice->getDevice(), m_SwapChain, &imageCount, nullptr);
 	if (imageCount != m_ImageCount)
 		std::cerr << "Requsted imageCount (=" << m_ImageCount << ") not avaiilable. Number of images in SwapChain=" << imageCount << std::endl;
 
 	m_ImageCount = imageCount;
 
 	m_Images.resize(m_ImageCount);
-	//vkGetSwapchainImagesKHR(, m_SwapChain, &imageCount, m_Images.data());
+	vkGetSwapchainImagesKHR(m_pDevice->getDevice(), m_SwapChain, &imageCount, m_Images.data());
 
 	m_ImageViews.resize(m_ImageCount);
-	VkImageViewCreateInfo imageViewinfo = {};
-	
+	VkImageViewCreateInfo imageViewInfo = {};
+	imageViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	imageViewInfo.pNext = nullptr;
+	imageViewInfo.flags = 0;
+	imageViewInfo.format = m_Format.format;
+	imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	imageViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	imageViewInfo.subresourceRange.layerCount = 1;
+	imageViewInfo.subresourceRange.baseArrayLayer = 0;
+	imageViewInfo.subresourceRange.levelCount = 1;
+	imageViewInfo.subresourceRange.baseMipLevel = 0;
+	imageViewInfo.components.r = VK_COMPONENT_SWIZZLE_R;
+	imageViewInfo.components.g = VK_COMPONENT_SWIZZLE_G;
+	imageViewInfo.components.b = VK_COMPONENT_SWIZZLE_B;
+	imageViewInfo.components.a = VK_COMPONENT_SWIZZLE_A;
+
 	VkResult result = VK_SUCCESS;
 	for (uint32_t i = 0; i < imageCount; i++)
 	{
-		//result = vkCreateImageView(, &imageViewinfo, nullptr, &m_ImageViews[i]);
+		imageViewInfo.image = m_Images[i];
+		result = vkCreateImageView(m_pDevice->getDevice(), &imageViewInfo, nullptr, &m_ImageViews[i]);
 		if (result != VK_SUCCESS)
 		{
 			std::cerr << "vkCreateImageView failed" << std::endl;
@@ -276,9 +311,9 @@ void VulkanSwapChain::createDepthStencil()
 	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	imageInfo.mipLevels = 1;
 	imageInfo.arrayLayers = 1;
-	imageInfo.extent = { m_Extent.width, m_Extent.height, 0 };
+	imageInfo.extent = { m_Extent.width, m_Extent.height, 1 };
 
-	VkResult result;// = vkCreateImage(, &imageInfo, nullptr, &m_DepthStencilImage);
+	VkResult result = vkCreateImage(m_pDevice->getDevice(), &imageInfo, nullptr, &m_DepthStencilImage);
 	if (result != VK_SUCCESS)
 	{
 		std::cerr << "vkCreateImage failed" << std::endl;
@@ -288,6 +323,22 @@ void VulkanSwapChain::createDepthStencil()
 	{
 		std::cout << "Created DepthStencil-Image" << std::endl;
 	}
+
+	VkMemoryRequirements memRequirements;
+	vkGetImageMemoryRequirements(m_pDevice->getDevice(), m_DepthStencilImage, &memRequirements);
+
+	VkMemoryAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = findMemoryType(m_pDevice->getPhysicalDevice(), memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	if (vkAllocateMemory(m_pDevice->getDevice(), &allocInfo, nullptr, &m_ImageMemory) != VK_SUCCESS) 
+	{
+		std::cerr << "failed to allocate image memory" << std::endl;
+		return;
+	}
+
+	vkBindImageMemory(m_pDevice->getDevice(), m_DepthStencilImage, m_ImageMemory, 0);
 
 	VkImageViewCreateInfo imageViewInfo = {};
 	imageViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -306,7 +357,7 @@ void VulkanSwapChain::createDepthStencil()
 	imageViewInfo.components.b = VK_COMPONENT_SWIZZLE_B;
 	imageViewInfo.components.a = VK_COMPONENT_SWIZZLE_A;
 
-	result;// = vkCreateImageView(, &imageViewInfo, nullptr, &m_DepthStencilImageView);
+	result = vkCreateImageView(m_pDevice->getDevice(), &imageViewInfo, nullptr, &m_DepthStencilImageView);
 	if (result != VK_SUCCESS)
 	{
 		std::cerr << "vkCreateImageView failed" << std::endl;
@@ -329,7 +380,7 @@ void VulkanSwapChain::createFramebuffers()
 	framebufferInfo.width = m_Extent.width;
 	framebufferInfo.height = m_Extent.height;
 	framebufferInfo.attachmentCount = 2;
-	framebufferInfo.renderPass = VK_NULL_HANDLE;
+	framebufferInfo.renderPass = m_Renderpass;
 	framebufferInfo.layers = 1;
 
 	VkResult result = VK_SUCCESS;
@@ -338,7 +389,7 @@ void VulkanSwapChain::createFramebuffers()
 		VkImageView attachments[] = { m_ImageViews[i], m_DepthStencilImageView };
 		framebufferInfo.pAttachments = attachments;
 
-		result;// = vkCreateFramebuffer(, &framebufferInfo, nullptr, &m_Framebuffers[i]);
+		result = vkCreateFramebuffer(m_pDevice->getDevice(), &framebufferInfo, nullptr, &m_Framebuffers[i]);
 		if (result != VK_SUCCESS)
 		{
 			std::cerr << "vkCreateFramebuffer failed" << std::endl;
@@ -351,33 +402,39 @@ void VulkanSwapChain::createFramebuffers()
 	}
 }
 
-void VulkanSwapChain::release()
+void VulkanSwapChain::releaseResources()
 {
-	//vkDeviceWaitIdle();
+	vkDeviceWaitIdle(m_pDevice->getDevice());
 
 	if (m_SwapChain != VK_NULL_HANDLE)
 	{
-		//vkDestroySwapchainKHR(, m_SwapChain, nullptr);
+		vkDestroySwapchainKHR(m_pDevice->getDevice(), m_SwapChain, nullptr);
 		m_SwapChain = VK_NULL_HANDLE;
 	}
 
 	if (m_DepthStencilImage != VK_NULL_HANDLE)
 	{
-		//vkDestroyImage(, m_DepthStencilImage, nullptr);
+		vkDestroyImage(m_pDevice->getDevice(), m_DepthStencilImage, nullptr);
 		m_DepthStencilImage = VK_NULL_HANDLE;
 	}
 
 	if (m_DepthStencilImageView != VK_NULL_HANDLE)
 	{
-		//vkDestroyImageView(, m_DepthStencilImageView, nullptr);
+		vkDestroyImageView(m_pDevice->getDevice(), m_DepthStencilImageView, nullptr);
 		m_DepthStencilImageView = VK_NULL_HANDLE;
+	}
+
+	if (m_ImageMemory != VK_NULL_HANDLE)
+	{
+		vkFreeMemory(m_pDevice->getDevice(), m_ImageMemory, nullptr);
+		m_ImageMemory = VK_NULL_HANDLE;
 	}
 
 	for (VkImageView& imageView : m_ImageViews)
 	{
 		if (imageView != VK_NULL_HANDLE)
 		{
-			//vkDestroyImageView(, imageView, nullptr);
+			vkDestroyImageView(m_pDevice->getDevice(), imageView, nullptr);
 			imageView = VK_NULL_HANDLE;
 		}
 	}
@@ -386,7 +443,7 @@ void VulkanSwapChain::release()
 	{
 		if (framebuffer != VK_NULL_HANDLE)
 		{
-			//vkDestroyFramebuffer(, framebuffer, nullptr);
+			vkDestroyFramebuffer(m_pDevice->getDevice(), framebuffer, nullptr);
 			framebuffer = VK_NULL_HANDLE;
 		}
 	}

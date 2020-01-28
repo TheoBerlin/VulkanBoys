@@ -7,6 +7,7 @@
 
 #include "VulkanCommandBuffer.h"
 #include "VulkanDevice.h"
+#include "VulkanSwapChain.h"
 
 #define MAX_FRAMES_IN_FLIGHT 3
 
@@ -50,9 +51,11 @@ private:
 	
 	VulkanDevice m_VulkanDevice;
 	VulkanCommandBuffer m_VulkanCommandBuffers[MAX_FRAMES_IN_FLIGHT];
+	VulkanSwapChain m_Swapchain;
 
 	VkRenderPass m_RenderPass;
 
+	uint32_t m_SemaphoreIndex;
 	std::vector<VkSemaphore> m_ImageAvailableSemaphores;
 	std::vector<VkSemaphore> m_RenderFinishedSemaphores;
 };

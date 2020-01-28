@@ -1,27 +1,24 @@
 #pragma once
-#ifdef _WIN32
-	#define VK_USE_PLATFORM_WIN32_KHR
-	#include <vulkan/vulkan.h>
-#else
-	#error Invalid platform, only Windows is supported
-#endif
-
 #include "Common.h"
 
 #include <vector>
 #include <stdint.h>
 
 class VulkanDevice;
+struct SDL_Window;
 
 class VulkanSwapChain
 {
 public:
-	VulkanSwapChain(VulkanDevice* pDevice, VkFormat requestedFormat, uint32_t imageCount, bool verticalSync);
+	VulkanSwapChain();
 	~VulkanSwapChain();
 
 	DECL_NO_COPY(VulkanSwapChain);
 
-	VkResult aquireNextImage(VkSemaphore imageSemaphore);
+	void initialize(VulkanDevice* pDevice, SDL_Window* pWindow, VkRenderPass renderpass, VkFormat requestedFormat, uint32_t imageCount, bool verticalSync);
+	void release();
+
+	VkResult acquireNextImage(VkSemaphore imageSemaphore);
 	VkResult present(VkSemaphore renderSemaphore);
 	void resize(uint32_t width, uint32_t height);
 
@@ -30,14 +27,14 @@ public:
 	VkFormat getFormat() const { return m_Format.format; }
 	VkExtent2D getExtent() const { return m_Extent; }
 private:
-	void createSurface();
+	void createSurface(HWND hwnd);
 	void selectPresentationMode(bool verticalSync);
 	void selectFormat(VkFormat requestedFormat);
 	void createSwapChain(uint32_t width, uint32_t height);
 	void createImageViews();
 	void createDepthStencil();
 	void createFramebuffers();
-	void release();
+	void releaseResources();
 private:
 	std::vector<VkImage> m_Images;
 	std::vector<VkImageView> m_ImageViews;
@@ -49,7 +46,9 @@ private:
 	VkSurfaceFormatKHR m_Format;
 	VkPresentModeKHR m_PresentationMode;
 	VkImage m_DepthStencilImage;
+	VkDeviceMemory m_ImageMemory;
 	VkImageView m_DepthStencilImageView;
+	VkRenderPass m_Renderpass;
 	uint32_t m_ImageIndex;
 	uint32_t m_ImageCount;
 };

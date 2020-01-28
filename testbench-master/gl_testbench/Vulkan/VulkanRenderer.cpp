@@ -1,6 +1,7 @@
 #include "VulkanRenderer.h"
 
 VulkanRenderer::VulkanRenderer()
+	: m_SemaphoreIndex(0)
 {
 }
 
@@ -70,6 +71,10 @@ int VulkanRenderer::initialize(unsigned width, unsigned height)
 	
 	m_VulkanDevice.initialize("Prankster");
 
+	initializeRenderPass();
+
+	m_Swapchain.initialize(&m_VulkanDevice, m_pWindow, m_RenderPass, VK_FORMAT_B8G8R8A8_UNORM, MAX_FRAMES_IN_FLIGHT, true);
+
 	for (auto& commandBuffer : m_VulkanCommandBuffers) {
 		commandBuffer.initialize(&m_VulkanDevice);
 	}
@@ -84,6 +89,8 @@ void VulkanRenderer::setWinTitle(const char* title)
 
 void VulkanRenderer::present()
 {
+	m_Swapchain.present(m_RenderFinishedSemaphores[m_SemaphoreIndex]);
+	m_SemaphoreIndex = (m_SemaphoreIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 int VulkanRenderer::shutdown()
@@ -95,7 +102,13 @@ int VulkanRenderer::shutdown()
 	}
 	
 	vkDestroyRenderPass(m_VulkanDevice.getDevice(), m_RenderPass, nullptr);
+	
+	m_Swapchain.release();
 	m_VulkanDevice.release();
+
+	SDL_DestroyWindow(m_pWindow);
+
+	delete this;
 	return 0;
 }
 
@@ -117,12 +130,15 @@ void VulkanRenderer::submit(Mesh* mesh)
 
 void VulkanRenderer::frame()
 {
+	m_Swapchain.acquireNextImage(m_ImageAvailableSemaphores[m_SemaphoreIndex]);
+
+	//TODO: Draw shit here
 }
 
 void VulkanRenderer::initializeRenderPass()
 {
 	VkAttachmentDescription colorAttachment = {};
-	colorAttachment.format = m_SwapChainImageFormat; //<--- Alexander, jobba
+	colorAttachment.format = VK_FORMAT_B8G8R8A8_UNORM;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;				//Clear Before Rendering
