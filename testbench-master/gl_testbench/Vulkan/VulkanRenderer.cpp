@@ -40,12 +40,12 @@ RenderState* VulkanRenderer::makeRenderState()
 
 std::string VulkanRenderer::getShaderPath()
 {
-	return "Unknown";
+	return std::string("..\\assets\\GL45\\");
 }
 
 std::string VulkanRenderer::getShaderExtension()
 {
-	return "Unknown";
+	return std::string(".glsl");
 }
 
 ConstantBuffer* VulkanRenderer::makeConstantBuffer(std::string NAME, unsigned location)
@@ -74,6 +74,7 @@ int VulkanRenderer::initialize(unsigned width, unsigned height)
 
 void VulkanRenderer::setWinTitle(const char* title)
 {
+	SDL_SetWindowTitle(m_pWindow, title);
 }
 
 void VulkanRenderer::present()

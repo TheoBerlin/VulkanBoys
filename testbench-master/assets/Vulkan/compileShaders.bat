@@ -1,0 +1,3 @@
+C:/VulkanSDK/1.1.130.0/Bin32/glslc.exe "C:\Users\skumb\Documents\Visual Studio 2019\Projects\VulkanBoys\testbench-master\assets\Vulkan\VertexShader.vert" -o "C:\Users\skumb\Documents\Visual Studio 2019\Projects\VulkanBoys\testbench-master\assets\Vulkan\vert.spv"
+C:/VulkanSDK/1.1.130.0/Bin32/glslc.exe "C:\Users\skumb\Documents\Visual Studio 2019\Projects\VulkanBoys\testbench-master\assets\Vulkan\FragmentShader.frag" -o "C:\Users\skumb\Documents\Visual Studio 2019\Projects\VulkanBoys\testbench-master\assets\Vulkan\frag.spv"
+pause
