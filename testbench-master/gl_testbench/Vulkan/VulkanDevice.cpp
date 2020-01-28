@@ -62,14 +62,26 @@ void VulkanDevice::initialize(const char applicationName[])
 
 void VulkanDevice::release()
 {
-	vkDestroyDevice(m_Device, nullptr);
+	if (m_Device != VK_NULL_HANDLE)
+	{
+		vkDestroyDevice(m_Device, nullptr);
+		m_Device = VK_NULL_HANDLE;
+	}
 
 	if (VALIDATION_LAYERS_ENABLED)
 	{
-		DestroyDebugUtilsMessengerEXT(m_VKInstance, m_DebugMessenger, nullptr);
+		if (m_DebugMessenger != VK_NULL_HANDLE)
+		{
+			DestroyDebugUtilsMessengerEXT(m_VKInstance, m_DebugMessenger, nullptr);
+			m_DebugMessenger = VK_NULL_HANDLE;
+		}
 	}
 
-	vkDestroyInstance(m_VKInstance, nullptr);
+	if (m_VKInstance != VK_NULL_HANDLE)
+	{
+		vkDestroyInstance(m_VKInstance, nullptr);
+		m_VKInstance = VK_NULL_HANDLE;
+	}
 
 	std::cout << "Vulkan Device Destroyed!" << std::endl;
 }

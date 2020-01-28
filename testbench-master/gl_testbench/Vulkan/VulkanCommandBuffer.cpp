@@ -44,6 +44,15 @@ void VulkanCommandBuffer::initialize(VulkanDevice* device)
 
 void VulkanCommandBuffer::release()
 {
-    vkDestroyCommandPool(m_Device, m_CommandPool, nullptr);
-    vkDestroyFence(m_Device, m_InFlightFence, nullptr);
+	if (m_CommandPool != VK_NULL_HANDLE)
+	{
+		vkDestroyCommandPool(m_Device, m_CommandPool, nullptr);
+		m_CommandPool = VK_NULL_HANDLE;
+	}
+
+	if (m_InFlightFence != VK_NULL_HANDLE)
+	{
+		vkDestroyFence(m_Device, m_InFlightFence, nullptr);
+		m_InFlightFence = VK_NULL_HANDLE;
+	}
 }

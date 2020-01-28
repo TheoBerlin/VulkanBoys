@@ -73,6 +73,8 @@ int VulkanRenderer::initialize(unsigned width, unsigned height)
 
 	initializeRenderPass();
 
+	createSemaphores();
+	
 	m_Swapchain.initialize(&m_VulkanDevice, m_pWindow, m_RenderPass, VK_FORMAT_B8G8R8A8_UNORM, MAX_FRAMES_IN_FLIGHT, true);
 
 	for (auto& commandBuffer : m_VulkanCommandBuffers) {
@@ -156,10 +158,28 @@ void VulkanRenderer::initializeRenderPass()
 	colorAttachmentRef.attachment = 0;
 	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+	VkAttachmentDescription depthStencilAttachment = {};
+	depthStencilAttachment.format = VK_FORMAT_D24_UNORM_S8_UINT;
+	depthStencilAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+
+	depthStencilAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;				//Clear Before Rendering
+	depthStencilAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;				//Store After Rendering
+
+	depthStencilAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;	//Dont care about stencil before
+	depthStencilAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;	//Still dont care about stencil
+
+	depthStencilAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;			//Dont care about what the initial layout of the image is
+	depthStencilAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;		//The image will be used for presenting
+
+	VkAttachmentReference depthStencilAttachmentRef = {};
+	depthStencilAttachmentRef.attachment = 1;
+	depthStencilAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
 	VkSubpassDescription subpass = {};
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments = &colorAttachmentRef;
+	subpass.pDepthStencilAttachment = &depthStencilAttachmentRef;
 
 	VkSubpassDependency dependency = {};
 	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -171,10 +191,12 @@ void VulkanRenderer::initializeRenderPass()
 	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
+	VkAttachmentDescription attachmentDescriptions[] = { colorAttachment, depthStencilAttachment };
+	
 	VkRenderPassCreateInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassInfo.attachmentCount = 1;
-	renderPassInfo.pAttachments = &colorAttachment;
+	renderPassInfo.attachmentCount = 2;
+	renderPassInfo.pAttachments = attachmentDescriptions;
 	renderPassInfo.subpassCount = 1;
 	renderPassInfo.pSubpasses = &subpass;
 
