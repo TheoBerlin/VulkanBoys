@@ -61,6 +61,11 @@ Technique* VulkanRenderer::makeTechnique(Material*, RenderState*)
 int VulkanRenderer::initialize(unsigned width, unsigned height)
 {
 	m_VulkanDevice.initialize("Prankster");
+
+	for (auto& commandBuffer : m_VulkanCommandBuffers) {
+		commandBuffer.initialize(&m_VulkanDevice);
+	}
+
 	return 0;
 }
 

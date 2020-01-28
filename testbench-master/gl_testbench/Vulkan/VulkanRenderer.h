@@ -4,7 +4,10 @@
 
 #include "../Renderer.h"
 
+#include "VulkanCommandBuffer.h"
 #include "VulkanDevice.h"
+
+const uint32_t IMAGE_COUNT = 3;
 
 class VulkanRenderer : public Renderer
 {
@@ -39,4 +42,5 @@ Material* makeMaterial(const std::string& name);
 
 private:
 	VulkanDevice m_VulkanDevice;
+	VulkanCommandBuffer m_VulkanCommandBuffers[IMAGE_COUNT];
 };
