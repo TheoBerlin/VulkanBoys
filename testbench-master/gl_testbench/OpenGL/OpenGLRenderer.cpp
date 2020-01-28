@@ -17,6 +17,7 @@ OpenGLRenderer::OpenGLRenderer()
 
 OpenGLRenderer::~OpenGLRenderer()
 {
+
 }
 
 int OpenGLRenderer::shutdown()

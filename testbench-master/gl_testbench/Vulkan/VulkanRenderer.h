@@ -1,15 +1,18 @@
 #pragma once
 
-#include "../Renderer.h"
 #include <vulkan/vulkan.h>
+
+#include "../Renderer.h"
+
+#include "VulkanDevice.h"
 
 class VulkanRenderer : public Renderer
 {
 public:
-    VulkanRenderer();
-    ~VulkanRenderer();
+VulkanRenderer();
+~VulkanRenderer();
 
-    Material* makeMaterial(const std::string& name);
+Material* makeMaterial(const std::string& name);
 	Mesh* makeMesh();
 	VertexBuffer* makeVertexBuffer(size_t size, VertexBuffer::DATA_USAGE usage);
 	Texture2D* makeTexture2D();
@@ -33,4 +36,7 @@ public:
 	// submit work (to render) to the renderer.
 	void submit(Mesh* mesh);
 	void frame();
+
+private:
+	VulkanDevice m_VulkanDevice;
 };

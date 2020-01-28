@@ -34,6 +34,7 @@ public:
 	~VulkanDevice();
 
 	void initialize(const char applicationName[]);
+	void release();
 
 	const VkInstance& getInstance() { return m_VKInstance; }
 	const VkPhysicalDevice getPhysicalDevice() { return m_PhysicalDevice; }

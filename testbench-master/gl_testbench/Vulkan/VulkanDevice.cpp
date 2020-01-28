@@ -33,13 +33,23 @@ VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMes
 	}
 }
 
+void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
+{
+	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+	
+	if (func != nullptr)
+	{
+		func(instance, debugMessenger, pAllocator);
+	}
+}
+
 VulkanDevice::VulkanDevice() 
 {
 }
 
 VulkanDevice::~VulkanDevice()
 {
-	vkDestroyInstance(m_VKInstance, nullptr);
+	release();
 }
 
 void VulkanDevice::initialize(const char applicationName[])
@@ -48,6 +58,20 @@ void VulkanDevice::initialize(const char applicationName[])
 	createDebugMessenger();
 	initializePhysicalDevice();
 	initializeLogicalDevice();
+}
+
+void VulkanDevice::release()
+{
+	vkDestroyDevice(m_Device, nullptr);
+
+	if (VALIDATION_LAYERS_ENABLED)
+	{
+		DestroyDebugUtilsMessengerEXT(m_VKInstance, m_DebugMessenger, nullptr);
+	}
+
+	vkDestroyInstance(m_VKInstance, nullptr);
+
+	std::cout << "Vulkan Device Destroyed!" << std::endl;
 }
 
 void VulkanDevice::initializeInstance(const char applicationName[])
@@ -307,9 +331,10 @@ void VulkanDevice::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateI
 	createInfo.pUserData = nullptr;
 }
 
-VkBool32 VulkanDevice::DebugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                                     VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-                                     void* pUserData)
+VkBool32 VulkanDevice::DebugCallback(
+	VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+	VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+	void* pUserData)
 {
 	std::cerr << "---Validation Layer: ";
 

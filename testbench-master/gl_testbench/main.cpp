@@ -300,7 +300,7 @@ void shutdown() {
 
 int main(int argc, char *argv[])
 {
-	renderer = Renderer::makeRenderer(Renderer::BACKEND::GL45);
+	renderer = Renderer::makeRenderer(Renderer::BACKEND::VULKAN);
 	renderer->initialize(800,600);
 	renderer->setWinTitle("OpenGL");
 	renderer->setClearColor(0.0, 0.1, 0.1, 1.0);
