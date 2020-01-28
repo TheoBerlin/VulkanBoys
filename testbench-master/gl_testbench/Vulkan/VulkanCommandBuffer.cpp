@@ -5,14 +5,14 @@ VulkanCommandBuffer::VulkanCommandBuffer()
 
 VulkanCommandBuffer::~VulkanCommandBuffer()
 {
-    vkDestroyCommandPool(device, commandPool, nullptr);
+    vkDestroyCommandPool(m_device, m_commandPool, nullptr);
 
-    vkDestroyFence(device, inFlightFence, nullptr);
+    vkDestroyFence(m_device, m_inFlightFence, nullptr);
 }
 
 void VulkanCommandBuffer::initialize(VulkanDevice* device)
 {
-    this->device = device->getDevice();
+    m_device = device->getDevice();
 
     // Create command pool
     VkCommandPoolCreateInfo poolInfo = {};
@@ -20,18 +20,18 @@ void VulkanCommandBuffer::initialize(VulkanDevice* device)
     poolInfo.queueFamilyIndex = device->getQueueFamilyIndices().graphicsFamily.value();
     poolInfo.flags = 0;
 
-    if (vkCreateCommandPool(this->device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
+    if (vkCreateCommandPool(m_device, &poolInfo, nullptr, &m_commandPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create command pool!");
     }
 
     // Create command buffer
     VkCommandBufferAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.commandPool = commandPool;
+    allocInfo.commandPool = m_commandPool;
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     allocInfo.commandBufferCount = 1;
 
-    if (vkAllocateCommandBuffers(this->device, &allocInfo, &commandBuffer) != VK_SUCCESS) {
+    if (vkAllocateCommandBuffers(m_device, &allocInfo, &m_commandBuffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate command buffers!");
     }
 
@@ -39,7 +39,7 @@ void VulkanCommandBuffer::initialize(VulkanDevice* device)
     VkFenceCreateInfo fenceInfo = {};
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
-    if (vkCreateFence(this->device, &fenceInfo, nullptr, &inFlightFence) != VK_SUCCESS) {
+    if (vkCreateFence(m_device, &fenceInfo, nullptr, &m_inFlightFence) != VK_SUCCESS) {
         throw std::runtime_error("failed to create synchronization objects for a frame!");
     }
 }
