@@ -1,21 +1,22 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
+#include <SDL.h>
 
 #include "../Renderer.h"
 
 #include "VulkanCommandBuffer.h"
 #include "VulkanDevice.h"
 
-const uint32_t IMAGE_COUNT = 3;
+#define MAX_FRAMES_IN_FLIGHT 3
 
 class VulkanRenderer : public Renderer
 {
 public:
-VulkanRenderer();
-~VulkanRenderer();
+	VulkanRenderer();
+	~VulkanRenderer();
 
-Material* makeMaterial(const std::string& name);
+	Material* makeMaterial(const std::string& name);
 	Mesh* makeMesh();
 	VertexBuffer* makeVertexBuffer(size_t size, VertexBuffer::DATA_USAGE usage);
 	Texture2D* makeTexture2D();
@@ -41,6 +42,17 @@ Material* makeMaterial(const std::string& name);
 	void frame();
 
 private:
+	void initializeRenderPass();
+	void createSemaphores();
+
+private:
+	SDL_Window* m_pWindow;
+	
 	VulkanDevice m_VulkanDevice;
-	VulkanCommandBuffer m_VulkanCommandBuffers[IMAGE_COUNT];
+	VulkanCommandBuffer m_VulkanCommandBuffers[MAX_FRAMES_IN_FLIGHT];
+
+	VkRenderPass m_RenderPass;
+
+	std::vector<VkSemaphore> m_ImageAvailableSemaphores;
+	std::vector<VkSemaphore> m_RenderFinishedSemaphores;
 };
