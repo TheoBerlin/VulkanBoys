@@ -2,7 +2,7 @@ workspace "gl_Testbench"
     startproject "gl_Testbench"
 	warnings "Extra"
 
-	outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
+	outputdir = "x64/Debug"
 
     configurations
     {
@@ -41,8 +41,8 @@ workspace "gl_Testbench"
         location "gl_Testbench"
         architecture "x64"
 
-		targetdir 	("Build/bin/" .. outputdir .. "/%{prj.name}")
-		objdir 		("Build/bin-int/" .. outputdir .. "/%{prj.name}")
+		targetdir 	(outputdir)
+		objdir 		(outputdir .. "/bin-int")
 
         files
         {
@@ -57,11 +57,13 @@ workspace "gl_Testbench"
             "include",
             "SDL/include",
             "C:/VulkanSDK/1.1.108.0/Include",
+			"C:/VulkanSDK/1.1.130.0/Include",
         }
 
         libdirs
         {
-            "C:/VulkanSDK/1.1.108.0/Lib",
+			"C:/VulkanSDK/1.1.108.0/Lib",
+            "C:/VulkanSDK/1.1.130.0/Lib",
             "GLEW/lib/Release/64",
             "SDL/lib/64",
         }
