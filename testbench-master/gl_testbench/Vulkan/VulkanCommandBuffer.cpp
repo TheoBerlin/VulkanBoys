@@ -5,9 +5,7 @@ VulkanCommandBuffer::VulkanCommandBuffer()
 
 VulkanCommandBuffer::~VulkanCommandBuffer()
 {
-    vkDestroyCommandPool(m_device, m_commandPool, nullptr);
-
-    vkDestroyFence(m_device, m_inFlightFence, nullptr);
+    this->release();
 }
 
 void VulkanCommandBuffer::initialize(VulkanDevice* device)
@@ -42,4 +40,10 @@ void VulkanCommandBuffer::initialize(VulkanDevice* device)
     if (vkCreateFence(m_device, &fenceInfo, nullptr, &m_inFlightFence) != VK_SUCCESS) {
         throw std::runtime_error("failed to create synchronization objects for a frame!");
     }
+}
+
+void VulkanCommandBuffer::release()
+{
+    vkDestroyCommandPool(m_device, m_commandPool, nullptr);
+    vkDestroyFence(m_device, m_inFlightFence, nullptr);
 }

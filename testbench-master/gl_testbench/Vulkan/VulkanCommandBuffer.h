@@ -12,6 +12,8 @@ public:
 
     void initialize(VulkanDevice* device);
 
+    void release();
+
 private:
     VkCommandPool m_commandPool;
     VkCommandBuffer m_commandBuffer;
