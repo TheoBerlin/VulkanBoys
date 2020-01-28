@@ -7,7 +7,7 @@
 #include <iostream>
 #include <map>
 
-#include "ConsoleHelper.h"
+#include "../ConsoleHelper.h"
 #include <optional>
 
 #ifdef NDEBUG
@@ -40,6 +40,9 @@ public:
 	const VkDevice getDevice() { return m_Device; }
 	const QueueFamilyIndices& getQueueFamilyIndices() { return m_DeviceQueueFamilyIndices; }
 
+	const VkQueue& getGraphicsQueue() { return m_GraphicsQueue; }
+	const VkQueue& getPresentQueue() { return m_PresentQueue; }
+
 private:
 	void initializeInstance(const char applicationName[]);
 	void initializePhysicalDevice();
@@ -69,6 +72,9 @@ private:
 	VkDevice m_Device;
 	
 	QueueFamilyIndices m_DeviceQueueFamilyIndices;
+
+	VkQueue m_GraphicsQueue;
+	VkQueue m_PresentQueue;
 
 	VkDebugUtilsMessengerEXT m_DebugMessenger;
 

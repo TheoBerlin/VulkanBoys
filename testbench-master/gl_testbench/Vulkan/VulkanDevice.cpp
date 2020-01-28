@@ -46,6 +46,8 @@ void VulkanDevice::initialize(const char applicationName[])
 {
 	initializeInstance(applicationName);
 	createDebugMessenger();
+	initializePhysicalDevice();
+	initializeLogicalDevice();
 }
 
 void VulkanDevice::initializeInstance(const char applicationName[])
@@ -122,7 +124,7 @@ void VulkanDevice::initializePhysicalDevice()
 
 void VulkanDevice::initializeLogicalDevice()
 {
-	/*std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 	std::set<uint32_t> uniqueQueueFamilies = { m_DeviceQueueFamilyIndices.graphicsFamily.value(), m_DeviceQueueFamilyIndices.presentFamily.value() };
 
 	float queuePriority = 1.0f;
@@ -146,13 +148,13 @@ void VulkanDevice::initializeLogicalDevice()
 
 	createInfo.pEnabledFeatures = &deviceFeatures;
 
-	createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
-	createInfo.ppEnabledExtensionNames = deviceExtensions.data();
+	createInfo.enabledExtensionCount = static_cast<uint32_t>(s_RequiredDeviceExtensions.size());
+	createInfo.ppEnabledExtensionNames = s_RequiredDeviceExtensions.data();
 
 	if (VALIDATION_LAYERS_ENABLED)
 	{
-		createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-		createInfo.ppEnabledLayerNames = validationLayers.data();
+		createInfo.enabledLayerCount = static_cast<uint32_t>(s_ValidationLayers.size());
+		createInfo.ppEnabledLayerNames = s_ValidationLayers.data();
 	}
 	else
 	{
@@ -164,9 +166,8 @@ void VulkanDevice::initializeLogicalDevice()
 		throw std::runtime_error("failed to create logical device!");
 	}
 
-	vkGetDeviceQueue(m_Device, indices.graphicsFamily.value(), 0, &m_GraphicsQueue);
-	vkGetDeviceQueue(m_Device, indices.transferFamily.value(), 0, &m_TransferQueue);
-	vkGetDeviceQueue(m_Device, indices.presentFamily.value(), 0, &m_PresentQueue);*/
+	vkGetDeviceQueue(m_Device, m_DeviceQueueFamilyIndices.graphicsFamily.value(), 0, &m_GraphicsQueue);
+	vkGetDeviceQueue(m_Device, m_DeviceQueueFamilyIndices.presentFamily.value(), 0, &m_PresentQueue);
 }
 
 void VulkanDevice::createDebugMessenger()
