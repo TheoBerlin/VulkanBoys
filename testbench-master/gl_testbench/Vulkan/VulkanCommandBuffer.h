@@ -15,11 +15,11 @@ public:
     void release();
 
 private:
-    VkCommandPool m_commandPool;
-    VkCommandBuffer m_commandBuffer;
+    VkCommandPool m_CommandPool;
+    VkCommandBuffer m_CommandBuffer;
 
-    VkFence m_inFlightFence;
+    VkFence m_InFlightFence;
 
     // Needed for deleting pool
-    VkDevice m_device;
+    VkDevice m_Device;
 };

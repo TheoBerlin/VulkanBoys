@@ -10,7 +10,7 @@ VulkanCommandBuffer::~VulkanCommandBuffer()
 
 void VulkanCommandBuffer::initialize(VulkanDevice* device)
 {
-    m_device = device->getDevice();
+    m_Device = device->getDevice();
 
     // Create command pool
     VkCommandPoolCreateInfo poolInfo = {};
@@ -18,18 +18,18 @@ void VulkanCommandBuffer::initialize(VulkanDevice* device)
     poolInfo.queueFamilyIndex = device->getQueueFamilyIndices().graphicsFamily.value();
     poolInfo.flags = 0;
 
-    if (vkCreateCommandPool(m_device, &poolInfo, nullptr, &m_commandPool) != VK_SUCCESS) {
+    if (vkCreateCommandPool(m_Device, &poolInfo, nullptr, &m_CommandPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create command pool!");
     }
 
     // Create command buffer
     VkCommandBufferAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.commandPool = m_commandPool;
+    allocInfo.commandPool = m_CommandPool;
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     allocInfo.commandBufferCount = 1;
 
-    if (vkAllocateCommandBuffers(m_device, &allocInfo, &m_commandBuffer) != VK_SUCCESS) {
+    if (vkAllocateCommandBuffers(m_Device, &allocInfo, &m_CommandBuffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate command buffers!");
     }
 
@@ -37,13 +37,13 @@ void VulkanCommandBuffer::initialize(VulkanDevice* device)
     VkFenceCreateInfo fenceInfo = {};
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
-    if (vkCreateFence(m_device, &fenceInfo, nullptr, &m_inFlightFence) != VK_SUCCESS) {
+    if (vkCreateFence(m_Device, &fenceInfo, nullptr, &m_InFlightFence) != VK_SUCCESS) {
         throw std::runtime_error("failed to create synchronization objects for a frame!");
     }
 }
 
 void VulkanCommandBuffer::release()
 {
-    vkDestroyCommandPool(m_device, m_commandPool, nullptr);
-    vkDestroyFence(m_device, m_inFlightFence, nullptr);
+    vkDestroyCommandPool(m_Device, m_CommandPool, nullptr);
+    vkDestroyFence(m_Device, m_InFlightFence, nullptr);
 }
