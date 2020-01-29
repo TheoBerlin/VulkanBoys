@@ -8,8 +8,7 @@
 #include "VulkanCommandBuffer.h"
 #include "VulkanDevice.h"
 #include "VulkanSwapChain.h"
-
-#define MAX_FRAMES_IN_FLIGHT 3
+#include "Common.h"
 
 class VulkanRenderer : public Renderer
 {

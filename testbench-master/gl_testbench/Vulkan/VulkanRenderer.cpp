@@ -107,7 +107,7 @@ int VulkanRenderer::initialize(unsigned width, unsigned height)
 
 	m_pWindow = SDL_CreateWindow("OpenGL", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL);
 	
-	m_VulkanDevice.initialize("Prankster");
+	m_VulkanDevice.initialize("Prankster", MAX_NUM_UNIFORM_DESCRIPTORS, MAX_NUM_SAMPLER_DESCRIPTORS, MAX_NUM_DESCRIPTOR_SETS);
 
 	initializeRenderPass();
 

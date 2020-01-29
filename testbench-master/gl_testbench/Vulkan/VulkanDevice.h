@@ -6,9 +6,9 @@
 #include <vector>
 #include <iostream>
 #include <map>
+#include <optional>
 
 #include "../ConsoleHelper.h"
-#include <optional>
 
 #ifdef NDEBUG
 #define VALIDATION_LAYERS_ENABLED false
@@ -33,22 +33,25 @@ public:
 	VulkanDevice();
 	~VulkanDevice();
 
-	void initialize(const char applicationName[]);
+	void initialize(const char applicationName[], uint32_t uniformDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount);
 	void release();
 
-	const VkInstance& getInstance() { return m_VKInstance; }
-	const VkPhysicalDevice getPhysicalDevice() { return m_PhysicalDevice; }
-	const VkDevice getDevice() { return m_Device; }
-	const QueueFamilyIndices& getQueueFamilyIndices() { return m_DeviceQueueFamilyIndices; }
+	VkInstance getInstance() { return m_VKInstance; }
+	VkPhysicalDevice getPhysicalDevice() { return m_PhysicalDevice; }
+	VkDevice getDevice() { return m_Device; }
+	QueueFamilyIndices getQueueFamilyIndices() { return m_DeviceQueueFamilyIndices; }
 
-	const VkQueue& getGraphicsQueue() { return m_GraphicsQueue; }
-	const VkQueue& getPresentQueue() { return m_PresentQueue; }
+	VkQueue getGraphicsQueue() { return m_GraphicsQueue; }
+	VkQueue getPresentQueue() { return m_PresentQueue; }
+
+	VkDescriptorPool getDescriptorPool() { return m_DescriptorPool; }
 
 private:
 	void initializeInstance(const char applicationName[]);
 	void initializePhysicalDevice();
 	void initializeLogicalDevice();
-	void createDebugMessenger();
+	void initializeDebugMessenger();
+	void initializeDescriptorPool(uint32_t uniformDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount);
 	
 	void listSupportedInstanceExtensions();
 	bool validationLayersSupported();
@@ -78,6 +81,8 @@ private:
 	VkQueue m_PresentQueue;
 
 	VkDebugUtilsMessengerEXT m_DebugMessenger;
+
+	VkDescriptorPool m_DescriptorPool;
 
 private:
 	static const std::vector<const char*> s_ValidationLayers;
