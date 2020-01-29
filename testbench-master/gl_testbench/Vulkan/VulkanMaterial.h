@@ -23,9 +23,17 @@ public:
 
 private:
 	void deleteModule(VkShaderModule& module);
+	void createDescriptorSetLayout();
+	void createPipelineLayout();
+	void createDescriptorSets();
+	
 private:
 	std::string m_Name;
 	VulkanDevice* m_pDevice;
 	VkShaderModule m_ShaderModules[4];
+
+	VkPipelineLayout m_PipelineLayout;
+	VkDescriptorSetLayout m_DescriptorSetLayout;
+	VkDescriptorSet m_DescriptorSets[DESCRIPTOR_SETS_PER_MATERIAL];
 };
 

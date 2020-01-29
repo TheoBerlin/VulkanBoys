@@ -52,16 +52,23 @@ VulkanDevice::~VulkanDevice()
 	release();
 }
 
-void VulkanDevice::initialize(const char applicationName[])
+void VulkanDevice::initialize(const char applicationName[], uint32_t uniformDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount)
 {
 	initializeInstance(applicationName);
-	createDebugMessenger();
+	initializeDebugMessenger();
 	initializePhysicalDevice();
 	initializeLogicalDevice();
+	initializeDescriptorPool(uniformDescriptorCount, samplerDescriptorCount, descriptorSetCount);
 }
 
 void VulkanDevice::release()
 {
+	if (m_DescriptorPool != VK_NULL_HANDLE)
+	{
+		vkDestroyDescriptorPool(m_Device, m_DescriptorPool, nullptr);
+		m_DescriptorPool = VK_NULL_HANDLE;
+	}
+	
 	if (m_Device != VK_NULL_HANDLE)
 	{
 		vkDestroyDevice(m_Device, nullptr);
@@ -206,7 +213,7 @@ void VulkanDevice::initializeLogicalDevice()
 	vkGetDeviceQueue(m_Device, m_DeviceQueueFamilyIndices.presentFamily.value(), 0, &m_PresentQueue);
 }
 
-void VulkanDevice::createDebugMessenger()
+void VulkanDevice::initializeDebugMessenger()
 {
 	if (!VALIDATION_LAYERS_ENABLED)
 		return;
@@ -217,6 +224,30 @@ void VulkanDevice::createDebugMessenger()
 	if (CreateDebugUtilsMessengerEXT(m_VKInstance, &createInfo, nullptr, &m_DebugMessenger) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Failed to set up Debug Messenger!");
+	}
+}
+
+void VulkanDevice::initializeDescriptorPool(uint32_t uniformDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount)
+{
+	VkDescriptorPoolSize uniformPoolSize = {};
+	uniformPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uniformPoolSize.descriptorCount = uniformDescriptorCount;
+
+	VkDescriptorPoolSize samplerPoolSize = {};
+	samplerPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	samplerPoolSize.descriptorCount = samplerDescriptorCount;
+
+	VkDescriptorPoolSize poolSizes[] = { uniformPoolSize, samplerPoolSize };
+	
+	VkDescriptorPoolCreateInfo poolInfo = {};
+	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolInfo.poolSizeCount = 2;
+	poolInfo.pPoolSizes = poolSizes;
+	poolInfo.maxSets = descriptorSetCount;
+
+	if (vkCreateDescriptorPool(m_Device, &poolInfo, nullptr, &m_DescriptorPool) != VK_SUCCESS) 
+	{
+		throw std::runtime_error("Failed to create Descriptor Pool!");
 	}
 }
 
