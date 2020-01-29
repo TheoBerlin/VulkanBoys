@@ -1,12 +1,10 @@
 #pragma once
-
-class VulkanConstantBuffer;
-class VulkanRenderer;
-
 #include "../Material.h"
 #include "Common.h"
 
 class VulkanDevice;
+class VulkanRenderer;
+class VulkanConstantBuffer;
 
 class VulkanMaterial : public Material
 {
@@ -24,22 +22,20 @@ public:
 	virtual void updateConstantBuffer(const void* data, size_t size, unsigned int location);
 	virtual int enable();
 	virtual void disable();
-
 private:
 	void deleteModule(VkShaderModule& module);
 	void createDescriptorSetLayout();
 	void createPipelineLayout();
 	void createDescriptorSets();
-	
+	int32_t constructShader(ShaderType type, std::string& errString);
 private:
 	VulkanRenderer* m_pRenderer;
+	VulkanDevice* m_pDevice;
 
 	std::map<unsigned int, VulkanConstantBuffer*> m_ConstantBuffers;
-
 	std::string m_Name;
-	VulkanDevice* m_pDevice;
-	VkShaderModule m_ShaderModules[4];
 
+	VkShaderModule m_ShaderModules[4];
 	VkPipelineLayout m_PipelineLayout;
 	VkDescriptorSetLayout m_DescriptorSetLayout;
 	VkDescriptorSet m_DescriptorSets[DESCRIPTOR_SETS_PER_MATERIAL];

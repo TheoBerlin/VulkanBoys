@@ -1,3 +1,13 @@
+#version 450
+#extension GL_ARB_separate_shader_objects : enable
+
+#define POSITION 0
+#define NORMAL 1
+#define TEXTCOORD 2
+#define TRANSLATION 5
+#define TRANSLATION_NAME TranslationBlock
+#define DIFFUSE_TINT 6
+#define DIFFUSE_TINT_NAME DiffuseColor
 
 // buffer inputs
 #ifdef NORMAL
@@ -30,12 +40,12 @@ layout(binding=DIFFUSE_TINT) uniform DIFFUSE_TINT_NAME
 void main() {
 
 	#ifdef NORMAL
-		normal_out = normal_in[gl_VertexID];
+		normal_out = normal_in[gl_VertexIndex];
 	#endif
 
 	#ifdef TEXTCOORD
-		uv_out = uv_in[gl_VertexID];
+		uv_out = uv_in[gl_VertexIndex];
 	#endif
 
-	gl_Position = position_in[gl_VertexID] + translate;
+	gl_Position = position_in[gl_VertexIndex] + translate;
 }
