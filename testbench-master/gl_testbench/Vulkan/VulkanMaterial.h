@@ -1,5 +1,5 @@
 #pragma once
-#include "Material.h"
+#include "../Material.h"
 #include "Common.h"
 
 class VulkanMaterial : public Material
