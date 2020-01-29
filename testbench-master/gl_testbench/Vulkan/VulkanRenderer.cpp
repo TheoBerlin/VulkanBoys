@@ -1,4 +1,5 @@
 #include "VulkanRenderer.h"
+#include "VulkanMaterial.h"
 
 VulkanRenderer::VulkanRenderer()
 	: m_SemaphoreIndex(0)
@@ -11,7 +12,7 @@ VulkanRenderer::~VulkanRenderer()
 
 Material* VulkanRenderer::makeMaterial(const std::string& name)
 {
-	return nullptr;
+	return new VulkanMaterial(&m_VulkanDevice, name);
 }
 
 Mesh* VulkanRenderer::makeMesh()

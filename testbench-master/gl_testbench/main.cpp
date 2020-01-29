@@ -266,12 +266,13 @@ int initialiseTestbench()
 
 void shutdown() {
 	// shutdown.
-	// delete dynamic objects
-	/*for (auto m : materials)
+	//delete dynamic objects
+	for (auto m : materials)
 	{
 		delete(m);
 	}
-	for (auto t : techniques)
+	
+	/*for (auto t : techniques)
 	{
 		delete(t);
 	}
@@ -304,8 +305,8 @@ int main(int argc, char *argv[])
 	renderer->initialize(800,600);
 	renderer->setWinTitle("OpenGL");
 	renderer->setClearColor(0.0, 0.1, 0.1, 1.0);
-	//initialiseTestbench();
-	//run();
+	initialiseTestbench();
+	run();
 	shutdown();
 	return 0;
 };
