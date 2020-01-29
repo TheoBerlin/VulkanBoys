@@ -65,9 +65,6 @@ void VulkanMaterial::setDiffuse(Color c)
 
 int VulkanMaterial::compileMaterial(std::string& errString)
 {
-	createDescriptorSetLayout();
-	createPipelineLayout();
-	createDescriptorSets();
 	if (constructShader(ShaderType::VS, errString) < 0)
 		return -1;
 
@@ -80,12 +77,13 @@ int VulkanMaterial::compileMaterial(std::string& errString)
 void VulkanMaterial::addConstantBuffer(std::string name, unsigned int location)
 {
 	VulkanConstantBuffer* pConstantBuffer = new VulkanConstantBuffer(name, location);
-	pConstantBuffer->provideResources(m_pRenderer);
+	pConstantBuffer->provideResources(m_pRenderer, m_pDevice);
 	m_ConstantBuffers[location] = pConstantBuffer;
 }
 
 void VulkanMaterial::updateConstantBuffer(const void* data, size_t size, unsigned int location)
 {
+	m_ConstantBuffers[location]->setData(data, size, this, location);
 }
 
 int VulkanMaterial::enable()
@@ -97,10 +95,24 @@ void VulkanMaterial::disable()
 {
 }
 
+void VulkanMaterial::finalize()
+{
+	createDescriptorSetLayout();
+	createPipelineLayout();
+	createDescriptorSets();
+	updateUniformWriteDescriptorSets();
+	//updateSamplerWriteDescriptorSets(); //Maybe not here?
+}
+
 void VulkanMaterial::createDescriptorSetLayout()
 {
+	if (m_ConstantBuffers.size() > 1)
+		throw std::runtime_error("More than 1 constant buffer per material not allowed!");
+
+	uint32_t binding = m_ConstantBuffers.begin()->first;
+	
 	VkDescriptorSetLayoutBinding uboLayoutBinding = {};
-	uboLayoutBinding.binding = 0;
+	uboLayoutBinding.binding = binding;
 	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	uboLayoutBinding.descriptorCount = 1;
 	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -153,18 +165,24 @@ void VulkanMaterial::createDescriptorSets()
 	{
 		throw std::runtime_error("Failed to allocate Descriptor Sets!");
 	}
+}
 
+void VulkanMaterial::updateUniformWriteDescriptorSets()
+{
+	uint32_t binding = m_ConstantBuffers.begin()->first;
+	VkBuffer uniformBuffer = m_ConstantBuffers.begin()->second->getBuffer();
+	
 	for (size_t i = 0; i < DESCRIPTOR_SETS_PER_MATERIAL; i++)
 	{
 		VkDescriptorBufferInfo bufferInfo = {};
-		bufferInfo.buffer = VK_NULL_HANDLE;// uniformBuffers[i]; //<-- Theo Jobba
+		bufferInfo.buffer = uniformBuffer;
 		bufferInfo.offset = 0;
 		bufferInfo.range = VK_WHOLE_SIZE;
 
 		VkWriteDescriptorSet descriptorBufferWrite = {};
 		descriptorBufferWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorBufferWrite.dstSet = m_DescriptorSets[i];
-		descriptorBufferWrite.dstBinding = 0;
+		descriptorBufferWrite.dstBinding = binding;
 		descriptorBufferWrite.dstArrayElement = 0;
 		descriptorBufferWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		descriptorBufferWrite.descriptorCount = UNIFORM_DESCRIPTORS_PER_SET;
@@ -172,10 +190,18 @@ void VulkanMaterial::createDescriptorSets()
 		descriptorBufferWrite.pImageInfo = nullptr;
 		descriptorBufferWrite.pTexelBufferView = nullptr;
 
+		vkUpdateDescriptorSets(m_pDevice->getDevice(), 1, &descriptorBufferWrite, 0, nullptr);
+	}
+}
+
+void VulkanMaterial::updateSamplerWriteDescriptorSets()
+{
+	for (size_t i = 0; i < DESCRIPTOR_SETS_PER_MATERIAL; i++)
+	{
 		VkDescriptorImageInfo imageInfo = {};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = nullptr;
-		imageInfo.sampler = nullptr;
+		imageInfo.imageView = nullptr;//imageView;
+		imageInfo.sampler = nullptr;//sampler;
 
 		VkWriteDescriptorSet descriptorImageWrite = {};
 		descriptorImageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -188,8 +214,7 @@ void VulkanMaterial::createDescriptorSets()
 		descriptorImageWrite.pImageInfo = &imageInfo;
 		descriptorImageWrite.pTexelBufferView = nullptr;
 
-		VkWriteDescriptorSet descriptorWrites[] = { descriptorBufferWrite, descriptorImageWrite };
-		vkUpdateDescriptorSets(m_pDevice->getDevice(), 2, descriptorWrites, 0, nullptr);
+		vkUpdateDescriptorSets(m_pDevice->getDevice(), 1, &descriptorImageWrite, 0, nullptr);
 	}
 }
 

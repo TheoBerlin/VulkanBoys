@@ -3,6 +3,7 @@
 #include "Vulkan/vulkan.h"
 
 class VulkanRenderer;
+class VulkanDevice;
 
 class VulkanConstantBuffer
 {
@@ -11,7 +12,7 @@ public:
     ~VulkanConstantBuffer();
 
     // It is unknown when the buffer is initialized, therefore some resources need to be stored before that point
-    void provideResources(VulkanRenderer* renderer);
+    void provideResources(VulkanRenderer* pRenderer, VulkanDevice* pVulkanDevice);
 
     // Initialize the constant buffer instance with necessary vulkan resources
     void initialize(VkDeviceSize size);
@@ -19,6 +20,8 @@ public:
     void setData(const void* data, size_t size, Material* m, unsigned int location);
     void bind(Material* material);
 
+	VkBuffer getBuffer() { return m_BufferHandle; }
+	
 private:
     std::string m_Name;
 
@@ -28,7 +31,7 @@ private:
     VkBuffer m_BufferHandle;
 
     VulkanRenderer* m_pRenderer;
-
-    VkDevice m_Device;
+	VulkanDevice* m_pDevice;
+	
     VkDeviceMemory m_BufferMemory;
 };

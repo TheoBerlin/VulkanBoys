@@ -57,9 +57,11 @@ ConstantBuffer* VulkanRenderer::makeConstantBuffer(std::string NAME, unsigned lo
 	return nullptr;
 }
 
-Technique* VulkanRenderer::makeTechnique(Material*, RenderState*)
+Technique* VulkanRenderer::makeTechnique(Material* pMaterial, RenderState* pRenderState)
 {
-	return nullptr;
+	//reinterpret_cast<RenderState*>(pRenderState)->finalize();
+	reinterpret_cast<VulkanMaterial*>(pMaterial)->finalize();
+	return new Technique(pMaterial, pRenderState);
 }
 
 void VulkanRenderer::createBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkDeviceSize memoryOffset, VkMemoryPropertyFlags properties, VkBufferUsageFlags usage)

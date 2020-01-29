@@ -25,7 +25,7 @@ public:
 	std::string getShaderPath();
 	std::string getShaderExtension();
 	ConstantBuffer* makeConstantBuffer(std::string NAME, unsigned int location);
-	Technique* makeTechnique(Material*, RenderState*);
+	Technique* makeTechnique(Material* pMaterial, RenderState* pRenderState);
 
 	void createBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkDeviceSize memoryOffset, VkMemoryPropertyFlags properties, VkBufferUsageFlags usage);
 
