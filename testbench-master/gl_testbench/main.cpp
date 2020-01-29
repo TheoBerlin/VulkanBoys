@@ -208,7 +208,7 @@ int initialiseTestbench()
 	}
 
 	// one technique with wireframe
-	RenderState* renderState1 = renderer->makeRenderState();
+	/*RenderState* renderState1 = renderer->makeRenderState();
 	renderState1->setWireFrame(true);
 
 	// basic technique
@@ -260,7 +260,7 @@ int initialiseTestbench()
 			m->addTexture(textures[0], DIFFUSE_SLOT);
 
 		scene.push_back(m);
-	}
+	}*/
 	return 0;
 }
 
@@ -306,7 +306,7 @@ int main(int argc, char *argv[])
 	renderer->setWinTitle("OpenGL");
 	renderer->setClearColor(0.0, 0.1, 0.1, 1.0);
 	initialiseTestbench();
-	run();
+	//run();
 	shutdown();
 	return 0;
 };

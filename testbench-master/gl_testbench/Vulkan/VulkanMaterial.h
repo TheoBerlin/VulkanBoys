@@ -1,4 +1,8 @@
 #pragma once
+
+class VulkanConstantBuffer;
+class VulkanRenderer;
+
 #include "../Material.h"
 #include "Common.h"
 
@@ -7,7 +11,7 @@ class VulkanDevice;
 class VulkanMaterial : public Material
 {
 public:
-	VulkanMaterial(VulkanDevice* pDevice, const std::string& name);
+	VulkanMaterial(VulkanRenderer* pRenderer, VulkanDevice* pDevice, const std::string& name);
 	~VulkanMaterial();
 
 	DECL_NO_COPY(VulkanMaterial);
@@ -28,6 +32,10 @@ private:
 	void createDescriptorSets();
 	
 private:
+	VulkanRenderer* m_pRenderer;
+
+	std::map<unsigned int, VulkanConstantBuffer*> m_ConstantBuffers;
+
 	std::string m_Name;
 	VulkanDevice* m_pDevice;
 	VkShaderModule m_ShaderModules[4];

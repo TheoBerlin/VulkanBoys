@@ -1,6 +1,8 @@
 #include "VulkanRenderer.h"
 #include "VulkanMaterial.h"
 
+#include "VulkanMaterial.h"
+
 VulkanRenderer::VulkanRenderer()
 	: m_SemaphoreIndex(0)
 {
@@ -12,7 +14,7 @@ VulkanRenderer::~VulkanRenderer()
 
 Material* VulkanRenderer::makeMaterial(const std::string& name)
 {
-	return new VulkanMaterial(&m_VulkanDevice, name);
+	return new VulkanMaterial(this, &m_VulkanDevice, name);
 }
 
 Mesh* VulkanRenderer::makeMesh()
@@ -58,6 +60,41 @@ ConstantBuffer* VulkanRenderer::makeConstantBuffer(std::string NAME, unsigned lo
 Technique* VulkanRenderer::makeTechnique(Material*, RenderState*)
 {
 	return nullptr;
+}
+
+void VulkanRenderer::createBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkDeviceSize memoryOffset, VkMemoryPropertyFlags properties, VkBufferUsageFlags usage)
+{
+	VkBufferCreateInfo bufferInfo = {};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.flags = 0;
+	bufferInfo.size = size;
+	bufferInfo.pNext = nullptr;
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	bufferInfo.usage = usage;
+
+	uint32_t graphicsFamilyIndex = m_VulkanDevice.getQueueFamilyIndices().graphicsFamily.value();
+	bufferInfo.pQueueFamilyIndices = &graphicsFamilyIndex;
+	bufferInfo.queueFamilyIndexCount = 1;
+
+	VkDevice device = m_VulkanDevice.getDevice();
+
+	if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create Render Pass!");
+	}
+
+	VkMemoryRequirements memRequirements;
+	vkGetBufferMemoryRequirements(device, buffer, &memRequirements);
+
+	VkMemoryAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = findMemoryType(m_VulkanDevice.getPhysicalDevice(), memRequirements.memoryTypeBits, properties);
+
+	if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
+		throw std::runtime_error("failed to allocate buffer memory!");
+	}
+
+	vkBindBufferMemory(device, buffer, bufferMemory, memoryOffset);
 }
 
 int VulkanRenderer::initialize(unsigned width, unsigned height)

@@ -1,8 +1,12 @@
 #include "VulkanMaterial.h"
 #include "VulkanDevice.h"
 
-VulkanMaterial::VulkanMaterial(VulkanDevice* pDevice, const std::string& name)
+#include "VulkanConstantBuffer.h"
+#include "VulkanRenderer.h"
+
+VulkanMaterial::VulkanMaterial(VulkanRenderer* pRenderer, VulkanDevice* pDevice, const std::string& name)
 	: Material(),
+	m_pRenderer(pRenderer),
 	m_Name(name),
 	m_pDevice(pDevice),
 	m_ShaderModules()
@@ -21,6 +25,9 @@ VulkanMaterial::~VulkanMaterial()
 	for (uint32_t i = 0; i < shaderCount; i++)
 		deleteModule(m_ShaderModules[i]);
 
+	for (auto buffer : m_ConstantBuffers)
+		delete buffer.second;
+    
 	if (m_DescriptorSetLayout != VK_NULL_HANDLE)
 	{
 		vkDestroyDescriptorSetLayout(m_pDevice->getDevice(), m_DescriptorSetLayout, nullptr);
@@ -63,6 +70,9 @@ int VulkanMaterial::compileMaterial(std::string& errString)
 
 void VulkanMaterial::addConstantBuffer(std::string name, unsigned int location)
 {
+	VulkanConstantBuffer* pConstantBuffer = new VulkanConstantBuffer(name, location);
+	pConstantBuffer->provideResources(m_pRenderer);
+	m_ConstantBuffers[location] = pConstantBuffer;
 }
 
 void VulkanMaterial::updateConstantBuffer(const void* data, size_t size, unsigned int location)
