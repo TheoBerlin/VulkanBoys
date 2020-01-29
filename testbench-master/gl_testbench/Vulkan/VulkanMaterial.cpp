@@ -1,11 +1,17 @@
 #include "VulkanMaterial.h"
 
-VulkanMaterial::VulkanMaterial()
-{
-}
+#include "VulkanConstantBuffer.h"
+#include "VulkanRenderer.h"
+
+VulkanMaterial::VulkanMaterial(VulkanRenderer* renderer)
+	:m_pRenderer(renderer)
+{}
 
 VulkanMaterial::~VulkanMaterial()
 {
+	for (auto buffer : m_ConstantBuffers) {
+		delete buffer.second;
+	}
 }
 
 void VulkanMaterial::setShader(const std::string& shaderFileName, ShaderType type)
@@ -27,6 +33,9 @@ int VulkanMaterial::compileMaterial(std::string& errString)
 
 void VulkanMaterial::addConstantBuffer(std::string name, unsigned int location)
 {
+	VulkanConstantBuffer* pConstantBuffer = new VulkanConstantBuffer(name, location);
+	pConstantBuffer->provideResources(m_pRenderer);
+	m_ConstantBuffers[location] = pConstantBuffer;
 }
 
 void VulkanMaterial::updateConstantBuffer(const void* data, size_t size, unsigned int location)

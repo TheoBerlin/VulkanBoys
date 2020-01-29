@@ -1,11 +1,15 @@
 #pragma once
+
+class VulkanConstantBuffer;
+class VulkanRenderer;
+
 #include "../Material.h"
 #include "Common.h"
 
 class VulkanMaterial : public Material
 {
 public:
-	VulkanMaterial();
+	VulkanMaterial(VulkanRenderer* renderer);
 	~VulkanMaterial();
 
 	DECL_NO_COPY(VulkanMaterial);
@@ -19,6 +23,8 @@ public:
 	virtual int enable();
 	virtual void disable();
 private:
+	VulkanRenderer* m_pRenderer;
 
+	std::map<unsigned int, VulkanConstantBuffer*> m_ConstantBuffers;
 };
 
