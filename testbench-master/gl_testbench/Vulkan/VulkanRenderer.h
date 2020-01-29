@@ -28,7 +28,7 @@ public:
 	ConstantBuffer* makeConstantBuffer(std::string NAME, unsigned int location);
 	Technique* makeTechnique(Material*, RenderState*);
 
-	void createBuffer(VkBuffer& buffer, VkDeviceMemory bufferMemory, VkDeviceSize size, VkDeviceSize memoryOffset, VkMemoryPropertyFlags properties, VkBufferUsageFlags usage);
+	void createBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkDeviceSize memoryOffset, VkMemoryPropertyFlags properties, VkBufferUsageFlags usage);
 
 	//Renderer() { /*InitializeCriticalSection(&protectHere);*/ };
 	int initialize(unsigned int width = 800, unsigned int height = 600);

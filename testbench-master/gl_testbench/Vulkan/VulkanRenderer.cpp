@@ -1,4 +1,5 @@
 #include "VulkanRenderer.h"
+#include "VulkanMaterial.h"
 
 #include "VulkanMaterial.h"
 
@@ -13,7 +14,7 @@ VulkanRenderer::~VulkanRenderer()
 
 Material* VulkanRenderer::makeMaterial(const std::string& name)
 {
-	return new VulkanMaterial(this);
+	return new VulkanMaterial(this, &m_VulkanDevice, name);
 }
 
 Mesh* VulkanRenderer::makeMesh()
@@ -61,7 +62,7 @@ Technique* VulkanRenderer::makeTechnique(Material*, RenderState*)
 	return nullptr;
 }
 
-void VulkanRenderer::createBuffer(VkBuffer& buffer, VkDeviceMemory bufferMemory, VkDeviceSize size, VkDeviceSize memoryOffset, VkMemoryPropertyFlags properties, VkBufferUsageFlags usage)
+void VulkanRenderer::createBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkDeviceSize memoryOffset, VkMemoryPropertyFlags properties, VkBufferUsageFlags usage)
 {
 	VkBufferCreateInfo bufferInfo = {};
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
