@@ -1,6 +1,7 @@
 #include "VulkanConstantBuffer.h"
 
 #include "VulkanRenderer.h"
+#include "VulkanDevice.h"
 
 VulkanConstantBuffer::VulkanConstantBuffer(std::string NAME, unsigned int location)
     :m_Name(NAME),
@@ -11,17 +12,18 @@ VulkanConstantBuffer::VulkanConstantBuffer(std::string NAME, unsigned int locati
 VulkanConstantBuffer::~VulkanConstantBuffer()
 {
     if (m_BufferMemory != VK_NULL_HANDLE) {
-        vkFreeMemory(m_Device, m_BufferMemory, nullptr);
+        vkFreeMemory(m_pDevice->getDevice(), m_BufferMemory, nullptr);
     }
 
     if (m_BufferHandle != VK_NULL_HANDLE) {
-        vkDestroyBuffer(m_Device, m_BufferHandle, nullptr);
+        vkDestroyBuffer(m_pDevice->getDevice(), m_BufferHandle, nullptr);
     }
 }
 
-void VulkanConstantBuffer::provideResources(VulkanRenderer* renderer)
+void VulkanConstantBuffer::provideResources(VulkanRenderer* pRenderer, VulkanDevice* pVulkanDevice)
 {
-    m_pRenderer = renderer;
+    m_pRenderer = pRenderer;
+	m_pDevice = pVulkanDevice;
 }
 
 void VulkanConstantBuffer::initialize(VkDeviceSize size)
@@ -41,9 +43,9 @@ void VulkanConstantBuffer::setData(const void* data, size_t size, Material* m, u
     }
 
     void* dest;
-    vkMapMemory(m_Device, m_BufferMemory, 0, size, 0, &dest);
+    vkMapMemory(m_pDevice->getDevice(), m_BufferMemory, 0, size, 0, &dest);
     memcpy(dest, &data, size);
-    vkUnmapMemory(m_Device, m_BufferMemory);
+    vkUnmapMemory(m_pDevice->getDevice(), m_BufferMemory);
 }
 
 void VulkanConstantBuffer::bind(Material* material)

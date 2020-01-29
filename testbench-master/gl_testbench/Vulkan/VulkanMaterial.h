@@ -22,11 +22,17 @@ public:
 	virtual void updateConstantBuffer(const void* data, size_t size, unsigned int location);
 	virtual int enable();
 	virtual void disable();
+
+	void finalize();
+
 private:
 	void deleteModule(VkShaderModule& module);
 	void createDescriptorSetLayout();
 	void createPipelineLayout();
 	void createDescriptorSets();
+	void updateUniformWriteDescriptorSets();
+	void updateSamplerWriteDescriptorSets();
+	
 	int32_t constructShader(ShaderType type, std::string& errString);
 private:
 	VulkanRenderer* m_pRenderer;
