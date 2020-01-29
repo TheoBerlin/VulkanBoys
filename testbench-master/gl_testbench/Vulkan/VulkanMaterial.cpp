@@ -65,9 +65,9 @@ void VulkanMaterial::setDiffuse(Color c)
 
 int VulkanMaterial::compileMaterial(std::string& errString)
 {
-	//createDescriptorSetLayout();
-	//createPipelineLayout();
-	//createDescriptorSets();
+	createDescriptorSetLayout();
+	createPipelineLayout();
+	createDescriptorSets();
 	if (constructShader(ShaderType::VS, errString) < 0)
 		return -1;
 
