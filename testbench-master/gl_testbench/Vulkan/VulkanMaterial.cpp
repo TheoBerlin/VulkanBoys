@@ -157,7 +157,7 @@ void VulkanMaterial::createDescriptorSets()
 	for (size_t i = 0; i < DESCRIPTOR_SETS_PER_MATERIAL; i++)
 	{
 		VkDescriptorBufferInfo bufferInfo = {};
-		bufferInfo.buffer = VK_NULL_HANDLE; // uniformBuffers[i]; //<-- Theo Jobba
+		bufferInfo.buffer = VK_NULL_HANDLE;// uniformBuffers[i]; //<-- Theo Jobba
 		bufferInfo.offset = 0;
 		bufferInfo.range = VK_WHOLE_SIZE;
 
