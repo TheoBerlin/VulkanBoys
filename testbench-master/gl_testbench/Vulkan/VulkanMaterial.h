@@ -25,6 +25,8 @@ public:
 
 	void finalize();
 
+	VkShaderModule getShaderModule(ShaderType type) { return m_ShaderModules[uint32_t(type)]; }
+	VkPipelineLayout getPipelineLayout() const { return m_PipelineLayout; }
 private:
 	void deleteModule(VkShaderModule& module);
 	void createDescriptorSetLayout();
