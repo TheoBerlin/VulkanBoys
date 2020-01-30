@@ -459,8 +459,8 @@ void VulkanRenderer::updateVertexBufferDescriptorSets()
 	for (size_t i = 0; i < VERTEX_BUFFER_DESCRIPTORS_PER_SET_BUNDLE; i++)
 	{
 		VkDescriptorBufferInfo bufferInfo = {};
-		bufferInfo.buffer = nullptr; //Todo: Fixa grejer
-		bufferInfo.offset = 0;
+		bufferInfo.buffer = m_pVertexBuffers[i]->getBuffer();
+		bufferInfo.offset = m_pVertexBuffers[i]->getOffset();
 		bufferInfo.range = VK_WHOLE_SIZE;
 
 		VkWriteDescriptorSet descriptorBufferWrite = {};

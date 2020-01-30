@@ -44,10 +44,16 @@ void VulkanVertexBuffer::setData(const void* data, size_t size, size_t offset)
 
 void VulkanVertexBuffer::bind(size_t offset, size_t size, unsigned int location)
 {
+	m_Offset = offset;
+	m_Location = location;
+	m_pRenderer->setVertexBuffer(this, m_Location);
 }
 
 void VulkanVertexBuffer::unbind()
 {
+	m_pRenderer->setVertexBuffer(this, m_Location);
+	m_Location = 0;
+	m_Offset = 0;
 }
 
 size_t VulkanVertexBuffer::getSize()
