@@ -33,7 +33,7 @@ public:
 	VulkanDevice();
 	~VulkanDevice();
 
-	void initialize(const char applicationName[], uint32_t storageDescriptorCount, uint32_t uniformDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount);
+	void initialize(const char applicationName[], uint32_t vertexBufferDescriptorCount, uint32_t constantBufferDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount);
 	void release();
 
 	VkInstance getInstance() { return m_VKInstance; }
@@ -51,7 +51,7 @@ private:
 	void initializePhysicalDevice();
 	void initializeLogicalDevice();
 	void initializeDebugMessenger();
-	void initializeDescriptorPool(uint32_t storageDescriptorCount, uint32_t uniformDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount);
+	void initializeDescriptorPool(uint32_t vertexBufferDescriptorCount, uint32_t constantBufferDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount);
 	
 	void listSupportedInstanceExtensions();
 	bool validationLayersSupported();

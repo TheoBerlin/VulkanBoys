@@ -5,7 +5,7 @@
 class VulkanRenderer;
 class VulkanDevice;
 
-class VulkanConstantBuffer
+class VulkanConstantBuffer : public ConstantBuffer
 {
 public:
     VulkanConstantBuffer(std::string NAME, unsigned int location);

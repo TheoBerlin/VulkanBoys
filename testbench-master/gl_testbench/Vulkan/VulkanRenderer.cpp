@@ -60,7 +60,9 @@ std::string VulkanRenderer::getShaderExtension()
 
 ConstantBuffer* VulkanRenderer::makeConstantBuffer(std::string NAME, unsigned location)
 {
-	return nullptr;
+	VulkanConstantBuffer* pConstantBuffer = new VulkanConstantBuffer(NAME, location);
+	pConstantBuffer->provideResources(this, &m_VulkanDevice);
+	return pConstantBuffer;
 }
 
 Technique* VulkanRenderer::makeTechnique(Material* pMaterial, RenderState* pRenderState)
@@ -133,8 +135,8 @@ void VulkanRenderer::setTexture2D(VulkanTexture2D* pTexture2D, VulkanSampler2D* 
 
 void VulkanRenderer::commitState()
 {
-	updateStorageDescriptorSets();
-	updateUniformDescriptorSets();
+	updateVertexBufferDescriptorSets();
+	updateConstantBufferDescriptorSets();
 	updateSamplerDescriptorSets();
 }
 
@@ -192,7 +194,7 @@ int VulkanRenderer::shutdown()
 {
 	if (m_pDescriptorData != nullptr)
 	{
-		vkDestroyDescriptorSetLayout(m_VulkanDevice.getDevice(), m_pDescriptorData->descriptorSetLayouts.uniformAndStorageDescriptorSetLayout, nullptr);
+		vkDestroyDescriptorSetLayout(m_VulkanDevice.getDevice(), m_pDescriptorData->descriptorSetLayouts.vertexAndConstantBufferDescriptorSetLayout, nullptr);
 		vkDestroyDescriptorSetLayout(m_VulkanDevice.getDevice(), m_pDescriptorData->descriptorSetLayouts.textureDescriptorSetLayout, nullptr);
 		vkDestroyPipelineLayout(m_VulkanDevice.getDevice(), m_pDescriptorData->pipelineLayout, nullptr);
 		
@@ -221,18 +223,22 @@ int VulkanRenderer::shutdown()
 
 void VulkanRenderer::setClearColor(float, float, float, float)
 {
+	//Todo: Implement This
 }
 
 void VulkanRenderer::clearBuffer(unsigned)
 {
+	//Todo: Implement This
 }
 
 void VulkanRenderer::setRenderState(RenderState* ps)
 {
+	//Todo: Implement This
 }
 
 void VulkanRenderer::submit(Mesh* mesh)
 {
+	//Todo: Implement This
 }
 
 void VulkanRenderer::frame()
@@ -368,7 +374,7 @@ void VulkanRenderer::createDescriptorSetLayouts(DescriptorSetLayouts& descriptor
 	uniformLayoutInfo.bindingCount = ARRAYSIZE(descriptorSetLayoutBindings);
 	uniformLayoutInfo.pBindings = descriptorSetLayoutBindings;
 
-	if (vkCreateDescriptorSetLayout(m_VulkanDevice.getDevice(), &uniformLayoutInfo, nullptr, &descriptorSetLayouts.uniformAndStorageDescriptorSetLayout) != VK_SUCCESS)
+	if (vkCreateDescriptorSetLayout(m_VulkanDevice.getDevice(), &uniformLayoutInfo, nullptr, &descriptorSetLayouts.vertexAndConstantBufferDescriptorSetLayout) != VK_SUCCESS)
 	{
 		std::cout << "Failed to create UniformDescriptorSetLayout" << std::endl;
 	}
@@ -422,13 +428,13 @@ void VulkanRenderer::createDescriptorSets(VkDescriptorSet descriptorSets[], Desc
 {
 	VkDescriptorSetLayout allLayouts[] =
 	{
-		descriptorSetLayouts.uniformAndStorageDescriptorSetLayout, //Frame 0
+		descriptorSetLayouts.vertexAndConstantBufferDescriptorSetLayout, //Frame 0
 		descriptorSetLayouts.textureDescriptorSetLayout,
 		
-		descriptorSetLayouts.uniformAndStorageDescriptorSetLayout, //Frame 1
+		descriptorSetLayouts.vertexAndConstantBufferDescriptorSetLayout, //Frame 1
 		descriptorSetLayouts.textureDescriptorSetLayout,
 		
-		descriptorSetLayouts.uniformAndStorageDescriptorSetLayout, //Frame 2
+		descriptorSetLayouts.vertexAndConstantBufferDescriptorSetLayout, //Frame 2
 		descriptorSetLayouts.textureDescriptorSetLayout
 	};
 	
@@ -448,9 +454,9 @@ void VulkanRenderer::createDescriptorSets(VkDescriptorSet descriptorSets[], Desc
 	}
 }
 
-void VulkanRenderer::updateStorageDescriptorSets()
+void VulkanRenderer::updateVertexBufferDescriptorSets()
 {
-	for (size_t i = 0; i < STORAGE_DESCRIPTORS_PER_SET_BUNDLE; i++)
+	for (size_t i = 0; i < VERTEX_BUFFER_DESCRIPTORS_PER_SET_BUNDLE; i++)
 	{
 		VkDescriptorBufferInfo bufferInfo = {};
 		bufferInfo.buffer = nullptr; //Todo: Fixa grejer
@@ -472,9 +478,9 @@ void VulkanRenderer::updateStorageDescriptorSets()
 	}
 }
 
-void VulkanRenderer::updateUniformDescriptorSets()
+void VulkanRenderer::updateConstantBufferDescriptorSets()
 {
-	for (size_t i = 0; i < UNIFORM_DESCRIPTORS_PER_SET_BUNDLE; i++)
+	for (size_t i = 0; i < CONSTANT_BUFFER_DESCRIPTORS_PER_SET_BUNDLE; i++)
 	{
 		VkDescriptorBufferInfo bufferInfo = {};
 		bufferInfo.buffer = m_pConstantBuffer[5 + i]->getBuffer();

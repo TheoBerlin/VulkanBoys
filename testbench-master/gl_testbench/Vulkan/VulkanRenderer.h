@@ -23,7 +23,7 @@ class VulkanRenderer : public Renderer
 
 		struct
 		{
-			VkDescriptorSetLayout uniformAndStorageDescriptorSetLayout;
+			VkDescriptorSetLayout vertexAndConstantBufferDescriptorSetLayout;
 			VkDescriptorSetLayout textureDescriptorSetLayout;
 		};
 	};
@@ -79,8 +79,8 @@ private:
 	void createDescriptorSetLayouts(DescriptorSetLayouts& descriptorSetLayouts);
 	void createPipelineLayout(VkPipelineLayout& pipelineLayout, DescriptorSetLayouts& descriptorSetLayouts);
 	void createDescriptorSets(VkDescriptorSet descriptorSets[], DescriptorSetLayouts& descriptorSetLayouts);
-	void updateStorageDescriptorSets();
-	void updateUniformDescriptorSets();
+	void updateVertexBufferDescriptorSets();
+	void updateConstantBufferDescriptorSets();
 	void updateSamplerDescriptorSets();
 private:
 	SDL_Window* m_pWindow;
