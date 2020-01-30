@@ -63,9 +63,7 @@ int VulkanMaterial::compileMaterial(std::string& errString)
 
 void VulkanMaterial::addConstantBuffer(std::string name, unsigned int location)
 {
-	VulkanConstantBuffer* pConstantBuffer = new VulkanConstantBuffer(name, location);
-	pConstantBuffer->provideResources(m_pRenderer, m_pDevice);
-	m_ConstantBuffers[location] = pConstantBuffer;
+	m_ConstantBuffers[location] = reinterpret_cast<VulkanConstantBuffer*>(m_pRenderer->makeConstantBuffer(name, location));
 }
 
 void VulkanMaterial::updateConstantBuffer(const void* data, size_t size, unsigned int location)
