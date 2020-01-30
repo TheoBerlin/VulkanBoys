@@ -219,10 +219,10 @@ int initialiseTestbench()
 
 	// create texture
 	Texture2D* fatboy = renderer->makeTexture2D();
-	fatboy->loadFromFile("../assets/textures/fatboy.png");
+	//fatboy->loadFromFile("../assets/textures/fatboy.png");
 	Sampler2D* sampler = renderer->makeSampler2D();
 	sampler->setWrap(WRAPPING::REPEAT, WRAPPING::REPEAT);
-	fatboy->sampler = sampler;
+	//fatboy->sampler = sampler;
 
 	textures.push_back(fatboy);
 	samplers.push_back(sampler);
@@ -285,14 +285,14 @@ void shutdown() {
 	assert(nor->refCount() == 0);
 	delete nor;
 	assert(uvs->refCount() == 0);
-	delete uvs;
+	delete uvs;*/
 	
 	for (auto s : samplers)
 	{
 		delete s;
 	}
 
-	for (auto t : textures)
+	/*for (auto t : textures)
 	{
 		delete t;
 	}*/

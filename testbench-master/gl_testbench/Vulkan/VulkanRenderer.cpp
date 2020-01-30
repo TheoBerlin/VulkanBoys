@@ -1,6 +1,7 @@
 #include "VulkanRenderer.h"
 #include "VulkanMaterial.h"
 #include "VulkanRenderState.h"
+#include "VulkanSampler2D.h"
 
 VulkanRenderer::VulkanRenderer()
 	: m_SemaphoreIndex(0)
@@ -33,7 +34,7 @@ Texture2D* VulkanRenderer::makeTexture2D()
 
 Sampler2D* VulkanRenderer::makeSampler2D()
 {
-	return nullptr;
+	return new VulkanSampler2D(&m_VulkanDevice);
 }
 
 RenderState* VulkanRenderer::makeRenderState()
