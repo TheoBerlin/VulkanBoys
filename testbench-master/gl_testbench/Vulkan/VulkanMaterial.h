@@ -8,6 +8,7 @@ class VulkanConstantBuffer;
 
 class VulkanMaterial : public Material
 {
+	
 public:
 	VulkanMaterial(VulkanRenderer* pRenderer, VulkanDevice* pDevice, const std::string& name);
 	~VulkanMaterial();
@@ -23,17 +24,9 @@ public:
 	virtual int enable();
 	virtual void disable();
 
-	void finalize();
-
 	VkShaderModule getShaderModule(ShaderType type) { return m_ShaderModules[uint32_t(type)]; }
-	VkPipelineLayout getPipelineLayout() const { return m_PipelineLayout; }
 private:
 	void deleteModule(VkShaderModule& module);
-	void createDescriptorSetLayout();
-	void createPipelineLayout();
-	void createDescriptorSets();
-	void updateUniformWriteDescriptorSets();
-	void updateSamplerWriteDescriptorSets();
 	
 	int32_t constructShader(ShaderType type, std::string& errString);
 private:
@@ -44,8 +37,5 @@ private:
 	std::string m_Name;
 
 	VkShaderModule m_ShaderModules[4];
-	VkPipelineLayout m_PipelineLayout;
-	VkDescriptorSetLayout m_DescriptorSetLayout;
-	VkDescriptorSet m_DescriptorSets[DESCRIPTOR_SETS_PER_MATERIAL];
 };
 

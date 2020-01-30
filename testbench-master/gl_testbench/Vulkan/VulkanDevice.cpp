@@ -52,13 +52,13 @@ VulkanDevice::~VulkanDevice()
 	release();
 }
 
-void VulkanDevice::initialize(const char applicationName[], uint32_t uniformDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount)
+void VulkanDevice::initialize(const char applicationName[], uint32_t storageDescriptorCount, uint32_t uniformDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount)
 {
 	initializeInstance(applicationName);
 	initializeDebugMessenger();
 	initializePhysicalDevice();
 	initializeLogicalDevice();
-	initializeDescriptorPool(uniformDescriptorCount, samplerDescriptorCount, descriptorSetCount);
+	initializeDescriptorPool(storageDescriptorCount, uniformDescriptorCount, samplerDescriptorCount, descriptorSetCount);
 }
 
 void VulkanDevice::release()
@@ -182,6 +182,7 @@ void VulkanDevice::initializeLogicalDevice()
 	}
 
 	VkPhysicalDeviceFeatures deviceFeatures = {};
+	deviceFeatures.vertexPipelineStoresAndAtomics = true;
 
 	VkDeviceCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -227,21 +228,25 @@ void VulkanDevice::initializeDebugMessenger()
 	}
 }
 
-void VulkanDevice::initializeDescriptorPool(uint32_t uniformDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount)
+void VulkanDevice::initializeDescriptorPool(uint32_t storageDescriptorCount, uint32_t uniformDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount)
 {
-	VkDescriptorPoolSize uniformPoolSize = {};
-	uniformPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uniformPoolSize.descriptorCount = uniformDescriptorCount;
+	VkDescriptorPoolSize poolSizes[3];
+	
+	poolSizes[0] = {};
+	poolSizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	poolSizes[0].descriptorCount = storageDescriptorCount;
+	
+	poolSizes[1] = {};
+	poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	poolSizes[1].descriptorCount = uniformDescriptorCount;
 
-	VkDescriptorPoolSize samplerPoolSize = {};
-	samplerPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	samplerPoolSize.descriptorCount = samplerDescriptorCount;
-
-	VkDescriptorPoolSize poolSizes[] = { uniformPoolSize, samplerPoolSize };
+	poolSizes[2] = {};
+	poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	poolSizes[2].descriptorCount = samplerDescriptorCount;
 	
 	VkDescriptorPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolInfo.poolSizeCount = 2;
+	poolInfo.poolSizeCount = ARRAYSIZE(poolSizes);
 	poolInfo.pPoolSizes = poolSizes;
 	poolInfo.maxSets = descriptorSetCount;
 
