@@ -267,7 +267,7 @@ int32_t VulkanMaterial::constructShader(ShaderType type, std::string& errString)
 	std::ofstream tmpShaderFile(tmpFileNameGLSL);
 	if (tmpShaderFile.is_open())
 	{
-		std::cout << shader << std::endl;
+		//std::cout << shader << std::endl;
 
 		tmpShaderFile << shader;
 		tmpShaderFile.close();
