@@ -2,6 +2,7 @@
 #include "VulkanDevice.h"
 #include "VulkanConstantBuffer.h"
 #include "VulkanRenderer.h"
+#include "../IA.h"
 
 #include <fstream>
 
@@ -10,9 +11,7 @@ VulkanMaterial::VulkanMaterial(VulkanRenderer* pRenderer, VulkanDevice* pDevice,
 	m_pRenderer(pRenderer),
 	m_Name(name),
 	m_pDevice(pDevice),
-	m_ShaderModules(),
-	m_PipelineLayout(VK_NULL_HANDLE),
-	m_DescriptorSetLayout(VK_NULL_HANDLE)
+	m_ShaderModules()
 {
 	isValid = false;
 
@@ -30,18 +29,6 @@ VulkanMaterial::~VulkanMaterial()
 
 	for (auto buffer : m_ConstantBuffers)
 		delete buffer.second;
-    
-	if (m_DescriptorSetLayout != VK_NULL_HANDLE)
-	{
-		vkDestroyDescriptorSetLayout(m_pDevice->getDevice(), m_DescriptorSetLayout, nullptr);
-		m_DescriptorSetLayout = VK_NULL_HANDLE;
-	}
-	
-	if (m_PipelineLayout != VK_NULL_HANDLE)
-	{
-		vkDestroyPipelineLayout(m_pDevice->getDevice(), m_PipelineLayout, nullptr);
-		m_PipelineLayout = VK_NULL_HANDLE;
-	}
 }
 
 void VulkanMaterial::setShader(const std::string& shaderFileName, ShaderType type)
@@ -93,141 +80,6 @@ int VulkanMaterial::enable()
 
 void VulkanMaterial::disable()
 {
-}
-
-void VulkanMaterial::finalize()
-{
-	createDescriptorSetLayout();
-	createPipelineLayout();
-	createDescriptorSets();
-	updateUniformWriteDescriptorSets();
-	//updateSamplerWriteDescriptorSets(); //Maybe not here?
-}
-
-void VulkanMaterial::createDescriptorSetLayout()
-{
-	if (m_ConstantBuffers.size() > 1)
-		throw std::runtime_error("More than 1 constant buffer per material not allowed!");
-
-	uint32_t binding = m_ConstantBuffers.begin()->first;
-	
-	VkDescriptorSetLayoutBinding uboLayoutBinding = {};
-	uboLayoutBinding.binding = binding;
-	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uboLayoutBinding.descriptorCount = 1;
-	uboLayoutBinding.stageFlags	= VK_SHADER_STAGE_VERTEX_BIT;
-	uboLayoutBinding.pImmutableSamplers = nullptr;
-
-	VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
-	samplerLayoutBinding.binding = 1;
-	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	samplerLayoutBinding.descriptorCount = 1;
-	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-	samplerLayoutBinding.pImmutableSamplers = nullptr;
-
-	VkDescriptorSetLayoutBinding bindings[] = { uboLayoutBinding, samplerLayoutBinding };
-	VkDescriptorSetLayoutCreateInfo layoutInfo = {};
-	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layoutInfo.bindingCount = 2;
-	layoutInfo.pBindings = bindings;
-
-	if (vkCreateDescriptorSetLayout(m_pDevice->getDevice(), &layoutInfo, nullptr, &m_DescriptorSetLayout) != VK_SUCCESS)
-	{
-		std::cout << "Failed to create DescriptorSetLayout" << std::endl;
-	}
-	else
-	{
-		std::cout << "Created DescriptorSetLayout" << std::endl;
-	}
-}
-
-void VulkanMaterial::createPipelineLayout()
-{
-	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
-	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 1;
-	pipelineLayoutInfo.pSetLayouts = &m_DescriptorSetLayout;
-	pipelineLayoutInfo.pushConstantRangeCount = 0;
-	pipelineLayoutInfo.pPushConstantRanges = nullptr;
-
-	if (vkCreatePipelineLayout(m_pDevice->getDevice(), &pipelineLayoutInfo, nullptr, &m_PipelineLayout) != VK_SUCCESS) 
-	{
-		std::cout << "Failed to create PipelineLayout" << std::endl;
-	}
-	else
-	{
-		std::cout << "Created PipelineLayout" << std::endl;
-	}
-}
-
-void VulkanMaterial::createDescriptorSets()
-{
-	std::vector<VkDescriptorSetLayout> layouts(DESCRIPTOR_SETS_PER_MATERIAL, m_DescriptorSetLayout);
-	VkDescriptorSetAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocInfo.descriptorPool = m_pDevice->getDescriptorPool();
-	allocInfo.descriptorSetCount = DESCRIPTOR_SETS_PER_MATERIAL;
-	allocInfo.pSetLayouts = layouts.data();
-
-	if (vkAllocateDescriptorSets(m_pDevice->getDevice(), &allocInfo, m_DescriptorSets) != VK_SUCCESS) 
-	{
-		std::cout << "Failed to allocate DescriptorSets" << std::endl;
-	}
-	else
-	{
-		std::cout << "Allocated DescriptorSets" << std::endl;
-	}
-}
-
-void VulkanMaterial::updateUniformWriteDescriptorSets()
-{
-	uint32_t binding = m_ConstantBuffers.begin()->first;
-	VkBuffer uniformBuffer = m_ConstantBuffers.begin()->second->getBuffer();
-	
-	for (size_t i = 0; i < DESCRIPTOR_SETS_PER_MATERIAL; i++)
-	{
-		VkDescriptorBufferInfo bufferInfo = {};
-		bufferInfo.buffer = uniformBuffer;
-		bufferInfo.offset = 0;
-		bufferInfo.range = VK_WHOLE_SIZE;
-
-		VkWriteDescriptorSet descriptorBufferWrite = {};
-		descriptorBufferWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorBufferWrite.dstSet = m_DescriptorSets[i];
-		descriptorBufferWrite.dstBinding = binding;
-		descriptorBufferWrite.dstArrayElement = 0;
-		descriptorBufferWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorBufferWrite.descriptorCount = UNIFORM_DESCRIPTORS_PER_SET;
-		descriptorBufferWrite.pBufferInfo = &bufferInfo;
-		descriptorBufferWrite.pImageInfo = nullptr;
-		descriptorBufferWrite.pTexelBufferView = nullptr;
-
-		vkUpdateDescriptorSets(m_pDevice->getDevice(), 1, &descriptorBufferWrite, 0, nullptr);
-	}
-}
-
-void VulkanMaterial::updateSamplerWriteDescriptorSets()
-{
-	for (size_t i = 0; i < DESCRIPTOR_SETS_PER_MATERIAL; i++)
-	{
-		VkDescriptorImageInfo imageInfo = {};
-		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInfo.imageView = nullptr;//imageView;
-		imageInfo.sampler = nullptr;//sampler;
-
-		VkWriteDescriptorSet descriptorImageWrite = {};
-		descriptorImageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorImageWrite.dstSet = m_DescriptorSets[i];
-		descriptorImageWrite.dstBinding = 1;
-		descriptorImageWrite.dstArrayElement = 0;
-		descriptorImageWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorImageWrite.descriptorCount = SAMPLER_DESCRIPTORS_PER_SET;
-		descriptorImageWrite.pBufferInfo = nullptr;
-		descriptorImageWrite.pImageInfo = &imageInfo;
-		descriptorImageWrite.pTexelBufferView = nullptr;
-
-		vkUpdateDescriptorSets(m_pDevice->getDevice(), 1, &descriptorImageWrite, 0, nullptr);
-	}
 }
 
 void VulkanMaterial::deleteModule(VkShaderModule& module)

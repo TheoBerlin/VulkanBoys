@@ -27,7 +27,7 @@ void VulkanRenderState::set()
 {
 }
 
-void VulkanRenderState::finalize(VulkanMaterial* pMaterial, VkRenderPass renderPass)
+void VulkanRenderState::finalize(VulkanMaterial* pMaterial, VkRenderPass renderPass, VkPipelineLayout pipelineLayout)
 {
     VkPipelineShaderStageCreateInfo vertexShaderStageInfo = {};
     vertexShaderStageInfo.sType     = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -138,7 +138,7 @@ void VulkanRenderState::finalize(VulkanMaterial* pMaterial, VkRenderPass renderP
     pipelineInfo.pColorBlendState       = &colorBlending;
     pipelineInfo.pDynamicState          = &dynamicState;
     pipelineInfo.renderPass = renderPass;
-    pipelineInfo.layout     = pMaterial->getPipelineLayout();
+    pipelineInfo.layout     = pipelineLayout;
     pipelineInfo.subpass    = 0;
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
     pipelineInfo.basePipelineIndex  = -1;
