@@ -182,6 +182,7 @@ void VulkanDevice::initializeLogicalDevice()
 	}
 
 	VkPhysicalDeviceFeatures deviceFeatures = {};
+	deviceFeatures.fillModeNonSolid = true;
 	deviceFeatures.vertexPipelineStoresAndAtomics = true;
 
 	VkDeviceCreateInfo createInfo = {};

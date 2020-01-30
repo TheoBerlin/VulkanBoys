@@ -71,6 +71,7 @@ public:
 	void submit(Mesh* mesh);
 	void frame();
 
+	VulkanDevice* getDevice() { return &m_VulkanDevice; }
 private:
 	void initializeRenderPass();
 	void createSemaphores();
@@ -81,7 +82,6 @@ private:
 	void updateVertexBufferDescriptorSets();
 	void updateConstantBufferDescriptorSets();
 	void updateSamplerDescriptorSets();
-
 private:
 	SDL_Window* m_pWindow;
 	
