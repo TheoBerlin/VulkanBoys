@@ -17,6 +17,8 @@ public:
 	virtual void set() override;
 
 	void finalize(VulkanMaterial* pMaterial, VkRenderPass renderPass, VkPipelineLayout pipelineLayout);
+
+	VkPipeline getPipelineState() { return m_Pipeline; }
 private:
 	VulkanDevice* m_pDevice;
 	VkPipeline m_Pipeline;

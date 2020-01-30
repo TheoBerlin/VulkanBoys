@@ -56,3 +56,8 @@ void VulkanCommandBuffer::release()
 		m_InFlightFence = VK_NULL_HANDLE;
 	}
 }
+
+void VulkanCommandBuffer::setPipelineState(VkPipeline pipelineState)
+{
+	vkCmdBindPipeline(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineState);
+}

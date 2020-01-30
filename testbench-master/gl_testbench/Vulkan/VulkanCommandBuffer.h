@@ -14,6 +14,8 @@ public:
 
     void release();
 
+	void setPipelineState(VkPipeline pipelineState);
+
 private:
     VkCommandPool m_CommandPool;
     VkCommandBuffer m_CommandBuffer;

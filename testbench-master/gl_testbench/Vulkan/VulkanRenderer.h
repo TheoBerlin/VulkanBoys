@@ -63,7 +63,7 @@ public:
 	void present();
 	int shutdown();
 
-	void setClearColor(float, float, float, float);
+	void setClearColor(float r, float g, float b, float a);
 	void clearBuffer(unsigned int);
 	// can be partially overriden by a specific Technique.
 	void setRenderState(RenderState* ps);
@@ -101,4 +101,8 @@ private:
 	VulkanConstantBuffer* m_pConstantBuffer[7];
 	VulkanTexture2D* m_pTexture2D;
 	VulkanSampler2D* m_pSampler2D;
+
+	Color m_ClearColor;
+
+	std::unordered_map<Technique*, std::vector<Mesh*>> m_DrawList;
 };

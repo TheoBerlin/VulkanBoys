@@ -210,24 +210,27 @@ int VulkanRenderer::shutdown()
 	return 0;
 }
 
-void VulkanRenderer::setClearColor(float, float, float, float)
+void VulkanRenderer::setClearColor(float r, float g, float b, float a)
 {
-	//Todo: Implement This
+	m_ClearColor.r = r;
+	m_ClearColor.g = g;
+	m_ClearColor.b = b;
+	m_ClearColor.a = a;
 }
 
 void VulkanRenderer::clearBuffer(unsigned)
 {
-	//Todo: Implement This
+	//Leave Empty
 }
 
 void VulkanRenderer::setRenderState(RenderState* ps)
 {
-	//Todo: Implement This
+	m_VulkanCommandBuffers[m_FrameIndex].setPipelineState(reinterpret_cast<VulkanRenderState*>(ps)->getPipelineState());
 }
 
 void VulkanRenderer::submit(Mesh* mesh)
 {
-	//Todo: Implement This
+	m_DrawList[mesh->technique].push_back(mesh);
 }
 
 void VulkanRenderer::frame()
