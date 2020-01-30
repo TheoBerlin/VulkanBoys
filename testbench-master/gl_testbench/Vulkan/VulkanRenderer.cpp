@@ -5,6 +5,7 @@
 #include "VulkanSampler2D.h"
 #include "VulkanVertexBuffer.h"
 
+#include "../Mesh.h"
 #include "../IA.h"
 
 VulkanRenderer::VulkanRenderer()
@@ -24,7 +25,7 @@ Material* VulkanRenderer::makeMaterial(const std::string& name)
 
 Mesh* VulkanRenderer::makeMesh()
 {
-	return nullptr;
+	return new Mesh();
 }
 
 VertexBuffer* VulkanRenderer::makeVertexBuffer(size_t size, VertexBuffer::DATA_USAGE usage)
