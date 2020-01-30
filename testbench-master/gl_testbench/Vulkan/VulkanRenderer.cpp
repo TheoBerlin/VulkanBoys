@@ -2,6 +2,7 @@
 #include "VulkanMaterial.h"
 #include "VulkanRenderState.h"
 #include "VulkanSampler2D.h"
+#include "VulkanVertexBuffer.h"
 
 VulkanRenderer::VulkanRenderer()
 	: m_SemaphoreIndex(0)
@@ -24,7 +25,7 @@ Mesh* VulkanRenderer::makeMesh()
 
 VertexBuffer* VulkanRenderer::makeVertexBuffer(size_t size, VertexBuffer::DATA_USAGE usage)
 {
-	return nullptr;
+	return new VulkanVertexBuffer(this, size, usage);
 }
 
 Texture2D* VulkanRenderer::makeTexture2D()
@@ -82,8 +83,13 @@ void VulkanRenderer::createBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory
 
 	VkDevice device = m_VulkanDevice.getDevice();
 
-	if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create Render Pass!");
+	if (vkCreateBuffer(device, &bufferInfo, nullptr, &buffer) != VK_SUCCESS) 
+	{
+		std::cout << "Failed to create Buffer" << std::endl;
+	}
+	else
+	{
+		std::cout << "Created buffer" << std::endl;
 	}
 
 	VkMemoryRequirements memRequirements;
@@ -95,7 +101,11 @@ void VulkanRenderer::createBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory
 	allocInfo.memoryTypeIndex = findMemoryType(m_VulkanDevice.getPhysicalDevice(), memRequirements.memoryTypeBits, properties);
 
 	if (vkAllocateMemory(device, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS) {
-		throw std::runtime_error("failed to allocate buffer memory!");
+		std::cout << "Failed to allocate buffermemory" << std::endl;
+	}
+	else
+	{
+		std::cout << "Allocated buffermemory" << std::endl;
 	}
 
 	vkBindBufferMemory(device, buffer, bufferMemory, memoryOffset);
@@ -109,7 +119,7 @@ int VulkanRenderer::initialize(unsigned width, unsigned height)
 		exit(-1);
 	}
 
-	m_pWindow = SDL_CreateWindow("OpenGL", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL);
+	m_pWindow = SDL_CreateWindow("Vulkan", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL);
 	
 	m_VulkanDevice.initialize("Prankster", MAX_NUM_UNIFORM_DESCRIPTORS, MAX_NUM_SAMPLER_DESCRIPTORS, MAX_NUM_DESCRIPTOR_SETS);
 
