@@ -209,7 +209,7 @@ int initialiseTestbench()
 
 	// one technique with wireframe
 	RenderState* renderState1 = renderer->makeRenderState();
-	//renderState1->setWireFrame(true);
+	renderState1->setWireFrame(true);
 
 	// basic technique
 	techniques.push_back(renderer->makeTechnique(materials[0], renderState1));
@@ -218,11 +218,11 @@ int initialiseTestbench()
 	techniques.push_back(renderer->makeTechnique(materials[3], renderer->makeRenderState()));
 
 	// create texture
-	/*Texture2D* fatboy = renderer->makeTexture2D();
-	fatboy->loadFromFile("../assets/textures/fatboy.png");
+	Texture2D* fatboy = renderer->makeTexture2D();
+	//fatboy->loadFromFile("../assets/textures/fatboy.png");
 	Sampler2D* sampler = renderer->makeSampler2D();
 	sampler->setWrap(WRAPPING::REPEAT, WRAPPING::REPEAT);
-	fatboy->sampler = sampler;
+	//fatboy->sampler = sampler;
 
 	textures.push_back(fatboy);
 	samplers.push_back(sampler);
@@ -260,7 +260,7 @@ int initialiseTestbench()
 			m->addTexture(textures[0], DIFFUSE_SLOT);
 
 		scene.push_back(m);
-	}*/
+	}
 	return 0;
 }
 
@@ -272,11 +272,11 @@ void shutdown() {
 		delete(m);
 	}
 	
-	/*for (auto t : techniques)
+	for (auto t : techniques)
 	{
 		delete(t);
 	}
-	for (auto m : scene)
+	/*for (auto m : scene)
 	{
 		delete(m);
 	};
@@ -285,14 +285,14 @@ void shutdown() {
 	assert(nor->refCount() == 0);
 	delete nor;
 	assert(uvs->refCount() == 0);
-	delete uvs;
+	delete uvs;*/
 	
 	for (auto s : samplers)
 	{
 		delete s;
 	}
 
-	for (auto t : textures)
+	/*for (auto t : textures)
 	{
 		delete t;
 	}*/
@@ -306,7 +306,7 @@ int main(int argc, char *argv[])
 	renderer->setWinTitle("OpenGL");
 	renderer->setClearColor(0.0, 0.1, 0.1, 1.0);
 	initialiseTestbench();
-	//run();
+	run();
 	shutdown();
 	return 0;
 };

@@ -115,15 +115,15 @@ void VulkanMaterial::createDescriptorSetLayout()
 	uboLayoutBinding.binding = binding;
 	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	uboLayoutBinding.descriptorCount = 1;
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	uboLayoutBinding.pImmutableSamplers = nullptr; // Optional
+	uboLayoutBinding.stageFlags	= VK_SHADER_STAGE_VERTEX_BIT;
+	uboLayoutBinding.pImmutableSamplers = nullptr;
 
 	VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
 	samplerLayoutBinding.binding = 1;
 	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	samplerLayoutBinding.descriptorCount = 1;
 	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-	samplerLayoutBinding.pImmutableSamplers = nullptr; // Optional
+	samplerLayoutBinding.pImmutableSamplers = nullptr;
 
 	VkDescriptorSetLayoutBinding bindings[] = { uboLayoutBinding, samplerLayoutBinding };
 	VkDescriptorSetLayoutCreateInfo layoutInfo = {};
@@ -133,7 +133,11 @@ void VulkanMaterial::createDescriptorSetLayout()
 
 	if (vkCreateDescriptorSetLayout(m_pDevice->getDevice(), &layoutInfo, nullptr, &m_DescriptorSetLayout) != VK_SUCCESS)
 	{
-		throw std::runtime_error("Failed to create Descriptor Set Layout!");
+		std::cout << "Failed to create DescriptorSetLayout" << std::endl;
+	}
+	else
+	{
+		std::cout << "Created DescriptorSetLayout" << std::endl;
 	}
 }
 
@@ -141,14 +145,18 @@ void VulkanMaterial::createPipelineLayout()
 {
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 1; // Optional
-	pipelineLayoutInfo.pSetLayouts = &m_DescriptorSetLayout; // Optional
-	pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
-	pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
+	pipelineLayoutInfo.setLayoutCount = 1;
+	pipelineLayoutInfo.pSetLayouts = &m_DescriptorSetLayout;
+	pipelineLayoutInfo.pushConstantRangeCount = 0;
+	pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
 	if (vkCreatePipelineLayout(m_pDevice->getDevice(), &pipelineLayoutInfo, nullptr, &m_PipelineLayout) != VK_SUCCESS) 
 	{
-		throw std::runtime_error("Failed to create Pipeline Layout!");
+		std::cout << "Failed to create PipelineLayout" << std::endl;
+	}
+	else
+	{
+		std::cout << "Created PipelineLayout" << std::endl;
 	}
 }
 
@@ -163,7 +171,11 @@ void VulkanMaterial::createDescriptorSets()
 
 	if (vkAllocateDescriptorSets(m_pDevice->getDevice(), &allocInfo, m_DescriptorSets) != VK_SUCCESS) 
 	{
-		throw std::runtime_error("Failed to allocate Descriptor Sets!");
+		std::cout << "Failed to allocate DescriptorSets" << std::endl;
+	}
+	else
+	{
+		std::cout << "Allocated DescriptorSets" << std::endl;
 	}
 }
 
@@ -255,6 +267,8 @@ int32_t VulkanMaterial::constructShader(ShaderType type, std::string& errString)
 	std::ofstream tmpShaderFile(tmpFileNameGLSL);
 	if (tmpShaderFile.is_open())
 	{
+		//std::cout << shader << std::endl;
+
 		tmpShaderFile << shader;
 		tmpShaderFile.close();
 	}

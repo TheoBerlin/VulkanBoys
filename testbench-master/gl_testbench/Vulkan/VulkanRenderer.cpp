@@ -1,7 +1,7 @@
 #include "VulkanRenderer.h"
 #include "VulkanMaterial.h"
-
-#include "VulkanMaterial.h"
+#include "VulkanRenderState.h"
+#include "VulkanSampler2D.h"
 
 VulkanRenderer::VulkanRenderer()
 	: m_SemaphoreIndex(0)
@@ -34,12 +34,12 @@ Texture2D* VulkanRenderer::makeTexture2D()
 
 Sampler2D* VulkanRenderer::makeSampler2D()
 {
-	return nullptr;
+	return new VulkanSampler2D(&m_VulkanDevice);
 }
 
 RenderState* VulkanRenderer::makeRenderState()
 {
-	return nullptr;
+	return new VulkanRenderState(&m_VulkanDevice);
 }
 
 std::string VulkanRenderer::getShaderPath()
@@ -59,8 +59,10 @@ ConstantBuffer* VulkanRenderer::makeConstantBuffer(std::string NAME, unsigned lo
 
 Technique* VulkanRenderer::makeTechnique(Material* pMaterial, RenderState* pRenderState)
 {
-	//reinterpret_cast<RenderState*>(pRenderState)->finalize();
-	reinterpret_cast<VulkanMaterial*>(pMaterial)->finalize();
+	VulkanMaterial* pVkMaterial = reinterpret_cast<VulkanMaterial*>(pMaterial);
+	pVkMaterial->finalize();
+
+	reinterpret_cast<VulkanRenderState*>(pRenderState)->finalize(pVkMaterial, m_RenderPass);
 	return new Technique(pMaterial, pRenderState);
 }
 
