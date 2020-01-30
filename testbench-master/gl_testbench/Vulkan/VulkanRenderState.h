@@ -16,7 +16,7 @@ public:
 	virtual void setWireFrame(bool wireframe) override;
 	virtual void set() override;
 
-	void finalize(VulkanMaterial* pMaterial, VkRenderPass renderPass);
+	void finalize(VulkanMaterial* pMaterial, VkRenderPass renderPass, VkPipelineLayout pipelineLayout);
 private:
 	VulkanDevice* m_pDevice;
 	VkPipeline m_Pipeline;

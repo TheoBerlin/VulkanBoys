@@ -1,11 +1,15 @@
 #include "VulkanRenderer.h"
 #include "VulkanMaterial.h"
 #include "VulkanRenderState.h"
+#include "VulkanConstantBuffer.h"
 #include "VulkanSampler2D.h"
 #include "VulkanVertexBuffer.h"
 
+#include "../IA.h"
+
 VulkanRenderer::VulkanRenderer()
-	: m_SemaphoreIndex(0)
+	: m_FrameIndex(0),
+	m_pDescriptorData(nullptr)
 {
 }
 
@@ -14,7 +18,7 @@ VulkanRenderer::~VulkanRenderer()
 }
 
 Material* VulkanRenderer::makeMaterial(const std::string& name)
-{
+{	
 	return new VulkanMaterial(this, &m_VulkanDevice, name);
 }
 
@@ -61,9 +65,8 @@ ConstantBuffer* VulkanRenderer::makeConstantBuffer(std::string NAME, unsigned lo
 Technique* VulkanRenderer::makeTechnique(Material* pMaterial, RenderState* pRenderState)
 {
 	VulkanMaterial* pVkMaterial = reinterpret_cast<VulkanMaterial*>(pMaterial);
-	pVkMaterial->finalize();
-
-	reinterpret_cast<VulkanRenderState*>(pRenderState)->finalize(pVkMaterial, m_RenderPass);
+	reinterpret_cast<VulkanRenderState*>(pRenderState)->finalize(pVkMaterial, m_RenderPass, m_pDescriptorData->pipelineLayout);
+	
 	return new Technique(pMaterial, pRenderState);
 }
 
@@ -111,6 +114,30 @@ void VulkanRenderer::createBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory
 	vkBindBufferMemory(device, buffer, bufferMemory, memoryOffset);
 }
 
+void VulkanRenderer::setVertexBuffer(VulkanVertexBuffer* pBuffer, uint32_t slot)
+{
+	m_pVertexBuffers[slot] = pBuffer;
+}
+
+void VulkanRenderer::setConstantBuffer(VulkanConstantBuffer* pBuffer, uint32_t slot)
+{
+	m_pConstantBuffer[slot] = pBuffer;
+}
+
+void VulkanRenderer::setTexture2D(VulkanTexture2D* pTexture2D, VulkanSampler2D* pSampler2D)
+{
+	m_pTexture2D = pTexture2D;
+	m_pSampler2D = pSampler2D;
+}
+
+void VulkanRenderer::commitState()
+{
+	updateStorageDescriptorSets();
+	updateUniformDescriptorSets();
+	updateSamplerDescriptorSets();
+}
+
+
 int VulkanRenderer::initialize(unsigned width, unsigned height)
 {
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
@@ -121,7 +148,7 @@ int VulkanRenderer::initialize(unsigned width, unsigned height)
 
 	m_pWindow = SDL_CreateWindow("Vulkan", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL);
 	
-	m_VulkanDevice.initialize("Prankster", MAX_NUM_UNIFORM_DESCRIPTORS, MAX_NUM_SAMPLER_DESCRIPTORS, MAX_NUM_DESCRIPTOR_SETS);
+	m_VulkanDevice.initialize("Prankster", MAX_NUM_STORAGE_DESCRIPTORS, MAX_NUM_UNIFORM_DESCRIPTORS, MAX_NUM_SAMPLER_DESCRIPTORS, MAX_NUM_DESCRIPTOR_SETS);
 
 	initializeRenderPass();
 
@@ -133,6 +160,19 @@ int VulkanRenderer::initialize(unsigned width, unsigned height)
 		commandBuffer.initialize(&m_VulkanDevice);
 	}
 
+	DescriptorSetLayouts descriptorSetLayouts = {};
+	VkPipelineLayout pipelineLayout = {};
+	VkDescriptorSet descriptorSets[DESCRIPTOR_SETS_PER_TRIANGLE];
+
+	createDescriptorSetLayouts(descriptorSetLayouts);
+	createPipelineLayout(pipelineLayout, descriptorSetLayouts);
+	createDescriptorSets(descriptorSets, descriptorSetLayouts);
+
+	m_pDescriptorData = new DescriptorData();
+	m_pDescriptorData->pipelineLayout = pipelineLayout;
+	m_pDescriptorData->descriptorSetLayouts = descriptorSetLayouts;
+	m_pDescriptorData->descriptorSets = descriptorSets;
+
 	return 0;
 }
 
@@ -143,12 +183,22 @@ void VulkanRenderer::setWinTitle(const char* title)
 
 void VulkanRenderer::present()
 {
-	m_Swapchain.present(m_RenderFinishedSemaphores[m_SemaphoreIndex]);
-	m_SemaphoreIndex = (m_SemaphoreIndex + 1) % MAX_FRAMES_IN_FLIGHT;
+	m_Swapchain.present(m_RenderFinishedSemaphores[m_FrameIndex]);
+	m_FrameIndex = (m_FrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 int VulkanRenderer::shutdown()
 {
+	if (m_pDescriptorData != nullptr)
+	{
+		vkDestroyDescriptorSetLayout(m_VulkanDevice.getDevice(), m_pDescriptorData->descriptorSetLayouts.uniformAndStorageDescriptorSetLayout, nullptr);
+		vkDestroyDescriptorSetLayout(m_VulkanDevice.getDevice(), m_pDescriptorData->descriptorSetLayouts.textureDescriptorSetLayout, nullptr);
+		vkDestroyPipelineLayout(m_VulkanDevice.getDevice(), m_pDescriptorData->pipelineLayout, nullptr);
+		
+		delete m_pDescriptorData;
+		m_pDescriptorData = nullptr;
+	}
+	
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) 
 	{
 		vkDestroySemaphore(m_VulkanDevice.getDevice(), m_RenderFinishedSemaphores[i], nullptr);
@@ -186,7 +236,7 @@ void VulkanRenderer::submit(Mesh* mesh)
 
 void VulkanRenderer::frame()
 {
-	m_Swapchain.acquireNextImage(m_ImageAvailableSemaphores[m_SemaphoreIndex]);
+	m_Swapchain.acquireNextImage(m_ImageAvailableSemaphores[m_FrameIndex]);
 
 	//TODO: Draw shit here
 }
@@ -276,4 +326,192 @@ void VulkanRenderer::createSemaphores()
 			throw std::runtime_error("Failed to create semaphores for a Frame!");
 		}
 	}
+}
+
+void VulkanRenderer::createDescriptorSetLayouts(DescriptorSetLayouts& descriptorSetLayouts)
+{
+	VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[5];
+
+	descriptorSetLayoutBindings[0].binding = POSITION;
+	descriptorSetLayoutBindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	descriptorSetLayoutBindings[0].descriptorCount = 1;
+	descriptorSetLayoutBindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	descriptorSetLayoutBindings[0].pImmutableSamplers = nullptr;
+
+	descriptorSetLayoutBindings[1].binding = NORMAL;
+	descriptorSetLayoutBindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	descriptorSetLayoutBindings[1].descriptorCount = 1;
+	descriptorSetLayoutBindings[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	descriptorSetLayoutBindings[1].pImmutableSamplers = nullptr;
+
+	descriptorSetLayoutBindings[2].binding = TEXTCOORD;
+	descriptorSetLayoutBindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	descriptorSetLayoutBindings[2].descriptorCount = 1;
+	descriptorSetLayoutBindings[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	descriptorSetLayoutBindings[2].pImmutableSamplers = nullptr;
+
+	descriptorSetLayoutBindings[3].binding = TRANSLATION;
+	descriptorSetLayoutBindings[3].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorSetLayoutBindings[3].descriptorCount = 1;
+	descriptorSetLayoutBindings[3].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	descriptorSetLayoutBindings[3].pImmutableSamplers = nullptr;
+
+	descriptorSetLayoutBindings[4].binding = DIFFUSE_TINT;
+	descriptorSetLayoutBindings[4].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorSetLayoutBindings[4].descriptorCount = 1;
+	descriptorSetLayoutBindings[4].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	descriptorSetLayoutBindings[4].pImmutableSamplers = nullptr;
+
+	VkDescriptorSetLayoutCreateInfo uniformLayoutInfo = {};
+	uniformLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	uniformLayoutInfo.bindingCount = ARRAYSIZE(descriptorSetLayoutBindings);
+	uniformLayoutInfo.pBindings = descriptorSetLayoutBindings;
+
+	if (vkCreateDescriptorSetLayout(m_VulkanDevice.getDevice(), &uniformLayoutInfo, nullptr, &descriptorSetLayouts.uniformAndStorageDescriptorSetLayout) != VK_SUCCESS)
+	{
+		std::cout << "Failed to create UniformDescriptorSetLayout" << std::endl;
+	}
+	else
+	{
+		std::cout << "Created UniformDescriptorSetLayout" << std::endl;
+	}
+
+	VkDescriptorSetLayoutBinding textureLayoutBinding = {};
+	textureLayoutBinding.binding = 0;
+	textureLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	textureLayoutBinding.descriptorCount = 1;
+	textureLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	textureLayoutBinding.pImmutableSamplers = nullptr;
+
+	VkDescriptorSetLayoutCreateInfo textureLayoutInfo = {};
+	textureLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	textureLayoutInfo.bindingCount = 1;
+	textureLayoutInfo.pBindings = &textureLayoutBinding;
+
+	if (vkCreateDescriptorSetLayout(m_VulkanDevice.getDevice(), &textureLayoutInfo, nullptr, &descriptorSetLayouts.textureDescriptorSetLayout) != VK_SUCCESS)
+	{
+		std::cout << "Failed to create TextureDescriptorSetLayout" << std::endl;
+	}
+	else
+	{
+		std::cout << "Created TextureDescriptorSetLayout" << std::endl;
+	}
+}
+
+void VulkanRenderer::createPipelineLayout(VkPipelineLayout& pipelineLayout, DescriptorSetLayouts& descriptorSetLayouts)
+{
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = ARRAYSIZE(descriptorSetLayouts.layouts);
+	pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.layouts;
+	pipelineLayoutInfo.pushConstantRangeCount = 0;
+	pipelineLayoutInfo.pPushConstantRanges = nullptr;
+
+	if (vkCreatePipelineLayout(m_VulkanDevice.getDevice(), &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+	{
+		std::cout << "Failed to create PipelineLayout" << std::endl;
+	}
+	else
+	{
+		std::cout << "Created PipelineLayout" << std::endl;
+	}
+}
+
+void VulkanRenderer::createDescriptorSets(VkDescriptorSet descriptorSets[], DescriptorSetLayouts& descriptorSetLayouts)
+{
+	VkDescriptorSetLayout allLayouts[] =
+	{
+		descriptorSetLayouts.uniformAndStorageDescriptorSetLayout, //Frame 0
+		descriptorSetLayouts.textureDescriptorSetLayout,
+		
+		descriptorSetLayouts.uniformAndStorageDescriptorSetLayout, //Frame 1
+		descriptorSetLayouts.textureDescriptorSetLayout,
+		
+		descriptorSetLayouts.uniformAndStorageDescriptorSetLayout, //Frame 2
+		descriptorSetLayouts.textureDescriptorSetLayout
+	};
+	
+	VkDescriptorSetAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.descriptorPool = m_VulkanDevice.getDescriptorPool();
+	allocInfo.descriptorSetCount = ARRAYSIZE(allLayouts);
+	allocInfo.pSetLayouts = allLayouts;
+
+	if (vkAllocateDescriptorSets(m_VulkanDevice.getDevice(), &allocInfo, descriptorSets) != VK_SUCCESS)
+	{
+		std::cout << "Failed to allocate DescriptorSets" << std::endl;
+	}
+	else
+	{
+		std::cout << "Allocated DescriptorSets" << std::endl;
+	}
+}
+
+void VulkanRenderer::updateStorageDescriptorSets()
+{
+	for (size_t i = 0; i < STORAGE_DESCRIPTORS_PER_SET_BUNDLE; i++)
+	{
+		VkDescriptorBufferInfo bufferInfo = {};
+		bufferInfo.buffer = nullptr; //Todo: Fixa grejer
+		bufferInfo.offset = 0;
+		bufferInfo.range = VK_WHOLE_SIZE;
+
+		VkWriteDescriptorSet descriptorBufferWrite = {};
+		descriptorBufferWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorBufferWrite.dstSet = m_pDescriptorData->descriptorSets[2 * m_FrameIndex];
+		descriptorBufferWrite.dstBinding = i;
+		descriptorBufferWrite.dstArrayElement = 0;
+		descriptorBufferWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		descriptorBufferWrite.descriptorCount = 1;
+		descriptorBufferWrite.pBufferInfo = &bufferInfo;
+		descriptorBufferWrite.pImageInfo = nullptr;
+		descriptorBufferWrite.pTexelBufferView = nullptr;
+
+		vkUpdateDescriptorSets(m_VulkanDevice.getDevice(), 1, &descriptorBufferWrite, 0, nullptr);
+	}
+}
+
+void VulkanRenderer::updateUniformDescriptorSets()
+{
+	for (size_t i = 0; i < UNIFORM_DESCRIPTORS_PER_SET_BUNDLE; i++)
+	{
+		VkDescriptorBufferInfo bufferInfo = {};
+		bufferInfo.buffer = m_pConstantBuffer[5 + i]->getBuffer();
+		bufferInfo.offset = 0;
+		bufferInfo.range = VK_WHOLE_SIZE;
+
+		VkWriteDescriptorSet descriptorBufferWrite = {};
+		descriptorBufferWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorBufferWrite.dstSet = m_pDescriptorData->descriptorSets[2 * m_FrameIndex];
+		descriptorBufferWrite.dstBinding = 5 + i;
+		descriptorBufferWrite.dstArrayElement = 0;
+		descriptorBufferWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorBufferWrite.descriptorCount = 1;
+		descriptorBufferWrite.pBufferInfo = &bufferInfo;
+		descriptorBufferWrite.pImageInfo = nullptr;
+		descriptorBufferWrite.pTexelBufferView = nullptr;
+
+		vkUpdateDescriptorSets(m_VulkanDevice.getDevice(), 1, &descriptorBufferWrite, 0, nullptr);
+	}
+}
+
+void VulkanRenderer::updateSamplerDescriptorSets()
+{
+	VkDescriptorImageInfo imageInfo = {};
+	imageInfo.imageView = nullptr; //Todo: Fixa grejer
+	imageInfo.sampler = nullptr; //Todo: Fixa grejer
+	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	VkWriteDescriptorSet descriptorImageWrite = {};
+	descriptorImageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorImageWrite.dstSet = m_pDescriptorData->descriptorSets[2 * m_FrameIndex + 1];
+	descriptorImageWrite.dstBinding = 0;
+	descriptorImageWrite.dstArrayElement = 0;
+	descriptorImageWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorImageWrite.descriptorCount = 1;
+	descriptorImageWrite.pBufferInfo = nullptr;
+	descriptorImageWrite.pImageInfo = &imageInfo;
+	descriptorImageWrite.pTexelBufferView = nullptr;
+
+	vkUpdateDescriptorSets(m_VulkanDevice.getDevice(), 1, &descriptorImageWrite, 0, nullptr);
 }

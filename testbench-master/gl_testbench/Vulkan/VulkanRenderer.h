@@ -10,8 +10,31 @@
 #include "VulkanSwapChain.h"
 #include "Common.h"
 
+class VulkanVertexBuffer;
+class VulkanConstantBuffer;
+class VulkanTexture2D;
+class VulkanSampler2D;
+
 class VulkanRenderer : public Renderer
 {
+	union DescriptorSetLayouts
+	{
+		VkDescriptorSetLayout layouts[2];
+
+		struct
+		{
+			VkDescriptorSetLayout uniformAndStorageDescriptorSetLayout;
+			VkDescriptorSetLayout textureDescriptorSetLayout;
+		};
+	};
+
+	struct DescriptorData
+	{
+		VkPipelineLayout pipelineLayout;
+		DescriptorSetLayouts descriptorSetLayouts;
+		VkDescriptorSet* descriptorSets;
+	};
+	
 public:
 	VulkanRenderer();
 	~VulkanRenderer();
@@ -28,7 +51,12 @@ public:
 	Technique* makeTechnique(Material* pMaterial, RenderState* pRenderState);
 
 	void createBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkDeviceSize memoryOffset, VkMemoryPropertyFlags properties, VkBufferUsageFlags usage);
+	void setVertexBuffer(VulkanVertexBuffer* pBuffer, uint32_t slot);
+	void setConstantBuffer(VulkanConstantBuffer* pBuffer, uint32_t slot);
+	void setTexture2D(VulkanTexture2D* pTexture2D, VulkanSampler2D* pSampler2D);
+	void commitState();
 
+	
 	//Renderer() { /*InitializeCriticalSection(&protectHere);*/ };
 	int initialize(unsigned int width = 800, unsigned int height = 600);
 	void setWinTitle(const char* title);
@@ -47,6 +75,13 @@ public:
 private:
 	void initializeRenderPass();
 	void createSemaphores();
+
+	void createDescriptorSetLayouts(DescriptorSetLayouts& descriptorSetLayouts);
+	void createPipelineLayout(VkPipelineLayout& pipelineLayout, DescriptorSetLayouts& descriptorSetLayouts);
+	void createDescriptorSets(VkDescriptorSet descriptorSets[], DescriptorSetLayouts& descriptorSetLayouts);
+	void updateStorageDescriptorSets();
+	void updateUniformDescriptorSets();
+	void updateSamplerDescriptorSets();
 private:
 	SDL_Window* m_pWindow;
 	
@@ -56,7 +91,14 @@ private:
 
 	VkRenderPass m_RenderPass;
 
-	uint32_t m_SemaphoreIndex;
+	uint32_t m_FrameIndex;
 	std::vector<VkSemaphore> m_ImageAvailableSemaphores;
 	std::vector<VkSemaphore> m_RenderFinishedSemaphores;
+
+	DescriptorData* m_pDescriptorData;
+
+	VulkanVertexBuffer* m_pVertexBuffers[3];
+	VulkanConstantBuffer* m_pConstantBuffer[7];
+	VulkanTexture2D* m_pTexture2D;
+	VulkanSampler2D* m_pSampler2D;
 };
