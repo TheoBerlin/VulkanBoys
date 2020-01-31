@@ -461,10 +461,13 @@ void VulkanRenderer::updateVertexBufferDescriptorSets()
 {
 	for (size_t i = 0; i < VERTEX_BUFFER_DESCRIPTORS_PER_SET_BUNDLE; i++)
 	{
+		//Cache buffer
+		VulkanVertexBuffer* buffer = m_pVertexBuffers[i];
+
 		VkDescriptorBufferInfo bufferInfo = {};
-		bufferInfo.buffer = m_pVertexBuffers[i]->getBuffer();
-		bufferInfo.offset = m_pVertexBuffers[i]->getOffset();
-		bufferInfo.range = VK_WHOLE_SIZE;
+		bufferInfo.buffer = buffer->getBuffer();
+		bufferInfo.offset = buffer->getOffset();
+		bufferInfo.range = buffer->getBoundSize();;
 
 		VkWriteDescriptorSet descriptorBufferWrite = {};
 		descriptorBufferWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

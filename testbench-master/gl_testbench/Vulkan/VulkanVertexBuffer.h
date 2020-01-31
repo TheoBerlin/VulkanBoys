@@ -19,6 +19,8 @@ public:
 
 	VkBuffer getBuffer() { return m_Buffer; }
 	size_t getOffset() { return m_Offset; }
+	//This is not equal to the sizeInbytes (getSize), this is the size that is set in the bind call
+	size_t getBoundSize() { return m_BoundSize;  }
 private:
 	VulkanRenderer* m_pRenderer;
 	VkBuffer m_Buffer;
@@ -28,5 +30,6 @@ private:
 	//Gets set when buffer is bound
 	size_t m_Offset;
 	size_t m_Location; 
+	size_t m_BoundSize;
 };
 
