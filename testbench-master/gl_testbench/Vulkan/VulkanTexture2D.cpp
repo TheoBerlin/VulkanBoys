@@ -3,11 +3,23 @@
 #include "VulkanRenderer.h"
 
 VulkanTexture2D::VulkanTexture2D(VulkanRenderer* pRenderer)
-    :m_pRenderer(pRenderer)
+    :m_pRenderer(pRenderer),
+    m_TextureImage(VK_NULL_HANDLE),
+    m_TextureImageMemory(VK_NULL_HANDLE)
 {}
 
 VulkanTexture2D::~VulkanTexture2D()
-{}
+{
+    VkDevice device = m_pRenderer->getDevice()->getDevice();
+
+    if (m_TextureImage != VK_NULL_HANDLE) {
+        vkDestroyImage(device, m_TextureImage, nullptr);
+    }
+
+    if (m_TextureImageMemory != VK_NULL_HANDLE) {
+        vkFreeMemory(device, m_TextureImageMemory, nullptr);
+    }
+}
 
 int VulkanTexture2D::loadFromFile(std::string filename)
 {
