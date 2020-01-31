@@ -8,6 +8,19 @@ VulkanCommandBuffer::~VulkanCommandBuffer()
     this->release();
 }
 
+void VulkanCommandBuffer::release()
+{
+	if (m_CommandPool != VK_NULL_HANDLE) {
+		vkDestroyCommandPool(m_Device, m_CommandPool, nullptr);
+		m_CommandPool = VK_NULL_HANDLE;
+	}
+
+	if (m_InFlightFence != VK_NULL_HANDLE) {
+		vkDestroyFence(m_Device, m_InFlightFence, nullptr);
+		m_InFlightFence = VK_NULL_HANDLE;
+	}
+}
+
 void VulkanCommandBuffer::initialize(VulkanDevice* device)
 {
     m_Device = device->getDevice();
@@ -43,19 +56,9 @@ void VulkanCommandBuffer::initialize(VulkanDevice* device)
     }
 }
 
-void VulkanCommandBuffer::release()
+VkCommandBuffer VulkanCommandBuffer::getCommandBuffer()
 {
-	if (m_CommandPool != VK_NULL_HANDLE)
-	{
-		vkDestroyCommandPool(m_Device, m_CommandPool, nullptr);
-		m_CommandPool = VK_NULL_HANDLE;
-	}
-
-	if (m_InFlightFence != VK_NULL_HANDLE)
-	{
-		vkDestroyFence(m_Device, m_InFlightFence, nullptr);
-		m_InFlightFence = VK_NULL_HANDLE;
-	}
+    return m_CommandBuffer;
 }
 
 void VulkanCommandBuffer::reset()
