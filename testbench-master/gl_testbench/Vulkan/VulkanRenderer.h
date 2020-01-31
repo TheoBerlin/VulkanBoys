@@ -64,7 +64,8 @@ public:
 
 	void createImage(VkImage& image, VkDeviceMemory& imageMemory, unsigned int width, unsigned int height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties);
 	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
-	int createTexture(VkImage& image, VkDeviceMemory& imageMemory, std::string filePath);
+	int createImageView(VkImageView& imageView, VkImage image, VkFormat format);
+	int createTexture(VkImage& image, VkImageView& imageView, VkDeviceMemory& imageMemory, std::string filePath);
 
 	
 	//Renderer() { /*InitializeCriticalSection(&protectHere);*/ };

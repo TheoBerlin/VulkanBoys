@@ -5,6 +5,7 @@
 VulkanTexture2D::VulkanTexture2D(VulkanRenderer* pRenderer)
     :m_pRenderer(pRenderer),
     m_TextureImage(VK_NULL_HANDLE),
+    m_TextureImageView(VK_NULL_HANDLE),
     m_TextureImageMemory(VK_NULL_HANDLE)
 {}
 
@@ -16,6 +17,10 @@ VulkanTexture2D::~VulkanTexture2D()
         vkDestroyImage(device, m_TextureImage, nullptr);
     }
 
+    if (m_TextureImageView != VK_NULL_HANDLE) {
+        vkDestroyImageView(device, m_TextureImageView, nullptr);
+    }
+
     if (m_TextureImageMemory != VK_NULL_HANDLE) {
         vkFreeMemory(device, m_TextureImageMemory, nullptr);
     }
@@ -23,7 +28,7 @@ VulkanTexture2D::~VulkanTexture2D()
 
 int VulkanTexture2D::loadFromFile(std::string filename)
 {
-    return m_pRenderer->createTexture(m_TextureImage, m_TextureImageMemory, filename);
+    return m_pRenderer->createTexture(m_TextureImage, m_TextureImageView, m_TextureImageMemory, filename);
 }
 
 void VulkanTexture2D::bind(unsigned int slot)

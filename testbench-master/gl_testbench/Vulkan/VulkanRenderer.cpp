@@ -291,7 +291,31 @@ void VulkanRenderer::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t 
 	this->endSingleTimeCommands(commandBuffer);
 }
 
-int VulkanRenderer::createTexture(VkImage& image, VkDeviceMemory& imageMemory, std::string filename)
+int VulkanRenderer::createImageView(VkImageView& imageView, VkImage image, VkFormat format)
+{
+	VkImageViewCreateInfo viewInfo = {};
+	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	viewInfo.pNext = nullptr;
+	viewInfo.image = image;
+	viewInfo.components = {VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY};
+	viewInfo.flags = 0;
+	viewInfo.format = format;
+	viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	viewInfo.subresourceRange.layerCount = 1;
+	viewInfo.subresourceRange.baseArrayLayer = 0;
+	viewInfo.subresourceRange.levelCount = 1;
+	viewInfo.subresourceRange.baseMipLevel = 0;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+
+	if (vkCreateImageView(m_VulkanDevice.getDevice(), &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create image view!");
+		return -1;
+	}
+
+	return 0;
+}
+
+int VulkanRenderer::createTexture(VkImage& image, VkImageView& imageView, VkDeviceMemory& imageMemory, std::string filename)
 {
 	int texWidth, texHeight, bpp;
 	unsigned char* pixels = stbi_load(filename.c_str(), &texWidth, &texHeight, &bpp, STBI_rgb_alpha);
@@ -328,7 +352,7 @@ int VulkanRenderer::createTexture(VkImage& image, VkDeviceMemory& imageMemory, s
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferMemory, nullptr);
 
-	return 0;
+	return createImageView(imageView, image, VK_FORMAT_R8G8B8A8_UNORM);
 }
 
 int VulkanRenderer::initialize(unsigned width, unsigned height)
