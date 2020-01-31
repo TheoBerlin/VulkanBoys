@@ -61,7 +61,7 @@ public:
 	void setTexture2D(VulkanTexture2D* pTexture2D, VulkanSampler2D* pSampler2D);
 	void commitState();
 
-	void createImage(VkImage& image, VkDeviceMemory& imageMemory, unsigned int width, unsigned int height, VkFormat format, VkImageLayout layout, VkImageUsageFlags usage, VkMemoryPropertyFlags properties);
+	void createImage(VkImage& image, VkDeviceMemory& imageMemory, unsigned int width, unsigned int height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties);
 	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 	int createTexture(VkImage& image, VkDeviceMemory& imageMemory, std::string filePath);
 

@@ -40,7 +40,7 @@ VertexBuffer* VulkanRenderer::makeVertexBuffer(size_t size, VertexBuffer::DATA_U
 
 Texture2D* VulkanRenderer::makeTexture2D()
 {
-	return nullptr;
+	return new VulkanTexture2D(this);
 }
 
 Sampler2D* VulkanRenderer::makeSampler2D()
@@ -145,7 +145,7 @@ void VulkanRenderer::commitState()
 	updateSamplerDescriptorSets();
 }
 
-void VulkanRenderer::createImage(VkImage& image, VkDeviceMemory& imageMemory, unsigned int width, unsigned int height, VkFormat format, VkImageLayout layout, VkImageUsageFlags usage, VkMemoryPropertyFlags properties)
+void VulkanRenderer::createImage(VkImage& image, VkDeviceMemory& imageMemory, unsigned int width, unsigned int height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties)
 {
 	VkImageCreateInfo imageInfo = {};
 	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -162,6 +162,7 @@ void VulkanRenderer::createImage(VkImage& image, VkDeviceMemory& imageMemory, un
 	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 	imageInfo.usage = usage;
+	imageInfo.arrayLayers = 1;
 
 	VkDevice device = m_VulkanDevice.getDevice();
 
@@ -282,7 +283,7 @@ void VulkanRenderer::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t 
 	region.imageExtent.height = height;
 	region.imageExtent.width = width;
 
-	vkCmdCopyBufferToImage(0, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,1, &region);
+	vkCmdCopyBufferToImage(commandBuffer->getCommandBuffer(), buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
 	this->endSingleTimeCommands(commandBuffer);
 }
@@ -315,9 +316,9 @@ int VulkanRenderer::createTexture(VkImage& image, VkDeviceMemory& imageMemory, s
 	stbi_image_free(pixels);
 
 	// Transfer staging buffer contents to the final texture buffer
-	createImage(image, imageMemory, texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	createImage(image, imageMemory, texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
+	transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	copyBufferToImage(stagingBuffer, image, texWidth, texHeight);
 	transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
