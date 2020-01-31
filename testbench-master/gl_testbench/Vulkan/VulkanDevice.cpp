@@ -91,9 +91,8 @@ void VulkanDevice::release()
 	{
 		vkDestroyInstance(m_VKInstance, nullptr);
 		m_VKInstance = VK_NULL_HANDLE;
+		std::cout << "Vulkan Device Destroyed!" << std::endl;
 	}
-
-	std::cout << "Vulkan Device Destroyed!" << std::endl;
 }
 
 void VulkanDevice::initializeInstance(const char applicationName[])

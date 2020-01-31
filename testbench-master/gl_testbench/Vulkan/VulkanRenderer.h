@@ -119,4 +119,5 @@ private:
 
 	std::vector<VulkanRenderState*> m_RenderStates;
 	std::vector<VulkanConstantBuffer*> m_ConstantBuffers;
+	std::vector<VulkanVertexBuffer*> m_VertexBuffers;
 };

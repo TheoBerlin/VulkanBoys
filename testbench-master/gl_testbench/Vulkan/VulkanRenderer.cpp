@@ -35,7 +35,9 @@ Mesh* VulkanRenderer::makeMesh()
 
 VertexBuffer* VulkanRenderer::makeVertexBuffer(size_t size, VertexBuffer::DATA_USAGE usage)
 {
-	return new VulkanVertexBuffer(this, size, usage);
+	VulkanVertexBuffer* pVertexBuffer = new VulkanVertexBuffer(this, size, usage);
+	m_VertexBuffers.push_back(pVertexBuffer);
+	return pVertexBuffer;
 }
 
 Texture2D* VulkanRenderer::makeTexture2D()
@@ -409,10 +411,15 @@ int VulkanRenderer::shutdown()
 	if (m_VulkanDevice.getDevice() != VK_NULL_HANDLE)
 		vkDeviceWaitIdle(m_VulkanDevice.getDevice());
 
-	for (auto buffer : m_ConstantBuffers)
-		delete buffer;
-
+	for (auto constantBuffer : m_ConstantBuffers)
+		delete constantBuffer;
+	
 	m_ConstantBuffers.clear();
+
+	for (auto vertexBuffer : m_VertexBuffers)
+		delete vertexBuffer;
+	
+	m_VertexBuffers.clear();
 	
 	if (m_pDescriptorData != nullptr)
 	{
