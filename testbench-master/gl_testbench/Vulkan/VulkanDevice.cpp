@@ -63,6 +63,8 @@ void VulkanDevice::initialize(const char applicationName[], uint32_t vertexBuffe
 
 void VulkanDevice::release()
 {
+	vkDeviceWaitIdle(m_Device);
+	
 	if (m_DescriptorPool != VK_NULL_HANDLE)
 	{
 		vkDestroyDescriptorPool(m_Device, m_DescriptorPool, nullptr);

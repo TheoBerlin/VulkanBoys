@@ -10,6 +10,8 @@ VulkanCommandBuffer::~VulkanCommandBuffer()
 
 void VulkanCommandBuffer::release()
 {
+	vkDeviceWaitIdle(m_Device);
+	
 	if (m_CommandPool != VK_NULL_HANDLE) {
 		vkDestroyCommandPool(m_Device, m_CommandPool, nullptr);
 		m_CommandPool = VK_NULL_HANDLE;
