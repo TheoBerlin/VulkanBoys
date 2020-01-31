@@ -63,6 +63,9 @@ void VulkanDevice::initialize(const char applicationName[], uint32_t vertexBuffe
 
 void VulkanDevice::release()
 {
+	if (m_Device != VK_NULL_HANDLE)
+		vkDeviceWaitIdle(m_Device);
+	
 	if (m_DescriptorPool != VK_NULL_HANDLE)
 	{
 		vkDestroyDescriptorPool(m_Device, m_DescriptorPool, nullptr);
@@ -88,9 +91,8 @@ void VulkanDevice::release()
 	{
 		vkDestroyInstance(m_VKInstance, nullptr);
 		m_VKInstance = VK_NULL_HANDLE;
+		std::cout << "Vulkan Device Destroyed!" << std::endl;
 	}
-
-	std::cout << "Vulkan Device Destroyed!" << std::endl;
 }
 
 void VulkanDevice::initializeInstance(const char applicationName[])

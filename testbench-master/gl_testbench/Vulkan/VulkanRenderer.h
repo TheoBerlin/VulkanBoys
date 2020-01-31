@@ -12,8 +12,9 @@
 
 class VulkanVertexBuffer;
 class VulkanConstantBuffer;
-class VulkanTexture2D;
+class VulkanRenderState;
 class VulkanSampler2D;
+class VulkanTexture2D;
 
 class VulkanRenderer : public Renderer
 {
@@ -62,7 +63,8 @@ public:
 
 	void createImage(VkImage& image, VkDeviceMemory& imageMemory, unsigned int width, unsigned int height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties);
 	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
-	int createTexture(VkImage& image, VkDeviceMemory& imageMemory, std::string filePath);
+	int createImageView(VkImageView& imageView, VkImage image, VkFormat format);
+	int createTexture(VkImage& image, VkImageView& imageView, VkDeviceMemory& imageMemory, std::string filePath);
 
 	
 	//Renderer() { /*InitializeCriticalSection(&protectHere);*/ };
@@ -115,4 +117,8 @@ private:
 	VkClearValue m_ClearColor;
 
 	std::unordered_map<Technique*, std::vector<Mesh*>> m_DrawList;
+
+	std::vector<VulkanRenderState*> m_RenderStates;
+	std::vector<VulkanConstantBuffer*> m_ConstantBuffers;
+	std::vector<VulkanVertexBuffer*> m_VertexBuffers;
 };

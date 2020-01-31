@@ -292,10 +292,10 @@ void shutdown() {
 		delete s;
 	}
 
-	/*for (auto t : textures)
+	for (auto t : textures)
 	{
 		delete t;
-	}*/
+	}
 	renderer->shutdown();
 };
 

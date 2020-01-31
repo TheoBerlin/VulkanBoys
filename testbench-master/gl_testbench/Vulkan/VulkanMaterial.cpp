@@ -23,12 +23,15 @@ VulkanMaterial::VulkanMaterial(VulkanRenderer* pRenderer, VulkanDevice* pDevice,
 
 VulkanMaterial::~VulkanMaterial()
 {
+	if (m_pDevice->getDevice() != VK_NULL_HANDLE)
+		vkDeviceWaitIdle(m_pDevice->getDevice());
+	
 	constexpr uint32_t shaderCount = sizeof(m_ShaderModules) / sizeof(VkShaderModule);
 	for (uint32_t i = 0; i < shaderCount; i++)
 		deleteModule(m_ShaderModules[i]);
 
-	for (auto buffer : m_ConstantBuffers)
-		delete buffer.second;
+	/*for (auto buffer : m_ConstantBuffers)
+		delete buffer.second;*/
 }
 
 void VulkanMaterial::setShader(const std::string& shaderFileName, ShaderType type)

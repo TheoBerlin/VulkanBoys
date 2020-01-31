@@ -17,5 +17,6 @@ private:
     VulkanRenderer* m_pRenderer;
 
     VkImage m_TextureImage;
+    VkImageView m_TextureImageView;
     VkDeviceMemory m_TextureImageMemory;
 };

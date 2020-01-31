@@ -11,6 +11,8 @@ VulkanRenderState::VulkanRenderState(VulkanDevice* pDevice)
 
 VulkanRenderState::~VulkanRenderState()
 {
+
+	
 	if (m_Pipeline != VK_NULL_HANDLE)
 	{
 		vkDestroyPipeline(m_pDevice->getDevice(), m_Pipeline, nullptr);

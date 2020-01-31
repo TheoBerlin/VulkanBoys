@@ -13,6 +13,9 @@ VulkanVertexBuffer::VulkanVertexBuffer(VulkanRenderer* pRenderer, size_t sizeInB
 
 VulkanVertexBuffer::~VulkanVertexBuffer()
 {
+	if (m_pRenderer->getDevice()->getDevice() != VK_NULL_HANDLE)
+		vkDeviceWaitIdle(m_pRenderer->getDevice()->getDevice());
+	
 	if (m_Buffer != VK_NULL_HANDLE)
 	{
 		vkDestroyBuffer(m_pRenderer->getDevice()->getDevice(), m_Buffer, nullptr);

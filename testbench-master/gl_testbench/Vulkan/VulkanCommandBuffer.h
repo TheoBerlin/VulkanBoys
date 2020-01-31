@@ -35,5 +35,5 @@ private:
     VkFence m_InFlightFence;
 
     // Needed for deleting pool
-    VkDevice m_Device;
+    VulkanDevice* m_pDevice;
 };
