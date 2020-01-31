@@ -521,12 +521,12 @@ void VulkanRenderer::frame()
 		{
 			size_t numberElements = mesh->geometryBuffers[0].numElements;
 		
-			/*for (auto t : mesh->textures)
+			for (auto t : mesh->textures)
 			{
 				// we do not really know here if the sampler has been
 				// defined in the shader.
 				t.second->bind(t.first);
-			}*/
+			}
 			for (auto element : mesh->geometryBuffers) 
 			{
 				mesh->bindIAVertexBuffer(element.first);
