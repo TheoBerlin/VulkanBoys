@@ -12,8 +12,9 @@
 
 class VulkanVertexBuffer;
 class VulkanConstantBuffer;
-class VulkanTexture2D;
+class VulkanRenderState;
 class VulkanSampler2D;
+class VulkanTexture2D;
 
 class VulkanRenderer : public Renderer
 {
@@ -114,4 +115,6 @@ private:
 	VkClearValue m_ClearColor;
 
 	std::unordered_map<Technique*, std::vector<Mesh*>> m_DrawList;
+
+	std::vector<VulkanRenderState*> m_RenderStates;
 };

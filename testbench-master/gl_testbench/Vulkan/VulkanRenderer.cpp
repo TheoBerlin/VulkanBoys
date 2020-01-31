@@ -50,7 +50,9 @@ Sampler2D* VulkanRenderer::makeSampler2D()
 
 RenderState* VulkanRenderer::makeRenderState()
 {
-	return new VulkanRenderState(&m_VulkanDevice);
+	VulkanRenderState* pRenderState = new VulkanRenderState(&m_VulkanDevice);
+	m_RenderStates.push_back(pRenderState);
+	return pRenderState;
 }
 
 std::string VulkanRenderer::getShaderPath()
@@ -74,7 +76,7 @@ Technique* VulkanRenderer::makeTechnique(Material* pMaterial, RenderState* pRend
 {
 	VulkanMaterial* pVkMaterial = reinterpret_cast<VulkanMaterial*>(pMaterial);
 	reinterpret_cast<VulkanRenderState*>(pRenderState)->finalize(pVkMaterial, m_RenderPass, m_pDescriptorData->pipelineLayout);
-	
+
 	return new Technique(pMaterial, pRenderState);
 }
 
@@ -398,9 +400,13 @@ int VulkanRenderer::shutdown()
 
 		m_VulkanCommandBuffers[i].release();
 	}
-	
+
 	vkDestroyRenderPass(m_VulkanDevice.getDevice(), m_RenderPass, nullptr);
-	
+
+	for (VulkanRenderState* pRenderState : m_RenderStates) {
+		delete pRenderState;
+	}
+
 	m_Swapchain.release();
 	m_VulkanDevice.release();
 
