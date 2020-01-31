@@ -102,7 +102,7 @@ private:
 	VulkanTexture2D* m_pTexture2D;
 	VulkanSampler2D* m_pSampler2D;
 
-	Color m_ClearColor;
+	VkClearValue m_ClearColor;
 
 	std::unordered_map<Technique*, std::vector<Mesh*>> m_DrawList;
 };

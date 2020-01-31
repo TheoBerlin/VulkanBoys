@@ -223,10 +223,10 @@ int VulkanRenderer::shutdown()
 
 void VulkanRenderer::setClearColor(float r, float g, float b, float a)
 {
-	m_ClearColor.r = r;
-	m_ClearColor.g = g;
-	m_ClearColor.b = b;
-	m_ClearColor.a = a;
+	m_ClearColor.color.float32[0] = r;
+	m_ClearColor.color.float32[1] = g;
+	m_ClearColor.color.float32[2] = b;
+	m_ClearColor.color.float32[3] = a;
 }
 
 void VulkanRenderer::clearBuffer(unsigned)
@@ -236,7 +236,7 @@ void VulkanRenderer::clearBuffer(unsigned)
 
 void VulkanRenderer::setRenderState(RenderState* ps)
 {
-	m_VulkanCommandBuffers[m_FrameIndex].setPipelineState(reinterpret_cast<VulkanRenderState*>(ps)->getPipelineState());
+	m_VulkanCommandBuffers[m_FrameIndex].bindPipelineState(reinterpret_cast<VulkanRenderState*>(ps)->getPipelineState());
 }
 
 void VulkanRenderer::submit(Mesh* mesh)
@@ -248,7 +248,47 @@ void VulkanRenderer::frame()
 {
 	m_Swapchain.acquireNextImage(m_ImageAvailableSemaphores[m_FrameIndex]);
 
-	//TODO: Draw shit here
+	m_VulkanCommandBuffers[m_FrameIndex].reset();
+	m_VulkanCommandBuffers[m_FrameIndex].beginCommandBuffer();
+
+	VkClearValue depthClear = {};
+	depthClear.depthStencil.depth = 1.0f;
+	depthClear.depthStencil.stencil = 0;
+
+	VkClearValue clearValues[] = { m_ClearColor, depthClear };
+	m_VulkanCommandBuffers[m_FrameIndex].beginRenderPass(m_RenderPass, m_Swapchain.getCurrentFramebuffer(), m_Swapchain.getExtent(), clearValues, 2);
+	
+	//TODO: Draw stuff here
+	
+	m_VulkanCommandBuffers[m_FrameIndex].endRenderPass();
+	m_VulkanCommandBuffers[m_FrameIndex].endCommandBuffer();
+
+
+	//Submit
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.pNext = nullptr;
+
+	VkSemaphore waitSemaphores[] = { m_ImageAvailableSemaphores[m_FrameIndex] };
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = waitSemaphores;
+
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	submitInfo.pWaitDstStageMask = waitStages;
+
+	VkCommandBuffer commandBuffers[] = { m_VulkanCommandBuffers[m_FrameIndex].getCommandBuffer() };
+	submitInfo.pCommandBuffers = commandBuffers;
+	submitInfo.commandBufferCount = 1;
+
+	VkSemaphore signalSemaphores[] = { m_RenderFinishedSemaphores[m_FrameIndex] };
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = signalSemaphores;
+
+	VkResult result = vkQueueSubmit(m_VulkanDevice.getGraphicsQueue(), 1, &submitInfo, m_VulkanCommandBuffers[m_FrameIndex].getFence());
+	if (result != VK_SUCCESS)
+	{
+		std::cout << "vkQueueSubmit failed. Error: " << result << std::endl;
+	}
 }
 
 void VulkanRenderer::initializeRenderPass()
