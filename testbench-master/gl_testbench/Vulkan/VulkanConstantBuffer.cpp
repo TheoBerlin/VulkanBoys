@@ -11,7 +11,8 @@ VulkanConstantBuffer::VulkanConstantBuffer(std::string NAME, unsigned int locati
 
 VulkanConstantBuffer::~VulkanConstantBuffer()
 {
-	vkDeviceWaitIdle(m_pDevice->getDevice());
+	if (m_pDevice->getDevice() != VK_NULL_HANDLE)
+		vkDeviceWaitIdle(m_pDevice->getDevice());
 	
     if (m_BufferMemory != VK_NULL_HANDLE) {
         vkFreeMemory(m_pDevice->getDevice(), m_BufferMemory, nullptr);

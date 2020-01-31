@@ -69,6 +69,7 @@ ConstantBuffer* VulkanRenderer::makeConstantBuffer(std::string NAME, unsigned lo
 {
 	VulkanConstantBuffer* pConstantBuffer = new VulkanConstantBuffer(NAME, location);
 	pConstantBuffer->provideResources(this, &m_VulkanDevice);
+	m_ConstantBuffers.push_back(pConstantBuffer);
 	return pConstantBuffer;
 }
 
@@ -381,7 +382,13 @@ void VulkanRenderer::present()
 
 int VulkanRenderer::shutdown()
 {
-	vkDeviceWaitIdle(m_VulkanDevice.getDevice());
+	if (m_VulkanDevice.getDevice() != VK_NULL_HANDLE)
+		vkDeviceWaitIdle(m_VulkanDevice.getDevice());
+
+	for (auto buffer : m_ConstantBuffers)
+		delete buffer;
+
+	m_ConstantBuffers.clear();
 	
 	if (m_pDescriptorData != nullptr)
 	{

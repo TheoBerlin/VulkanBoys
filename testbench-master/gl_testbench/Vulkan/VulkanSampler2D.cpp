@@ -32,7 +32,8 @@ VulkanSampler2D::VulkanSampler2D(VulkanDevice* pDevice)
 
 VulkanSampler2D::~VulkanSampler2D()
 {
-	vkDeviceWaitIdle(m_pDevice->getDevice());
+	if (m_pDevice->getDevice() != VK_NULL_HANDLE)
+		vkDeviceWaitIdle(m_pDevice->getDevice());
 	
 	if (m_Sampler != VK_NULL_HANDLE)
 		destroySampler();

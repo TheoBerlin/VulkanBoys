@@ -117,4 +117,5 @@ private:
 	std::unordered_map<Technique*, std::vector<Mesh*>> m_DrawList;
 
 	std::vector<VulkanRenderState*> m_RenderStates;
+	std::vector<VulkanConstantBuffer*> m_ConstantBuffers;
 };

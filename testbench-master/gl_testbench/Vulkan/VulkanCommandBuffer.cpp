@@ -10,22 +10,23 @@ VulkanCommandBuffer::~VulkanCommandBuffer()
 
 void VulkanCommandBuffer::release()
 {
-	vkDeviceWaitIdle(m_Device);
+	if (m_pDevice->getDevice() != VK_NULL_HANDLE)
+		vkDeviceWaitIdle(m_pDevice->getDevice());
 	
 	if (m_CommandPool != VK_NULL_HANDLE) {
-		vkDestroyCommandPool(m_Device, m_CommandPool, nullptr);
+		vkDestroyCommandPool(m_pDevice->getDevice(), m_CommandPool, nullptr);
 		m_CommandPool = VK_NULL_HANDLE;
 	}
 
 	if (m_InFlightFence != VK_NULL_HANDLE) {
-		vkDestroyFence(m_Device, m_InFlightFence, nullptr);
+		vkDestroyFence(m_pDevice->getDevice(), m_InFlightFence, nullptr);
 		m_InFlightFence = VK_NULL_HANDLE;
 	}
 }
 
 void VulkanCommandBuffer::initialize(VulkanDevice* device)
 {
-    m_Device = device->getDevice();
+	m_pDevice = device;
 
     // Create command pool
     VkCommandPoolCreateInfo poolInfo = {};
@@ -33,7 +34,7 @@ void VulkanCommandBuffer::initialize(VulkanDevice* device)
     poolInfo.queueFamilyIndex = device->getQueueFamilyIndices().graphicsFamily.value();
     poolInfo.flags = 0;
 
-    if (vkCreateCommandPool(m_Device, &poolInfo, nullptr, &m_CommandPool) != VK_SUCCESS) {
+    if (vkCreateCommandPool(m_pDevice->getDevice(), &poolInfo, nullptr, &m_CommandPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create command pool!");
     }
 
@@ -44,7 +45,7 @@ void VulkanCommandBuffer::initialize(VulkanDevice* device)
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     allocInfo.commandBufferCount = 1;
 
-    if (vkAllocateCommandBuffers(m_Device, &allocInfo, &m_CommandBuffer) != VK_SUCCESS) {
+    if (vkAllocateCommandBuffers(m_pDevice->getDevice(), &allocInfo, &m_CommandBuffer) != VK_SUCCESS) {
         throw std::runtime_error("failed to allocate command buffers!");
     }
 
@@ -53,7 +54,7 @@ void VulkanCommandBuffer::initialize(VulkanDevice* device)
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-    if (vkCreateFence(m_Device, &fenceInfo, nullptr, &m_InFlightFence) != VK_SUCCESS) {
+    if (vkCreateFence(m_pDevice->getDevice(), &fenceInfo, nullptr, &m_InFlightFence) != VK_SUCCESS) {
         throw std::runtime_error("failed to create synchronization objects for a frame!");
     }
 }
@@ -66,11 +67,11 @@ VkCommandBuffer VulkanCommandBuffer::getCommandBuffer()
 void VulkanCommandBuffer::reset()
 {
     //Wait for GPU to finish with this commandbuffer and then reset it
-    vkWaitForFences(m_Device, 1, &m_InFlightFence, VK_TRUE, UINT64_MAX);
-    vkResetFences(m_Device, 1, &m_InFlightFence);
+    vkWaitForFences(m_pDevice->getDevice(), 1, &m_InFlightFence, VK_TRUE, UINT64_MAX);
+    vkResetFences(m_pDevice->getDevice(), 1, &m_InFlightFence);
 
     //Avoid using the VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT since we can reuse the memory
-    vkResetCommandPool(m_Device, m_CommandPool, 0);
+    vkResetCommandPool(m_pDevice->getDevice(), m_CommandPool, 0);
 }
 
 void VulkanCommandBuffer::beginCommandBuffer()
