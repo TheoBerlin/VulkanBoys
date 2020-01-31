@@ -23,6 +23,8 @@ VulkanMaterial::VulkanMaterial(VulkanRenderer* pRenderer, VulkanDevice* pDevice,
 
 VulkanMaterial::~VulkanMaterial()
 {
+	vkDeviceWaitIdle(m_pDevice->getDevice());
+	
 	constexpr uint32_t shaderCount = sizeof(m_ShaderModules) / sizeof(VkShaderModule);
 	for (uint32_t i = 0; i < shaderCount; i++)
 		deleteModule(m_ShaderModules[i]);

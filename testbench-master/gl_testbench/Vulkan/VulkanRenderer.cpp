@@ -381,6 +381,8 @@ void VulkanRenderer::present()
 
 int VulkanRenderer::shutdown()
 {
+	vkDeviceWaitIdle(m_VulkanDevice.getDevice());
+	
 	if (m_pDescriptorData != nullptr)
 	{
 		vkDestroyDescriptorSetLayout(m_VulkanDevice.getDevice(), m_pDescriptorData->descriptorSetLayouts.vertexAndConstantBufferDescriptorSetLayout, nullptr);

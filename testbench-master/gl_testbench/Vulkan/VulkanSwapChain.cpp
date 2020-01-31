@@ -34,6 +34,7 @@ VulkanSwapChain::VulkanSwapChain()
 
 VulkanSwapChain::~VulkanSwapChain()
 {
+	release();
 }
 
 void VulkanSwapChain::initialize(VulkanDevice* pDevice, SDL_Window* pWindow, VkRenderPass renderpass, VkFormat requestedFormat, uint32_t imageCount, bool verticalSync)
@@ -73,6 +74,8 @@ void VulkanSwapChain::initialize(VulkanDevice* pDevice, SDL_Window* pWindow, VkR
 
 void VulkanSwapChain::release()
 {
+	vkDeviceWaitIdle(m_pDevice->getDevice());
+	
 	releaseResources();
 
 	if (m_Surface != VK_NULL_HANDLE)
