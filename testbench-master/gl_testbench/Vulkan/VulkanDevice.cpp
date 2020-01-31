@@ -1,4 +1,5 @@
 #include "VulkanDevice.h"
+#include "Common.h"
 #include <set>
 
 const std::vector<const char*> VulkanDevice::s_ValidationLayers = 
@@ -61,6 +62,26 @@ void VulkanDevice::initialize(const char applicationName[], uint32_t vertexBuffe
 	initializeDescriptorPool(vertexBufferDescriptorCount, constantBufferDescriptorCount, samplerDescriptorCount, descriptorSetCount);
 }
 
+void VulkanDevice::reallocDescriptorPool()
+{
+	m_GarbageDescriptorPools.push_back(m_DescriptorPool);
+	initializeDescriptorPool(MAX_NUM_STORAGE_DESCRIPTORS, MAX_NUM_UNIFORM_DESCRIPTORS, MAX_NUM_SAMPLER_DESCRIPTORS, MAX_NUM_DESCRIPTOR_SETS);
+
+	/*if (m_GarbageDescriptorPools.size() > 128)
+	{
+		for (VkDescriptorPool& descriptorPool : m_GarbageDescriptorPools)
+		{
+			if (descriptorPool != VK_NULL_HANDLE)
+			{
+				vkDestroyDescriptorPool(m_Device, descriptorPool, nullptr);
+				descriptorPool = VK_NULL_HANDLE;
+			}
+		}
+
+		m_GarbageDescriptorPools.clear();
+	}*/
+}
+
 void VulkanDevice::release()
 {
 	if (m_Device != VK_NULL_HANDLE)
@@ -70,6 +91,15 @@ void VulkanDevice::release()
 	{
 		vkDestroyDescriptorPool(m_Device, m_DescriptorPool, nullptr);
 		m_DescriptorPool = VK_NULL_HANDLE;
+	}
+
+	for (VkDescriptorPool& descriptorPool : m_GarbageDescriptorPools)
+	{
+		if (descriptorPool != VK_NULL_HANDLE)
+		{
+			vkDestroyDescriptorPool(m_Device, descriptorPool, nullptr);
+			descriptorPool = VK_NULL_HANDLE;
+		}
 	}
 	
 	if (m_Device != VK_NULL_HANDLE)

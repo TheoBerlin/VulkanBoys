@@ -34,6 +34,7 @@ public:
 	~VulkanDevice();
 
 	void initialize(const char applicationName[], uint32_t vertexBufferDescriptorCount, uint32_t constantBufferDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount);
+	void reallocDescriptorPool();
 	void release();
 
 	VkInstance getInstance() { return m_VKInstance; }
@@ -83,7 +84,7 @@ private:
 	VkDebugUtilsMessengerEXT m_DebugMessenger;
 
 	VkDescriptorPool m_DescriptorPool;
-
+	std::vector<VkDescriptorPool> m_GarbageDescriptorPools;
 private:
 	static const std::vector<const char*> s_ValidationLayers;
 	static const std::vector<const char*> s_RequiredInstanceExtensions;

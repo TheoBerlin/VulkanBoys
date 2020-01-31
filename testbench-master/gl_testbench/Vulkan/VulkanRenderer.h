@@ -89,6 +89,7 @@ private:
 	void createDescriptorSetLayouts(DescriptorSetLayouts& descriptorSetLayouts);
 	void createPipelineLayout(VkPipelineLayout& pipelineLayout, DescriptorSetLayouts& descriptorSetLayouts);
 	void createDescriptorSets(VkDescriptorSet descriptorSets[], DescriptorSetLayouts& descriptorSetLayouts);
+	void allocateFrameDescriptors(VkDescriptorSet descriptorSets[], DescriptorSetLayouts& descriptorSetLayouts);
 	void updateVertexBufferDescriptorSets();
 	void updateConstantBufferDescriptorSets();
 	void updateSamplerDescriptorSets();
@@ -108,6 +109,8 @@ private:
 	DescriptorData* m_pDescriptorData;
 
 	VulkanConstantBuffer* m_pNullConstantBuffer;
+	VulkanTexture2D* m_pNullTexture2D;
+	VulkanSampler2D* m_pNullSampler2D;
 
 	VulkanVertexBuffer* m_pVertexBuffers[3];
 	VulkanConstantBuffer* m_pConstantBuffer[7];

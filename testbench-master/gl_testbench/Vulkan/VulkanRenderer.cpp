@@ -531,13 +531,15 @@ void VulkanRenderer::frame()
 			{
 				mesh->bindIAVertexBuffer(element.first);
 			}
-			//mesh->txBuffer->bind(mesh->technique->getMaterial());
+			mesh->txBuffer->bind(mesh->technique->getMaterial());
 			
 			this->commitState();
 
-			VkDescriptorSet descriptorSets[] = { m_pDescriptorData->descriptorSets[(m_FrameIndex * 2) + 0], m_pDescriptorData->descriptorSets[(m_FrameIndex * 2) + 1] };
+			VkDescriptorSet* descriptorSets = m_pDescriptorData->descriptorSets + (m_FrameIndex * 2);
 			m_VulkanCommandBuffers[m_FrameIndex].bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pDescriptorData->pipelineLayout, 0, 2, descriptorSets, 0, nullptr);
 			m_VulkanCommandBuffers[m_FrameIndex].drawInstanced(numberElements, 1, 0, 0);
+
+			allocateFrameDescriptors(descriptorSets, m_pDescriptorData->descriptorSetLayouts);
 		}
 	}
 	m_DrawList.clear();
@@ -780,6 +782,41 @@ void VulkanRenderer::createDescriptorSets(VkDescriptorSet descriptorSets[], Desc
 	}
 }
 
+void VulkanRenderer::allocateFrameDescriptors(VkDescriptorSet descriptorSets[], DescriptorSetLayouts& descriptorSetLayouts)
+{
+	static uint64_t allocatedSets = 0;
+
+	VkDescriptorSetLayout allLayouts[] =
+	{
+		descriptorSetLayouts.vertexAndConstantBufferDescriptorSetLayout, //Frame 0
+		descriptorSetLayouts.textureDescriptorSetLayout,
+	};
+	uint32_t count = ARRAYSIZE(allLayouts);
+
+	VkDescriptorSetAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.pNext = nullptr;
+	allocInfo.descriptorPool = m_VulkanDevice.getDescriptorPool();
+	allocInfo.descriptorSetCount = count;
+	allocInfo.pSetLayouts = allLayouts;
+
+	if (vkAllocateDescriptorSets(m_VulkanDevice.getDevice(), &allocInfo, descriptorSets) != VK_SUCCESS)
+	{
+		std::cout << "Failed to allocate DescriptorSets" << std::endl;
+	}
+	else
+	{
+		allocatedSets++;
+		std::cout << "Allocated DescriptorSets " << allocatedSets << std::endl;
+	}
+
+	if (allocatedSets >= (MAX_NUM_DESCRIPTOR_SETS / 2) - 3)
+	{
+		m_VulkanDevice.reallocDescriptorPool();
+		allocatedSets = 0;
+	}
+}
+
 void VulkanRenderer::updateVertexBufferDescriptorSets()
 {
 	for (size_t i = 0; i < VERTEX_BUFFER_DESCRIPTORS_PER_SET_BUNDLE; i++)
@@ -789,7 +826,7 @@ void VulkanRenderer::updateVertexBufferDescriptorSets()
 
 		VkDescriptorBufferInfo bufferInfo = {};
 		bufferInfo.buffer = buffer->getBuffer();
-		bufferInfo.offset = buffer->getOffset();
+		bufferInfo.offset = 0;// buffer->getOffset();
 		bufferInfo.range = buffer->getBoundSize();;
 
 		VkWriteDescriptorSet descriptorBufferWrite = {};
