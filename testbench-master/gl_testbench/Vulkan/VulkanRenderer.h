@@ -20,7 +20,6 @@ class VulkanRenderer : public Renderer
 	union DescriptorSetLayouts
 	{
 		VkDescriptorSetLayout layouts[2];
-
 		struct
 		{
 			VkDescriptorSetLayout vertexAndConstantBufferDescriptorSetLayout;
@@ -32,7 +31,7 @@ class VulkanRenderer : public Renderer
 	{
 		VkPipelineLayout pipelineLayout;
 		DescriptorSetLayouts descriptorSetLayouts;
-		VkDescriptorSet* descriptorSets;
+		VkDescriptorSet descriptorSets[DESCRIPTOR_SETS_PER_TRIANGLE];
 	};
 	
 public:
@@ -105,6 +104,8 @@ private:
 	std::vector<VkSemaphore> m_RenderFinishedSemaphores;
 
 	DescriptorData* m_pDescriptorData;
+
+	VulkanConstantBuffer* m_pNullConstantBuffer;
 
 	VulkanVertexBuffer* m_pVertexBuffers[3];
 	VulkanConstantBuffer* m_pConstantBuffer[7];

@@ -17,6 +17,7 @@ VulkanRenderer::VulkanRenderer()
 	: m_FrameIndex(0),
 	m_pDescriptorData(nullptr)
 {
+	memset(m_pConstantBuffer, 0, sizeof(m_pConstantBuffer));
 }
 
 VulkanRenderer::~VulkanRenderer()
@@ -142,7 +143,7 @@ void VulkanRenderer::commitState()
 {
 	updateVertexBufferDescriptorSets();
 	updateConstantBufferDescriptorSets();
-	updateSamplerDescriptorSets();
+	//updateSamplerDescriptorSets();
 }
 
 void VulkanRenderer::createImage(VkImage& image, VkDeviceMemory& imageMemory, unsigned int width, unsigned int height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties)
@@ -353,6 +354,7 @@ int VulkanRenderer::initialize(unsigned width, unsigned height)
 	DescriptorSetLayouts descriptorSetLayouts = {};
 	VkPipelineLayout pipelineLayout = {};
 	VkDescriptorSet descriptorSets[DESCRIPTOR_SETS_PER_TRIANGLE];
+	memset(descriptorSets, 0, sizeof(descriptorSets));
 
 	createDescriptorSetLayouts(descriptorSetLayouts);
 	createPipelineLayout(pipelineLayout, descriptorSetLayouts);
@@ -361,8 +363,13 @@ int VulkanRenderer::initialize(unsigned width, unsigned height)
 	m_pDescriptorData = new DescriptorData();
 	m_pDescriptorData->pipelineLayout = pipelineLayout;
 	m_pDescriptorData->descriptorSetLayouts = descriptorSetLayouts;
-	m_pDescriptorData->descriptorSets = descriptorSets;
+	memcpy(m_pDescriptorData->descriptorSets, descriptorSets, sizeof(descriptorSets));
 
+	m_pNullConstantBuffer = (VulkanConstantBuffer*)makeConstantBuffer("NULL BUFFER", 0);
+	m_pNullConstantBuffer->initialize(4);
+
+	for (uint32_t i = 0; i < 7; i++)
+		m_pConstantBuffer[i] = m_pNullConstantBuffer;
 	return 0;
 }
 
@@ -445,7 +452,49 @@ void VulkanRenderer::frame()
 	VkClearValue clearValues[] = { m_ClearColor, depthClear };
 	m_VulkanCommandBuffers[m_FrameIndex].beginRenderPass(m_RenderPass, m_Swapchain.getCurrentFramebuffer(), m_Swapchain.getExtent(), clearValues, 2);
 	
-	//TODO: Draw stuff here
+	VkViewport viewport = {};
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+	viewport.width = m_Swapchain.getExtent().width;
+	viewport.height = m_Swapchain.getExtent().height;
+	m_VulkanCommandBuffers[m_FrameIndex].setViewport(viewport);
+
+	VkRect2D scissor = {};
+	scissor.extent = m_Swapchain.getExtent();
+	scissor.offset = { 0, 0 };
+	m_VulkanCommandBuffers[m_FrameIndex].setScissor(scissor);
+
+	for (auto& drawlist : m_DrawList)
+	{
+		Technique* pTechnique = drawlist.first;
+		pTechnique->enable(this);
+
+		for (auto mesh : drawlist.second)
+		{
+			size_t numberElements = mesh->geometryBuffers[0].numElements;
+		
+			/*for (auto t : mesh->textures)
+			{
+				// we do not really know here if the sampler has been
+				// defined in the shader.
+				t.second->bind(t.first);
+			}*/
+			for (auto element : mesh->geometryBuffers) 
+			{
+				mesh->bindIAVertexBuffer(element.first);
+			}
+			//mesh->txBuffer->bind(mesh->technique->getMaterial());
+			
+			this->commitState();
+
+			VkDescriptorSet descriptorSets[] = { m_pDescriptorData->descriptorSets[(m_FrameIndex * 2) + 0], m_pDescriptorData->descriptorSets[(m_FrameIndex * 2) + 1] };
+			m_VulkanCommandBuffers[m_FrameIndex].bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pDescriptorData->pipelineLayout, 0, 2, descriptorSets, 0, nullptr);
+			m_VulkanCommandBuffers[m_FrameIndex].drawInstanced(numberElements, 1, 0, 0);
+		}
+	}
+	m_DrawList.clear();
 	
 	m_VulkanCommandBuffers[m_FrameIndex].endRenderPass();
 	m_VulkanCommandBuffers[m_FrameIndex].endCommandBuffer();
@@ -670,6 +719,7 @@ void VulkanRenderer::createDescriptorSets(VkDescriptorSet descriptorSets[], Desc
 	
 	VkDescriptorSetAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.pNext = nullptr;
 	allocInfo.descriptorPool = m_VulkanDevice.getDescriptorPool();
 	allocInfo.descriptorSetCount = ARRAYSIZE(allLayouts);
 	allocInfo.pSetLayouts = allLayouts;
@@ -715,8 +765,10 @@ void VulkanRenderer::updateConstantBufferDescriptorSets()
 {
 	for (size_t i = 0; i < CONSTANT_BUFFER_DESCRIPTORS_PER_SET_BUNDLE; i++)
 	{
+		VulkanConstantBuffer* pBuffer = m_pConstantBuffer[5 + i];
+
 		VkDescriptorBufferInfo bufferInfo = {};
-		bufferInfo.buffer = m_pConstantBuffer[5 + i]->getBuffer();
+		bufferInfo.buffer = pBuffer ? m_pConstantBuffer[5 + i]->getBuffer() : VK_NULL_HANDLE;
 		bufferInfo.offset = 0;
 		bufferInfo.range = VK_WHOLE_SIZE;
 
@@ -747,7 +799,7 @@ void VulkanRenderer::updateSamplerDescriptorSets()
 	descriptorImageWrite.dstSet = m_pDescriptorData->descriptorSets[2 * m_FrameIndex + 1];
 	descriptorImageWrite.dstBinding = 0;
 	descriptorImageWrite.dstArrayElement = 0;
-	descriptorImageWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorImageWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	descriptorImageWrite.descriptorCount = 1;
 	descriptorImageWrite.pBufferInfo = nullptr;
 	descriptorImageWrite.pImageInfo = &imageInfo;

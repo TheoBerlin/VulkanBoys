@@ -6,8 +6,10 @@
 VulkanConstantBuffer::VulkanConstantBuffer(std::string NAME, unsigned int location)
     :m_Name(NAME),
     m_BufferHandle(VK_NULL_HANDLE),
-    m_BufferMemory(VK_NULL_HANDLE)
-{}
+    m_BufferMemory(VK_NULL_HANDLE),
+    m_Location(location)
+{
+}
 
 VulkanConstantBuffer::~VulkanConstantBuffer()
 {
@@ -50,5 +52,5 @@ void VulkanConstantBuffer::setData(const void* data, size_t size, Material* m, u
 
 void VulkanConstantBuffer::bind(Material* material)
 {
-    // Not needed for now, as each buffer has exclusive memory
+    m_pRenderer->setConstantBuffer(this, m_Location);
 }

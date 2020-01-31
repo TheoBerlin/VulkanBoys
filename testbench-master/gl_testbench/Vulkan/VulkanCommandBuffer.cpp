@@ -101,6 +101,16 @@ void VulkanCommandBuffer::beginRenderPass(VkRenderPass renderPass, VkFramebuffer
     vkCmdBeginRenderPass(m_CommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 }
 
+void VulkanCommandBuffer::setScissor(VkRect2D scissorRect)
+{
+    vkCmdSetScissor(m_CommandBuffer, 0, 1, &scissorRect);
+}
+
+void VulkanCommandBuffer::setViewport(VkViewport viewport)
+{
+    vkCmdSetViewport(m_CommandBuffer, 0, 1, &viewport);
+}
+
 void VulkanCommandBuffer::endRenderPass()
 {
     vkCmdEndRenderPass(m_CommandBuffer);
@@ -109,6 +119,16 @@ void VulkanCommandBuffer::endRenderPass()
 void VulkanCommandBuffer::bindPipelineState(VkPipeline pipelineState)
 {
 	vkCmdBindPipeline(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineState);
+}
+
+void VulkanCommandBuffer::bindDescriptorSet(VkPipelineBindPoint bindPoint, VkPipelineLayout pipelineLayout, uint32_t firstSet, uint32_t count, const VkDescriptorSet* pDescriptorSets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets)
+{
+    vkCmdBindDescriptorSets(m_CommandBuffer, bindPoint, pipelineLayout, firstSet, count, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets);
+}
+
+void VulkanCommandBuffer::drawInstanced(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
+{
+    vkCmdDraw(m_CommandBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
 }
 
 void VulkanCommandBuffer::endCommandBuffer()

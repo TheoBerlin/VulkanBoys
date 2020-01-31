@@ -13,7 +13,6 @@ public:
     int loadFromFile(std::string filename);
     // Does nothing, binding is performed through description sets
     void bind(unsigned int slot);
-
 private:
     VulkanRenderer* m_pRenderer;
 

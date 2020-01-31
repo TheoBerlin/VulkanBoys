@@ -21,7 +21,7 @@ public:
     void bind(Material* material);
 
 	VkBuffer getBuffer() { return m_BufferHandle; }
-	
+    uint32_t getLocation() { return m_Location; }
 private:
     std::string m_Name;
 
@@ -34,4 +34,5 @@ private:
 	VulkanDevice* m_pDevice;
 	
     VkDeviceMemory m_BufferMemory;
+    uint32_t m_Location;
 };
