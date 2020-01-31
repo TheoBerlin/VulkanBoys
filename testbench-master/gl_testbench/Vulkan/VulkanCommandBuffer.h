@@ -9,10 +9,11 @@ class VulkanCommandBuffer
 public:
     VulkanCommandBuffer();
     ~VulkanCommandBuffer();
+    void release();
 
     void initialize(VulkanDevice* device);
 
-    void release();
+    VkCommandBuffer getCommandBuffer();
 
 	void setPipelineState(VkPipeline pipelineState);
 

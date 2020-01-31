@@ -50,11 +50,20 @@ public:
 	ConstantBuffer* makeConstantBuffer(std::string NAME, unsigned int location);
 	Technique* makeTechnique(Material* pMaterial, RenderState* pRenderState);
 
+	VulkanCommandBuffer* beginSingleTimeCommands();
+	void endSingleTimeCommands(VulkanCommandBuffer* commandBuffer);
+
+	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+
 	void createBuffer(VkBuffer& buffer, VkDeviceMemory& bufferMemory, VkDeviceSize size, VkDeviceSize memoryOffset, VkMemoryPropertyFlags properties, VkBufferUsageFlags usage);
 	void setVertexBuffer(VulkanVertexBuffer* pBuffer, uint32_t slot);
 	void setConstantBuffer(VulkanConstantBuffer* pBuffer, uint32_t slot);
 	void setTexture2D(VulkanTexture2D* pTexture2D, VulkanSampler2D* pSampler2D);
 	void commitState();
+
+	void createImage(VkImage& image, VkDeviceMemory& imageMemory, unsigned int width, unsigned int height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties);
+	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+	int createTexture(VkImage& image, VkDeviceMemory& imageMemory, std::string filePath);
 
 	
 	//Renderer() { /*InitializeCriticalSection(&protectHere);*/ };

@@ -219,10 +219,10 @@ int initialiseTestbench()
 
 	// create texture
 	Texture2D* fatboy = renderer->makeTexture2D();
-	//fatboy->loadFromFile("../assets/textures/fatboy.png");
+	fatboy->loadFromFile("../assets/textures/fatboy.png");
 	Sampler2D* sampler = renderer->makeSampler2D();
 	sampler->setWrap(WRAPPING::REPEAT, WRAPPING::REPEAT);
-	//fatboy->sampler = sampler;
+	fatboy->sampler = sampler;
 
 	textures.push_back(fatboy);
 	samplers.push_back(sampler);
