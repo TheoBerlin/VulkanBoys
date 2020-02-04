@@ -69,7 +69,7 @@ std::string VulkanRenderer::getShaderExtension()
 
 ConstantBuffer* VulkanRenderer::makeConstantBuffer(std::string NAME, unsigned location)
 {
-	VulkanConstantBuffer* pConstantBuffer = new VulkanConstantBuffer(NAME, location);
+	VulkanConstantBuffer* pConstantBuffer = new VulkanConstantBuffer(NAME, location, m_FrameIndex);
 	pConstantBuffer->provideResources(this, &m_VulkanDevice);
 	m_ConstantBuffers.push_back(pConstantBuffer);
 	return pConstantBuffer;
@@ -411,6 +411,10 @@ void VulkanRenderer::present()
 {
 	m_Swapchain.present(m_RenderFinishedSemaphores[m_FrameIndex]);
 	m_FrameIndex = (m_FrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
+
+	for (VulkanConstantBuffer* pConstantBuffer : m_ConstantBuffers) {
+		pConstantBuffer->setCurrentFrame(m_FrameIndex);
+	}
 }
 
 int VulkanRenderer::shutdown()
@@ -423,7 +427,7 @@ int VulkanRenderer::shutdown()
 
 	for (auto constantBuffer : m_ConstantBuffers)
 		delete constantBuffer;
-	
+
 	m_ConstantBuffers.clear();
 
 	for (auto vertexBuffer : m_VertexBuffers)
