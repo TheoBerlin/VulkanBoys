@@ -1,6 +1,8 @@
 #include "VulkanTexture2D.h"
-
 #include "VulkanRenderer.h"
+
+//#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 VulkanTexture2D::VulkanTexture2D(VulkanRenderer* pRenderer)
     :m_pRenderer(pRenderer),
@@ -28,7 +30,21 @@ VulkanTexture2D::~VulkanTexture2D()
 
 int VulkanTexture2D::loadFromFile(std::string filename)
 {
-    return m_pRenderer->createTexture(m_TextureImage, m_TextureImageView, m_TextureImageMemory, filename);
+    int texWidth, texHeight, bpp;
+    unsigned char* pPixels = stbi_load(filename.c_str(), &texWidth, &texHeight, &bpp, STBI_rgb_alpha);
+    if (pPixels == nullptr) {
+        std::cerr << "Error loading texture file: " << filename.c_str() << std::endl;
+        return -1;
+    }
+
+    int result = loadFromMemory(pPixels, texWidth, texHeight);
+    stbi_image_free(pPixels);
+    return result;
+}
+
+int VulkanTexture2D::loadFromMemory(const void* pData, uint32_t width, uint32_t height)
+{
+    return m_pRenderer->createTexture(m_TextureImage, m_TextureImageView, m_TextureImageMemory, pData, width, height);
 }
 
 void VulkanTexture2D::bind(unsigned int slot)

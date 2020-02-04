@@ -1,8 +1,5 @@
 #include "VulkanRenderer.h"
 
-//#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-
 #include "VulkanMaterial.h"
 #include "VulkanRenderState.h"
 #include "VulkanConstantBuffer.h"
@@ -12,6 +9,8 @@
 
 #include "../Mesh.h"
 #include "../IA.h"
+
+#include <cassert>
 
 VulkanRenderer::VulkanRenderer()
 	: m_FrameIndex(0),
@@ -135,20 +134,20 @@ void VulkanRenderer::setVertexBuffer(VulkanVertexBuffer* pBuffer, uint32_t slot)
 
 void VulkanRenderer::setConstantBuffer(VulkanConstantBuffer* pBuffer, uint32_t slot)
 {
-	m_pConstantBuffer[slot] = pBuffer;
+	m_pConstantBuffer[slot] = (pBuffer != nullptr) ? pBuffer : m_pDefaultConstantBuffer;
 }
 
 void VulkanRenderer::setTexture2D(VulkanTexture2D* pTexture2D, VulkanSampler2D* pSampler2D)
 {
-	m_pTexture2D = pTexture2D;
-	m_pSampler2D = pSampler2D;
+	m_pTexture2D = (pTexture2D != nullptr) ? pTexture2D : m_pDefaultTexture2D;
+	m_pSampler2D = (pSampler2D != nullptr) ? pSampler2D : m_pDefaultSampler2D;
 }
 
 void VulkanRenderer::commitState()
 {
 	updateVertexBufferDescriptorSets();
 	updateConstantBufferDescriptorSets();
-	//updateSamplerDescriptorSets();
+	updateSamplerDescriptorSets();
 }
 
 void VulkanRenderer::createImage(VkImage& image, VkDeviceMemory& imageMemory, unsigned int width, unsigned int height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties)
@@ -318,16 +317,9 @@ int VulkanRenderer::createImageView(VkImageView& imageView, VkImage image, VkFor
 	return 0;
 }
 
-int VulkanRenderer::createTexture(VkImage& image, VkImageView& imageView, VkDeviceMemory& imageMemory, std::string filename)
+int VulkanRenderer::createTexture(VkImage& image, VkImageView& imageView, VkDeviceMemory& imageMemory, const void* pPixels, uint32_t width, uint32_t height)
 {
-	int texWidth, texHeight, bpp;
-	unsigned char* pixels = stbi_load(filename.c_str(), &texWidth, &texHeight, &bpp, STBI_rgb_alpha);
-	if (pixels == nullptr) {
-		fprintf(stderr, "Error loading texture file: %s\n", filename.c_str());
-		return -1;
-	}
-
-    VkDeviceSize imageSize = texWidth * texHeight * 4;
+    VkDeviceSize imageSize = width * height * 4;
 
 	// Create staging buffer
     VkBuffer stagingBuffer;
@@ -340,16 +332,14 @@ int VulkanRenderer::createTexture(VkImage& image, VkImageView& imageView, VkDevi
 
     void* data;
     vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
-	memcpy(data, (const void*)pixels, imageSize);
+	memcpy(data, pPixels, imageSize);
 	vkUnmapMemory(device, stagingBufferMemory);
 
-	stbi_image_free(pixels);
-
 	// Transfer staging buffer contents to the final texture buffer
-	createImage(image, imageMemory, texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	createImage(image, imageMemory, width, height, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	copyBufferToImage(stagingBuffer, image, texWidth, texHeight);
+	copyBufferToImage(stagingBuffer, image, width, height);
 	transitionImageLayout(image, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
@@ -394,11 +384,21 @@ int VulkanRenderer::initialize(unsigned width, unsigned height)
 	m_pDescriptorData->descriptorSetLayouts = descriptorSetLayouts;
 	memcpy(m_pDescriptorData->descriptorSets, descriptorSets, sizeof(descriptorSets));
 
-	m_pNullConstantBuffer = (VulkanConstantBuffer*)makeConstantBuffer("NULL BUFFER", 0);
-	m_pNullConstantBuffer->initialize(4);
-
+	m_pDefaultConstantBuffer = reinterpret_cast<VulkanConstantBuffer*>(makeConstantBuffer("NULL BUFFER", 0));
+	m_pDefaultConstantBuffer->initialize(4);
 	for (uint32_t i = 0; i < 7; i++)
-		m_pConstantBuffer[i] = m_pNullConstantBuffer;
+		m_pConstantBuffer[i] = m_pDefaultConstantBuffer;
+
+	m_pDefaultSampler2D = reinterpret_cast<VulkanSampler2D*>(makeSampler2D());
+	m_pDefaultSampler2D->setWrap(WRAPPING::REPEAT, WRAPPING::REPEAT);
+	m_pDefaultSampler2D->setMinFilter(FILTER::POINT_SAMPLER);
+	m_pDefaultSampler2D->setMagFilter(FILTER::POINT_SAMPLER);
+	m_pSampler2D = m_pDefaultSampler2D;
+
+	uint8_t pixels[] = { 255, 255, 255, 255 };
+	m_pDefaultTexture2D = reinterpret_cast<VulkanTexture2D*>(makeTexture2D());
+	m_pDefaultTexture2D->loadFromMemory(pixels, 1, 1);
+	m_pTexture2D = m_pDefaultTexture2D;
 	return 0;
 }
 
@@ -824,12 +824,13 @@ void VulkanRenderer::updateVertexBufferDescriptorSets()
 	for (size_t i = 0; i < VERTEX_BUFFER_DESCRIPTORS_PER_SET_BUNDLE; i++)
 	{
 		//Cache buffer
-		VulkanVertexBuffer* buffer = m_pVertexBuffers[i];
+		VulkanVertexBuffer* pBuffer = m_pVertexBuffers[i];
+		assert(pBuffer != nullptr);
 
 		VkDescriptorBufferInfo bufferInfo = {};
-		bufferInfo.buffer = buffer->getBuffer();
-		bufferInfo.offset = buffer->getOffset();
-		bufferInfo.range = buffer->getBoundSize();;
+		bufferInfo.buffer	= pBuffer->getBuffer();
+		bufferInfo.offset	= pBuffer->getOffset();
+		bufferInfo.range	= pBuffer->getBoundSize();
 
 		VkWriteDescriptorSet descriptorBufferWrite = {};
 		descriptorBufferWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -851,11 +852,12 @@ void VulkanRenderer::updateConstantBufferDescriptorSets()
 	for (size_t i = 0; i < CONSTANT_BUFFER_DESCRIPTORS_PER_SET_BUNDLE; i++)
 	{
 		VulkanConstantBuffer* pBuffer = m_pConstantBuffer[5 + i];
+		assert(pBuffer != nullptr);
 
 		VkDescriptorBufferInfo bufferInfo = {};
-		bufferInfo.buffer = pBuffer ? m_pConstantBuffer[5 + i]->getBuffer() : VK_NULL_HANDLE;
-		bufferInfo.offset = 0;
-		bufferInfo.range = VK_WHOLE_SIZE;
+		bufferInfo.buffer	= pBuffer->getBuffer();
+		bufferInfo.offset	= 0;
+		bufferInfo.range	= VK_WHOLE_SIZE;
 
 		VkWriteDescriptorSet descriptorBufferWrite = {};
 		descriptorBufferWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -874,10 +876,13 @@ void VulkanRenderer::updateConstantBufferDescriptorSets()
 
 void VulkanRenderer::updateSamplerDescriptorSets()
 {
+	assert(m_pTexture2D != nullptr);
+	assert(m_pSampler2D != nullptr);
+
 	VkDescriptorImageInfo imageInfo = {};
-	imageInfo.imageView = nullptr; //Todo: Fixa grejer
-	imageInfo.sampler = nullptr; //Todo: Fixa grejer
-	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	imageInfo.imageView		= m_pTexture2D->getImageView();
+	imageInfo.sampler		= m_pSampler2D->getSampler();
+	imageInfo.imageLayout	= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 	VkWriteDescriptorSet descriptorImageWrite = {};
 	descriptorImageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
