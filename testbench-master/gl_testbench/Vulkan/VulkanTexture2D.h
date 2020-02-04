@@ -11,8 +11,12 @@ public:
     ~VulkanTexture2D();
 
     int loadFromFile(std::string filename);
-    // Does nothing, binding is performed through description sets
+    int loadFromMemory(const void* pData, uint32_t width, uint32_t height);
+
     void bind(unsigned int slot);
+
+    VkImage getImage() const { return m_TextureImage; }
+    VkImageView getImageView() const { return m_TextureImageView; }
 private:
     VulkanRenderer* m_pRenderer;
 
