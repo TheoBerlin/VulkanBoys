@@ -118,10 +118,14 @@ void updateScene()
 void renderScene()
 {
 	renderer->clearBuffer(CLEAR_BUFFER_FLAGS::COLOR | CLEAR_BUFFER_FLAGS::DEPTH);
-	for (auto m : scene)
+	
+	renderer->submit(scene[0]);
+
+	/*for (auto m : scene)
 	{
 		renderer->submit(m);
-	}
+	}*/
+
 	renderer->frame();
 	renderer->present();
 	updateDelta();

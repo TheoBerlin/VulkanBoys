@@ -541,13 +541,13 @@ void VulkanRenderer::frame()
 			}
 			mesh->txBuffer->bind(mesh->technique->getMaterial());
 			
+			VkDescriptorSet* descriptorSets = m_pDescriptorData->descriptorSets + (m_FrameIndex * 2);
+			allocateFrameDescriptors(descriptorSets, m_pDescriptorData->descriptorSetLayouts);
+			
 			this->commitState();
 
-			VkDescriptorSet* descriptorSets = m_pDescriptorData->descriptorSets + (m_FrameIndex * 2);
 			m_VulkanCommandBuffers[m_FrameIndex].bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pDescriptorData->pipelineLayout, 0, 2, descriptorSets, 0, nullptr);
 			m_VulkanCommandBuffers[m_FrameIndex].drawInstanced(numberElements, 1, 0, 0);
-
-			allocateFrameDescriptors(descriptorSets, m_pDescriptorData->descriptorSetLayouts);
 		}
 	}
 	m_DrawList.clear();
