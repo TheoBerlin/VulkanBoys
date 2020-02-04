@@ -297,7 +297,16 @@ void VulkanDevice::initializeDescriptorPool(uint32_t frameIndex, uint32_t vertex
 
 	if (vkCreateDescriptorPool(m_Device, &poolInfo, nullptr, &m_DescriptorPools[frameIndex]) != VK_SUCCESS)
 	{
-		throw std::runtime_error("Failed to create Descriptor Pool!");
+		std::cout << "Failed to create Descriptor Pool" << std::endl;
+	}
+	else
+	{
+		std::cout << "Created descriptorpool." <<
+			"  sets="				<< descriptorSetCount << 
+			", storagebuffers="		<< vertexBufferDescriptorCount << 
+			", uniformBuffers="		<< constantBufferDescriptorCount << 
+			", imageSamplers="		<< samplerDescriptorCount 
+			<< std::endl;
 	}
 }
 
