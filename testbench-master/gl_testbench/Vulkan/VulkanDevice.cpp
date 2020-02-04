@@ -4,7 +4,8 @@
 
 const std::vector<const char*> VulkanDevice::s_ValidationLayers = 
 {
-	"VK_LAYER_KHRONOS_validation"
+	"VK_LAYER_KHRONOS_validation",
+	"VK_LAYER_RENDERDOC_Capture"
 };
 
 const std::vector<const char*> VulkanDevice::s_RequiredInstanceExtensions =

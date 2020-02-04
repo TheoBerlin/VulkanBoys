@@ -41,16 +41,20 @@ void VulkanVertexBuffer::setData(const void* data, size_t size, size_t offset)
 	vkDeviceWaitIdle(device);
 
 	uint64_t alignment = m_pRenderer->getDevice()->getPhysicalDeviceProperties().limits.minStorageBufferOffsetAlignment;
-	uint64_t dataWriteAddress = ((m_DataStartAddress + offset) + (alignment - 1)) & -alignment;
+	uint64_t padding = (-offset & (alignment - 1));
+	uint64_t newOffset = (offset / size) * (size + padding);
+	uint64_t dataWriteAddress = ((m_DataStartAddress + newOffset) + (alignment - 1)) & -alignment;
 	
 	const uint8_t* pData = (const uint8_t*)data;
-	memcpy((void*)dataWriteAddress, pData + offset, size);
+	memcpy((void*)dataWriteAddress, pData, size);
 }
 
 void VulkanVertexBuffer::bind(size_t offset, size_t size, unsigned int location)
 {
 	uint64_t alignment = m_pRenderer->getDevice()->getPhysicalDeviceProperties().limits.minStorageBufferOffsetAlignment;
-	m_Offset = (offset + (alignment - 1)) & -alignment;
+	uint64_t padding = (-offset & (alignment - 1));
+	uint64_t newOffset = (offset / size) * (size + padding);
+	m_Offset = (((offset / size) * (size + padding)) + (alignment - 1)) & -alignment;
 	m_Location = location;
 	m_BoundSize = size;
 	m_pRenderer->setVertexBuffer(this, m_Location);

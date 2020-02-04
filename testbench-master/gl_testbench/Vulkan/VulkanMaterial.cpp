@@ -76,6 +76,11 @@ void VulkanMaterial::updateConstantBuffer(const void* data, size_t size, unsigne
 
 int VulkanMaterial::enable()
 {
+	for (auto buffer : m_ConstantBuffers)
+	{
+		buffer.second->bind(this);
+	}
+	
 	return 0;
 }
 

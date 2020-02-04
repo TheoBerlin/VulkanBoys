@@ -74,8 +74,8 @@ void VulkanRenderState::finalize(VulkanMaterial* pMaterial, VkRenderPass renderP
     rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizer.polygonMode = m_WireFrame ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth    = 1.0f;
-    rasterizer.cullMode     = VK_CULL_MODE_BACK_BIT;
-    rasterizer.frontFace    = VK_FRONT_FACE_CLOCKWISE;
+    rasterizer.cullMode     = VK_CULL_MODE_NONE;
+    rasterizer.frontFace    = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable  = VK_FALSE;
     rasterizer.depthClampEnable = VK_FALSE;
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
@@ -124,7 +124,7 @@ void VulkanRenderState::finalize(VulkanMaterial* pMaterial, VkRenderPass renderP
     depthStencil.depthCompareOp     = VK_COMPARE_OP_LESS;
     depthStencil.depthBoundsTestEnable  = VK_FALSE;
     depthStencil.stencilTestEnable      = VK_FALSE;
-    depthStencil.minDepthBounds = 0.0f;
+    depthStencil.minDepthBounds = -1.0f;
     depthStencil.maxDepthBounds = 1.0f;
     depthStencil.front  = {};
     depthStencil.back   = {};

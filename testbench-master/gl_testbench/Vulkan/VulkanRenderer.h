@@ -82,6 +82,8 @@ public:
 	void frame();
 
 	VulkanDevice* getDevice() { return &m_VulkanDevice; }
+	VulkanCommandBuffer& getCurrentCommandBuffer() { return m_VulkanCommandBuffers[m_FrameIndex]; }
+	
 private:
 	void initializeRenderPass();
 	void createSemaphores();

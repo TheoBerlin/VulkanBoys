@@ -3,10 +3,12 @@
 
 #include "Vulkan/vulkan.h"
 
+class VulkanCommandBuffer;
 class VulkanRenderer;
 class VulkanDevice;
 
-struct PerFrameResources {
+struct PerFrameStagingBuffers
+{
     VkBuffer m_BufferHandle;
     VkDeviceMemory m_BufferMemory;
 };
@@ -24,9 +26,10 @@ public:
     void initialize(VkDeviceSize size);
 
     void setData(const void* data, size_t size, Material* m, unsigned int location);
+	void copyToBuffer(VulkanCommandBuffer* pCommandBuffer);
     void bind(Material* material);
 
-	VkBuffer getBuffer() { return m_PerFrameResources[m_CurrentFrame].m_BufferHandle; }
+	VkBuffer getBuffer() { return m_BufferHandle; }
     uint32_t getLocation() { return m_Location; }
 
     void setCurrentFrame(unsigned int frame) { m_CurrentFrame = frame; }
@@ -34,8 +37,12 @@ public:
 private:
     std::string m_Name;
     uint32_t m_Location;
+	uint32_t m_Size;
+	bool m_IsDirty;
 
-    PerFrameResources m_PerFrameResources[MAX_FRAMES_IN_FLIGHT];
+    PerFrameStagingBuffers m_PerFrameStagingBuffers[MAX_FRAMES_IN_FLIGHT];
+	VkBuffer m_BufferHandle;
+	VkDeviceMemory m_BufferMemory;
 
     VulkanRenderer* m_pRenderer;
 	VulkanDevice* m_pDevice;

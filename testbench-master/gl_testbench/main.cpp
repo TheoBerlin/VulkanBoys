@@ -119,12 +119,15 @@ void renderScene()
 {
 	renderer->clearBuffer(CLEAR_BUFFER_FLAGS::COLOR | CLEAR_BUFFER_FLAGS::DEPTH);
 	
-	renderer->submit(scene[0]);
+	//renderer->submit(scene[0]);
+	//renderer->submit(scene[1]);
+	//renderer->submit(scene[2]);
+	//renderer->submit(scene[3]);
 
-	/*for (auto m : scene)
+	for (auto m : scene)
 	{
 		renderer->submit(m);
-	}*/
+	}
 
 	renderer->frame();
 	renderer->present();

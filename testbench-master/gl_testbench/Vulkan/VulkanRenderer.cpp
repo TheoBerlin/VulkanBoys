@@ -499,6 +499,11 @@ void VulkanRenderer::frame()
 	m_VulkanDevice.cleanDescriptorPools(m_FrameIndex);
 	m_VulkanCommandBuffers[m_FrameIndex].beginCommandBuffer();
 
+	for (auto& constantBuffer : m_ConstantBuffers)
+	{
+		constantBuffer->copyToBuffer(&m_VulkanCommandBuffers[m_FrameIndex]);
+	}
+	
 	VkClearValue depthClear = {};
 	depthClear.depthStencil.depth = 1.0f;
 	depthClear.depthStencil.stencil = 0;
@@ -788,7 +793,7 @@ void VulkanRenderer::createDescriptorSets(VkDescriptorSet descriptorSets[], Desc
 		else
 		{
 			m_AllocatedSets[i]++;
-			std::cout << "Allocated DescriptorSets " << m_AllocatedSets[i] << std::endl;
+			//std::cout << "Allocated DescriptorSets " << m_AllocatedSets[i] << std::endl;
 		}
 	}
 }
@@ -816,7 +821,7 @@ void VulkanRenderer::allocateFrameDescriptors(VkDescriptorSet descriptorSets[], 
 	else
 	{
 		m_AllocatedSets[m_FrameIndex]++;
-		std::cout << "Allocated DescriptorSets " << m_AllocatedSets[m_FrameIndex] << " on frame " << m_FrameIndex << std::endl;
+		//std::cout << "Allocated DescriptorSets " << m_AllocatedSets[m_FrameIndex] << " on frame " << m_FrameIndex << std::endl;
 	}
 
 	if (m_AllocatedSets[m_FrameIndex] >= (MAX_NUM_DESCRIPTOR_SETS / 2) - 3)

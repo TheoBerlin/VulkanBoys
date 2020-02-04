@@ -47,5 +47,5 @@ void main() {
 		uv_out = uv_in[gl_VertexIndex];
 	#endif
 
-	gl_Position = position_in[gl_VertexIndex] + translate;
+	gl_Position = position_in[gl_VertexIndex] * vec4(1, -1, 1, 1) + translate;
 }
