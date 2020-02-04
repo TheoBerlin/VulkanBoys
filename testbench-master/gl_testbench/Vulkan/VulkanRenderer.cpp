@@ -418,6 +418,9 @@ int VulkanRenderer::shutdown()
 	if (m_VulkanDevice.getDevice() != VK_NULL_HANDLE)
 		vkDeviceWaitIdle(m_VulkanDevice.getDevice());
 
+	delete m_pDefaultTexture2D;
+	delete m_pDefaultSampler2D;
+
 	for (auto constantBuffer : m_ConstantBuffers)
 		delete constantBuffer;
 	
