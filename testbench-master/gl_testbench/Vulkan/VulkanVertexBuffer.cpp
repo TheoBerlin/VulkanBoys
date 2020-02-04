@@ -48,6 +48,9 @@ void VulkanVertexBuffer::setData(const void* data, size_t size, size_t offset)
 void VulkanVertexBuffer::bind(size_t offset, size_t size, unsigned int location)
 {
 	m_Offset = offset;
+
+	std::cout << "--------------------------------Offset: " << m_Offset << std::endl;
+	
 	m_Location = location;
 	m_BoundSize = size;
 	m_pRenderer->setVertexBuffer(this, m_Location);
@@ -55,7 +58,7 @@ void VulkanVertexBuffer::bind(size_t offset, size_t size, unsigned int location)
 
 void VulkanVertexBuffer::unbind()
 {
-	m_pRenderer->setVertexBuffer(this, m_Location);
+	m_pRenderer->setVertexBuffer(nullptr, m_Location);
 	m_BoundSize = 0;
 	m_Location = 0;
 	m_Offset = 0;

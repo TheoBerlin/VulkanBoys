@@ -15,6 +15,8 @@ public:
 	virtual void setMagFilter(FILTER filter) override;
 	virtual void setMinFilter(FILTER filter) override;
 	virtual void setWrap(WRAPPING s, WRAPPING t) override;
+
+	VkSampler getSampler() const { return m_Sampler; }
 private:
 	void destroySampler();
 	void finalize();

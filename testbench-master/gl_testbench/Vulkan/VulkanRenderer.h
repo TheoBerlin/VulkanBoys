@@ -64,7 +64,7 @@ public:
 	void createImage(VkImage& image, VkDeviceMemory& imageMemory, unsigned int width, unsigned int height, VkFormat format, VkImageUsageFlags usage, VkMemoryPropertyFlags properties);
 	void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 	int createImageView(VkImageView& imageView, VkImage image, VkFormat format);
-	int createTexture(VkImage& image, VkImageView& imageView, VkDeviceMemory& imageMemory, std::string filePath);
+	int createTexture(VkImage& image, VkImageView& imageView, VkDeviceMemory& imageMemory, const void* pPixels, uint32_t width, uint32_t height);
 
 	
 	//Renderer() { /*InitializeCriticalSection(&protectHere);*/ };
@@ -108,9 +108,9 @@ private:
 
 	DescriptorData* m_pDescriptorData;
 
-	VulkanConstantBuffer* m_pNullConstantBuffer;
-	VulkanTexture2D* m_pNullTexture2D;
-	VulkanSampler2D* m_pNullSampler2D;
+	VulkanConstantBuffer* m_pDefaultConstantBuffer;
+	VulkanTexture2D* m_pDefaultTexture2D;
+	VulkanSampler2D* m_pDefaultSampler2D;
 
 	VulkanVertexBuffer* m_pVertexBuffers[3];
 	VulkanConstantBuffer* m_pConstantBuffer[7];
