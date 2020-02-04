@@ -59,19 +59,50 @@ void VulkanDevice::initialize(const char applicationName[], uint32_t vertexBuffe
 	initializeDebugMessenger();
 	initializePhysicalDevice();
 	initializeLogicalDevice();
-	initializeDescriptorPool(vertexBufferDescriptorCount, constantBufferDescriptorCount, samplerDescriptorCount, descriptorSetCount);
+
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+		initializeDescriptorPool(i, vertexBufferDescriptorCount, constantBufferDescriptorCount, samplerDescriptorCount, descriptorSetCount);
 
 	vkGetPhysicalDeviceProperties(m_PhysicalDevice, &m_PhysicalDeviceProperties);
 }
 
-void VulkanDevice::reallocDescriptorPool()
+void VulkanDevice::cleanDescriptorPools(uint32_t frameIndex)
 {
-	m_GarbageDescriptorPools.push_back(m_DescriptorPool);
-	initializeDescriptorPool(MAX_NUM_STORAGE_DESCRIPTORS, MAX_NUM_UNIFORM_DESCRIPTORS, MAX_NUM_SAMPLER_DESCRIPTORS, MAX_NUM_DESCRIPTOR_SETS);
-
-	/*if (m_GarbageDescriptorPools.size() > 128)
+	for (VkDescriptorPool& descriptorPool : m_GarbageDescriptorPools[frameIndex])
 	{
-		for (VkDescriptorPool& descriptorPool : m_GarbageDescriptorPools)
+		if (descriptorPool != VK_NULL_HANDLE)
+		{
+			vkDestroyDescriptorPool(m_Device, descriptorPool, nullptr);
+			descriptorPool = VK_NULL_HANDLE;
+		}
+	}
+
+	m_GarbageDescriptorPools[frameIndex].clear();
+}
+
+void VulkanDevice::reallocDescriptorPool(uint32_t frameIndex)
+{
+	m_GarbageDescriptorPools[frameIndex].push_back(m_DescriptorPools[frameIndex]);
+	initializeDescriptorPool(frameIndex, MAX_NUM_STORAGE_DESCRIPTORS, MAX_NUM_UNIFORM_DESCRIPTORS, MAX_NUM_SAMPLER_DESCRIPTORS, MAX_NUM_DESCRIPTOR_SETS);
+}
+
+void VulkanDevice::release()
+{
+	if (m_Device != VK_NULL_HANDLE)
+		vkDeviceWaitIdle(m_Device);
+
+	for (auto& descriptorPool : m_DescriptorPools)
+	{
+		if (descriptorPool != VK_NULL_HANDLE)
+		{
+			vkDestroyDescriptorPool(m_Device, descriptorPool, nullptr);
+			descriptorPool = VK_NULL_HANDLE;
+		}
+	}
+
+	for (auto& garbageDescriptorPools : m_GarbageDescriptorPools)
+	{
+		for (VkDescriptorPool& descriptorPool : garbageDescriptorPools)
 		{
 			if (descriptorPool != VK_NULL_HANDLE)
 			{
@@ -80,28 +111,7 @@ void VulkanDevice::reallocDescriptorPool()
 			}
 		}
 
-		m_GarbageDescriptorPools.clear();
-	}*/
-}
-
-void VulkanDevice::release()
-{
-	if (m_Device != VK_NULL_HANDLE)
-		vkDeviceWaitIdle(m_Device);
-	
-	if (m_DescriptorPool != VK_NULL_HANDLE)
-	{
-		vkDestroyDescriptorPool(m_Device, m_DescriptorPool, nullptr);
-		m_DescriptorPool = VK_NULL_HANDLE;
-	}
-
-	for (VkDescriptorPool& descriptorPool : m_GarbageDescriptorPools)
-	{
-		if (descriptorPool != VK_NULL_HANDLE)
-		{
-			vkDestroyDescriptorPool(m_Device, descriptorPool, nullptr);
-			descriptorPool = VK_NULL_HANDLE;
-		}
+		garbageDescriptorPools.clear();
 	}
 	
 	if (m_Device != VK_NULL_HANDLE)
@@ -263,7 +273,7 @@ void VulkanDevice::initializeDebugMessenger()
 	}
 }
 
-void VulkanDevice::initializeDescriptorPool(uint32_t vertexBufferDescriptorCount, uint32_t constantBufferDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount)
+void VulkanDevice::initializeDescriptorPool(uint32_t frameIndex, uint32_t vertexBufferDescriptorCount, uint32_t constantBufferDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount)
 {
 	VkDescriptorPoolSize poolSizes[3];
 	
@@ -285,7 +295,7 @@ void VulkanDevice::initializeDescriptorPool(uint32_t vertexBufferDescriptorCount
 	poolInfo.pPoolSizes = poolSizes;
 	poolInfo.maxSets = descriptorSetCount;
 
-	if (vkCreateDescriptorPool(m_Device, &poolInfo, nullptr, &m_DescriptorPool) != VK_SUCCESS) 
+	if (vkCreateDescriptorPool(m_Device, &poolInfo, nullptr, &m_DescriptorPools[frameIndex]) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Failed to create Descriptor Pool!");
 	}
