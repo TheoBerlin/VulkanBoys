@@ -754,9 +754,9 @@ void VulkanRenderer::createPipelineLayout(VkPipelineLayout& pipelineLayout, Desc
 
 void VulkanRenderer::createDescriptorSets(VkDescriptorSet descriptorSets[], DescriptorSetLayouts& descriptorSetLayouts)
 {
-	m_AllocatedSets[0] = 1;
-	m_AllocatedSets[1] = 1;
-	m_AllocatedSets[2] = 1;
+	m_AllocatedSets[0] = 2;
+	m_AllocatedSets[1] = 2;
+	m_AllocatedSets[2] = 2;
 	
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
@@ -809,7 +809,7 @@ void VulkanRenderer::allocateFrameDescriptors(VkDescriptorSet descriptorSets[], 
 	else
 	{
 		m_AllocatedSets[m_FrameIndex]++;
-		std::cout << "Allocated DescriptorSets " << m_AllocatedSets[m_FrameIndex] << std::endl;
+		std::cout << "Allocated DescriptorSets " << m_AllocatedSets[m_FrameIndex] << " on frame " << m_FrameIndex << std::endl;
 	}
 
 	if (m_AllocatedSets[m_FrameIndex] >= (MAX_NUM_DESCRIPTOR_SETS / 2) - 3)
