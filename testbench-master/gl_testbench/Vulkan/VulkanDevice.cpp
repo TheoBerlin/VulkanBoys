@@ -4,8 +4,7 @@
 
 const std::vector<const char*> VulkanDevice::s_ValidationLayers = 
 {
-	"VK_LAYER_KHRONOS_validation",
-	"VK_LAYER_RENDERDOC_Capture"
+	"VK_LAYER_KHRONOS_validation"
 };
 
 const std::vector<const char*> VulkanDevice::s_RequiredInstanceExtensions =
@@ -302,12 +301,12 @@ void VulkanDevice::initializeDescriptorPool(uint32_t frameIndex, uint32_t vertex
 	}
 	else
 	{
-		std::cout << "Created descriptorpool." <<
+		/*std::cout << "Created descriptorpool." <<
 			"  sets="				<< descriptorSetCount << 
 			", storagebuffers="		<< vertexBufferDescriptorCount << 
 			", uniformBuffers="		<< constantBufferDescriptorCount << 
 			", imageSamplers="		<< samplerDescriptorCount 
-			<< std::endl;
+			<< std::endl;*/
 	}
 }
 

@@ -37,5 +37,5 @@ void main() {
 	#endif
 
 	gl_Position = position_in[gl_VertexIndex] * vec4(1, -1, 1, 1) + translate;
-	gl_Position.z = 0;
+	gl_Position.z = (gl_Position.z + gl_Position.w) / 2.0;
 }
