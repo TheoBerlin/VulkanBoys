@@ -60,6 +60,8 @@ void VulkanDevice::initialize(const char applicationName[], uint32_t vertexBuffe
 	initializePhysicalDevice();
 	initializeLogicalDevice();
 	initializeDescriptorPool(vertexBufferDescriptorCount, constantBufferDescriptorCount, samplerDescriptorCount, descriptorSetCount);
+
+	vkGetPhysicalDeviceProperties(m_PhysicalDevice, &m_PhysicalDeviceProperties);
 }
 
 void VulkanDevice::reallocDescriptorPool()

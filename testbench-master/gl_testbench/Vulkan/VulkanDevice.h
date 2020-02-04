@@ -38,6 +38,7 @@ public:
 	void release();
 
 	VkInstance getInstance() { return m_VKInstance; }
+	const VkPhysicalDeviceProperties& getPhysicalDeviceProperties() { return m_PhysicalDeviceProperties; }
 	VkPhysicalDevice getPhysicalDevice() { return m_PhysicalDevice; }
 	VkDevice getDevice() { return m_Device; }
 	QueueFamilyIndices getQueueFamilyIndices() { return m_DeviceQueueFamilyIndices; }
@@ -72,7 +73,8 @@ private:
 	
 private:
 	VkInstance m_VKInstance;
-	
+
+	VkPhysicalDeviceProperties m_PhysicalDeviceProperties;
 	VkPhysicalDevice m_PhysicalDevice;
 	VkDevice m_Device;
 	
