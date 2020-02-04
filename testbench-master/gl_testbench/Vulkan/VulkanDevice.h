@@ -8,6 +8,7 @@
 #include <map>
 #include <optional>
 
+#include "Common.h"
 #include "../ConsoleHelper.h"
 
 #ifdef NDEBUG
@@ -34,7 +35,8 @@ public:
 	~VulkanDevice();
 
 	void initialize(const char applicationName[], uint32_t vertexBufferDescriptorCount, uint32_t constantBufferDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount);
-	void reallocDescriptorPool();
+	void cleanDescriptorPools(uint32_t frameIndex);
+	void reallocDescriptorPool(uint32_t frameIndex);
 	void release();
 
 	VkInstance getInstance() { return m_VKInstance; }
@@ -46,14 +48,14 @@ public:
 	VkQueue getGraphicsQueue() { return m_GraphicsQueue; }
 	VkQueue getPresentQueue() { return m_PresentQueue; }
 
-	VkDescriptorPool getDescriptorPool() { return m_DescriptorPool; }
+	VkDescriptorPool getDescriptorPool(uint32_t frameIndex) { return m_DescriptorPools[frameIndex]; }
 
 private:
 	void initializeInstance(const char applicationName[]);
 	void initializePhysicalDevice();
 	void initializeLogicalDevice();
 	void initializeDebugMessenger();
-	void initializeDescriptorPool(uint32_t vertexBufferDescriptorCount, uint32_t constantBufferDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount);
+	void initializeDescriptorPool(uint32_t frameIndex, uint32_t vertexBufferDescriptorCount, uint32_t constantBufferDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount);
 	
 	void listSupportedInstanceExtensions();
 	bool validationLayersSupported();
@@ -85,8 +87,8 @@ private:
 
 	VkDebugUtilsMessengerEXT m_DebugMessenger;
 
-	VkDescriptorPool m_DescriptorPool;
-	std::vector<VkDescriptorPool> m_GarbageDescriptorPools;
+	VkDescriptorPool m_DescriptorPools[MAX_FRAMES_IN_FLIGHT];
+	std::vector<VkDescriptorPool> m_GarbageDescriptorPools[MAX_FRAMES_IN_FLIGHT];
 private:
 	static const std::vector<const char*> s_ValidationLayers;
 	static const std::vector<const char*> s_RequiredInstanceExtensions;

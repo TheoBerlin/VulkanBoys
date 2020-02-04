@@ -107,6 +107,7 @@ private:
 	std::vector<VkSemaphore> m_RenderFinishedSemaphores;
 
 	DescriptorData* m_pDescriptorData;
+	uint64_t m_AllocatedSets[3];
 
 	VulkanConstantBuffer* m_pDefaultConstantBuffer;
 	VulkanTexture2D* m_pDefaultTexture2D;

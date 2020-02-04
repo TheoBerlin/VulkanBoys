@@ -489,8 +489,7 @@ void VulkanRenderer::frame()
 	m_Swapchain.acquireNextImage(m_ImageAvailableSemaphores[m_FrameIndex]);
 
 	m_VulkanCommandBuffers[m_FrameIndex].reset();
-	//TODO: Call clean garbage
-
+	m_VulkanDevice.cleanDescriptorPools(m_FrameIndex);
 	m_VulkanCommandBuffers[m_FrameIndex].beginCommandBuffer();
 
 	VkClearValue depthClear = {};
@@ -755,39 +754,40 @@ void VulkanRenderer::createPipelineLayout(VkPipelineLayout& pipelineLayout, Desc
 
 void VulkanRenderer::createDescriptorSets(VkDescriptorSet descriptorSets[], DescriptorSetLayouts& descriptorSetLayouts)
 {
-	VkDescriptorSetLayout allLayouts[] =
-	{
-		descriptorSetLayouts.vertexAndConstantBufferDescriptorSetLayout, //Frame 0
-		descriptorSetLayouts.textureDescriptorSetLayout,
-		
-		descriptorSetLayouts.vertexAndConstantBufferDescriptorSetLayout, //Frame 1
-		descriptorSetLayouts.textureDescriptorSetLayout,
-		
-		descriptorSetLayouts.vertexAndConstantBufferDescriptorSetLayout, //Frame 2
-		descriptorSetLayouts.textureDescriptorSetLayout
-	};
+	m_AllocatedSets[0] = 1;
+	m_AllocatedSets[1] = 1;
+	m_AllocatedSets[2] = 1;
 	
-	VkDescriptorSetAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocInfo.pNext = nullptr;
-	allocInfo.descriptorPool = m_VulkanDevice.getDescriptorPool();
-	allocInfo.descriptorSetCount = ARRAYSIZE(allLayouts);
-	allocInfo.pSetLayouts = allLayouts;
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		VkDescriptorSetLayout allLayouts[] =
+		{
+			descriptorSetLayouts.vertexAndConstantBufferDescriptorSetLayout, //Frame 0
+			descriptorSetLayouts.textureDescriptorSetLayout,
+		};
+		uint32_t count = ARRAYSIZE(allLayouts);
 
-	if (vkAllocateDescriptorSets(m_VulkanDevice.getDevice(), &allocInfo, descriptorSets) != VK_SUCCESS)
-	{
-		std::cout << "Failed to allocate DescriptorSets" << std::endl;
-	}
-	else
-	{
-		std::cout << "Allocated DescriptorSets" << std::endl;
+		VkDescriptorSetAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.pNext = nullptr;
+		allocInfo.descriptorPool = m_VulkanDevice.getDescriptorPool(i);
+		allocInfo.descriptorSetCount = count;
+		allocInfo.pSetLayouts = allLayouts;
+
+		if (vkAllocateDescriptorSets(m_VulkanDevice.getDevice(), &allocInfo, &descriptorSets[i * count]) != VK_SUCCESS)
+		{
+			std::cout << "Failed to allocate DescriptorSets" << std::endl;
+		}
+		else
+		{
+			m_AllocatedSets[i]++;
+			std::cout << "Allocated DescriptorSets " << m_AllocatedSets[i] << std::endl;
+		}
 	}
 }
 
 void VulkanRenderer::allocateFrameDescriptors(VkDescriptorSet descriptorSets[], DescriptorSetLayouts& descriptorSetLayouts)
 {
-	static uint64_t allocatedSets = 0;
-
 	VkDescriptorSetLayout allLayouts[] =
 	{
 		descriptorSetLayouts.vertexAndConstantBufferDescriptorSetLayout, //Frame 0
@@ -798,7 +798,7 @@ void VulkanRenderer::allocateFrameDescriptors(VkDescriptorSet descriptorSets[], 
 	VkDescriptorSetAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	allocInfo.pNext = nullptr;
-	allocInfo.descriptorPool = m_VulkanDevice.getDescriptorPool();
+	allocInfo.descriptorPool = m_VulkanDevice.getDescriptorPool(m_FrameIndex);
 	allocInfo.descriptorSetCount = count;
 	allocInfo.pSetLayouts = allLayouts;
 
@@ -808,14 +808,14 @@ void VulkanRenderer::allocateFrameDescriptors(VkDescriptorSet descriptorSets[], 
 	}
 	else
 	{
-		allocatedSets++;
-		std::cout << "Allocated DescriptorSets " << allocatedSets << std::endl;
+		m_AllocatedSets[m_FrameIndex]++;
+		std::cout << "Allocated DescriptorSets " << m_AllocatedSets[m_FrameIndex] << std::endl;
 	}
 
-	if (allocatedSets >= (MAX_NUM_DESCRIPTOR_SETS / 2) - 3)
+	if (m_AllocatedSets[m_FrameIndex] >= (MAX_NUM_DESCRIPTOR_SETS / 2) - 3)
 	{
-		m_VulkanDevice.reallocDescriptorPool();
-		allocatedSets = 0;
+		m_VulkanDevice.reallocDescriptorPool(m_FrameIndex);
+		m_AllocatedSets[m_FrameIndex] = 0;
 	}
 }
 

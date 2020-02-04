@@ -5,10 +5,11 @@ VulkanVertexBuffer::VulkanVertexBuffer(VulkanRenderer* pRenderer, size_t sizeInB
 	: m_pRenderer(pRenderer),
 	m_Buffer(VK_NULL_HANDLE),
 	m_Memory(VK_NULL_HANDLE),
-	m_SizeInBytes(sizeInBytes),
 	m_Usage(usage)
 {
-	m_pRenderer->createBuffer(m_Buffer, m_Memory, sizeInBytes, 0, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	uint64_t alignment = m_pRenderer->getDevice()->getPhysicalDeviceProperties().limits.minStorageBufferOffsetAlignment;
+	m_SizeInBytes = alignment * sizeInBytes;
+	m_pRenderer->createBuffer(m_Buffer, m_Memory, m_SizeInBytes, 0, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 	void* pDataNext = nullptr;
 	vkMapMemory(pRenderer->getDevice()->getDevice(), m_Memory, 0, m_SizeInBytes, 0, (void**)&pDataNext);
 	m_DataStartAddress = (uint64_t)pDataNext;
