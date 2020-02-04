@@ -826,7 +826,7 @@ void VulkanRenderer::updateVertexBufferDescriptorSets()
 
 		VkDescriptorBufferInfo bufferInfo = {};
 		bufferInfo.buffer = buffer->getBuffer();
-		bufferInfo.offset = 0;// buffer->getOffset();
+		bufferInfo.offset = buffer->getOffset();
 		bufferInfo.range = buffer->getBoundSize();;
 
 		VkWriteDescriptorSet descriptorBufferWrite = {};
