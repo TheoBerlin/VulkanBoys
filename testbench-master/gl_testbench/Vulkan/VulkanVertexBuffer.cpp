@@ -9,6 +9,9 @@ VulkanVertexBuffer::VulkanVertexBuffer(VulkanRenderer* pRenderer, size_t sizeInB
 	m_Usage(usage)
 {
 	m_pRenderer->createBuffer(m_Buffer, m_Memory, sizeInBytes, 0, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+	void* pDataNext = nullptr;
+	vkMapMemory(pRenderer->getDevice()->getDevice(), m_Memory, 0, m_SizeInBytes, 0, (void**)&pDataNext);
+	m_DataStartAddress = (uint64_t)pDataNext;
 }
 
 VulkanVertexBuffer::~VulkanVertexBuffer()
@@ -24,6 +27,7 @@ VulkanVertexBuffer::~VulkanVertexBuffer()
 
 	if (m_Memory != VK_NULL_HANDLE)
 	{
+		vkUnmapMemory(m_pRenderer->getDevice()->getDevice(), m_Memory);
 		vkFreeMemory(m_pRenderer->getDevice()->getDevice(), m_Memory, nullptr);
 		m_Memory = VK_NULL_HANDLE;
 	}
@@ -35,22 +39,17 @@ void VulkanVertexBuffer::setData(const void* data, size_t size, size_t offset)
 	VkDevice device = m_pRenderer->getDevice()->getDevice();
 	vkDeviceWaitIdle(device);
 
-	//Write to buffer
-	uint8_t* pCpu = nullptr;
-	vkMapMemory(device, m_Memory, 0, m_SizeInBytes, 0, (void**)&pCpu);
-		
+	uint64_t alignment = m_pRenderer->getDevice()->getPhysicalDeviceProperties().limits.minStorageBufferOffsetAlignment;
+	uint64_t dataWriteAddress = ((m_DataStartAddress + offset) + (alignment - 1)) & -alignment;
+	
 	const uint8_t* pData = (const uint8_t*)data;
-	memcpy(pCpu + offset, pData + offset, size);
-
-	vkUnmapMemory(device, m_Memory);
+	memcpy((void*)dataWriteAddress, pData + offset, size);
 }
 
 void VulkanVertexBuffer::bind(size_t offset, size_t size, unsigned int location)
 {
-	m_Offset = offset;
-
-	std::cout << "--------------------------------Offset: " << m_Offset << std::endl;
-	
+	uint64_t alignment = m_pRenderer->getDevice()->getPhysicalDeviceProperties().limits.minStorageBufferOffsetAlignment;
+	m_Offset = (offset + (alignment - 1)) & -alignment;
 	m_Location = location;
 	m_BoundSize = size;
 	m_pRenderer->setVertexBuffer(this, m_Location);

@@ -24,6 +24,7 @@ public:
 private:
 	VulkanRenderer* m_pRenderer;
 	VkBuffer m_Buffer;
+	uint64_t m_DataStartAddress;
 	VkDeviceMemory m_Memory;
 	size_t m_SizeInBytes;
 	DATA_USAGE m_Usage;
