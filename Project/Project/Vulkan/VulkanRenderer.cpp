@@ -770,8 +770,7 @@ void VulkanRenderer::createDescriptorSets(VkDescriptorSet descriptorSets[], Desc
 	m_AllocatedSets[1] = 2;
 	m_AllocatedSets[2] = 2;
 	
-	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-	{
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		VkDescriptorSetLayout allLayouts[] =
 		{
 			descriptorSetLayouts.vertexAndConstantBufferDescriptorSetLayout, //Frame 0
@@ -786,12 +785,9 @@ void VulkanRenderer::createDescriptorSets(VkDescriptorSet descriptorSets[], Desc
 		allocInfo.descriptorSetCount = count;
 		allocInfo.pSetLayouts = allLayouts;
 
-		if (vkAllocateDescriptorSets(m_VulkanDevice.getDevice(), &allocInfo, &descriptorSets[i * count]) != VK_SUCCESS)
-		{
+		if (vkAllocateDescriptorSets(m_VulkanDevice.getDevice(), &allocInfo, &descriptorSets[i * count]) != VK_SUCCESS) {
 			std::cout << "Failed to allocate DescriptorSets" << std::endl;
-		}
-		else
-		{
+		} else {
 			m_AllocatedSets[i]++;
 			//std::cout << "Allocated DescriptorSets " << m_AllocatedSets[i] << std::endl;
 		}
