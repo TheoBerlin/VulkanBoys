@@ -4,4 +4,4 @@
 *.filters
 *.user
 *.enc
-Project/.DS_Store
+*.DS_Store
