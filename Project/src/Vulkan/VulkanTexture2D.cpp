@@ -1,7 +1,6 @@
 #include "VulkanTexture2D.h"
 #include "VulkanRenderer.h"
 
-//#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 VulkanTexture2D::VulkanTexture2D(VulkanRenderer* pRenderer)

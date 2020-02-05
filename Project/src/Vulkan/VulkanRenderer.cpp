@@ -350,13 +350,13 @@ int VulkanRenderer::createTexture(VkImage& image, VkImageView& imageView, VkDevi
 
 int VulkanRenderer::initialize(unsigned width, unsigned height)
 {
-	if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
+	/*if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
 	{
 		fprintf(stderr, "%s", SDL_GetError());
 		exit(-1);
 	}
 
-	m_pWindow = SDL_CreateWindow("Vulkan", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL);
+	m_pWindow = SDL_CreateWindow("Vulkan", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL);*/
 	
 	m_VulkanDevice.initialize("Prankster", MAX_NUM_STORAGE_DESCRIPTORS, MAX_NUM_UNIFORM_DESCRIPTORS, MAX_NUM_SAMPLER_DESCRIPTORS, MAX_NUM_DESCRIPTOR_SETS);
 
@@ -364,7 +364,7 @@ int VulkanRenderer::initialize(unsigned width, unsigned height)
 
 	createSemaphores();
 	
-	m_Swapchain.initialize(&m_VulkanDevice, m_pWindow, m_RenderPass, VK_FORMAT_B8G8R8A8_UNORM, MAX_FRAMES_IN_FLIGHT, true);
+	//m_Swapchain.initialize(&m_VulkanDevice, m_pWindow, m_RenderPass, VK_FORMAT_B8G8R8A8_UNORM, MAX_FRAMES_IN_FLIGHT, true);
 
 	for (auto& commandBuffer : m_VulkanCommandBuffers) {
 		commandBuffer.initialize(&m_VulkanDevice);
@@ -404,7 +404,7 @@ int VulkanRenderer::initialize(unsigned width, unsigned height)
 
 void VulkanRenderer::setWinTitle(const char* title)
 {
-	SDL_SetWindowTitle(m_pWindow, title);
+	//SDL_SetWindowTitle(m_pWindow, title);
 }
 
 void VulkanRenderer::present()
@@ -462,7 +462,7 @@ int VulkanRenderer::shutdown()
 	m_Swapchain.release();
 	m_VulkanDevice.release();
 
-	SDL_DestroyWindow(m_pWindow);
+	//SDL_DestroyWindow(m_pWindow);
 
 	delete this;
 	return 0;

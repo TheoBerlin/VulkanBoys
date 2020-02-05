@@ -1,3 +1,14 @@
+#include "Core/Application.h"
+
+int main(int argc, const char* argv[])
+{
+	g_Application.init();
+	g_Application.run();
+	g_Application.release();
+	return 0;
+}
+
+/*
 #include <string>
 #include <SDL_keyboard.h>
 #include <SDL_events.h>
@@ -87,14 +98,8 @@ void run() {
 	}
 }
 
-/*
- update positions of triangles in the screen changing a translation only
-*/
 void updateScene()
 {
-	/*
-	    For each mesh in scene list, update their position 
-	*/
 	{
 		static long long shift = 0;
 		const int size = scene.size();
@@ -307,3 +312,4 @@ int main(int argc, char *argv[])
 	shutdown();
 	return 0;
 };
+*/
