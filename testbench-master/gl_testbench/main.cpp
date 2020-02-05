@@ -36,7 +36,7 @@ double gLastDelta = 0.0;
 
 void updateDelta()
 {
-	#define WINDOW_SIZE 10
+#define WINDOW_SIZE 10
 	static Uint64 start = 0;
 	static Uint64 last = 0;
 	static double avg[WINDOW_SIZE] = { 0.0 };
@@ -61,12 +61,12 @@ constexpr int TOTAL_PLACES = 2 * TOTAL_TRIS;
 float xt[TOTAL_PLACES], yt[TOTAL_PLACES];
 
 // lissajous points
-typedef union { 
+typedef union {
 	struct { float x, y, z, w; };
 	struct { float r, g, b, a; };
 } float4;
 
-typedef union { 
+typedef union {
 	struct { float x, y; };
 	struct { float u, v; };
 } float2;
@@ -93,23 +93,23 @@ void run() {
 void updateScene()
 {
 	/*
-	    For each mesh in scene list, update their position 
+		For each mesh in scene list, update their position
 	*/
 	{
 		static long long shift = 0;
 		const int size = scene.size();
 		for (int i = 0; i < size; i++)
 		{
-			const float4 trans { 
-				xt[(int)(float)(i + shift) % (TOTAL_PLACES)], 
-				yt[(int)(float)(i + shift) % (TOTAL_PLACES)], 
+			const float4 trans{
+				xt[(int)(float)(i + shift) % (TOTAL_PLACES)],
+				yt[(int)(float)(i + shift) % (TOTAL_PLACES)],
 				i * (-1.0 / TOTAL_PLACES),
 				0.0
 			};
 			scene[i]->txBuffer->setData(&trans, sizeof(trans), scene[i]->technique->getMaterial(), TRANSLATION);
 		}
 		// just to make them move...
-		shift+=max(TOTAL_TRIS / 1000.0,TOTAL_TRIS / 100.0);
+		shift += max(TOTAL_TRIS / 1000.0, TOTAL_TRIS / 100.0);
 	}
 	return;
 };
@@ -118,17 +118,10 @@ void updateScene()
 void renderScene()
 {
 	renderer->clearBuffer(CLEAR_BUFFER_FLAGS::COLOR | CLEAR_BUFFER_FLAGS::DEPTH);
-	
-	//renderer->submit(scene[0]);
-	//renderer->submit(scene[1]);
-	//renderer->submit(scene[2]);
-	//renderer->submit(scene[3]);
-
 	for (auto m : scene)
 	{
 		renderer->submit(m);
 	}
-
 	renderer->frame();
 	renderer->present();
 	updateDelta();
@@ -144,7 +137,7 @@ int initialiseTestbench()
 
 	std::string defineTX = "#define TRANSLATION " + std::to_string(TRANSLATION) + "\n";
 	std::string defineTXName = "#define TRANSLATION_NAME " + std::string(TRANSLATION_NAME) + "\n";
-	
+
 	std::string defineDiffCol = "#define DIFFUSE_TINT " + std::to_string(DIFFUSE_TINT) + "\n";
 	std::string defineDiffColName = "#define DIFFUSE_TINT_NAME " + std::string(DIFFUSE_TINT_NAME) + "\n";
 
@@ -155,31 +148,31 @@ int initialiseTestbench()
 		// shader filename extension must be asked to the renderer
 		// these strings should be constructed from the IA.h file!!!
 
-		{ "VertexShader", "FragmentShader", definePos + defineNor + defineUV + defineTX + 
-		   defineTXName + defineDiffCol + defineDiffColName }, 
+		{ "VertexShader", "FragmentShader", definePos + defineNor + defineUV + defineTX +
+		   defineTXName + defineDiffCol + defineDiffColName },
 
-		{ "VertexShader", "FragmentShader", definePos + defineNor + defineUV + defineTX + 
-		   defineTXName + defineDiffCol + defineDiffColName }, 
+		{ "VertexShader", "FragmentShader", definePos + defineNor + defineUV + defineTX +
+		   defineTXName + defineDiffCol + defineDiffColName },
 
-		{ "VertexShader", "FragmentShader", definePos + defineNor + defineUV + defineTX + 
+		{ "VertexShader", "FragmentShader", definePos + defineNor + defineUV + defineTX +
 		   defineTXName + defineDiffCol + defineDiffColName + defineDiffuse	},
 
-		{ "VertexShader", "FragmentShader", definePos + defineNor + defineUV + defineTX + 
-		   defineTXName + defineDiffCol + defineDiffColName }, 
+		{ "VertexShader", "FragmentShader", definePos + defineNor + defineUV + defineTX +
+		   defineTXName + defineDiffCol + defineDiffColName },
 	};
 
 	float degToRad = M_PI / 180.0;
 	float scale = (float)TOTAL_PLACES / 359.9;
 	for (int a = 0; a < TOTAL_PLACES; a++)
 	{
-		xt[a] = 0.8f * cosf(degToRad * ((float)a/scale) * 3.0);
-		yt[a] = 0.8f * sinf(degToRad * ((float)a/scale) * 2.0);
+		xt[a] = 0.8f * cosf(degToRad * ((float)a / scale) * 3.0);
+		yt[a] = 0.8f * sinf(degToRad * ((float)a / scale) * 2.0);
 	};
 
 	// triangle geometry:
 	float4 triPos[3] = { { 0.0f,  0.05, 0.0f, 1.0f },{ 0.05, -0.05, 0.0f, 1.0f },{ -0.05, -0.05, 0.0f, 1.0f } };
 	float4 triNor[3] = { { 0.0f,  0.0f, 1.0f, 0.0f },{ 0.0f, 0.0f, 1.0f, 0.0f },{ 0.0f, 0.0f, 1.0f, 0.0f } };
-	float2 triUV[3] =  { { 0.5f,  -0.99f },{ 1.49f, 1.1f },{ -0.51, 1.1f } };
+	float2 triUV[3] = { { 0.5f,  -0.99f },{ 1.49f, 1.1f },{ -0.51, 1.1f } };
 
 	// load Materials.
 	std::string shaderPath = renderer->getShaderPath();
@@ -210,7 +203,7 @@ int initialiseTestbench()
 		// when material is bound, this buffer should be also bound for access.
 
 		m->updateConstantBuffer(diffuse[i], 4 * sizeof(float), DIFFUSE_TINT);
-		
+
 		materials.push_back(m);
 	}
 
@@ -257,12 +250,12 @@ int initialiseTestbench()
 		constexpr auto numberOfUVElements = std::extent<decltype(triUV)>::value;
 		offset = i * sizeof(triUV);
 		uvs->setData(triUV, sizeof(triUV), offset);
-		m->addIAVertexBufferBinding(uvs, offset, numberOfUVElements , sizeof(float2), TEXTCOORD);
+		m->addIAVertexBufferBinding(uvs, offset, numberOfUVElements, sizeof(float2), TEXTCOORD);
 
 		// we can create a constant buffer outside the material, for example as part of the Mesh.
 		m->txBuffer = renderer->makeConstantBuffer(std::string(TRANSLATION_NAME), TRANSLATION);
-		
-		m->technique = techniques[ i % 4];
+
+		m->technique = techniques[i % 4];
 		if (i % 4 == 2)
 			m->addTexture(textures[0], DIFFUSE_SLOT);
 
@@ -273,17 +266,16 @@ int initialiseTestbench()
 
 void shutdown() {
 	// shutdown.
-	//delete dynamic objects
+	// delete dynamic objects
 	for (auto m : materials)
 	{
 		delete(m);
 	}
-	
 	for (auto t : techniques)
 	{
 		delete(t);
 	}
-	/*for (auto m : scene)
+	for (auto m : scene)
 	{
 		delete(m);
 	};
@@ -292,8 +284,8 @@ void shutdown() {
 	assert(nor->refCount() == 0);
 	delete nor;
 	assert(uvs->refCount() == 0);
-	delete uvs;*/
-	
+	delete uvs;
+
 	for (auto s : samplers)
 	{
 		delete s;
@@ -306,10 +298,10 @@ void shutdown() {
 	renderer->shutdown();
 };
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 	renderer = Renderer::makeRenderer(Renderer::BACKEND::VULKAN);
-	renderer->initialize(800,600);
+	renderer->initialize(800, 600);
 	renderer->setWinTitle("OpenGL");
 	renderer->setClearColor(0.0, 0.1, 0.1, 1.0);
 	initialiseTestbench();

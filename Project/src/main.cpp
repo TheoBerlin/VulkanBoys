@@ -283,16 +283,6 @@ void shutdown() {
 	{
 		delete(t);
 	}
-	/*for (auto m : scene)
-	{
-		delete(m);
-	};
-	assert(pos->refCount() == 0);
-	delete pos;
-	assert(nor->refCount() == 0);
-	delete nor;
-	assert(uvs->refCount() == 0);
-	delete uvs;*/
 	
 	for (auto s : samplers)
 	{
@@ -310,7 +300,7 @@ int main(int argc, char *argv[])
 {
 	renderer = Renderer::makeRenderer(Renderer::BACKEND::VULKAN);
 	renderer->initialize(800,600);
-	renderer->setWinTitle("OpenGL");
+	renderer->setWinTitle("Vulkan");
 	renderer->setClearColor(0.0, 0.1, 0.1, 1.0);
 	initialiseTestbench();
 	run();

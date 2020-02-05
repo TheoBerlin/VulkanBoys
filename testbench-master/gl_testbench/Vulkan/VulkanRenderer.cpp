@@ -429,11 +429,6 @@ int VulkanRenderer::shutdown()
 		delete constantBuffer;
 
 	m_ConstantBuffers.clear();
-
-	for (auto vertexBuffer : m_VertexBuffers)
-		delete vertexBuffer;
-	
-	m_VertexBuffers.clear();
 	
 	if (m_pDescriptorData != nullptr)
 	{
