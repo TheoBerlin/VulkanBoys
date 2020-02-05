@@ -1,0 +1,552 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		11A8E572114BC8A44BA07BB2 /* VulkanRenderer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F854AF7A4FBA226C01C83DBA /* VulkanRenderer.cpp */; };
+		163274DA5A46460C4E17CB1A /* MaterialGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6A64F5A2DB879694914E43E2 /* MaterialGL.cpp */; };
+		1817955824A247CA9F871398 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EA5C1300C9792D32A5828940 /* CoreFoundation.framework */; };
+		23022990BB4F0F42E9960FD0 /* Sampler2DGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5BF724F8A045CA6AE26D0338 /* Sampler2DGL.cpp */; };
+		2F49C798A3323F4AC57FEDD8 /* VulkanSampler2D.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F8F7A140BF8598B22D87BF80 /* VulkanSampler2D.cpp */; };
+		3482D722D263D7D4A9E21D62 /* ResourceBindingGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A716B86A69D718DCC70BF6AA /* ResourceBindingGL.cpp */; };
+		3D89D56A0417CCDC7219F3AA /* ConstantBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DB2AB0F270A17024DF3DC732 /* ConstantBuffer.cpp */; };
+		41C0B3B4DA0D9966085499F4 /* TransformGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D97196DC1DC03C4E5FE7751C /* TransformGL.cpp */; };
+		54ADC9F0AEAEE0E275F5D830 /* libGLFW.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 100F73582ADBE20A2EAC7998 /* libGLFW.a */; };
+		568BCA30504D86A28A4C8870 /* Renderer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9F2CCA58E79DAE8A2C3C8098 /* Renderer.cpp */; };
+		5DA7FE846D8D2AB65A00B4C4 /* ConstantBufferGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 23B0EDACC59A899EBCC19BEC /* ConstantBufferGL.cpp */; };
+		6600D51618F6DEC86A193B56 /* VulkanCommandBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 385C3DDE2C5B8750B1469C1E /* VulkanCommandBuffer.cpp */; };
+		664B850E65EE6840A0431B4E /* OpenGLRenderer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CE47D49625AD4788D7BB62D6 /* OpenGLRenderer.cpp */; };
+		6DF6BF12DB1ECD84DCB1BD52 /* VertexBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 56747E1AA3D7744C19F6745A /* VertexBuffer.cpp */; };
+		713678D803C442CA6C9CE718 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0BACC980CF188B320DBC2FC0 /* IOKit.framework */; };
+		77476D6615286E18ECA6B3A6 /* VulkanRenderState.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 59415B2E1C01BBA07936996E /* VulkanRenderState.cpp */; };
+		7AD6572074981392AE971560 /* Material.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F83E804840AF647A854E3688 /* Material.cpp */; };
+		7B07845E95D3F31099A48A9E /* RenderStateGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CD2B43E63A5352583BE64226 /* RenderStateGL.cpp */; };
+		7BD973EA1426599C426D5A2A /* Texture2DGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DBFBA2B2204A4824627180F2 /* Texture2DGL.cpp */; };
+		7E1BEE50EF3E8F42A5053C90 /* Texture2D.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9963F178C19EAA2AA93A37B8 /* Texture2D.cpp */; };
+		840EA602F136B474F2C9A442 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 19352E0A6698243CDCB7244A /* OpenGL.framework */; };
+		8614F514E1564886B4B09354 /* Camera.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 800D16FC971FB22E873BAD3C /* Camera.cpp */; };
+		9252CFFA037570ECB93C1E3A /* Transform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5F548382878F3C346F2AC9C2 /* Transform.cpp */; };
+		9259821627D04148966C9856 /* MeshGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D2F2451E02841410DD91535E /* MeshGL.cpp */; };
+		956D8D742F9182A6DFB763B4 /* VulkanVertexBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7A98225CEEF2674E6CD5F09C /* VulkanVertexBuffer.cpp */; };
+		A7E5509ED7771F90B2845EDE /* Scene.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E4D84BE687C6729816EC5226 /* Scene.cpp */; };
+		AECB0CA48DE826D669F182E4 /* VulkanDevice.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CB22B08C5DB07A7EC6891ECC /* VulkanDevice.cpp */; };
+		B2A6271623C8C808D98F7556 /* Sampler2D.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B48C9ADEDCC75390C462E11E /* Sampler2D.cpp */; };
+		B37CB6ECB31F9A1EED744D2C /* VertexBufferGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D9EEB19431542486E3623FD4 /* VertexBufferGL.cpp */; };
+		B68AC1CC0D182C3EE591400C /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E21F5234E590246666FCC874 /* main.cpp */; };
+		C1C4880C0A63C63E2D8F7E4C /* VulkanConstantBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5945F9744A3D6766B640E7B4 /* VulkanConstantBuffer.cpp */; };
+		D1CB608045B3D832680186C0 /* VulkanSwapChain.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AD552FA873E3271AE1E54DE8 /* VulkanSwapChain.cpp */; };
+		D3F7100E4519B100FAE05E4E /* Technique.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 83D1F856AC0CB10893A83E96 /* Technique.cpp */; };
+		E285E562E228C8941C7D7BA2 /* VulkanMaterial.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9293786AE9F8EB5C9C0706AA /* VulkanMaterial.cpp */; };
+		EFAB871C4638F18E1EB2055C /* Mesh.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1EBA2A84222AFCB6A397A0C4 /* Mesh.cpp */; };
+		F8E8DBA28B76A594F44F49E2 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8D6BC6AA50D7885C8F7B2CEA /* Cocoa.framework */; };
+		FE465AC490D424B6F9ACC904 /* RenderState.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BF063EAC8272005EC115A4EC /* RenderState.cpp */; };
+		FFBC19F273A491A495F24032 /* VulkanTexture2D.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 70B17EFA373F766CA5419D3A /* VulkanTexture2D.cpp */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		7AC179D2A0E7A98407EEA012 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 40E279D5D92F5F8707766015 /* Dependencies/glfw/GLFW.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = FB2B399FFE9C0BD18008AFDF;
+			remoteInfo = libGLFW.a;
+		};
+		CCFBEC6BF3221C1D5A2912AB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 40E279D5D92F5F8707766015 /* Dependencies/glfw/GLFW.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 6E92D9A59D392D97F67A87E5;
+			remoteInfo = libGLFW.a;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		05A622E8C866835A259B6128 /* VulkanCommandBuffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = VulkanCommandBuffer.h; path = src/Vulkan/VulkanCommandBuffer.h; sourceTree = "<group>"; };
+		0BACC980CF188B320DBC2FC0 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
+		0D209AE49FAE64D608870924 /* VulkanRenderer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = VulkanRenderer.h; path = src/Vulkan/VulkanRenderer.h; sourceTree = "<group>"; };
+		12D28A34D96081A64762A874 /* ResourceBindingGL.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ResourceBindingGL.h; path = src/OpenGL/ResourceBindingGL.h; sourceTree = "<group>"; };
+		19352E0A6698243CDCB7244A /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
+		19ED806C4013B01EA71AA6AC /* Transform.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Transform.h; path = src/Transform.h; sourceTree = "<group>"; };
+		1D26B8D0C1795682D3B19F10 /* Scene.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Scene.h; path = src/Scene.h; sourceTree = "<group>"; };
+		1EBA2A84222AFCB6A397A0C4 /* Mesh.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Mesh.cpp; path = src/Mesh.cpp; sourceTree = "<group>"; };
+		23B0EDACC59A899EBCC19BEC /* ConstantBufferGL.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ConstantBufferGL.cpp; path = src/OpenGL/ConstantBufferGL.cpp; sourceTree = "<group>"; };
+		24476704916F757693026544 /* VulkanTexture2D.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = VulkanTexture2D.h; path = src/Vulkan/VulkanTexture2D.h; sourceTree = "<group>"; };
+		251116523C23B1842C3FAC92 /* Material.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Material.h; path = src/Material.h; sourceTree = "<group>"; };
+		2A4609D4BCD3D3C625AC7814 /* VulkanMaterial.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = VulkanMaterial.h; path = src/Vulkan/VulkanMaterial.h; sourceTree = "<group>"; };
+		321FB5C22BE1723465E07402 /* Sampler2DGL.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Sampler2DGL.h; path = src/OpenGL/Sampler2DGL.h; sourceTree = "<group>"; };
+		3593B2168CF925083F074056 /* ConstantBufferGL.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ConstantBufferGL.h; path = src/OpenGL/ConstantBufferGL.h; sourceTree = "<group>"; };
+		385C3DDE2C5B8750B1469C1E /* VulkanCommandBuffer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = VulkanCommandBuffer.cpp; path = src/Vulkan/VulkanCommandBuffer.cpp; sourceTree = "<group>"; };
+		3E1DA446418E7678C2FB1A86 /* Camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Camera.h; path = src/Camera.h; sourceTree = "<group>"; };
+		40E279D5D92F5F8707766015 /* libGLFW.a */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = "GLFW.xcodeproj"; path = Dependencies/glfw/GLFW.xcodeproj; sourceTree = SOURCE_ROOT; };
+		4C4994883735BA7A7F1B82C8 /* MeshGL.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MeshGL.h; path = src/OpenGL/MeshGL.h; sourceTree = "<group>"; };
+		508B26DEC4E56BD042C8F51E /* VulkanConstantBuffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = VulkanConstantBuffer.h; path = src/Vulkan/VulkanConstantBuffer.h; sourceTree = "<group>"; };
+		56747E1AA3D7744C19F6745A /* VertexBuffer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = VertexBuffer.cpp; path = src/VertexBuffer.cpp; sourceTree = "<group>"; };
+		59415B2E1C01BBA07936996E /* VulkanRenderState.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = VulkanRenderState.cpp; path = src/Vulkan/VulkanRenderState.cpp; sourceTree = "<group>"; };
+		5945F9744A3D6766B640E7B4 /* VulkanConstantBuffer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = VulkanConstantBuffer.cpp; path = src/Vulkan/VulkanConstantBuffer.cpp; sourceTree = "<group>"; };
+		5BF724F8A045CA6AE26D0338 /* Sampler2DGL.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Sampler2DGL.cpp; path = src/OpenGL/Sampler2DGL.cpp; sourceTree = "<group>"; };
+		5F548382878F3C346F2AC9C2 /* Transform.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Transform.cpp; path = src/Transform.cpp; sourceTree = "<group>"; };
+		6893633A2BFF24EC6AA2C97A /* ConsoleHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ConsoleHelper.h; path = src/ConsoleHelper.h; sourceTree = "<group>"; };
+		6A64F5A2DB879694914E43E2 /* MaterialGL.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = MaterialGL.cpp; path = src/OpenGL/MaterialGL.cpp; sourceTree = "<group>"; };
+		70B17EFA373F766CA5419D3A /* VulkanTexture2D.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = VulkanTexture2D.cpp; path = src/Vulkan/VulkanTexture2D.cpp; sourceTree = "<group>"; };
+		7195F54897BC24FAFEC31B88 /* Sampler2D.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Sampler2D.h; path = src/Sampler2D.h; sourceTree = "<group>"; };
+		729485C098BAB572FFC1AC00 /* Technique.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Technique.h; path = src/Technique.h; sourceTree = "<group>"; };
+		7669778E19B500C03485CDCE /* Mesh.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Mesh.h; path = src/Mesh.h; sourceTree = "<group>"; };
+		7A98225CEEF2674E6CD5F09C /* VulkanVertexBuffer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = VulkanVertexBuffer.cpp; path = src/Vulkan/VulkanVertexBuffer.cpp; sourceTree = "<group>"; };
+		7DF54AFCCB58412E4177413C /* ConstantBuffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ConstantBuffer.h; path = src/ConstantBuffer.h; sourceTree = "<group>"; };
+		800D16FC971FB22E873BAD3C /* Camera.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Camera.cpp; path = src/Camera.cpp; sourceTree = "<group>"; };
+		83D1F856AC0CB10893A83E96 /* Technique.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Technique.cpp; path = src/Technique.cpp; sourceTree = "<group>"; };
+		86029488326554BAF0EDCAC8 /* IA.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = IA.h; path = src/IA.h; sourceTree = "<group>"; };
+		86C7A9BE195573B0822E17FE /* VertexBufferGL.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = VertexBufferGL.h; path = src/OpenGL/VertexBufferGL.h; sourceTree = "<group>"; };
+		8D6BC6AA50D7885C8F7B2CEA /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
+		8F873A62A699D59496B5D0A2 /* Renderer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Renderer.h; path = src/Renderer.h; sourceTree = "<group>"; };
+		8FDA81467AC6A738C2AC6F86 /* Common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Common.h; path = src/Vulkan/Common.h; sourceTree = "<group>"; };
+		9293786AE9F8EB5C9C0706AA /* VulkanMaterial.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = VulkanMaterial.cpp; path = src/Vulkan/VulkanMaterial.cpp; sourceTree = "<group>"; };
+		969D53863886EF782FAE01C6 /* VulkanVertexBuffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = VulkanVertexBuffer.h; path = src/Vulkan/VulkanVertexBuffer.h; sourceTree = "<group>"; };
+		96BE4A2690800698CA7F0866 /* TransformGL.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = TransformGL.h; path = src/OpenGL/TransformGL.h; sourceTree = "<group>"; };
+		9963F178C19EAA2AA93A37B8 /* Texture2D.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Texture2D.cpp; path = src/Texture2D.cpp; sourceTree = "<group>"; };
+		9F2CCA58E79DAE8A2C3C8098 /* Renderer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Renderer.cpp; path = src/Renderer.cpp; sourceTree = "<group>"; };
+		9F4029BC9901E62ED300E7FC /* Texture2DGL.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Texture2DGL.h; path = src/OpenGL/Texture2DGL.h; sourceTree = "<group>"; };
+		A716B86A69D718DCC70BF6AA /* ResourceBindingGL.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ResourceBindingGL.cpp; path = src/OpenGL/ResourceBindingGL.cpp; sourceTree = "<group>"; };
+		AC69BA721991C8E41B24B8B2 /* VulkanSwapChain.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = VulkanSwapChain.h; path = src/Vulkan/VulkanSwapChain.h; sourceTree = "<group>"; };
+		AD552FA873E3271AE1E54DE8 /* VulkanSwapChain.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = VulkanSwapChain.cpp; path = src/Vulkan/VulkanSwapChain.cpp; sourceTree = "<group>"; };
+		B48C9ADEDCC75390C462E11E /* Sampler2D.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Sampler2D.cpp; path = src/Sampler2D.cpp; sourceTree = "<group>"; };
+		B4EFC6D1CC026203BC1E5D11 /* VulkanProject */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; name = VulkanProject; path = VulkanProject; sourceTree = BUILT_PRODUCTS_DIR; };
+		B92A4116E164F9C8C9008756 /* RenderState.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = RenderState.h; path = src/RenderState.h; sourceTree = "<group>"; };
+		BF063EAC8272005EC115A4EC /* RenderState.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = RenderState.cpp; path = src/RenderState.cpp; sourceTree = "<group>"; };
+		C5F8DFF6371B80E8ECE22E36 /* VulkanDevice.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = VulkanDevice.h; path = src/Vulkan/VulkanDevice.h; sourceTree = "<group>"; };
+		CB22B08C5DB07A7EC6891ECC /* VulkanDevice.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = VulkanDevice.cpp; path = src/Vulkan/VulkanDevice.cpp; sourceTree = "<group>"; };
+		CD2B43E63A5352583BE64226 /* RenderStateGL.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = RenderStateGL.cpp; path = src/OpenGL/RenderStateGL.cpp; sourceTree = "<group>"; };
+		CE47D49625AD4788D7BB62D6 /* OpenGLRenderer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = OpenGLRenderer.cpp; path = src/OpenGL/OpenGLRenderer.cpp; sourceTree = "<group>"; };
+		D18393E4F34F411630046A24 /* VertexBuffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = VertexBuffer.h; path = src/VertexBuffer.h; sourceTree = "<group>"; };
+		D2F2451E02841410DD91535E /* MeshGL.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = MeshGL.cpp; path = src/OpenGL/MeshGL.cpp; sourceTree = "<group>"; };
+		D6EB630A4413717C45A6614A /* VulkanSampler2D.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = VulkanSampler2D.h; path = src/Vulkan/VulkanSampler2D.h; sourceTree = "<group>"; };
+		D97196DC1DC03C4E5FE7751C /* TransformGL.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = TransformGL.cpp; path = src/OpenGL/TransformGL.cpp; sourceTree = "<group>"; };
+		D9EEB19431542486E3623FD4 /* VertexBufferGL.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = VertexBufferGL.cpp; path = src/OpenGL/VertexBufferGL.cpp; sourceTree = "<group>"; };
+		DA2D4CF8A0BB446A0EBD6B38 /* VulkanRenderState.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = VulkanRenderState.h; path = src/Vulkan/VulkanRenderState.h; sourceTree = "<group>"; };
+		DB2AB0F270A17024DF3DC732 /* ConstantBuffer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ConstantBuffer.cpp; path = src/ConstantBuffer.cpp; sourceTree = "<group>"; };
+		DBFBA2B2204A4824627180F2 /* Texture2DGL.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Texture2DGL.cpp; path = src/OpenGL/Texture2DGL.cpp; sourceTree = "<group>"; };
+		E21F5234E590246666FCC874 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = main.cpp; path = src/main.cpp; sourceTree = "<group>"; };
+		E4D84BE687C6729816EC5226 /* Scene.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Scene.cpp; path = src/Scene.cpp; sourceTree = "<group>"; };
+		E5BC9E0C16A095FE29B8CC4C /* MaterialGL.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = MaterialGL.h; path = src/OpenGL/MaterialGL.h; sourceTree = "<group>"; };
+		E97602220F9C31D476A32862 /* Texture2D.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Texture2D.h; path = src/Texture2D.h; sourceTree = "<group>"; };
+		E9C16C007C4F35F2E527DA40 /* OpenGLRenderer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = OpenGLRenderer.h; path = src/OpenGL/OpenGLRenderer.h; sourceTree = "<group>"; };
+		EA5C1300C9792D32A5828940 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
+		F46484B038B32A227ADA62F0 /* RenderStateGL.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = RenderStateGL.h; path = src/OpenGL/RenderStateGL.h; sourceTree = "<group>"; };
+		F83E804840AF647A854E3688 /* Material.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Material.cpp; path = src/Material.cpp; sourceTree = "<group>"; };
+		F854AF7A4FBA226C01C83DBA /* VulkanRenderer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = VulkanRenderer.cpp; path = src/Vulkan/VulkanRenderer.cpp; sourceTree = "<group>"; };
+		F8F7A140BF8598B22D87BF80 /* VulkanSampler2D.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = VulkanSampler2D.cpp; path = src/Vulkan/VulkanSampler2D.cpp; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7554FBC178C5CDF3FA327201 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F8E8DBA28B76A594F44F49E2 /* Cocoa.framework in Frameworks */,
+				840EA602F136B474F2C9A442 /* OpenGL.framework in Frameworks */,
+				713678D803C442CA6C9CE718 /* IOKit.framework in Frameworks */,
+				1817955824A247CA9F871398 /* CoreFoundation.framework in Frameworks */,
+				54ADC9F0AEAEE0E275F5D830 /* libGLFW.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		014014D2FAA61644EE417312 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				100F73582ADBE20A2EAC7998 /* libGLFW.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		14625A484D1D20BADCB45888 /* VulkanProject */ = {
+			isa = PBXGroup;
+			children = (
+				800D16FC971FB22E873BAD3C /* Camera.cpp */,
+				3E1DA446418E7678C2FB1A86 /* Camera.h */,
+				6893633A2BFF24EC6AA2C97A /* ConsoleHelper.h */,
+				DB2AB0F270A17024DF3DC732 /* ConstantBuffer.cpp */,
+				7DF54AFCCB58412E4177413C /* ConstantBuffer.h */,
+				86029488326554BAF0EDCAC8 /* IA.h */,
+				F83E804840AF647A854E3688 /* Material.cpp */,
+				251116523C23B1842C3FAC92 /* Material.h */,
+				1EBA2A84222AFCB6A397A0C4 /* Mesh.cpp */,
+				7669778E19B500C03485CDCE /* Mesh.h */,
+				8D68685230B3F1844B84BE92 /* OpenGL */,
+				BF063EAC8272005EC115A4EC /* RenderState.cpp */,
+				B92A4116E164F9C8C9008756 /* RenderState.h */,
+				9F2CCA58E79DAE8A2C3C8098 /* Renderer.cpp */,
+				8F873A62A699D59496B5D0A2 /* Renderer.h */,
+				B48C9ADEDCC75390C462E11E /* Sampler2D.cpp */,
+				7195F54897BC24FAFEC31B88 /* Sampler2D.h */,
+				E4D84BE687C6729816EC5226 /* Scene.cpp */,
+				1D26B8D0C1795682D3B19F10 /* Scene.h */,
+				83D1F856AC0CB10893A83E96 /* Technique.cpp */,
+				729485C098BAB572FFC1AC00 /* Technique.h */,
+				9963F178C19EAA2AA93A37B8 /* Texture2D.cpp */,
+				E97602220F9C31D476A32862 /* Texture2D.h */,
+				5F548382878F3C346F2AC9C2 /* Transform.cpp */,
+				19ED806C4013B01EA71AA6AC /* Transform.h */,
+				56747E1AA3D7744C19F6745A /* VertexBuffer.cpp */,
+				D18393E4F34F411630046A24 /* VertexBuffer.h */,
+				7E520BEA219D951C3C6E622A /* Vulkan */,
+				E21F5234E590246666FCC874 /* main.cpp */,
+				BBF76781A7E87333FA200DC1 /* Frameworks */,
+				A6C936B49B3FADE6EA134CF4 /* Products */,
+				9D968EAA920D05DCE0E0A4EA /* Projects */,
+			);
+			name = VulkanProject;
+			sourceTree = "<group>";
+		};
+		7E520BEA219D951C3C6E622A /* Vulkan */ = {
+			isa = PBXGroup;
+			children = (
+				8FDA81467AC6A738C2AC6F86 /* Common.h */,
+				385C3DDE2C5B8750B1469C1E /* VulkanCommandBuffer.cpp */,
+				05A622E8C866835A259B6128 /* VulkanCommandBuffer.h */,
+				5945F9744A3D6766B640E7B4 /* VulkanConstantBuffer.cpp */,
+				508B26DEC4E56BD042C8F51E /* VulkanConstantBuffer.h */,
+				CB22B08C5DB07A7EC6891ECC /* VulkanDevice.cpp */,
+				C5F8DFF6371B80E8ECE22E36 /* VulkanDevice.h */,
+				9293786AE9F8EB5C9C0706AA /* VulkanMaterial.cpp */,
+				2A4609D4BCD3D3C625AC7814 /* VulkanMaterial.h */,
+				59415B2E1C01BBA07936996E /* VulkanRenderState.cpp */,
+				DA2D4CF8A0BB446A0EBD6B38 /* VulkanRenderState.h */,
+				F854AF7A4FBA226C01C83DBA /* VulkanRenderer.cpp */,
+				0D209AE49FAE64D608870924 /* VulkanRenderer.h */,
+				F8F7A140BF8598B22D87BF80 /* VulkanSampler2D.cpp */,
+				D6EB630A4413717C45A6614A /* VulkanSampler2D.h */,
+				AD552FA873E3271AE1E54DE8 /* VulkanSwapChain.cpp */,
+				AC69BA721991C8E41B24B8B2 /* VulkanSwapChain.h */,
+				70B17EFA373F766CA5419D3A /* VulkanTexture2D.cpp */,
+				24476704916F757693026544 /* VulkanTexture2D.h */,
+				7A98225CEEF2674E6CD5F09C /* VulkanVertexBuffer.cpp */,
+				969D53863886EF782FAE01C6 /* VulkanVertexBuffer.h */,
+			);
+			name = Vulkan;
+			sourceTree = "<group>";
+		};
+		8D68685230B3F1844B84BE92 /* OpenGL */ = {
+			isa = PBXGroup;
+			children = (
+				23B0EDACC59A899EBCC19BEC /* ConstantBufferGL.cpp */,
+				3593B2168CF925083F074056 /* ConstantBufferGL.h */,
+				6A64F5A2DB879694914E43E2 /* MaterialGL.cpp */,
+				E5BC9E0C16A095FE29B8CC4C /* MaterialGL.h */,
+				D2F2451E02841410DD91535E /* MeshGL.cpp */,
+				4C4994883735BA7A7F1B82C8 /* MeshGL.h */,
+				CE47D49625AD4788D7BB62D6 /* OpenGLRenderer.cpp */,
+				E9C16C007C4F35F2E527DA40 /* OpenGLRenderer.h */,
+				CD2B43E63A5352583BE64226 /* RenderStateGL.cpp */,
+				F46484B038B32A227ADA62F0 /* RenderStateGL.h */,
+				A716B86A69D718DCC70BF6AA /* ResourceBindingGL.cpp */,
+				12D28A34D96081A64762A874 /* ResourceBindingGL.h */,
+				5BF724F8A045CA6AE26D0338 /* Sampler2DGL.cpp */,
+				321FB5C22BE1723465E07402 /* Sampler2DGL.h */,
+				DBFBA2B2204A4824627180F2 /* Texture2DGL.cpp */,
+				9F4029BC9901E62ED300E7FC /* Texture2DGL.h */,
+				D97196DC1DC03C4E5FE7751C /* TransformGL.cpp */,
+				96BE4A2690800698CA7F0866 /* TransformGL.h */,
+				D9EEB19431542486E3623FD4 /* VertexBufferGL.cpp */,
+				86C7A9BE195573B0822E17FE /* VertexBufferGL.h */,
+			);
+			name = OpenGL;
+			sourceTree = "<group>";
+		};
+		9D968EAA920D05DCE0E0A4EA /* Projects */ = {
+			isa = PBXGroup;
+			children = (
+				40E279D5D92F5F8707766015 /* GLFW.xcodeproj */,
+			);
+			name = Projects;
+			sourceTree = "<group>";
+		};
+		A6C936B49B3FADE6EA134CF4 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B4EFC6D1CC026203BC1E5D11 /* VulkanProject */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		BBF76781A7E87333FA200DC1 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				8D6BC6AA50D7885C8F7B2CEA /* Cocoa.framework */,
+				19352E0A6698243CDCB7244A /* OpenGL.framework */,
+				0BACC980CF188B320DBC2FC0 /* IOKit.framework */,
+				EA5C1300C9792D32A5828940 /* CoreFoundation.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		AA818897AB3485891F1656D7 /* VulkanProject */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6390442067011652E86DBA60 /* Build configuration list for PBXNativeTarget "VulkanProject" */;
+			buildPhases = (
+				9607AE1010C857E500CD1376 /* Prebuild */,
+				E53C7C61E8AD4E936A19F2A1 /* Resources */,
+				4EE995B8525A67EAD3C70BF8 /* Sources */,
+				7554FBC178C5CDF3FA327201 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EEF851DBE85E534DDBF9B01B /* PBXTargetDependency */,
+			);
+			name = VulkanProject;
+			productInstallPath = "$(HOME)/bin";
+			productName = VulkanProject;
+			productReference = B4EFC6D1CC026203BC1E5D11 /* VulkanProject */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		08FB7793FE84155DC02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "VulkanProject" */;
+			compatibilityVersion = "Xcode 3.2";
+			hasScannedForEncodings = 1;
+			mainGroup = 14625A484D1D20BADCB45888 /* VulkanProject */;
+			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = 014014D2FAA61644EE417312 /* Products */;
+					ProjectRef = 40E279D5D92F5F8707766015 /* GLFW.xcodeproj */;
+				},
+			);
+			projectRoot = "";
+			targets = (
+				AA818897AB3485891F1656D7 /* VulkanProject */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		100F73582ADBE20A2EAC7998 /* libGLFW.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libGLFW.a;
+			remoteRef = 7AC179D2A0E7A98407EEA012 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
+
+/* Begin PBXResourcesBuildPhase section */
+		E53C7C61E8AD4E936A19F2A1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		9607AE1010C857E500CD1376 /* Prebuild */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = Prebuild;
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\n./compile_shaders.command";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4EE995B8525A67EAD3C70BF8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8614F514E1564886B4B09354 /* Camera.cpp in Sources */,
+				3D89D56A0417CCDC7219F3AA /* ConstantBuffer.cpp in Sources */,
+				7AD6572074981392AE971560 /* Material.cpp in Sources */,
+				EFAB871C4638F18E1EB2055C /* Mesh.cpp in Sources */,
+				5DA7FE846D8D2AB65A00B4C4 /* ConstantBufferGL.cpp in Sources */,
+				163274DA5A46460C4E17CB1A /* MaterialGL.cpp in Sources */,
+				9259821627D04148966C9856 /* MeshGL.cpp in Sources */,
+				664B850E65EE6840A0431B4E /* OpenGLRenderer.cpp in Sources */,
+				7B07845E95D3F31099A48A9E /* RenderStateGL.cpp in Sources */,
+				3482D722D263D7D4A9E21D62 /* ResourceBindingGL.cpp in Sources */,
+				23022990BB4F0F42E9960FD0 /* Sampler2DGL.cpp in Sources */,
+				7BD973EA1426599C426D5A2A /* Texture2DGL.cpp in Sources */,
+				41C0B3B4DA0D9966085499F4 /* TransformGL.cpp in Sources */,
+				B37CB6ECB31F9A1EED744D2C /* VertexBufferGL.cpp in Sources */,
+				FE465AC490D424B6F9ACC904 /* RenderState.cpp in Sources */,
+				568BCA30504D86A28A4C8870 /* Renderer.cpp in Sources */,
+				B2A6271623C8C808D98F7556 /* Sampler2D.cpp in Sources */,
+				A7E5509ED7771F90B2845EDE /* Scene.cpp in Sources */,
+				D3F7100E4519B100FAE05E4E /* Technique.cpp in Sources */,
+				7E1BEE50EF3E8F42A5053C90 /* Texture2D.cpp in Sources */,
+				9252CFFA037570ECB93C1E3A /* Transform.cpp in Sources */,
+				6DF6BF12DB1ECD84DCB1BD52 /* VertexBuffer.cpp in Sources */,
+				6600D51618F6DEC86A193B56 /* VulkanCommandBuffer.cpp in Sources */,
+				C1C4880C0A63C63E2D8F7E4C /* VulkanConstantBuffer.cpp in Sources */,
+				AECB0CA48DE826D669F182E4 /* VulkanDevice.cpp in Sources */,
+				E285E562E228C8941C7D7BA2 /* VulkanMaterial.cpp in Sources */,
+				77476D6615286E18ECA6B3A6 /* VulkanRenderState.cpp in Sources */,
+				11A8E572114BC8A44BA07BB2 /* VulkanRenderer.cpp in Sources */,
+				2F49C798A3323F4AC57FEDD8 /* VulkanSampler2D.cpp in Sources */,
+				D1CB608045B3D832680186C0 /* VulkanSwapChain.cpp in Sources */,
+				FFBC19F273A491A495F24032 /* VulkanTexture2D.cpp in Sources */,
+				956D8D742F9182A6DFB763B4 /* VulkanVertexBuffer.cpp in Sources */,
+				B68AC1CC0D182C3EE591400C /* main.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		EEF851DBE85E534DDBF9B01B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = libGLFW.a;
+			targetProxy = CCFBEC6BF3221C1D5A2912AB /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		5184756014F037125393DBA0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = "Build/bin/Release-macosx-x86_64/VulkanProject";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = VulkanProject;
+			};
+			name = Release;
+		};
+		8F0C07D1A61EA303963A9E11 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++1z";
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_OPTIMIZATION_LEVEL = fast;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					NDEBUG,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					/usr/local/include,
+					Dependencies/stb,
+					Dependencies/GLFW/include,
+					Dependencies/glm,
+					"$(inherited)",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					/usr/local/lib,
+				);
+				OBJROOT = "Build/bin-int/Release-macosx-x86_64/VulkanProject";
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_LDFLAGS = (
+					"-lvulkan.1",
+					"-lvulkan.1.1.121",
+				);
+				SYMROOT = "Build/bin/Release-macosx-x86_64/VulkanProject";
+				USER_HEADER_SEARCH_PATHS = (
+					src,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = Release;
+		};
+		ADBB88E6CF8736180C3C5F26 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CONFIGURATION_BUILD_DIR = "Build/bin/Debug-macosx-x86_64/VulkanProject";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_DYNAMIC_NO_PIC = NO;
+				INSTALL_PATH = /usr/local/bin;
+				PRODUCT_NAME = VulkanProject;
+			};
+			name = Debug;
+		};
+		B3BDDBD756AC0289E5D1E217 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++1z";
+				CONFIGURATION_BUILD_DIR = "$(SYMROOT)";
+				CONFIGURATION_TEMP_DIR = "$(OBJROOT)";
+				COPY_PHASE_STRIP = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					_DEBUG,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					/usr/local/include,
+					Dependencies/stb,
+					Dependencies/GLFW/include,
+					Dependencies/glm,
+					"$(inherited)",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					/usr/local/lib,
+				);
+				OBJROOT = "Build/bin-int/Debug-macosx-x86_64/VulkanProject";
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = (
+					"-lvulkan.1",
+					"-lvulkan.1.1.121",
+				);
+				SYMROOT = "Build/bin/Debug-macosx-x86_64/VulkanProject";
+				USER_HEADER_SEARCH_PATHS = (
+					src,
+				);
+				WARNING_CFLAGS = "-Wall -Wextra";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DEB928908733DD80010E9CD /* Build configuration list for PBXProject "VulkanProject" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B3BDDBD756AC0289E5D1E217 /* Debug */,
+				8F0C07D1A61EA303963A9E11 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		6390442067011652E86DBA60 /* Build configuration list for PBXNativeTarget "VulkanProject" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				ADBB88E6CF8736180C3C5F26 /* Debug */,
+				5184756014F037125393DBA0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+};
+rootObject = 08FB7793FE84155DC02AAC07 /* Project object */;
+}
