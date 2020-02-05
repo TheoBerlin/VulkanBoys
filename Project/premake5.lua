@@ -74,10 +74,11 @@ workspace "Vulkan-Project"
                 "D:/VulkanSDK/1.1.108.0/Include",
 				"D:/VulkanSDK/1.1.130.0/Include",
 			}
-			prebuildcommands
-			{ 
-				"compile_shaders" 
-			}
+			
+			-- prebuildcommands
+			--{ 
+			--	"compile_shaders" 
+			--}
 		filter { "system:macosx" }
 			links
 			{
@@ -97,10 +98,10 @@ workspace "Vulkan-Project"
 				"/usr/local/include",
 			}
 
-			prebuildcommands 
-			{ 
-				"./compile_shaders.command" 
-			}
+			--prebuildcommands 
+			--{ 
+				--"./compile_shaders.command" 
+			--}
 		filter { "action:vs*" }
 			defines
 			{

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include <SDL.h>
+//#include <SDL.h>
 
 #include "../Renderer.h"
 
@@ -96,7 +96,7 @@ private:
 	void updateConstantBufferDescriptorSets();
 	void updateSamplerDescriptorSets();
 private:
-	SDL_Window* m_pWindow;
+	//SDL_Window* m_pWindow;
 	
 	VulkanDevice m_VulkanDevice;
 	VulkanCommandBuffer m_VulkanCommandBuffers[MAX_FRAMES_IN_FLIGHT];

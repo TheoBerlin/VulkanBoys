@@ -4,8 +4,8 @@
 #include <iostream>
 #include <numeric>
 #include <algorithm>
-#include <SDL.h>
-#include <SDL_syswm.h>
+//#include <SDL.h>
+//#include <SDL_syswm.h>
 
 #ifdef min
 	#undef min
@@ -43,10 +43,10 @@ void VulkanSwapChain::initialize(VulkanDevice* pDevice, SDL_Window* pWindow, VkR
 	m_ImageCount = imageCount;
 	m_Renderpass = renderpass;
 
-	SDL_SysWMinfo wmInfo;
-	SDL_VERSION(&wmInfo.version);
-	SDL_GetWindowWMInfo(pWindow, &wmInfo);
-	createSurface(wmInfo.info.win.window);
+	//SDL_SysWMinfo wmInfo;
+	//SDL_VERSION(&wmInfo.version);
+	//SDL_GetWindowWMInfo(pWindow, &wmInfo);
+	//createSurface(wmInfo.info.win.window);
 
 	//Check for presentationsupport
 	VkBool32 presentSupport = false;
@@ -56,7 +56,7 @@ void VulkanSwapChain::initialize(VulkanDevice* pDevice, SDL_Window* pWindow, VkR
 	{
 		int32_t width = 0;
 		int32_t height = 0;
-		SDL_GetWindowSize(pWindow, &width, &height);
+		//SDL_GetWindowSize(pWindow, &width, &height);
 
 		selectFormat(requestedFormat);
 		selectPresentationMode(verticalSync);
