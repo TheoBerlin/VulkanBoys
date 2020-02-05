@@ -13,6 +13,7 @@ class PipelineLayoutVK;
 class CommandBufferVK
 {
 	friend class CommandPoolVK;
+
 public:
 	CommandBufferVK(DeviceVK* pDevice);
 	~CommandBufferVK();
