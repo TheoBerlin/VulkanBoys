@@ -1,4 +1,5 @@
 #include "ShaderVK.h"
+#include "DeviceVK.h"
 
 #include <fstream>
 
@@ -14,7 +15,7 @@ ShaderVK::~ShaderVK()
 {
 	if (m_ShaderModule != VK_NULL_HANDLE)
 	{
-		//vkDestroyShaderModule(m_pDevice->getDevice(), m_ShaderModule, nullptr);
+		vkDestroyShaderModule(m_pDevice->getDevice(), m_ShaderModule, nullptr);
 		m_ShaderModule = VK_NULL_HANDLE;
 
 		std::cout << "Destroyed ShaderModule" << std::endl;
@@ -53,7 +54,7 @@ bool ShaderVK::finalize()
 	createInfo.codeSize = m_Source.size();
 	createInfo.pCode	= reinterpret_cast<const uint32_t*>(m_Source.data());
 
-	VkResult result = VK_SUCCESS;// = vkCreateShaderModule(m_pDevice->getDevice(), &createInfo, nullptr, &m_Module);
+	VkResult result = vkCreateShaderModule(m_pDevice->getDevice(), &createInfo, nullptr, &m_ShaderModule);
 	if (result != VK_SUCCESS)
 	{
 		std::cout << "vkCreateShaderModule failed" << std::endl;
