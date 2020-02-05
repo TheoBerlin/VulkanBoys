@@ -1,5 +1,6 @@
 #pragma once
 #include "Core/Core.h"
+#include "Common/IShader.h"
 
 #ifdef _WIN32
     #define VK_USE_PLATFORM_WIN32_KHR
@@ -22,6 +23,19 @@ static uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFil
     }
 
     return UINT32_MAX;
+}
+
+static VkShaderStageFlagBits convertShaderType(EShader shader)
+{
+    switch (shader)
+    {
+    case EShader::VERTEX_SHADER:    return VK_SHADER_STAGE_VERTEX_BIT;
+    case EShader::GEOMETRY_SHADER:  return VK_SHADER_STAGE_GEOMETRY_BIT;
+    case EShader::HULL_SHADER:      return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+    case EShader::DOMAIN_SHADER:    return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+    case EShader::PIXEL_SHADER:     return VK_SHADER_STAGE_FRAGMENT_BIT;
+    case EShader::COMPUTE_SHADER:   return VK_SHADER_STAGE_COMPUTE_BIT;
+    }
 }
 
 constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 3;
