@@ -15,6 +15,8 @@ public:
 	void run();
 	void release();
 
+	IWindow* getWindow() const { return m_pWindow; }
+
 	virtual void OnWindowResize(uint32_t width, uint32_t height) override;
 	virtual void OnWindowClose() override;
 

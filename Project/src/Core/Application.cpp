@@ -1,6 +1,8 @@
 #include "Application.h"
 #include "IWindow.h"
 
+#include "Vulkan/ShaderVK.h"
+
 Application g_Application;
 
 Application::Application()
@@ -16,6 +18,10 @@ void Application::init()
 	{
 		m_pWindow->setEventHandler(this);
 	}
+
+	IShader* pVertexShader = new ShaderVK(nullptr);
+	pVertexShader->loadFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/vertex.spv");
+	pVertexShader->finalize();
 }
 
 void Application::run()
@@ -59,4 +65,3 @@ void Application::update()
 void Application::render()
 {
 }
-
