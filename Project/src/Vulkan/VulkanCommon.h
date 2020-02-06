@@ -37,6 +37,12 @@ static VkShaderStageFlagBits convertShaderType(EShader shader)
     }
 }
 
+#ifdef NDEBUG
+#define VALIDATION_LAYERS_ENABLED false
+#else
+#define VALIDATION_LAYERS_ENABLED true
+#endif
+
 #define VK_CHECK_RESULT(_func_call_, _err_msg_) if (_func_call_ != VK_SUCCESS) { std::cerr << _err_msg_ << std::endl; }
 #define VK_CHECK_RESULT_RETURN_FALSE(_func_call_, _err_msg_) if (_func_call_ != VK_SUCCESS) { std::cerr << _err_msg_ << std::endl; return false; }
 

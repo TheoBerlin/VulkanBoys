@@ -11,12 +11,6 @@
 #include "VulkanCommon.h"
 #include "../ConsoleHelper.h"
 
-#ifdef NDEBUG
-#define VALIDATION_LAYERS_ENABLED false
-#else
-#define VALIDATION_LAYERS_ENABLED true
-#endif
-
 struct QueueFamilyIndices
 {
 	std::optional<uint32_t> graphicsFamily;

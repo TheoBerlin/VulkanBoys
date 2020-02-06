@@ -69,5 +69,6 @@ private:
 	std::vector<const char*> m_RequestedRequiredExtensions;
 	std::vector<const char*> m_RequestedOptionalExtensions;
 	std::vector<const char*> m_EnabledExtensions;
+	std::vector<VkExtensionProperties> m_AvailabeExtensions;
 };
 

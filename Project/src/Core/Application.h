@@ -2,6 +2,7 @@
 #include "IEventHandler.h"
 
 class IWindow;
+class IContext;
 
 class Application : public IEventHandler
 {
@@ -28,6 +29,8 @@ private:
 private:
 	IWindow* m_pWindow;
 	bool m_IsRunning;
+
+	IContext* m_pIContext;
 };
 
 extern Application g_Application;
