@@ -1,5 +1,6 @@
 #include "Application.h"
 #include "IWindow.h"
+#include "Common/IContext.h"
 
 #include "Vulkan/ShaderVK.h"
 
@@ -19,7 +20,9 @@ void Application::init()
 		m_pWindow->setEventHandler(this);
 	}
 
-	IShader* pVertexShader = new ShaderVK(nullptr);
+	m_pIContext = IContext::create(API::VULKAN);
+
+	IShader* pVertexShader = m_pIContext->createShader();
 	pVertexShader->loadFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/vertex.spv");
 	pVertexShader->finalize();
 }

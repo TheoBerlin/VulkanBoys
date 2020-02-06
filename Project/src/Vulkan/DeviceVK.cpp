@@ -26,7 +26,8 @@ bool DeviceVK::finalize(InstanceVK* pInstance)
 	
 	if (!initLogicalDevice(pInstance))
 		return false;
-	
+
+	std::cout << "--- Device: Vulkan Device created successfully!" << std::endl;
 	return true;
 }
 
@@ -57,7 +58,7 @@ bool DeviceVK::initPhysicalDevice(InstanceVK* pInstance)
 
 	if (deviceCount == 0)
 	{
-		std::cerr << "Presentation is not supported by the selected physicaldevice" << std::endl;
+		std::cerr << "--- Device: Presentation is not supported by the selected physicaldevice" << std::endl;
 		return false;
 	}
 
@@ -75,7 +76,7 @@ bool DeviceVK::initPhysicalDevice(InstanceVK* pInstance)
 	// Check if the best candidate is suitable at all
 	if (physicalDeviceCandidates.rbegin()->first <= 0)
 	{
-		std::cerr << "Failed to find a suitable GPU!" << std::endl;
+		std::cerr << "--- Device: Failed to find a suitable GPU!" << std::endl;
 		return false;
 	}
 
@@ -136,7 +137,7 @@ bool DeviceVK::initLogicalDevice(InstanceVK* pInstance)
 
 	if (vkCreateDevice(m_PhysicalDevice, &createInfo, nullptr, &m_Device) != VK_SUCCESS)
 	{
-		std::cerr << "Failed to create logical device!" << std::endl;
+		std::cerr << "--- Device: Failed to create logical device!" << std::endl;
 		return false;
 	}
 
@@ -201,21 +202,23 @@ void DeviceVK::setEnabledExtensions()
 	uint32_t extensionCount = 0;
 	vkEnumerateDeviceExtensionProperties(m_PhysicalDevice, nullptr, &extensionCount, nullptr);
 
-	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-	vkEnumerateDeviceExtensionProperties(m_PhysicalDevice, nullptr, &extensionCount, availableExtensions.data());
+	m_AvailabeExtensions.resize(extensionCount);
+	vkEnumerateDeviceExtensionProperties(m_PhysicalDevice, nullptr, &extensionCount, m_AvailabeExtensions.data());
 
 	std::set<std::string> optionalExtensions(m_RequestedOptionalExtensions.begin(), m_RequestedOptionalExtensions.end());
 
-	for (const auto& extension : availableExtensions)
+	for (const auto& extension : m_AvailabeExtensions)
 	{
 		if (optionalExtensions.erase(extension.extensionName) > 0)
 		{
 			m_EnabledExtensions.push_back(extension.extensionName);
 		}
-		else
-		{
-			std::cerr << "Optional Device Extension : " << extension.extensionName << " not supported!" << std::endl;
-		}
+	}
+
+	if (optionalExtensions.size() > 0)
+	{
+		for (const auto& extension : optionalExtensions)
+			std::cerr << "--- Device: Optional Extension [ " << extension << " ] not supported!" << std::endl;
 	}
 }
 
@@ -232,7 +235,7 @@ QueueFamilyIndices DeviceVK::findQueueFamilies(VkPhysicalDevice physicalDevice)
 	indices.graphicsFamily = getQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT, queueFamilies);
 	indices.computeFamily = getQueueFamilyIndex(VK_QUEUE_COMPUTE_BIT, queueFamilies);
 	indices.transferFamily = getQueueFamilyIndex(VK_QUEUE_TRANSFER_BIT, queueFamilies);
-	indices.presentFamily = m_DeviceQueueFamilyIndices.graphicsFamily; //Assume present support at this stage
+	indices.presentFamily = indices.graphicsFamily; //Assume present support at this stage
 
 	return indices;
 }
