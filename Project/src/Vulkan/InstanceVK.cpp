@@ -50,7 +50,7 @@ InstanceVK::~InstanceVK()
 	{
 		vkDestroyInstance(m_Instance, nullptr);
 		m_Instance = VK_NULL_HANDLE;
-		std::cout << "Vulkan Device Destroyed!" << std::endl;
+		std::cout << "--- Instance: Vulkan Instance Destroyed!" << std::endl;
 	}
 }
 
@@ -63,6 +63,9 @@ bool InstanceVK::finalize(bool validationLayersEnabled)
 
 	if (!initializeDebugMessenger())
 		return false;
+
+	std::cout << "--- Instance: Vulkan Instance created successfully!" << std::endl;
+	return true;
 }
 
 void InstanceVK::release()
@@ -88,13 +91,13 @@ bool InstanceVK::initInstance()
 {
 	if (m_ValidationLayersEnabled && !validationLayersSupported())
 	{
-		std::cerr << "Validation Layers not supported!" << std::endl;
+		std::cerr << "--- Instance: Validation Layers not supported!" << std::endl;
 		return false;
 	}
 
 	if (!setEnabledExtensions())
 	{
-		std::cerr << "One or more Required Extensions not supported!" << std::endl;
+		std::cerr << "--- Instance: One or more Required Extensions not supported!" << std::endl;
 		return false;
 	}
 
@@ -128,9 +131,8 @@ bool InstanceVK::initInstance()
 		createInfo.pNext = nullptr;
 	}
 
-	VK_CHECK_RESULT_RETURN_FALSE(vkCreateInstance(&createInfo, nullptr, &m_Instance), "Failed to create Vulkan Instance!");
+	VK_CHECK_RESULT_RETURN_FALSE(vkCreateInstance(&createInfo, nullptr, &m_Instance), "--- Instance: Failed to create Vulkan Instance!");
 
-	std::cout << "Vulkan Instance created successfully!" << std::endl;
 	return true;
 }
 
@@ -142,7 +144,7 @@ bool InstanceVK::initializeDebugMessenger()
 	VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
 	populateDebugMessengerCreateInfo(createInfo);
 
-	VK_CHECK_RESULT_RETURN_FALSE(CreateDebugUtilsMessengerEXT(m_Instance, &createInfo, nullptr, &m_DebugMessenger), "Failed to set up Debug Messenger!");
+	VK_CHECK_RESULT_RETURN_FALSE(CreateDebugUtilsMessengerEXT(m_Instance, &createInfo, nullptr, &m_DebugMessenger), "--- Instance: Failed to set up Debug Messenger!");
 	return true;
 }
 
@@ -180,32 +182,37 @@ bool InstanceVK::setEnabledExtensions()
 	uint32_t extensionCount = 0;
 	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
 
-	std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, availableExtensions.data());
+	m_AvailableExtensions.resize(extensionCount);
+	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, m_AvailableExtensions.data());
 
 	std::set<std::string> requiredExtensions(m_RequestedRequiredExtensions.begin(), m_RequestedRequiredExtensions.end());
 	std::set<std::string> optionalExtensions(m_RequestedOptionalExtensions.begin(), m_RequestedOptionalExtensions.end());
 
-	for (const auto& extension : availableExtensions)
+	for (const auto& extension : m_AvailableExtensions)
 	{
 		if (requiredExtensions.erase(extension.extensionName) > 0)
 		{
 			m_EnabledExtensions.push_back(extension.extensionName);
-		}
-		else
-		{
-			std::cerr << "Required Instance Extension : " << extension.extensionName << " not supported!" << std::endl;
-			return false;
 		}
 		
 		if (optionalExtensions.erase(extension.extensionName) > 0)
 		{
 			m_EnabledExtensions.push_back(extension.extensionName);
 		}
-		else
-		{
-			std::cerr << "Optional Instance Extension : " << extension.extensionName << " not supported!" << std::endl;
-		}
+	}
+
+	if (requiredExtensions.size() > 0)
+	{
+		for (const auto& extension : requiredExtensions)
+			std::cerr << "--- Instance: Required Extension [ " << extension << " ] not supported!" << std::endl;
+		
+		return false;
+	}
+
+	if (optionalExtensions.size() > 0)
+	{
+		for (const auto& extension : optionalExtensions)
+			std::cerr << "--- Instance: Optional Extension [ " << extension << " ] not supported!" << std::endl;
 	}
 
 	return true;
