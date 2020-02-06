@@ -58,4 +58,17 @@ constexpr uint32_t NUM_MATERIALS = 4;
 constexpr uint32_t MAX_NUM_DESCRIPTOR_SETS = 1024;// NUM_MATERIALS* DESCRIPTOR_SETS_PER_TRIANGLE;
 constexpr uint32_t MAX_NUM_STORAGE_DESCRIPTORS = MAX_NUM_DESCRIPTOR_SETS * 16;///*DESCRIPTOR_SETS_PER_TRIANGLE * */VERTEX_BUFFER_DESCRIPTORS_PER_SET_BUNDLE;
 constexpr uint32_t MAX_NUM_UNIFORM_DESCRIPTORS = MAX_NUM_DESCRIPTOR_SETS * 16;///*DESCRIPTOR_SETS_PER_TRIANGLE * */CONSTANT_BUFFER_DESCRIPTORS_PER_SET_BUNDLE;
-constexpr uint32_t MAX_NUM_SAMPLER_DESCRIPTORS = MAX_NUM_DESCRIPTOR_SETS * 16;///*DESCRIPTOR_SETS_PER_TRIANGLE * */SAMPLER_DESCRIPTORS_PER_SET_BUNDLE; 
+constexpr uint32_t MAX_NUM_SAMPLER_DESCRIPTORS = MAX_NUM_DESCRIPTOR_SETS * 16;///*DESCRIPTOR_SETS_PER_TRIANGLE * */SAMPLER_DESCRIPTORS_PER_SET_BUNDLE;
+
+class DescriptorCounts
+{
+public:
+    unsigned int m_UniformBuffers, m_StorageBuffers, m_SampledImages;
+
+    void enlarge(unsigned int factor)
+    {
+        m_UniformBuffers *= factor;
+        m_StorageBuffers *= factor;
+        m_SampledImages *= factor;
+    }
+};

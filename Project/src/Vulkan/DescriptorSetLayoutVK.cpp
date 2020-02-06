@@ -60,3 +60,26 @@ bool DescriptorSetLayoutVK::finalizeLayout()
         return false;
 	}
 }
+
+DescriptorCounts DescriptorSetLayoutVK::getBindingCounts() const
+{
+    DescriptorCounts bindingCounts = {};
+
+    for (const VkDescriptorSetLayoutBinding& binding: m_DescriptorSetLayoutBindings) {
+        switch (binding.descriptorType) {
+            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+                bindingCounts.m_UniformBuffers += binding.descriptorCount;
+                break;
+            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+                bindingCounts.m_StorageBuffers += binding.descriptorCount;
+                break;
+            case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+                bindingCounts.m_SampledImages += binding.descriptorCount;
+                break;
+            default:
+                break;
+        }
+    }
+
+    return bindingCounts;
+}

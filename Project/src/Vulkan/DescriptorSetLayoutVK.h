@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Common.h"
 #include "vulkan/vulkan.h"
 
 #include <vector>
@@ -18,6 +19,9 @@ public:
     bool finalizeLayout();
 
     void createDescriptorSetLayouts(DeviceVK* pDevice, const std::vector<VkDescriptorSetLayoutBinding>& descriptorSetLayoutBindings);
+
+    VkDescriptorSetLayout getLayout() const { return m_DescriptorSetLayout; }
+    DescriptorCounts getBindingCounts() const;
 
 private:
     DeviceVK* m_pDevice;

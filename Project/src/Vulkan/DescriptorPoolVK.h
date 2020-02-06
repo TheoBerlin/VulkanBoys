@@ -3,6 +3,11 @@
 #include "Common.h"
 #include "vulkan/vulkan.h"
 
+#define UNIFORM_BUFFERS_PER_POOL 10
+#define STORAGE_BUFFERS_PER_POOL 10
+#define SAMPLED_IMAGES_PER_POOL 10
+#define DESCRIPTOR_SETS_PER_POOL 10
+
 class DescriptorSetVK;
 class DescriptorSetLayoutVK;
 class DeviceVK;
@@ -13,11 +18,16 @@ public:
     DescriptorPoolVK();
     ~DescriptorPoolVK();
 
-    void initializeDescriptorPool(DeviceVK* pDevice, uint32_t frameIndex, uint32_t vertexBufferDescriptorCount, uint32_t constantBufferDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount);
+    bool hasRoomFor(const DescriptorCounts& descriptors);
 
-    DescriptorSetVK* allocDescriptorSet(const DescriptorSetLayoutVK* pDescriptorSetLayout);
+    void initializeDescriptorPool(DeviceVK* pDevice, const DescriptorCounts& descriptorCounts, uint32_t descriptorSetCount);
+
+    bool allocDescriptorSet(DescriptorSetVK* pDescriptorSet, const DescriptorSetLayoutVK* pDescriptorSetLayout);
+    void deallocateDescriptorSet(DescriptorSetVK* pDescriptorSet);
 
 private:
+    DescriptorCounts m_DescriptorCounts, m_DescriptorCapacities;
+
     DeviceVK* m_pDevice;
-    VkDescriptorPool m_DescriptorPools[MAX_FRAMES_IN_FLIGHT];
+    VkDescriptorPool m_DescriptorPool;
 };
