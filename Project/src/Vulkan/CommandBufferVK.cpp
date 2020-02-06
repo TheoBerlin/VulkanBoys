@@ -1,5 +1,7 @@
 #include "CommandBufferVK.h"
 #include "DeviceVK.h"
+#include "StackVK.h"
+#include "BufferVK.h"
 
 CommandBufferVK::CommandBufferVK(DeviceVK* pDevice)
 	: m_pDevice(pDevice),
@@ -16,6 +18,9 @@ CommandBufferVK::~CommandBufferVK()
 		vkDestroyFence(m_pDevice->getDevice(), m_Fence, nullptr);
 		m_Fence = VK_NULL_HANDLE;
 	}
+
+	SAFEDELETE(m_pStack);
+	m_pDevice = nullptr;
 }
 
 bool CommandBufferVK::finalize()
@@ -27,7 +32,12 @@ bool CommandBufferVK::finalize()
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateFence(m_pDevice->getDevice(), &fenceInfo, nullptr, &m_Fence), "Create Fence for CommandBuffer Failed");
 
-	//TODO: Create staging buffer
+	//Create stackingbuffer
+	m_pStack = new StackVK(m_pDevice);
+	if (!m_pStack->create(MB(2)))
+	{
+		return false;
+	}
 
 	return true;
 }
@@ -57,8 +67,8 @@ void CommandBufferVK::beginRenderPass(RenderPassVK* pRenderPass, FramebufferVK* 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.pNext = nullptr;
-	//renderPassInfo.renderPass = pRenderPass->getRenderPass();
-	//renderPassInfo.framebuffer = pFrameBuffer->getFrameBuffer();
+	//renderPassInfo.renderPass		= pRenderPass->getRenderPass();
+	//renderPassInfo.framebuffer	= pFrameBuffer->getFrameBuffer();
 	renderPassInfo.renderArea.offset	= { 0, 0 };
 	renderPassInfo.renderArea.extent	= { width, height };
 	renderPassInfo.pClearValues			= pClearVales;
@@ -96,6 +106,24 @@ void CommandBufferVK::setScissorRects(VkRect2D* pScissorRects, uint32_t scissorR
 void CommandBufferVK::setViewports(VkViewport* pViewports, uint32_t viewportCount)
 {
 	vkCmdSetViewport(m_CommandBuffer, 0, viewportCount, pViewports);
+}
+
+void CommandBufferVK::updateBuffer(BufferVK* pDestination, uint64_t destinationOffset, const void* pSource, uint64_t sizeInBytes)
+{
+	void* pHostMemory = m_pStack->allocate(sizeInBytes);
+	memcpy(pHostMemory, pSource, sizeInBytes);
+
+	copyBuffer(m_pStack->getBuffer(), m_pStack->getCurrentOffset(), pDestination, destinationOffset, sizeInBytes);
+}
+
+void CommandBufferVK::copyBuffer(BufferVK* pSource, uint64_t sourceOffset, BufferVK* pDestination, uint64_t destinationOffset, uint64_t sizeInBytes)
+{
+	VkBufferCopy bufferCopy = {};
+	bufferCopy.size			= sizeInBytes;
+	bufferCopy.srcOffset	= sourceOffset;
+	bufferCopy.dstOffset	= destinationOffset;
+
+	vkCmdCopyBuffer(m_CommandBuffer, pSource->getBuffer(), pDestination->getBuffer(), 1, &bufferCopy);
 }
 
 void CommandBufferVK::drawInstanced(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)

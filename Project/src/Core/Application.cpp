@@ -22,6 +22,8 @@ void Application::init()
 	IShader* pVertexShader = new ShaderVK(nullptr);
 	pVertexShader->loadFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/vertex.spv");
 	pVertexShader->finalize();
+
+	delete pVertexShader;
 }
 
 void Application::run()
@@ -39,17 +41,17 @@ void Application::run()
 
 void Application::release()
 {
-	SafeDelete(m_pWindow);
+	SAFEDELETE(m_pWindow);
 }
 
 void Application::OnWindowResize(uint32_t width, uint32_t height)
 {
-	std::cout << "Resize w=" << width << " h=" << height << std::endl;
+	D_LOG("Resize w=%d h%d", width , height);
 }
 
 void Application::OnWindowClose()
 {
-	std::cout << "Window Closed" << std::endl;
+	D_LOG("Window Closed");
 	m_IsRunning = false;
 }
 

@@ -16,6 +16,8 @@ CommandPoolVK::~CommandPoolVK()
 		vkDestroyCommandPool(m_pDevice->getDevice(), m_CommandPool, nullptr);
 		m_CommandPool = VK_NULL_HANDLE;
 	}
+
+	m_pDevice = nullptr;
 }
 
 bool CommandPoolVK::init()
@@ -28,7 +30,7 @@ bool CommandPoolVK::init()
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateCommandPool(m_pDevice->getDevice(), &createInfo, nullptr, &m_CommandPool), "Create CommandPool Failed");
 
-	std::cout << "Created CommandPool" << std::endl;
+	D_LOG("Created CommandPool");
 	return true;
 }
 
@@ -45,7 +47,7 @@ CommandBufferVK* CommandPoolVK::allocateCommandBuffer()
 	VkResult result = vkAllocateCommandBuffers(m_pDevice->getDevice(), &allocInfo, &commandBuffer);
 	if (result != VK_SUCCESS)
 	{
-		std::cerr << "vkAllocateCommandBuffers failed" << std::endl;
+		LOG("vkAllocateCommandBuffers failed");
 		return nullptr;
 	}
 	

@@ -1,6 +1,6 @@
 #pragma once
 #include "../VertexBuffer.h"
-#include "Common.h"
+#include "VulkanCommon.h"
 
 class VulkanRenderer;
 

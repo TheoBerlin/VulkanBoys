@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Common.h"
+#include "VulkanCommon.h"
 #include <vector>
 
 class InstanceVK
@@ -20,7 +20,7 @@ public:
 	//GETTERS
 	VkInstance getInstance() { return m_Instance; }
 	bool validationLayersEnabled() { return m_ValidationLayersEnabled; }
-	const std::vector<const char*>& getValidationLayers() { m_ValidationLayers; }
+	const std::vector<const char*>& getValidationLayers() { return m_ValidationLayers; }
 
 private:
 	bool initInstance();

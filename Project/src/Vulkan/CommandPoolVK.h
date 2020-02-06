@@ -1,5 +1,5 @@
 #pragma once
-#include "Common.h"
+#include "VulkanCommon.h"
 
 class DeviceVK;
 class CommandBufferVK;

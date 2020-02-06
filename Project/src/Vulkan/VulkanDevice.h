@@ -8,7 +8,7 @@
 #include <map>
 #include <optional>
 
-#include "Common.h"
+#include "VulkanCommon.h"
 #include "../ConsoleHelper.h"
 
 #ifdef NDEBUG

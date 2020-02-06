@@ -46,7 +46,7 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 		}
 		else
 		{
-			std::cerr << "Failed to create window" << std::endl;
+			LOG("Failed to create window");
 		}
 	}
 }
