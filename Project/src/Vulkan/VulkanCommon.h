@@ -4,10 +4,9 @@
 
 #ifdef _WIN32
     #define VK_USE_PLATFORM_WIN32_KHR
-    #include <vulkan/vulkan.h>
-#else
-    #error Invalid platform, only Windows is supported
 #endif
+
+#include <vulkan/vulkan.h>
 
 static uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) 
 {

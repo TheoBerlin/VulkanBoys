@@ -291,7 +291,7 @@ void VulkanDevice::initializeDescriptorPool(uint32_t frameIndex, uint32_t vertex
 	
 	VkDescriptorPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolInfo.poolSizeCount = ARRAYSIZE(poolSizes);
+    poolInfo.poolSizeCount = 0;//ARRAYSIZE(poolSizes); Not platform agnostic
 	poolInfo.pPoolSizes = poolSizes;
 	poolInfo.maxSets = descriptorSetCount;
 

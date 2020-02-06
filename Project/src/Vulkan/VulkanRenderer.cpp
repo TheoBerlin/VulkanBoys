@@ -704,7 +704,7 @@ void VulkanRenderer::createDescriptorSetLayouts(DescriptorSetLayouts& descriptor
 
 	VkDescriptorSetLayoutCreateInfo uniformLayoutInfo = {};
 	uniformLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	uniformLayoutInfo.bindingCount = ARRAYSIZE(descriptorSetLayoutBindings);
+    uniformLayoutInfo.bindingCount = 0; //ARRAYSIZE(descriptorSetLayoutBindings);
 	uniformLayoutInfo.pBindings = descriptorSetLayoutBindings;
 
 	if (vkCreateDescriptorSetLayout(m_VulkanDevice.getDevice(), &uniformLayoutInfo, nullptr, &descriptorSetLayouts.vertexAndConstantBufferDescriptorSetLayout) != VK_SUCCESS)
@@ -742,7 +742,7 @@ void VulkanRenderer::createPipelineLayout(VkPipelineLayout& pipelineLayout, Desc
 {
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = ARRAYSIZE(descriptorSetLayouts.layouts);
+    pipelineLayoutInfo.setLayoutCount = 0;//ARRAYSIZE(descriptorSetLayouts.layouts);
 	pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.layouts;
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 	pipelineLayoutInfo.pPushConstantRanges = nullptr;
@@ -770,7 +770,7 @@ void VulkanRenderer::createDescriptorSets(VkDescriptorSet descriptorSets[], Desc
 			descriptorSetLayouts.vertexAndConstantBufferDescriptorSetLayout, //Frame 0
 			descriptorSetLayouts.textureDescriptorSetLayout,
 		};
-		uint32_t count = ARRAYSIZE(allLayouts);
+		uint32_t count = 0;//ARRAYSIZE(allLayouts);
 
 		VkDescriptorSetAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -798,7 +798,7 @@ void VulkanRenderer::allocateFrameDescriptors(VkDescriptorSet descriptorSets[], 
 		descriptorSetLayouts.vertexAndConstantBufferDescriptorSetLayout, //Frame 0
 		descriptorSetLayouts.textureDescriptorSetLayout,
 	};
-	uint32_t count = ARRAYSIZE(allLayouts);
+	uint32_t count = 0;//ARRAYSIZE(allLayouts);
 
 	VkDescriptorSetAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
