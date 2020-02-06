@@ -20,7 +20,7 @@ public:
 	//GETTERS
 	VkInstance getInstance() { return m_Instance; }
 	bool validationLayersEnabled() { return m_ValidationLayersEnabled; }
-	const std::vector<const char*>& getValidationLayers() { m_ValidationLayers; }
+	const std::vector<const char*>& getValidationLayers() { return m_ValidationLayers; }
 
 private:
 	bool initInstance();
@@ -43,6 +43,7 @@ private:
 	std::vector<const char*> m_RequestedRequiredExtensions;
 	std::vector<const char*> m_RequestedOptionalExtensions;
 	std::vector<const char*> m_EnabledExtensions;
+	std::vector<VkExtensionProperties> m_AvailableExtensions;
 	
 	bool m_ValidationLayersEnabled;
 	std::vector<const char*> m_ValidationLayers;

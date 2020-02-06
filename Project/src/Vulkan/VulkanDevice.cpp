@@ -21,29 +21,6 @@ const std::vector<const char*> VulkanDevice::s_RequiredDeviceExtensions =
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
-VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
-{
-	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-	if (func != nullptr)
-	{
-		return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-	}
-	else
-	{
-		return VK_ERROR_EXTENSION_NOT_PRESENT;
-	}
-}
-
-void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
-{
-	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-	
-	if (func != nullptr)
-	{
-		func(instance, debugMessenger, pAllocator);
-	}
-}
-
 VulkanDevice::VulkanDevice() 
 {
 }
@@ -124,7 +101,7 @@ void VulkanDevice::release()
 	{
 		if (m_DebugMessenger != VK_NULL_HANDLE)
 		{
-			DestroyDebugUtilsMessengerEXT(m_VKInstance, m_DebugMessenger, nullptr);
+			//DestroyDebugUtilsMessengerEXT(m_VKInstance, m_DebugMessenger, nullptr);
 			m_DebugMessenger = VK_NULL_HANDLE;
 		}
 	}
@@ -267,7 +244,7 @@ void VulkanDevice::initializeDebugMessenger()
 	VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
 	populateDebugMessengerCreateInfo(createInfo);
 
-	if (CreateDebugUtilsMessengerEXT(m_VKInstance, &createInfo, nullptr, &m_DebugMessenger) != VK_SUCCESS)
+	//if (CreateDebugUtilsMessengerEXT(m_VKInstance, &createInfo, nullptr, &m_DebugMessenger) != VK_SUCCESS)
 	{
 		throw std::runtime_error("Failed to set up Debug Messenger!");
 	}
