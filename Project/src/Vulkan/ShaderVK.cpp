@@ -62,7 +62,7 @@ bool ShaderVK::finalize()
 	}
 	else
 	{
-		D_LOG("Created ShaderModule");
+		D_LOG("--- ShaderModule: Vulkan ShaderModule created successfully");
 		return true;
 	}
 }

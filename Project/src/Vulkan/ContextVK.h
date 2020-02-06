@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Common/IContext.h"
-#include "Common.h"
+#include "VulkanCommon.h"
 
 #include "InstanceVK.h"
 #include "DeviceVK.h"
