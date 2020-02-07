@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Common.h"
 #include "vulkan/vulkan.h"
 
 #include "DescriptorPoolVK.h"
+#include "VulkanCommon.h"
 
 #include <array>
 #include <vector>

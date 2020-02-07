@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Common.h"
+#include "DescriptorCounts.h"
 #include "vulkan/vulkan.h"
 
 class DescriptorSetVK;

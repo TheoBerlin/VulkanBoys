@@ -1,16 +1,17 @@
 #include "IContext.h"
 #include "Vulkan/ContextVK.h"
 
-IContext* IContext::create(API api)
+IContext* IContext::create(IWindow* pWindow, API api)
 {
-	static ContextVK vulkanContext;
-	
 	switch (api)
 	{
 		case API::VULKAN:
 		{
-			vulkanContext.init();
-			return &vulkanContext;
+			ContextVK* pContext = new ContextVK(pWindow);
+			pContext->init();
+			return pContext;
 		}
 	}
+
+	return nullptr;
 }

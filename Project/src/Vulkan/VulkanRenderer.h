@@ -5,10 +5,10 @@
 
 #include "../Renderer.h"
 
-#include "VulkanCommandBuffer.h"
+//#include "VulkanCommandBuffer.h"
 #include "VulkanDevice.h"
-#include "VulkanSwapChain.h"
-#include "Common.h"
+//#include "VulkanSwapChain.h"
+#include "VulkanCommon.h"
 
 class VulkanVertexBuffer;
 class VulkanConstantBuffer;
@@ -32,7 +32,7 @@ class VulkanRenderer : public Renderer
 	{
 		VkPipelineLayout pipelineLayout;
 		DescriptorSetLayouts descriptorSetLayouts;
-		VkDescriptorSet descriptorSets[DESCRIPTOR_SETS_PER_TRIANGLE];
+		VkDescriptorSet descriptorSets[2];
 	};
 	
 public:
@@ -50,8 +50,8 @@ public:
 	ConstantBuffer* makeConstantBuffer(std::string NAME, unsigned int location);
 	Technique* makeTechnique(Material* pMaterial, RenderState* pRenderState);
 
-	VulkanCommandBuffer* beginSingleTimeCommands();
-	void endSingleTimeCommands(VulkanCommandBuffer* commandBuffer);
+	//VulkanCommandBuffer* beginSingleTimeCommands();
+	//void endSingleTimeCommands(VulkanCommandBuffer* commandBuffer);
 
 	void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
 
@@ -82,7 +82,7 @@ public:
 	void frame();
 
 	VulkanDevice* getDevice() { return &m_VulkanDevice; }
-	VulkanCommandBuffer& getCurrentCommandBuffer() { return m_VulkanCommandBuffers[m_FrameIndex]; }
+	//VulkanCommandBuffer& getCurrentCommandBuffer() { return m_VulkanCommandBuffers[m_FrameIndex]; }
 	
 private:
 	void initializeRenderPass();
@@ -99,8 +99,8 @@ private:
 	//SDL_Window* m_pWindow;
 	
 	VulkanDevice m_VulkanDevice;
-	VulkanCommandBuffer m_VulkanCommandBuffers[MAX_FRAMES_IN_FLIGHT];
-	VulkanSwapChain m_Swapchain;
+	//VulkanCommandBuffer m_VulkanCommandBuffers[MAX_FRAMES_IN_FLIGHT];
+	//VulkanSwapChain m_Swapchain;
 
 	VkRenderPass m_RenderPass;
 

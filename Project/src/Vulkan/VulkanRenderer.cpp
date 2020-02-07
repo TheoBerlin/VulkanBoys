@@ -190,42 +190,42 @@ void VulkanRenderer::createImage(VkImage& image, VkDeviceMemory& imageMemory, un
 	vkBindImageMemory(device, image, imageMemory, 0);
 }
 
-VulkanCommandBuffer* VulkanRenderer::beginSingleTimeCommands()
-{
-	VulkanCommandBuffer* commandBuffer = new VulkanCommandBuffer();
-	commandBuffer->initialize(&m_VulkanDevice);
-
-	VkCommandBufferBeginInfo beginInfo = {};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	vkBeginCommandBuffer(commandBuffer->getCommandBuffer(), &beginInfo);
-
-	return commandBuffer;
-}
-
-void VulkanRenderer::endSingleTimeCommands(VulkanCommandBuffer* commandBuffer)
-{
-	VkCommandBuffer cmdBuffer = commandBuffer->getCommandBuffer();
-
-	vkEndCommandBuffer(cmdBuffer);
-
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &cmdBuffer;
-
-	VkQueue graphicsQueue = m_VulkanDevice.getGraphicsQueue();
-
-	vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(graphicsQueue);
-
-	delete commandBuffer;
-}
+//VulkanCommandBuffer* VulkanRenderer::beginSingleTimeCommands()
+//{
+//	VulkanCommandBuffer* commandBuffer = new VulkanCommandBuffer();
+//	commandBuffer->initialize(&m_VulkanDevice);
+//
+//	VkCommandBufferBeginInfo beginInfo = {};
+//	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+//	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+//
+//	vkBeginCommandBuffer(commandBuffer->getCommandBuffer(), &beginInfo);
+//
+//	return commandBuffer;
+//}
+//
+//void VulkanRenderer::endSingleTimeCommands(VulkanCommandBuffer* commandBuffer)
+//{
+//	VkCommandBuffer cmdBuffer = commandBuffer->getCommandBuffer();
+//
+//	vkEndCommandBuffer(cmdBuffer);
+//
+//	VkSubmitInfo submitInfo = {};
+//	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+//	submitInfo.commandBufferCount = 1;
+//	submitInfo.pCommandBuffers = &cmdBuffer;
+//
+//	VkQueue graphicsQueue = m_VulkanDevice.getGraphicsQueue();
+//
+//	vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+//	vkQueueWaitIdle(graphicsQueue);
+//
+//	delete commandBuffer;
+//}
 
 void VulkanRenderer::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
 {
-	VulkanCommandBuffer* commandBuffer = beginSingleTimeCommands();
+	//VulkanCommandBuffer* commandBuffer = beginSingleTimeCommands();
 
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -260,21 +260,14 @@ void VulkanRenderer::transitionImageLayout(VkImage image, VkFormat format, VkIma
 		throw std::invalid_argument("unsupported layout transition!");
 	}
 
-	vkCmdPipelineBarrier(
-		commandBuffer->getCommandBuffer(),
-		sourceStage, destinationStage,
-		0,
-		0, nullptr,
-		0, nullptr,
-		1, &barrier
-	);
+	//vkCmdPipelineBarrier(commandBuffer->getCommandBuffer(),	sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
-	endSingleTimeCommands(commandBuffer);
+	//endSingleTimeCommands(commandBuffer);
 }
 
 void VulkanRenderer::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
 {
-	VulkanCommandBuffer* commandBuffer = this->beginSingleTimeCommands();
+	//VulkanCommandBuffer* commandBuffer = this->beginSingleTimeCommands();
 
 	VkBufferImageCopy region = {};
 	region.bufferImageHeight = 0;
@@ -288,9 +281,9 @@ void VulkanRenderer::copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t 
 	region.imageExtent.height = height;
 	region.imageExtent.width = width;
 
-	vkCmdCopyBufferToImage(commandBuffer->getCommandBuffer(), buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+	//vkCmdCopyBufferToImage(commandBuffer->getCommandBuffer(), buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-	this->endSingleTimeCommands(commandBuffer);
+	//this->endSingleTimeCommands(commandBuffer);
 }
 
 int VulkanRenderer::createImageView(VkImageView& imageView, VkImage image, VkFormat format)
@@ -358,7 +351,7 @@ int VulkanRenderer::initialize(unsigned width, unsigned height)
 
 	m_pWindow = SDL_CreateWindow("Vulkan", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL);*/
 	
-	m_VulkanDevice.initialize("Prankster", MAX_NUM_STORAGE_DESCRIPTORS, MAX_NUM_UNIFORM_DESCRIPTORS, MAX_NUM_SAMPLER_DESCRIPTORS, MAX_NUM_DESCRIPTOR_SETS);
+	//m_VulkanDevice.initialize("Prankster", MAX_NUM_STORAGE_DESCRIPTORS, MAX_NUM_UNIFORM_DESCRIPTORS, MAX_NUM_SAMPLER_DESCRIPTORS, MAX_NUM_DESCRIPTOR_SETS);
 
 	initializeRenderPass();
 
@@ -366,13 +359,13 @@ int VulkanRenderer::initialize(unsigned width, unsigned height)
 	
 	//m_Swapchain.initialize(&m_VulkanDevice, m_pWindow, m_RenderPass, VK_FORMAT_B8G8R8A8_UNORM, MAX_FRAMES_IN_FLIGHT, true);
 
-	for (auto& commandBuffer : m_VulkanCommandBuffers) {
+	/*for (auto& commandBuffer : m_VulkanCommandBuffers) {
 		commandBuffer.initialize(&m_VulkanDevice);
-	}
+	}*/
 
 	DescriptorSetLayouts descriptorSetLayouts = {};
 	VkPipelineLayout pipelineLayout = {};
-	VkDescriptorSet descriptorSets[DESCRIPTOR_SETS_PER_TRIANGLE];
+	VkDescriptorSet descriptorSets[5/*DESCRIPTOR_SETS_PER_TRIANGLE*/];
 	memset(descriptorSets, 0, sizeof(descriptorSets));
 
 	createDescriptorSetLayouts(descriptorSetLayouts);
@@ -409,7 +402,7 @@ void VulkanRenderer::setWinTitle(const char* title)
 
 void VulkanRenderer::present()
 {
-	m_Swapchain.present(m_RenderFinishedSemaphores[m_FrameIndex]);
+	//m_Swapchain.present(m_RenderFinishedSemaphores[m_FrameIndex]);
 	m_FrameIndex = (m_FrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 
 	for (VulkanConstantBuffer* pConstantBuffer : m_ConstantBuffers) {
@@ -450,7 +443,7 @@ int VulkanRenderer::shutdown()
 		vkDestroySemaphore(m_VulkanDevice.getDevice(), m_RenderFinishedSemaphores[i], nullptr);
 		vkDestroySemaphore(m_VulkanDevice.getDevice(), m_ImageAvailableSemaphores[i], nullptr);
 
-		m_VulkanCommandBuffers[i].release();
+		//m_VulkanCommandBuffers[i].release();
 	}
 
 	vkDestroyRenderPass(m_VulkanDevice.getDevice(), m_RenderPass, nullptr);
@@ -459,7 +452,7 @@ int VulkanRenderer::shutdown()
 		delete pRenderState;
 	}
 
-	m_Swapchain.release();
+	//m_Swapchain.release();
 	m_VulkanDevice.release();
 
 	//SDL_DestroyWindow(m_pWindow);
@@ -483,7 +476,7 @@ void VulkanRenderer::clearBuffer(unsigned)
 
 void VulkanRenderer::setRenderState(RenderState* ps)
 {
-	m_VulkanCommandBuffers[m_FrameIndex].bindPipelineState(reinterpret_cast<VulkanRenderState*>(ps)->getPipelineState());
+	//m_VulkanCommandBuffers[m_FrameIndex].bindPipelineState(reinterpret_cast<VulkanRenderState*>(ps)->getPipelineState());
 }
 
 void VulkanRenderer::submit(Mesh* mesh)
@@ -493,15 +486,15 @@ void VulkanRenderer::submit(Mesh* mesh)
 
 void VulkanRenderer::frame()
 {
-	m_Swapchain.acquireNextImage(m_ImageAvailableSemaphores[m_FrameIndex]);
+	//m_Swapchain.acquireNextImage(m_ImageAvailableSemaphores[m_FrameIndex]);
 
-	m_VulkanCommandBuffers[m_FrameIndex].reset();
+	//m_VulkanCommandBuffers[m_FrameIndex].reset();
 	m_VulkanDevice.cleanDescriptorPools(m_FrameIndex);
-	m_VulkanCommandBuffers[m_FrameIndex].beginCommandBuffer();
+	//m_VulkanCommandBuffers[m_FrameIndex].beginCommandBuffer();
 
 	for (auto& constantBuffer : m_ConstantBuffers)
 	{
-		constantBuffer->copyToBuffer(&m_VulkanCommandBuffers[m_FrameIndex]);
+		//constantBuffer->copyToBuffer(&m_VulkanCommandBuffers[m_FrameIndex]);
 	}
 	
 	VkClearValue depthClear = {};
@@ -509,21 +502,21 @@ void VulkanRenderer::frame()
 	depthClear.depthStencil.stencil = 0;
 
 	VkClearValue clearValues[] = { m_ClearColor, depthClear };
-	m_VulkanCommandBuffers[m_FrameIndex].beginRenderPass(m_RenderPass, m_Swapchain.getCurrentFramebuffer(), m_Swapchain.getExtent(), clearValues, 2);
+	//m_VulkanCommandBuffers[m_FrameIndex].beginRenderPass(m_RenderPass, m_Swapchain.getCurrentFramebuffer(), m_Swapchain.getExtent(), clearValues, 2);
 	
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
-	viewport.width = m_Swapchain.getExtent().width;
-	viewport.height = m_Swapchain.getExtent().height;
-	m_VulkanCommandBuffers[m_FrameIndex].setViewport(viewport);
+	//viewport.width = m_Swapchain.getExtent().width;
+	//viewport.height = m_Swapchain.getExtent().height;
+	//m_VulkanCommandBuffers[m_FrameIndex].setViewport(viewport);
 
 	VkRect2D scissor = {};
-	scissor.extent = m_Swapchain.getExtent();
+	//scissor.extent = m_Swapchain.getExtent();
 	scissor.offset = { 0, 0 };
-	m_VulkanCommandBuffers[m_FrameIndex].setScissor(scissor);
+	//m_VulkanCommandBuffers[m_FrameIndex].setScissor(scissor);
 
 	for (auto& drawlist : m_DrawList)
 	{
@@ -551,14 +544,14 @@ void VulkanRenderer::frame()
 			
 			this->commitState();
 
-			m_VulkanCommandBuffers[m_FrameIndex].bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pDescriptorData->pipelineLayout, 0, 2, descriptorSets, 0, nullptr);
-			m_VulkanCommandBuffers[m_FrameIndex].drawInstanced(numberElements, 1, 0, 0);
+			//m_VulkanCommandBuffers[m_FrameIndex].bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pDescriptorData->pipelineLayout, 0, 2, descriptorSets, 0, nullptr);
+			//m_VulkanCommandBuffers[m_FrameIndex].drawInstanced(numberElements, 1, 0, 0);
 		}
 	}
 	m_DrawList.clear();
 	
-	m_VulkanCommandBuffers[m_FrameIndex].endRenderPass();
-	m_VulkanCommandBuffers[m_FrameIndex].endCommandBuffer();
+	//m_VulkanCommandBuffers[m_FrameIndex].endRenderPass();
+	//m_VulkanCommandBuffers[m_FrameIndex].endCommandBuffer();
 
 
 	//Submit
@@ -573,7 +566,7 @@ void VulkanRenderer::frame()
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 	submitInfo.pWaitDstStageMask = waitStages;
 
-	VkCommandBuffer commandBuffers[] = { m_VulkanCommandBuffers[m_FrameIndex].getCommandBuffer() };
+	VkCommandBuffer commandBuffers[] = { VK_NULL_HANDLE /*m_VulkanCommandBuffers[m_FrameIndex].getCommandBuffer()*/ };
 	submitInfo.pCommandBuffers = commandBuffers;
 	submitInfo.commandBufferCount = 1;
 
@@ -581,7 +574,7 @@ void VulkanRenderer::frame()
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
-	VkResult result = vkQueueSubmit(m_VulkanDevice.getGraphicsQueue(), 1, &submitInfo, m_VulkanCommandBuffers[m_FrameIndex].getFence());
+	VkResult result = vkQueueSubmit(m_VulkanDevice.getGraphicsQueue(), 1, &submitInfo, VK_NULL_HANDLE /*m_VulkanCommandBuffers[m_FrameIndex].getFence()*/);
 	if (result != VK_SUCCESS)
 	{
 		std::cout << "vkQueueSubmit failed. Error: " << result << std::endl;
@@ -711,7 +704,7 @@ void VulkanRenderer::createDescriptorSetLayouts(DescriptorSetLayouts& descriptor
 
 	VkDescriptorSetLayoutCreateInfo uniformLayoutInfo = {};
 	uniformLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	uniformLayoutInfo.bindingCount = ARRAYSIZE(descriptorSetLayoutBindings);
+    uniformLayoutInfo.bindingCount = 0; //ARRAYSIZE(descriptorSetLayoutBindings);
 	uniformLayoutInfo.pBindings = descriptorSetLayoutBindings;
 
 	if (vkCreateDescriptorSetLayout(m_VulkanDevice.getDevice(), &uniformLayoutInfo, nullptr, &descriptorSetLayouts.vertexAndConstantBufferDescriptorSetLayout) != VK_SUCCESS)
@@ -749,7 +742,7 @@ void VulkanRenderer::createPipelineLayout(VkPipelineLayout& pipelineLayout, Desc
 {
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = ARRAYSIZE(descriptorSetLayouts.layouts);
+    pipelineLayoutInfo.setLayoutCount = 0;//ARRAYSIZE(descriptorSetLayouts.layouts);
 	pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.layouts;
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 	pipelineLayoutInfo.pPushConstantRanges = nullptr;
@@ -776,7 +769,7 @@ void VulkanRenderer::createDescriptorSets(VkDescriptorSet descriptorSets[], Desc
 			descriptorSetLayouts.vertexAndConstantBufferDescriptorSetLayout, //Frame 0
 			descriptorSetLayouts.textureDescriptorSetLayout,
 		};
-		uint32_t count = ARRAYSIZE(allLayouts);
+		uint32_t count = 0;//ARRAYSIZE(allLayouts);
 
 		VkDescriptorSetAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -801,7 +794,7 @@ void VulkanRenderer::allocateFrameDescriptors(VkDescriptorSet descriptorSets[], 
 		descriptorSetLayouts.vertexAndConstantBufferDescriptorSetLayout, //Frame 0
 		descriptorSetLayouts.textureDescriptorSetLayout,
 	};
-	uint32_t count = ARRAYSIZE(allLayouts);
+	uint32_t count = 0;//ARRAYSIZE(allLayouts);
 
 	VkDescriptorSetAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -820,7 +813,7 @@ void VulkanRenderer::allocateFrameDescriptors(VkDescriptorSet descriptorSets[], 
 		//std::cout << "Allocated DescriptorSets " << m_AllocatedSets[m_FrameIndex] << " on frame " << m_FrameIndex << std::endl;
 	}
 
-	if (m_AllocatedSets[m_FrameIndex] >= (MAX_NUM_DESCRIPTOR_SETS / 2) - 3)
+	if (m_AllocatedSets[m_FrameIndex] >= (5/*MAX_NUM_DESCRIPTOR_SETS*/ / 2) - 3)
 	{
 		m_VulkanDevice.reallocDescriptorPool(m_FrameIndex);
 		m_AllocatedSets[m_FrameIndex] = 0;
@@ -829,7 +822,7 @@ void VulkanRenderer::allocateFrameDescriptors(VkDescriptorSet descriptorSets[], 
 
 void VulkanRenderer::updateVertexBufferDescriptorSets()
 {
-	for (size_t i = 0; i < VERTEX_BUFFER_DESCRIPTORS_PER_SET_BUNDLE; i++)
+	for (size_t i = 0; i < 5/*VERTEX_BUFFER_DESCRIPTORS_PER_SET_BUNDLE*/; i++)
 	{
 		//Cache buffer
 		VulkanVertexBuffer* pBuffer = m_pVertexBuffers[i];
@@ -857,7 +850,7 @@ void VulkanRenderer::updateVertexBufferDescriptorSets()
 
 void VulkanRenderer::updateConstantBufferDescriptorSets()
 {
-	for (size_t i = 0; i < CONSTANT_BUFFER_DESCRIPTORS_PER_SET_BUNDLE; i++)
+	for (size_t i = 0; i < 5/*CONSTANT_BUFFER_DESCRIPTORS_PER_SET_BUNDLE*/; i++)
 	{
 		VulkanConstantBuffer* pBuffer = m_pConstantBuffer[5 + i];
 		assert(pBuffer != nullptr);

@@ -1,7 +1,8 @@
 #pragma once
 
-#include "Common.h"
 #include "vulkan/vulkan.h"
+
+#include "DescriptorCounts.h"
 
 #include <vector>
 

@@ -1,4 +1,6 @@
 #pragma once
+#include <stddef.h>
+
 class VertexBuffer
 {
 public:

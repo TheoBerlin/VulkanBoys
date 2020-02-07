@@ -18,13 +18,13 @@ ShaderVK::~ShaderVK()
 		vkDestroyShaderModule(m_pDevice->getDevice(), m_ShaderModule, nullptr);
 		m_ShaderModule = VK_NULL_HANDLE;
 
-		std::cout << "Destroyed ShaderModule" << std::endl;
+		D_LOG("Destroyed ShaderModule");
 	}
 }
 
 bool ShaderVK::loadFromFile(EShader shaderType, const std::string& entrypoint, const std::string& filepath)
 {
-	std::ifstream shaderFile(filepath);
+	std::ifstream shaderFile(filepath, std::ios::ate | std::ios::binary);
 	if (shaderFile.is_open())
 	{
 		size_t fileSize = (size_t)shaderFile.tellg();
@@ -37,11 +37,11 @@ bool ShaderVK::loadFromFile(EShader shaderType, const std::string& entrypoint, c
 		m_EntryPoint = entrypoint;
 		m_ShaderType = shaderType;
 
-		std::cout << "Loaded shaderfile: " << filepath << " - Entrypoint: " << m_EntryPoint << std::endl;
+		D_LOG("Loaded shaderfile: %s - Entrypoint: %s", filepath.c_str(), m_EntryPoint.c_str());
 		return true;
 	}
 	
-	std::cerr << "Failed to load shaderfile: " << filepath << std::endl;
+	LOG("Failed to load shaderfile: %s", filepath.c_str());
 	return false;
 }
 
@@ -57,12 +57,12 @@ bool ShaderVK::finalize()
 	VkResult result = vkCreateShaderModule(m_pDevice->getDevice(), &createInfo, nullptr, &m_ShaderModule);
 	if (result != VK_SUCCESS)
 	{
-		std::cout << "vkCreateShaderModule failed" << std::endl;
+		LOG("vkCreateShaderModule failed");
 		return false;
 	}
 	else
 	{
-		std::cout << "Created ShaderModule" << std::endl;
+		D_LOG("--- ShaderModule: Vulkan ShaderModule created successfully");
 		return true;
 	}
 }

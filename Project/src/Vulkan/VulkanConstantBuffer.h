@@ -1,5 +1,5 @@
 #include "../ConstantBuffer.h"
-#include "Common.h"
+#include "VulkanCommon.h"
 
 #include "Vulkan/vulkan.h"
 
