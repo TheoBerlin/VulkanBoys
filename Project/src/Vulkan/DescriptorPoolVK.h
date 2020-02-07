@@ -3,6 +3,8 @@
 #include "DescriptorCounts.h"
 #include "vulkan/vulkan.h"
 
+#include <list>
+
 class DescriptorSetVK;
 class DescriptorSetLayoutVK;
 class DeviceVK;
@@ -17,10 +19,11 @@ public:
 
     void initializeDescriptorPool(DeviceVK* pDevice, const DescriptorCounts& descriptorCounts, uint32_t descriptorSetCount);
 
-    bool allocDescriptorSet(DescriptorSetVK* pDescriptorSet, const DescriptorSetLayoutVK* pDescriptorSetLayout);
+    DescriptorSetVK* allocDescriptorSet(const DescriptorSetLayoutVK* pDescriptorSetLayout);
     void deallocateDescriptorSet(DescriptorSetVK* pDescriptorSet);
 
 private:
+    std::list<DescriptorSetVK*> m_AllocatedSets;
     DescriptorCounts m_DescriptorCounts, m_DescriptorCapacities;
 
     DeviceVK* m_pDevice;
