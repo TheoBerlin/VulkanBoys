@@ -91,4 +91,6 @@ void DescriptorPoolVK::deallocateDescriptorSet(DescriptorSetVK* pDescriptorSet)
 	if (vkFreeDescriptorSets(m_pDevice->getDevice(), m_DescriptorPool, 1, pDescriptorSet->getDescriptorSet()) != VK_SUCCESS) {
 		std::cout << "Failed to deallocate descriptor set" << std::endl;
 	}
+
+	m_DescriptorCounts -= pDescriptorSet->getDescriptorCounts();
 }
