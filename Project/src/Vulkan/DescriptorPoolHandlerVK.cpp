@@ -28,7 +28,7 @@ bool DescriptorPoolHandlerVK::allocDescriptorSet(DescriptorSetVK* pDescriptorSet
     }
 
     // No existing descriptor pool had room for the descriptor set, make a new one
-    const unsigned int setsPerPool = 10;
+    constexpr uint32_t setsPerPool = 10;
     allocationRequest.enlarge(setsPerPool);
 
     DescriptorPoolVK descriptorPool;

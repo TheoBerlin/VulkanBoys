@@ -6,6 +6,7 @@
 #include "Vulkan/ContextVK.h"
 #include "Vulkan/CommandPoolVK.h"
 #include "Vulkan/RenderPassVK.h"
+#include "Vulkan/DescriptorSetLayoutVK.h"
 
 Application g_Application;
 
@@ -77,6 +78,12 @@ void Application::init()
 	pRenderPass->addSubpassDependency(VK_SUBPASS_EXTERNAL, 0, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 
 		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
 	pRenderPass->finalize();
+
+	DescriptorSetLayoutVK* pDescriptorLayout = new DescriptorSetLayoutVK(pDevice);
+	pDescriptorLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0, 1); //Vertex
+	pDescriptorLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 1, 1); //Transform
+	pDescriptorLayout->addBindingSampledImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, 2, 1); //texture
+	pDescriptorLayout->finalizeLayout();
 
 	pCommandPool->freeCommandBuffer(&pCommandBuffer);
 	SAFEDELETE(pCommandPool);

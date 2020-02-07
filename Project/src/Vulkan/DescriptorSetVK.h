@@ -1,8 +1,6 @@
 #pragma once
-
-#include "vulkan/vulkan.h"
-
-#include "Common.h"
+#include "VulkanCommon.h"
+#include "DescriptorCounts.h"
 
 class DescriptorPoolVK;
 class DeviceVK;

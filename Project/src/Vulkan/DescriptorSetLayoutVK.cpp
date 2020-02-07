@@ -5,11 +5,19 @@
 #include <iostream>
 
 DescriptorSetLayoutVK::DescriptorSetLayoutVK(DeviceVK* pDevice)
-    :m_pDevice(pDevice)
-{}
+    :m_pDevice(pDevice),
+    m_DescriptorSetLayout(VK_NULL_HANDLE)
+{
+}
 
 DescriptorSetLayoutVK::~DescriptorSetLayoutVK()
-{}
+{
+    if (m_DescriptorSetLayout != VK_NULL_HANDLE)
+    {
+        vkDestroyDescriptorSetLayout(m_pDevice->getDevice(), m_DescriptorSetLayout, nullptr);
+        m_DescriptorSetLayout = VK_NULL_HANDLE;
+    }
+}
 
 void DescriptorSetLayoutVK::addBindingStorageBuffer(VkShaderStageFlags shaderStageFlags, uint32_t bindingSlot, uint32_t descriptorCount)
 {
