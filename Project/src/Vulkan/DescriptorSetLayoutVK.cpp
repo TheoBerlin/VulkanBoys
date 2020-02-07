@@ -12,8 +12,7 @@ DescriptorSetLayoutVK::DescriptorSetLayoutVK(DeviceVK* pDevice)
 
 DescriptorSetLayoutVK::~DescriptorSetLayoutVK()
 {
-    if (m_DescriptorSetLayout != VK_NULL_HANDLE)
-    {
+    if (m_DescriptorSetLayout != VK_NULL_HANDLE) {
         vkDestroyDescriptorSetLayout(m_pDevice->getDevice(), m_DescriptorSetLayout, nullptr);
         m_DescriptorSetLayout = VK_NULL_HANDLE;
     }

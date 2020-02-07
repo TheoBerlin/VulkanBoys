@@ -67,8 +67,7 @@ void Application::OnWindowResize(uint32_t width, uint32_t height)
 {
 	D_LOG("Resize w=%d h%d", width , height);
 
-	if (m_pRenderer)
-	{
+	if (m_pRenderer) {
 		m_pRenderer->setViewport(width, height, 0.0f, 1.0f, 0.0f, 0.0f);
 	}
 }
@@ -85,8 +84,7 @@ Application& Application::getInstance()
 }
 
 void Application::update()
-{
-}
+{}
 
 void Application::render()
 {
