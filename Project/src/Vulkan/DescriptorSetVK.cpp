@@ -1,7 +1,7 @@
 #include "DescriptorSetVK.h"
 
 #include "DescriptorPoolVK.h"
-//#include "DeviceVK.h"
+#include "DeviceVK.h"
 
 DescriptorSetVK::DescriptorSetVK()
     :m_pDescriptorPool(nullptr),
@@ -51,7 +51,7 @@ void DescriptorSetVK::writeSampledImageDescriptor(VkImageView imageView, VkSampl
 	descriptorImageWrite.pImageInfo = &imageInfo;
 	descriptorImageWrite.pTexelBufferView = nullptr;
 
-	vkUpdateDescriptorSets(m_pVulkanDevice->getDevice(), 1, &descriptorImageWrite, 0, nullptr);
+	vkUpdateDescriptorSets(m_pDevice->getDevice(), 1, &descriptorImageWrite, 0, nullptr);
 }
 
 void DescriptorSetVK::writeBufferDescriptor(VkBuffer buffer, uint32_t binding, VkDescriptorType bufferType)
@@ -72,5 +72,5 @@ void DescriptorSetVK::writeBufferDescriptor(VkBuffer buffer, uint32_t binding, V
     descriptorBufferWrite.pImageInfo = nullptr;
     descriptorBufferWrite.pTexelBufferView = nullptr;
 
-    vkUpdateDescriptorSets(m_pVulkanDevice->getDevice(), 1, &descriptorBufferWrite, 0, nullptr);
+    vkUpdateDescriptorSets(m_pDevice->getDevice(), 1, &descriptorBufferWrite, 0, nullptr);
 }

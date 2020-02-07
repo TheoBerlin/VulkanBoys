@@ -1,5 +1,7 @@
 #include "DescriptorSetLayoutVK.h"
 
+#include "DeviceVK.h"
+
 #include <iostream>
 
 DescriptorSetLayoutVK::DescriptorSetLayoutVK(DeviceVK* pDevice)

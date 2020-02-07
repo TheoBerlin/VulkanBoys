@@ -2,6 +2,7 @@
 
 #include "DescriptorSetLayoutVK.h"
 #include "DescriptorSetVK.h"
+#include "DeviceVK.h"
 
 #include <array>
 #include <iostream>
@@ -44,7 +45,6 @@ void DescriptorPoolVK::initializeDescriptorPool(DeviceVK* pDevice, const Descrip
 	poolSizes[1].descriptorCount = descriptorCounts.m_UniformBuffers;
 
 	poolSizes[2] = {};
-	// TODO: The two things below are not the same
 	poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	poolSizes[2].descriptorCount = descriptorCounts.m_SampledImages;
 
