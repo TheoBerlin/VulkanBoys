@@ -18,14 +18,14 @@ PipelineVK::~PipelineVK()
 	}
 }
 
-void PipelineVK::create(std::vector<IShader&> shaders, RenderPassVK* pRenderPass, PipelineLayoutVK* pPipelineLayout, DeviceVK* pDevice)
+void PipelineVK::create(std::vector<IShader*> shaders, RenderPassVK* pRenderPass, PipelineLayoutVK* pPipelineLayout, DeviceVK* pDevice)
 {
     m_pDevice = pDevice;
 
     // Define shader stage create infos
     std::vector<VkPipelineShaderStageCreateInfo> shaderStagesInfos(shaders.size());
 
-    for (IShader& shader : shaders) {
+    for (IShader* shader : shaders) {
         VkPipelineShaderStageCreateInfo shaderStageInfo;
         createShaderStageInfo(shaderStageInfo, shader);
         shaderStagesInfos.push_back(shaderStageInfo);
@@ -134,41 +134,16 @@ void PipelineVK::create(std::vector<IShader&> shaders, RenderPassVK* pRenderPass
     }
 }
 
-void PipelineVK::createShaderStageInfo(VkPipelineShaderStageCreateInfo& shaderStageInfo, const IShader& shader)
+void PipelineVK::createShaderStageInfo(VkPipelineShaderStageCreateInfo& shaderStageInfo, const IShader* shader)
 {
     shaderStageInfo = {};
-
-    // Determine shader stage
-    switch (shader.getShaderType()) {
-        case EShader::VERTEX_SHADER:
-            shaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-            break;
-        case EShader::DOMAIN_SHADER:
-            shaderStageInfo.stage = VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-            break;
-        case EShader::HULL_SHADER:
-            shaderStageInfo.stage = VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-            break;
-        case EShader::GEOMETRY_SHADER:
-            shaderStageInfo.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
-            break;
-        case EShader::PIXEL_SHADER:
-            shaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-            break;
-        case EShader::COMPUTE_SHADER:
-            shaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-            break;
-        default:
-            D_LOG("Tried to create a pipeline with an unknown shader type: %d", shader.getShaderType());
-            break;
-    }
-
     const ShaderVK& shaderVK = reinterpret_cast<const ShaderVK&>(shader);
 
     shaderStageInfo.sType     = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     shaderStageInfo.pNext     = nullptr;
     shaderStageInfo.flags     = 0;
+    shaderStageInfo.stage = convertShaderType(shader->getShaderType());
     shaderStageInfo.module    = shaderVK.getShaderModule();
-    shaderStageInfo.pName     = shader.getEntryPoint().c_str();
+    shaderStageInfo.pName     = shader->getEntryPoint().c_str();
     shaderStageInfo.pSpecializationInfo = nullptr;
 }
