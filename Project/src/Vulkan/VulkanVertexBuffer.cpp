@@ -1,5 +1,4 @@
 #include "VulkanVertexBuffer.h"
-#include "VulkanRenderer.h"
 
 VulkanVertexBuffer::VulkanVertexBuffer(VulkanRenderer* pRenderer, size_t sizeInBytes, VertexBuffer::DATA_USAGE usage)
 	: m_pRenderer(pRenderer),

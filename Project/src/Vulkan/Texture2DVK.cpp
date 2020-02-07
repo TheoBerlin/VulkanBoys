@@ -111,4 +111,5 @@ bool Texture2DVK::loadFromMemory(const void* pData, uint32_t width, uint32_t hei
 	
 	m_pTextureImageView = reinterpret_cast<ImageViewVK*>(m_pContext->createImageView());
 	m_pTextureImageView->init(imageViewParams);
+	return true;
 }
