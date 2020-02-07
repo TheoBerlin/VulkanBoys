@@ -63,12 +63,6 @@ IBuffer* ContextVK::createBuffer()
 	return nullptr;
 }
 
-IFrameBuffer* ContextVK::createFrameBuffer()
-{
-	//Todo: Implement
-	return nullptr;
-}
-
 IImage* ContextVK::createImage()
 {
 	//Todo: Implement

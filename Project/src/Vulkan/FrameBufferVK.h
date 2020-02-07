@@ -11,6 +11,8 @@ class RenderPassVK;
 class FrameBufferVK
 {
 public:
+	DECL_NO_COPY(FrameBufferVK);
+	
 	FrameBufferVK(DeviceVK* pDevice);
 	~FrameBufferVK();
 

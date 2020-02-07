@@ -54,4 +54,5 @@ bool FrameBufferVK::finalize(RenderPassVK* pRenderPass, uint32_t width, uint32_t
 	framebufferInfo.layers = 1;
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateFramebuffer(m_pDevice->getDevice(), &framebufferInfo, nullptr, &m_FrameBuffer), "--- FrameBufferVK: vkCreateFramebuffer failed");
+	return true;
 }
