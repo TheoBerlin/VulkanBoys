@@ -27,6 +27,8 @@ bool DeviceVK::finalize(InstanceVK* pInstance)
 	if (!initLogicalDevice(pInstance))
 		return false;
 
+	registerExtensionFunctions();
+
 	std::cout << "--- Device: Vulkan Device created successfully!" << std::endl;
 	return true;
 }
@@ -212,13 +214,17 @@ void DeviceVK::setEnabledExtensions()
 		if (optionalExtensions.erase(extension.extensionName) > 0)
 		{
 			m_EnabledExtensions.push_back(extension.extensionName);
+			m_OptionalRequestedExtensionsStatus[extension.extensionName] = true;
 		}
 	}
 
 	if (optionalExtensions.size() > 0)
 	{
 		for (const auto& extension : optionalExtensions)
+		{
 			std::cerr << "--- Device: Optional Extension [ " << extension << " ] not supported!" << std::endl;
+			m_OptionalRequestedExtensionsStatus[extension.c_str()] = false;
+		}
 	}
 }
 
@@ -238,6 +244,23 @@ QueueFamilyIndices DeviceVK::findQueueFamilies(VkPhysicalDevice physicalDevice)
 	indices.presentFamily = indices.graphicsFamily; //Assume present support at this stage
 
 	return indices;
+}
+
+void DeviceVK::registerExtensionFunctions()
+{
+	if (m_OptionalRequestedExtensionsStatus["VK_NV_ray_tracing"])
+	{
+		// Get VK_NV_ray_tracing related function pointers
+		vkCreateAccelerationStructureNV = reinterpret_cast<PFN_vkCreateAccelerationStructureNV>(vkGetDeviceProcAddr(m_Device, "vkCreateAccelerationStructureNV"));
+		vkDestroyAccelerationStructureNV = reinterpret_cast<PFN_vkDestroyAccelerationStructureNV>(vkGetDeviceProcAddr(m_Device, "vkDestroyAccelerationStructureNV"));
+		vkBindAccelerationStructureMemoryNV = reinterpret_cast<PFN_vkBindAccelerationStructureMemoryNV>(vkGetDeviceProcAddr(m_Device, "vkBindAccelerationStructureMemoryNV"));
+		vkGetAccelerationStructureHandleNV = reinterpret_cast<PFN_vkGetAccelerationStructureHandleNV>(vkGetDeviceProcAddr(m_Device, "vkGetAccelerationStructureHandleNV"));
+		vkGetAccelerationStructureMemoryRequirementsNV = reinterpret_cast<PFN_vkGetAccelerationStructureMemoryRequirementsNV>(vkGetDeviceProcAddr(m_Device, "vkGetAccelerationStructureMemoryRequirementsNV"));
+		vkCmdBuildAccelerationStructureNV = reinterpret_cast<PFN_vkCmdBuildAccelerationStructureNV>(vkGetDeviceProcAddr(m_Device, "vkCmdBuildAccelerationStructureNV"));
+		vkCreateRayTracingPipelinesNV = reinterpret_cast<PFN_vkCreateRayTracingPipelinesNV>(vkGetDeviceProcAddr(m_Device, "vkCreateRayTracingPipelinesNV"));
+		vkGetRayTracingShaderGroupHandlesNV = reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesNV>(vkGetDeviceProcAddr(m_Device, "vkGetRayTracingShaderGroupHandlesNV"));
+		vkCmdTraceRaysNV = reinterpret_cast<PFN_vkCmdTraceRaysNV>(vkGetDeviceProcAddr(m_Device, "vkCmdTraceRaysNV"));
+	}
 }
 
 uint32_t DeviceVK::getQueueFamilyIndex(VkQueueFlagBits queueFlags, const std::vector<VkQueueFamilyProperties>& queueFamilies)
