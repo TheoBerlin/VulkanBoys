@@ -24,7 +24,6 @@ public:
 	IShader* createShader() override;
 	
 	IBuffer* createBuffer() override;
-	IFrameBuffer* createFrameBuffer() override;
 	
 	IImage* createImage() override;
 	IImageView* createImageView() override;
