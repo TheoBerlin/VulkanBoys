@@ -1,6 +1,6 @@
 #include "VulkanConstantBuffer.h"
 
-#include "VulkanCommandBuffer.h"
+//#include "VulkanCommandBuffer.h"
 #include "VulkanRenderer.h"
 #include "VulkanDevice.h"
 
@@ -97,15 +97,15 @@ void VulkanConstantBuffer::copyToBuffer(VulkanCommandBuffer* pCommandBuffer)
 {
 	if (m_IsDirty)
 	{
-		VkCommandBuffer commandBuffer = pCommandBuffer->getCommandBuffer();
+		//VkCommandBuffer commandBuffer = pCommandBuffer->getCommandBuffer();
 
-		VkBufferCopy copyRegion = {};
-		copyRegion.srcOffset = 0;
-		copyRegion.dstOffset = 0;
-		copyRegion.size = m_Size;
-		vkCmdCopyBuffer(commandBuffer, m_PerFrameStagingBuffers[m_CurrentFrame].m_BufferHandle, m_BufferHandle, 1, &copyRegion);
+		//VkBufferCopy copyRegion = {};
+		//copyRegion.srcOffset = 0;
+		//copyRegion.dstOffset = 0;
+		//copyRegion.size = m_Size;
+		//vkCmdCopyBuffer(commandBuffer, m_PerFrameStagingBuffers[m_CurrentFrame].m_BufferHandle, m_BufferHandle, 1, &copyRegion);
 
-		m_IsDirty = false;
+		//m_IsDirty = false;
 	}
 }
 

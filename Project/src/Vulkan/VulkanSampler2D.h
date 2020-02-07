@@ -1,6 +1,6 @@
 #pragma once
 #include "../Sampler2D.h"
-#include "Common.h"
+#include "VulkanCommon.h"
 
 class VulkanDevice;
 

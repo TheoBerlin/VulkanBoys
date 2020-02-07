@@ -1,8 +1,10 @@
 #include "Application.h"
 #include "IWindow.h"
 #include "Common/IContext.h"
+#include "Common/IShader.h"
 
-#include "Vulkan/ShaderVK.h"
+#include "Vulkan/ContextVK.h"
+#include "Vulkan/CommandPoolVK.h"
 
 Application g_Application;
 
@@ -25,6 +27,17 @@ void Application::init()
 	IShader* pVertexShader = m_pIContext->createShader();
 	pVertexShader->loadFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/vertex.spv");
 	pVertexShader->finalize();
+
+	delete pVertexShader;
+
+	//Should we have ICommandBuffer? Or is commandbuffers internal i.e belongs in the renderer?
+	DeviceVK* pDevice = reinterpret_cast<ContextVK*>(m_pIContext)->getDevice();
+	uint32_t queueFamilyIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
+
+	CommandPoolVK* pCommandPool = new CommandPoolVK(pDevice, queueFamilyIndex);
+	pCommandPool->init();
+
+	CommandBufferVK* pCommandBuffer = pCommandPool->allocateCommandBuffer();
 }
 
 void Application::run()
@@ -42,17 +55,17 @@ void Application::run()
 
 void Application::release()
 {
-	SafeDelete(m_pWindow);
+	SAFEDELETE(m_pWindow);
 }
 
 void Application::OnWindowResize(uint32_t width, uint32_t height)
 {
-	std::cout << "Resize w=" << width << " h=" << height << std::endl;
+	D_LOG("Resize w=%d h%d", width , height);
 }
 
 void Application::OnWindowClose()
 {
-	std::cout << "Window Closed" << std::endl;
+	D_LOG("Window Closed");
 	m_IsRunning = false;
 }
 

@@ -1,5 +1,5 @@
 #include "VulkanDevice.h"
-#include "Common.h"
+#include "VulkanCommon.h"
 #include <set>
 
 const std::vector<const char*> VulkanDevice::s_ValidationLayers = 
@@ -20,6 +20,29 @@ const std::vector<const char*> VulkanDevice::s_RequiredDeviceExtensions =
 {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
+
+//VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
+//{
+//	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+//	if (func != nullptr)
+//	{
+//		return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
+//	}
+//	else
+//	{
+//		return VK_ERROR_EXTENSION_NOT_PRESENT;
+//	}
+//}
+//
+//void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
+//{
+//	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+//	
+//	if (func != nullptr)
+//	{
+//		func(instance, debugMessenger, pAllocator);
+//	}
+//}
 
 VulkanDevice::VulkanDevice() 
 {
@@ -60,7 +83,7 @@ void VulkanDevice::cleanDescriptorPools(uint32_t frameIndex)
 void VulkanDevice::reallocDescriptorPool(uint32_t frameIndex)
 {
 	m_GarbageDescriptorPools[frameIndex].push_back(m_DescriptorPools[frameIndex]);
-	initializeDescriptorPool(frameIndex, MAX_NUM_STORAGE_DESCRIPTORS, MAX_NUM_UNIFORM_DESCRIPTORS, MAX_NUM_SAMPLER_DESCRIPTORS, MAX_NUM_DESCRIPTOR_SETS);
+	//initializeDescriptorPool(frameIndex, MAX_NUM_STORAGE_DESCRIPTORS, MAX_NUM_UNIFORM_DESCRIPTORS, MAX_NUM_SAMPLER_DESCRIPTORS, MAX_NUM_DESCRIPTOR_SETS);
 }
 
 void VulkanDevice::release()
@@ -97,14 +120,14 @@ void VulkanDevice::release()
 		m_Device = VK_NULL_HANDLE;
 	}
 
-	if (VALIDATION_LAYERS_ENABLED)
-	{
-		if (m_DebugMessenger != VK_NULL_HANDLE)
-		{
-			//DestroyDebugUtilsMessengerEXT(m_VKInstance, m_DebugMessenger, nullptr);
-			m_DebugMessenger = VK_NULL_HANDLE;
-		}
-	}
+	//if (VALIDATION_LAYERS_ENABLED)
+	//{
+	//	if (m_DebugMessenger != VK_NULL_HANDLE)
+	//	{
+	//		DestroyDebugUtilsMessengerEXT(m_VKInstance, m_DebugMessenger, nullptr);
+	//		m_DebugMessenger = VK_NULL_HANDLE;
+	//	}
+	//}
 
 	if (m_VKInstance != VK_NULL_HANDLE)
 	{
@@ -245,9 +268,9 @@ void VulkanDevice::initializeDebugMessenger()
 	populateDebugMessengerCreateInfo(createInfo);
 
 	//if (CreateDebugUtilsMessengerEXT(m_VKInstance, &createInfo, nullptr, &m_DebugMessenger) != VK_SUCCESS)
-	{
-		throw std::runtime_error("Failed to set up Debug Messenger!");
-	}
+	//{
+	//	throw std::runtime_error("Failed to set up Debug Messenger!");
+	//}
 }
 
 void VulkanDevice::initializeDescriptorPool(uint32_t frameIndex, uint32_t vertexBufferDescriptorCount, uint32_t constantBufferDescriptorCount, uint32_t samplerDescriptorCount, uint32_t descriptorSetCount)
@@ -268,7 +291,7 @@ void VulkanDevice::initializeDescriptorPool(uint32_t frameIndex, uint32_t vertex
 	
 	VkDescriptorPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolInfo.poolSizeCount = ARRAYSIZE(poolSizes);
+    poolInfo.poolSizeCount = 0;//ARRAYSIZE(poolSizes); Not platform agnostic
 	poolInfo.pPoolSizes = poolSizes;
 	poolInfo.maxSets = descriptorSetCount;
 

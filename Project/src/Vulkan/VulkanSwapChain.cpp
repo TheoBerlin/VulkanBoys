@@ -126,13 +126,14 @@ void VulkanSwapChain::resize(uint32_t width, uint32_t height)
 	}
 }
 
-void VulkanSwapChain::createSurface(HWND hwnd)
+void VulkanSwapChain::createSurface(void* hwnd)
 {
+#ifdef _WIN32
 	VkWin32SurfaceCreateInfoKHR info = {};
 	info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 	info.pNext = nullptr;
 	info.flags = 0;
-	info.hwnd = hwnd;
+	info.hwnd = (HWND)hwnd;
 	info.hinstance = (HINSTANCE)GetModuleHandle(nullptr);
 	
 	VkResult result = vkCreateWin32SurfaceKHR(m_pDevice->getInstance(), &info, nullptr, &m_Surface);
@@ -145,6 +146,7 @@ void VulkanSwapChain::createSurface(HWND hwnd)
 	{
 		std::cout << "Created surface" << std::endl;
 	}
+#endif
 }
 
 void VulkanSwapChain::selectPresentationMode(bool verticalSync)

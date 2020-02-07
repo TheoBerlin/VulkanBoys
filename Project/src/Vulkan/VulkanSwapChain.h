@@ -1,5 +1,5 @@
 #pragma once
-#include "Common.h"
+#include "VulkanCommon.h"
 
 #include <vector>
 #include <stdint.h>
@@ -27,7 +27,7 @@ public:
 	VkFormat getFormat() const { return m_Format.format; }
 	VkExtent2D getExtent() const { return m_Extent; }
 private:
-	void createSurface(HWND hwnd);
+	void createSurface(void* hwnd);
 	void selectPresentationMode(bool verticalSync);
 	void selectFormat(VkFormat requestedFormat);
 	void createSwapChain(uint32_t width, uint32_t height);

@@ -1,6 +1,6 @@
 #pragma once
 #include "../RenderState.h"
-#include "Common.h"
+#include "VulkanCommon.h"
 
 class VulkanDevice;
 class VulkanMaterial;

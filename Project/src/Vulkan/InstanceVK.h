@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Common.h"
+#include "VulkanCommon.h"
 #include <vector>
 
 class InstanceVK

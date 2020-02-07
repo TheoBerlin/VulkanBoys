@@ -3,7 +3,7 @@
 #include <optional>
 #include <vector>
 
-#include "Common.h"
+#include "VulkanCommon.h"
 
 class InstanceVK;
 
@@ -42,6 +42,8 @@ public:
 	VkQueue getComputeQueue() { return m_ComputeQueue; }
 	VkQueue getTransferQueue() { return m_TransferQueue; }
 	VkQueue getPresentQueue() { return m_PresentQueue; }
+
+	const QueueFamilyIndices& getQueueFamilyIndices() const { return m_DeviceQueueFamilyIndices; }
 
 private:
 	bool initPhysicalDevice(InstanceVK* pInstance);

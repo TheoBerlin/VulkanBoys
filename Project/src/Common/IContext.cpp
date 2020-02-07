@@ -13,4 +13,6 @@ IContext* IContext::create(API api)
 			return &vulkanContext;
 		}
 	}
+
+	return nullptr;
 }

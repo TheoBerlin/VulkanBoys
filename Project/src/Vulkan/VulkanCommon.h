@@ -4,10 +4,9 @@
 
 #ifdef _WIN32
     #define VK_USE_PLATFORM_WIN32_KHR
-    #include <vulkan/vulkan.h>
-#else
-    #error Invalid platform, only Windows is supported
 #endif
+
+#include <vulkan/vulkan.h>
 
 static uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) 
 {
@@ -48,14 +47,3 @@ static VkShaderStageFlagBits convertShaderType(EShader shader)
 #define VK_CHECK_RESULT_RETURN_FALSE(_func_call_, _err_msg_) if (_func_call_ != VK_SUCCESS) { std::cerr << _err_msg_ << std::endl; return false; }
 
 constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 3;
-constexpr uint32_t VERTEX_BUFFER_DESCRIPTORS_PER_SET_BUNDLE = 3;
-constexpr uint32_t CONSTANT_BUFFER_DESCRIPTORS_PER_SET_BUNDLE = 2;
-constexpr uint32_t SAMPLER_DESCRIPTORS_PER_SET_BUNDLE = 1;
-constexpr uint32_t DESCRIPTOR_SETS_PER_TRIANGLE_PER_FRAME = 2;
-constexpr uint32_t DESCRIPTOR_SETS_PER_TRIANGLE = MAX_FRAMES_IN_FLIGHT * DESCRIPTOR_SETS_PER_TRIANGLE_PER_FRAME;
-constexpr uint32_t NUM_MATERIALS = 4;
-
-constexpr uint32_t MAX_NUM_DESCRIPTOR_SETS = 1024;// NUM_MATERIALS* DESCRIPTOR_SETS_PER_TRIANGLE;
-constexpr uint32_t MAX_NUM_STORAGE_DESCRIPTORS = MAX_NUM_DESCRIPTOR_SETS * 16;///*DESCRIPTOR_SETS_PER_TRIANGLE * */VERTEX_BUFFER_DESCRIPTORS_PER_SET_BUNDLE;
-constexpr uint32_t MAX_NUM_UNIFORM_DESCRIPTORS = MAX_NUM_DESCRIPTOR_SETS * 16;///*DESCRIPTOR_SETS_PER_TRIANGLE * */CONSTANT_BUFFER_DESCRIPTORS_PER_SET_BUNDLE;
-constexpr uint32_t MAX_NUM_SAMPLER_DESCRIPTORS = MAX_NUM_DESCRIPTOR_SETS * 16;///*DESCRIPTOR_SETS_PER_TRIANGLE * */SAMPLER_DESCRIPTORS_PER_SET_BUNDLE; 

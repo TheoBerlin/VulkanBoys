@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Common/IContext.h"
-#include "Common.h"
+#include "VulkanCommon.h"
 
 #include "InstanceVK.h"
 #include "DeviceVK.h"
@@ -27,6 +27,7 @@ public:
 	IImageView* createImageView() override;
 	ITexture2D* createTexture2D() override;
 
+	DeviceVK* getDevice() { return &m_Device; }
 private:
 	InstanceVK m_Instance;
 	DeviceVK m_Device;

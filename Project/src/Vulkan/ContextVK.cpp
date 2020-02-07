@@ -17,7 +17,9 @@ void ContextVK::init()
 #endif
 	
 	m_Instance.addRequiredExtension(VK_KHR_SURFACE_EXTENSION_NAME);
+#ifdef _WIN32
 	m_Instance.addRequiredExtension("VK_KHR_win32_surface");
+#endif
 
 	m_Instance.addValidationLayer("VK_LAYER_KHRONOS_validation");
 	m_Instance.finalize(VALIDATION_LAYERS_ENABLED);
