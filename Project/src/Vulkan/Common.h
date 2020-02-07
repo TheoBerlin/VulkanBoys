@@ -72,6 +72,13 @@ public:
         m_SampledImages *= factor;
     }
 
+    void operator+=(const DescriptorCounts& other)
+    {
+        m_UniformBuffers += other.m_UniformBuffers;
+        m_StorageBuffers += other.m_StorageBuffers;
+        m_SampledImages += other.m_SampledImages;
+    }
+
     void operator-=(const DescriptorCounts& other)
     {
         m_UniformBuffers -= other.m_UniformBuffers;

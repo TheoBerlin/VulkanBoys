@@ -82,7 +82,10 @@ bool DescriptorPoolVK::allocDescriptorSet(DescriptorSetVK* pDescriptorSet, const
 		return false;
 	}
 
-	pDescriptorSet->initialize(m_pDevice, this, pDescriptorSetLayout->getBindingCounts());
+	DescriptorCounts allocatedDescriptors = pDescriptorSetLayout->getBindingCounts();
+	pDescriptorSet->initialize(m_pDevice, this, allocatedDescriptors);
+	m_DescriptorCounts += allocatedDescriptors;
+
 	return true;
 }
 
