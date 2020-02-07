@@ -63,10 +63,10 @@ bool DescriptorSetLayoutVK::finalizeLayout()
 	uniformLayoutInfo.pBindings = m_DescriptorSetLayoutBindings.data();
 
 	if (vkCreateDescriptorSetLayout(m_pDevice->getDevice(), &uniformLayoutInfo, nullptr, &m_DescriptorSetLayout) != VK_SUCCESS) {
-		std::cerr << "Failed to create descriptor set layout" << std::endl;
+		LOG("Failed to create descriptor set layout");
         return true;
 	} else {
-		std::cerr << "Created descriptor set layout" << std::endl;
+		D_LOG("--- DescriptorSetLayout: Vulkan DescriptorSetLayout created successfully");
         return false;
 	}
 }
