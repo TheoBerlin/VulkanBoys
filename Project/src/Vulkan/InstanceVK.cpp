@@ -50,7 +50,7 @@ InstanceVK::~InstanceVK()
 	{
 		vkDestroyInstance(m_Instance, nullptr);
 		m_Instance = VK_NULL_HANDLE;
-		std::cout << "--- Instance: Vulkan Instance Destroyed!" << std::endl;
+		D_LOG("--- Instance: Vulkan Instance Destroyed");
 	}
 }
 
@@ -64,7 +64,7 @@ bool InstanceVK::finalize(bool validationLayersEnabled)
 	if (!initializeDebugMessenger())
 		return false;
 
-	std::cout << "--- Instance: Vulkan Instance created successfully!" << std::endl;
+	D_LOG("--- Instance: Vulkan Instance created successfully");
 	return true;
 }
 
@@ -91,24 +91,24 @@ bool InstanceVK::initInstance()
 {
 	if (m_ValidationLayersEnabled && !validationLayersSupported())
 	{
-		std::cerr << "--- Instance: Validation Layers not supported!" << std::endl;
+		D_LOG("--- Instance: Validation Layers not supported");
 		return false;
 	}
 
 	if (!setEnabledExtensions())
 	{
-		std::cerr << "--- Instance: One or more Required Extensions not supported!" << std::endl;
+		D_LOG("--- Instance: One or more Required Extensions not supported");
 		return false;
 	}
 
 	VkApplicationInfo appInfo = {};
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	appInfo.pNext = nullptr;
-	appInfo.pApplicationName = "Vulkan Application";
-	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.pEngineName = "No Engine";
-	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.apiVersion = VK_API_VERSION_1_0;
+	appInfo.pApplicationName	= "Vulkan Application";
+	appInfo.applicationVersion	= VK_MAKE_VERSION(1, 0, 0);
+	appInfo.pEngineName			= "No Engine";
+	appInfo.engineVersion		= VK_MAKE_VERSION(1, 0, 0);
+	appInfo.apiVersion			= VK_API_VERSION_1_0;
 
 	VkInstanceCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -204,7 +204,7 @@ bool InstanceVK::setEnabledExtensions()
 	if (requiredExtensions.size() > 0)
 	{
 		for (const auto& extension : requiredExtensions)
-			std::cerr << "--- Instance: Required Extension [ " << extension << " ] not supported!" << std::endl;
+			D_LOG("--- Instance: Required Extension  [%s] not supported", extension.c_str());
 		
 		return false;
 	}
@@ -212,7 +212,7 @@ bool InstanceVK::setEnabledExtensions()
 	if (optionalExtensions.size() > 0)
 	{
 		for (const auto& extension : optionalExtensions)
-			std::cerr << "--- Instance: Optional Extension [ " << extension << " ] not supported!" << std::endl;
+			D_LOG("--- Instance: Optional Extension [%s] not supported", extension.c_str());
 	}
 
 	return true;

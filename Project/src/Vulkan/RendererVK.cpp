@@ -34,9 +34,16 @@ RendererVK::~RendererVK()
 	{
 		SAFEDELETE(m_ppCommandPools[i]);
 		SAFEDELETE(m_ppBackbuffers[i]);
+		if (m_ImageAvailableSemaphores[i] != VK_NULL_HANDLE) {
+			vkDestroySemaphore(m_pContext->getDevice()->getDevice(), m_ImageAvailableSemaphores[i], nullptr);
+		}
+		if (m_RenderFinishedSemaphores[i] != VK_NULL_HANDLE) {
+			vkDestroySemaphore(m_pContext->getDevice()->getDevice(), m_RenderFinishedSemaphores[i], nullptr);
+		}
 	}
 
 	SAFEDELETE(m_pRenderPass);
+	SAFEDELETE(m_pPipelineLayout);
 	SAFEDELETE(m_pPipeline);
 	m_pContext = nullptr;
 }
@@ -112,6 +119,8 @@ bool RendererVK::init()
 	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { pDescriptorSetLayout };
 	m_pPipelineLayout = new PipelineLayoutVK();
 	m_pPipelineLayout->createPipelineLayout(pDevice, descriptorSetLayouts);
+
+	SAFEDELETE(pDescriptorSetLayout);
 
 	std::vector<IShader*> shaders = { pVertexShader, pPixelShader };
 	m_pPipeline = new PipelineVK();

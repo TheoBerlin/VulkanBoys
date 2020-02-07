@@ -17,13 +17,14 @@ DeviceVK::DeviceVK() :
 
 DeviceVK::~DeviceVK()
 {
+	release();
 }
 
 bool DeviceVK::finalize(InstanceVK* pInstance)
 {
 	if (!initPhysicalDevice(pInstance))
 		return false;
-	
+
 	if (!initLogicalDevice(pInstance))
 		return false;
 
@@ -35,8 +36,7 @@ bool DeviceVK::finalize(InstanceVK* pInstance)
 
 void DeviceVK::release()
 {
-	if (m_Device != VK_NULL_HANDLE)
-	{
+	if (m_Device != VK_NULL_HANDLE) {
 		vkDeviceWaitIdle(m_Device);
 		vkDestroyDevice(m_Device, nullptr);
 		m_Device = VK_NULL_HANDLE;

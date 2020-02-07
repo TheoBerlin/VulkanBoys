@@ -17,6 +17,9 @@ ContextVK::~ContextVK()
 {
 	SAFEDELETE(m_pSwapChain);
 	m_pWindow = nullptr;
+
+	m_Device.release();
+	m_Instance.release();
 }
 
 void ContextVK::init()
