@@ -30,7 +30,9 @@ public:
 	IImageView* createImageView() override;
 	ITexture2D* createTexture2D() override;
 
-	DeviceVK* getDevice() { return &m_Device; }
+	DeviceVK* getDevice() const { return &m_Device; }
+	SwapChainVK* getSwapChain() const { return m_pSwapChain; }
+
 private:
 	IWindow* m_pWindow;
 	SwapChainVK* m_pSwapChain;
