@@ -1,5 +1,6 @@
 #include "GLFWWindow.h"
-#include "IEventHandler.h"
+
+#include "Common/IEventHandler.h"
 
 #include <iostream>
 

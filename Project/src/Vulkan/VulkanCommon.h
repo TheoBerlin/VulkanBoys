@@ -35,6 +35,8 @@ inline VkShaderStageFlagBits convertShaderType(EShader shader)
     case EShader::PIXEL_SHADER:     return VK_SHADER_STAGE_FRAGMENT_BIT;
     case EShader::COMPUTE_SHADER:   return VK_SHADER_STAGE_COMPUTE_BIT;
     }
+
+    return VK_SHADER_STAGE_ALL;
 }
 
 inline const char* presentatModeAsString(VkPresentModeKHR mode)

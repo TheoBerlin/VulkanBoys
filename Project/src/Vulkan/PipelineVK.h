@@ -1,5 +1,4 @@
 #pragma once
-
 #include "VulkanCommon.h"
 
 #include <vector>
@@ -16,12 +15,12 @@ public:
 
 	void setWireFrame(bool wireframe) { m_WireFrame = wireframe; }
 
-	void create(std::vector<IShader&> shaders, RenderPassVK* pRenderPass, PipelineLayoutVK* pPipelineLayout, DeviceVK* pDevice);
+	void create(std::vector<IShader*> shaders, RenderPassVK* pRenderPass, PipelineLayoutVK* pPipelineLayout, DeviceVK* pDevice);
 
-	VkPipeline getPipelineState() const { return m_Pipeline; }
+	VkPipeline getPipeline() const { return m_Pipeline; }
 
 private:
-    void createShaderStageInfo(VkPipelineShaderStageCreateInfo& shaderStageInfo, const IShader& shader);
+    void createShaderStageInfo(VkPipelineShaderStageCreateInfo& shaderStageInfo, const IShader* shader);
 
 private:
 	DeviceVK* m_pDevice;

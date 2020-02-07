@@ -21,7 +21,7 @@ public:
 	
 	bool finalize(RenderPassVK* pRenderPass, uint32_t width, uint32_t height);
 
-	VkFramebuffer getFrameBuffer() { return m_FrameBuffer; }
+	VkFramebuffer getFrameBuffer() const { return m_FrameBuffer; }
 	
 private:
 	DeviceVK* m_pDevice;

@@ -1,8 +1,8 @@
 #include "InstanceVK.h"
+#include "Core/ConsoleHelper.h"
 
 #include <iostream>
 #include <set>
-#include "ConsoleHelper.h"
 
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
 {

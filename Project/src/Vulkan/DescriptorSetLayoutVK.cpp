@@ -57,12 +57,14 @@ void DescriptorSetLayoutVK::addBindingSampledImage(VkShaderStageFlags shaderStag
 
 bool DescriptorSetLayoutVK::finalizeLayout()
 {
-	VkDescriptorSetLayoutCreateInfo uniformLayoutInfo = {};
-	uniformLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	uniformLayoutInfo.bindingCount = m_DescriptorSetLayoutBindings.size();
-	uniformLayoutInfo.pBindings = m_DescriptorSetLayoutBindings.data();
+	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo = {};
+    descriptorSetLayoutInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    descriptorSetLayoutInfo.flags         = 0;
+    descriptorSetLayoutInfo.pNext         = nullptr;
+    descriptorSetLayoutInfo.bindingCount  = m_DescriptorSetLayoutBindings.size();
+    descriptorSetLayoutInfo.pBindings     = m_DescriptorSetLayoutBindings.data();
 
-	if (vkCreateDescriptorSetLayout(m_pDevice->getDevice(), &uniformLayoutInfo, nullptr, &m_DescriptorSetLayout) != VK_SUCCESS) {
+	if (vkCreateDescriptorSetLayout(m_pDevice->getDevice(), &descriptorSetLayoutInfo, nullptr, &m_DescriptorSetLayout) != VK_SUCCESS) {
 		LOG("Failed to create descriptor set layout");
         return true;
 	} else {
