@@ -6,8 +6,8 @@
 *.enc
 *.DS_Store
 *.plist
-Project/Build/bin/Debug-macosx-x86_64/VulkanProject/VulkanProject
-Project/Build/bin/Debug-macosx-x86_64/VulkanProject/VulkanProject.dSYM/Contents/Resources/DWARF/VulkanProject
+Project/Build/*
+VulkanProject
 *.pbxproj
 *.xcbkptlist
 *.xcuserstate

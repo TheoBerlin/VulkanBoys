@@ -98,10 +98,10 @@ workspace "Vulkan-Project"
 				"/usr/local/include",
 			}
 
-			--prebuildcommands 
-			--{ 
-				--"./compile_shaders.command" 
-			--}
+			prebuildcommands 
+			{ 
+				"./compile_shaders.command" 
+			}
 		filter { "action:vs*" }
 			defines
 			{
