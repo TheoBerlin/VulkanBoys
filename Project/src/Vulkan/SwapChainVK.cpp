@@ -265,25 +265,25 @@ void SwapChainVK::createImageViews()
 void SwapChainVK::createDepthStencil()
 {
 	ImageParams depthStencilParams = {};
-	depthStencilParams.Type = VK_IMAGE_TYPE_2D;
-	depthStencilParams.Extent = { m_Extent.width, m_Extent.height, 1 };
-	depthStencilParams.MipLevels = 1;
-	depthStencilParams.ArrayLayers = 1;
-	depthStencilParams.Format = VK_FORMAT_D24_UNORM_S8_UINT;
-	depthStencilParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	depthStencilParams.Samples = VK_SAMPLE_COUNT_1_BIT;
-	depthStencilParams.Usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	depthStencilParams.Type				= VK_IMAGE_TYPE_2D;
+	depthStencilParams.Extent			= { m_Extent.width, m_Extent.height, 1 };
+	depthStencilParams.MipLevels		= 1;
+	depthStencilParams.ArrayLayers		= 1;
+	depthStencilParams.Format			= VK_FORMAT_D24_UNORM_S8_UINT;
+	depthStencilParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	depthStencilParams.Samples			= VK_SAMPLE_COUNT_1_BIT;
+	depthStencilParams.Usage			= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
 	m_pDepthStencilImage = new ImageVK(m_pDevice);
 	m_pDepthStencilImage->init(depthStencilParams);
 
 	ImageViewParams depthStencilViewParams = {};
-	depthStencilViewParams.Type = VK_IMAGE_VIEW_TYPE_2D;
-	depthStencilViewParams.FirstLayer = 0;
-	depthStencilViewParams.LayerCount = 1;
-	depthStencilViewParams.MipLevels = 1;
-	depthStencilViewParams.FirstMipLevel = 0;
-	depthStencilViewParams.AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+	depthStencilViewParams.Type				= VK_IMAGE_VIEW_TYPE_2D;
+	depthStencilViewParams.FirstLayer		= 0;
+	depthStencilViewParams.LayerCount		= 1;
+	depthStencilViewParams.MipLevels		= 1;
+	depthStencilViewParams.FirstMipLevel	= 0;
+	depthStencilViewParams.AspectFlags		= VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
 	
 	m_pDepthStencilImageView = new ImageViewVK(m_pDevice, m_pDepthStencilImage);
 	m_pDepthStencilImageView->init(depthStencilViewParams);

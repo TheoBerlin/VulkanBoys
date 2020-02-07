@@ -15,7 +15,9 @@ public:
 	bool init();
 
 	CommandBufferVK* allocateCommandBuffer();
+	void freeCommandBuffer(CommandBufferVK** ppCommandBuffer);
 	void reset();
+
 private:
 	DeviceVK* m_pDevice;
 	uint32_t m_QueueFamilyIndex;

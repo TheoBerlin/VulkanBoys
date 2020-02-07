@@ -53,10 +53,26 @@ CommandBufferVK* CommandPoolVK::allocateCommandBuffer()
 
 	D_LOG("--- CommandPool: Vulkan CommandBuffer allocated successfully");
 	
-	CommandBufferVK* pCommandBuffer = new CommandBufferVK(m_pDevice);
-	pCommandBuffer->finalize(commandBuffer);
+	CommandBufferVK* pCommandBuffer = new CommandBufferVK(m_pDevice, commandBuffer);
+	pCommandBuffer->finalize();
 
 	return pCommandBuffer;
+}
+
+void CommandPoolVK::freeCommandBuffer(CommandBufferVK** ppCommandBuffer)
+{
+	ASSERT(ppCommandBuffer != nullptr);
+
+	VkCommandBuffer commandBuffer = (*ppCommandBuffer)->m_CommandBuffer;
+	if (commandBuffer != VK_NULL_HANDLE)
+	{
+		vkFreeCommandBuffers(m_pDevice->getDevice(), m_CommandPool, 1, &commandBuffer);
+		(*ppCommandBuffer)->m_CommandBuffer = VK_NULL_HANDLE;
+
+		D_LOG("--- CommandPool: Freed commanbuffer");
+	}
+
+	SAFEDELETE(*ppCommandBuffer);
 }
 
 void CommandPoolVK::reset()
