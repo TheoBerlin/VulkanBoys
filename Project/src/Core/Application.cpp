@@ -28,17 +28,8 @@ void Application::init()
 	m_pIContext = IContext::create(m_pWindow, API::VULKAN);
 	m_pRenderer = m_pIContext->createRenderer();
 	m_pRenderer->init();
-
-	IShader* pVertexShader = m_pIContext->createShader();
-	pVertexShader->loadFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/vertex.spv");
-	pVertexShader->finalize();
-
-	IShader* pPixelShader = m_pIContext->createShader();
-	pPixelShader->loadFromFile(EShader::PIXEL_SHADER, "main", "assets/shaders/fragment.spv");
-	pPixelShader->finalize();
-
-	SAFEDELETE(pVertexShader);
-	SAFEDELETE(pPixelShader);
+	m_pRenderer->setClearColor(0.0f, 0.0f, 0.0f);
+	m_pRenderer->setViewport(m_pWindow->getWidth(), m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
 
 	//Should we have ICommandBuffer? Or is commandbuffers internal i.e belongs in the renderer?
 	DeviceVK* pDevice = reinterpret_cast<ContextVK*>(m_pIContext)->getDevice();
@@ -68,13 +59,18 @@ void Application::run()
 void Application::release()
 {
 	SAFEDELETE(m_pWindow);
-	SAFEDELETE(m_pIContext);
 	SAFEDELETE(m_pRenderer);
+	SAFEDELETE(m_pIContext);
 }
 
 void Application::OnWindowResize(uint32_t width, uint32_t height)
 {
 	D_LOG("Resize w=%d h%d", width , height);
+
+	if (m_pRenderer)
+	{
+		m_pRenderer->setViewport(width, height, 0.0f, 1.0f, 0.0f, 0.0f);
+	}
 }
 
 void Application::OnWindowClose()
@@ -98,5 +94,5 @@ void Application::render()
 	m_pRenderer->drawTriangle();
 	m_pRenderer->endFrame();
 
-	m_pIContext->swapBuffers();
+	m_pRenderer->swapBuffers();
 }

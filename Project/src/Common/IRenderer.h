@@ -12,7 +12,9 @@ public:
 	virtual void endFrame() = 0;
 
 	virtual void setClearColor(float r, float g, float b) = 0;
-	virtual void setViewport(float width, float height, float minDepth, float minHeight, float topX, float topY) = 0;
+	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) = 0;
+
+	virtual void swapBuffers() = 0;
 
 	//Temporary function
 	virtual void drawTriangle() = 0;

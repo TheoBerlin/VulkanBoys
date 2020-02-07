@@ -30,7 +30,7 @@ public:
 	virtual IImageView* createImageView() override;
 	virtual ITexture2D* createTexture2D() override;
 
-	virtual void swapBuffers() override;
+	void swapBuffers(VkSemaphore renderSemaphore);
 
 	DeviceVK* getDevice() { return &m_Device; } //Const function?
 	SwapChainVK* getSwapChain() const { return m_pSwapChain; }

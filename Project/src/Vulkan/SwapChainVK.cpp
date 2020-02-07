@@ -88,12 +88,12 @@ VkResult SwapChainVK::present(VkSemaphore renderSemaphore)
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.pNext = nullptr;
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = &m_SwapChain;
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = waitSemaphores;
-	presentInfo.pResults = nullptr;
-	presentInfo.pImageIndices = &m_ImageIndex;
+	presentInfo.swapchainCount		= 1;
+	presentInfo.pSwapchains			= &m_SwapChain;
+	presentInfo.waitSemaphoreCount	= 1;
+	presentInfo.pWaitSemaphores		= waitSemaphores;
+	presentInfo.pResults			= nullptr;
+	presentInfo.pImageIndices		= &m_ImageIndex;
 
 	VkResult result = vkQueuePresentKHR(m_pDevice->getPresentQueue(), &presentInfo);
 	return VK_SUCCESS;

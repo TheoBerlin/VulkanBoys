@@ -2,6 +2,9 @@
 #include "DeviceVK.h"
 #include "StackVK.h"
 #include "BufferVK.h"
+#include "RenderPassVK.h"
+#include "PipelineVK.h"
+#include "FrameBufferVK.h"
 
 CommandBufferVK::CommandBufferVK(DeviceVK* pDevice, VkCommandBuffer commandBuffer)
 	: m_pDevice(pDevice),
@@ -66,13 +69,13 @@ void CommandBufferVK::end()
 	VK_CHECK_RESULT(vkEndCommandBuffer(m_CommandBuffer), "End CommandBuffer Failed");
 }
 
-void CommandBufferVK::beginRenderPass(RenderPassVK* pRenderPass, FramebufferVK* pFrameBuffer, uint32_t width, uint32_t height, VkClearValue* pClearVales, uint32_t clearValueCount)
+void CommandBufferVK::beginRenderPass(RenderPassVK* pRenderPass, FrameBufferVK* pFrameBuffer, uint32_t width, uint32_t height, VkClearValue* pClearVales, uint32_t clearValueCount)
 {
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.pNext = nullptr;
-	//renderPassInfo.renderPass		= pRenderPass->getRenderPass();
-	//renderPassInfo.framebuffer	= pFrameBuffer->getFrameBuffer();
+	renderPassInfo.renderPass	= pRenderPass->getRenderPass();
+	renderPassInfo.framebuffer	= pFrameBuffer->getFrameBuffer();
 	renderPassInfo.renderArea.offset	= { 0, 0 };
 	renderPassInfo.renderArea.extent	= { width, height };
 	renderPassInfo.pClearValues			= pClearVales;
@@ -86,9 +89,9 @@ void CommandBufferVK::endRenderPass()
 	vkCmdEndRenderPass(m_CommandBuffer);
 }
 
-void CommandBufferVK::bindGraphicsPipelineState(PipelineStateVK* pPipelineState)
+void CommandBufferVK::bindGraphicsPipeline(PipelineVK* pPipeline)
 {
-	//vkCmdBindPipeline(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pPipelineState->getPipeline());
+	vkCmdBindPipeline(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pPipeline->getPipeline());
 }
 
 void CommandBufferVK::bindDescriptorSet(VkPipelineBindPoint bindPoint, PipelineLayoutVK* pPipelineLayout, uint32_t firstSet, uint32_t count, const DescriptorSetVK* const* ppDescriptorSets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets)

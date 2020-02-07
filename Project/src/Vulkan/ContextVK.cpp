@@ -63,6 +63,12 @@ IBuffer* ContextVK::createBuffer()
 	return nullptr;
 }
 
+IFrameBuffer* ContextVK::createFrameBuffer()
+{
+	//Todo: Implement
+	return nullptr;
+}
+
 IImage* ContextVK::createImage()
 {
 	//Todo: Implement
@@ -81,7 +87,7 @@ ITexture2D* ContextVK::createTexture2D()
 	return nullptr;
 }
 
-void ContextVK::swapBuffers()
+void ContextVK::swapBuffers(VkSemaphore renderSemaphore)
 {
-	m_pSwapChain->present(VK_NULL_HANDLE);
+	m_pSwapChain->present(renderSemaphore);
 }
