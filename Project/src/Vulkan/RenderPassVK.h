@@ -20,6 +20,8 @@ public:
 	void addSubpassDependency(uint32_t srcSubpass, uint32_t dstSubpass, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage, VkAccessFlags srcAccess, VkAccessFlags dstAccess);
 	bool finalize();
 
+	VkRenderPass getRenderPass() { return m_RenderPass; }
+
 private:
 	DeviceVK* m_pDevice;
 	std::vector<VkSubpassDependency> m_SubpassDependencies;
