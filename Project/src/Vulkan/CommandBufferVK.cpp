@@ -3,10 +3,10 @@
 #include "StackVK.h"
 #include "BufferVK.h"
 
-CommandBufferVK::CommandBufferVK(DeviceVK* pDevice)
+CommandBufferVK::CommandBufferVK(DeviceVK* pDevice, VkCommandBuffer commandBuffer)
 	: m_pDevice(pDevice),
+	m_CommandBuffer(commandBuffer),
 	m_Fence(VK_NULL_HANDLE),
-	m_CommandBuffer(VK_NULL_HANDLE),
 	m_DescriptorSets()
 {
 }
@@ -23,11 +23,8 @@ CommandBufferVK::~CommandBufferVK()
 	m_pDevice = nullptr;
 }
 
-bool CommandBufferVK::finalize(VkCommandBuffer commandBuffer)
+bool CommandBufferVK::finalize()
 {
-	//Set buffer
-	m_CommandBuffer = commandBuffer;
-
 	// Create fence
 	VkFenceCreateInfo fenceInfo = {};
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;

@@ -15,7 +15,7 @@
 		virtual ~Type() = default; \
 		DECL_NO_COPY(Type)
 	
-#define SAFEDELETE(object) if (object) { delete object; object = nullptr; }
+#define SAFEDELETE(object) if ((object)) { delete (object); (object) = nullptr; }
 
 #define ASSERT(condition) assert(condition)
 
