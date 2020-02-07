@@ -7,7 +7,7 @@
 
 //#include "VulkanCommandBuffer.h"
 #include "VulkanDevice.h"
-#include "VulkanSwapChain.h"
+//#include "VulkanSwapChain.h"
 #include "VulkanCommon.h"
 
 class VulkanVertexBuffer;
@@ -100,7 +100,7 @@ private:
 	
 	VulkanDevice m_VulkanDevice;
 	//VulkanCommandBuffer m_VulkanCommandBuffers[MAX_FRAMES_IN_FLIGHT];
-	VulkanSwapChain m_Swapchain;
+	//VulkanSwapChain m_Swapchain;
 
 	VkRenderPass m_RenderPass;
 

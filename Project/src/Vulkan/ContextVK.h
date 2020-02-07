@@ -6,12 +6,15 @@
 #include "InstanceVK.h"
 #include "DeviceVK.h"
 
+class IWindow;
+class SwapChainVK;
+
 class ContextVK : public IContext
 {
 public:
 	DECL_NO_COPY(ContextVK);
 
-	ContextVK();
+	ContextVK(IWindow* pWindow);
 	~ContextVK();
 
 	void init();
@@ -29,6 +32,8 @@ public:
 
 	DeviceVK* getDevice() { return &m_Device; }
 private:
+	IWindow* m_pWindow;
+	SwapChainVK* m_pSwapChain;
 	InstanceVK m_Instance;
 	DeviceVK m_Device;
 };

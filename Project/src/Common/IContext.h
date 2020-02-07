@@ -2,13 +2,14 @@
 
 #include "Core/Core.h"
 
-class IRenderer;
+class IImage;
+class IWindow;
 class IShader;
 class IBuffer;
-class IFrameBuffer;
-class IImage;
+class IRenderer;
 class IImageView;
 class ITexture2D;
+class IFrameBuffer;
 
 enum API
 {
@@ -32,5 +33,5 @@ public:
 	virtual ITexture2D* createTexture2D() = 0;
 	
 public:
-	static IContext* create(API api);
+	static IContext* create(IWindow* pWindow, API api);
 };

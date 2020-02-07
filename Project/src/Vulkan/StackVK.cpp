@@ -19,7 +19,7 @@ bool StackVK::create(VkDeviceSize initalSizeInBytes)
 {
 	BufferVkParams params = {};
 	params.Usage		= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	params.MemoryUsage	= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+	params.MemoryProperty	= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 	params.SizeInBytes	= initalSizeInBytes;
 
 	m_pBuffer = new BufferVK(m_pDevice);
