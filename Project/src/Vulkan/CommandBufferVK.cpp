@@ -43,12 +43,15 @@ bool CommandBufferVK::finalize()
 	return true;
 }
 
-void CommandBufferVK::begin()
+void CommandBufferVK::reset()
 {
 	//Wait for GPU to finish with this commandbuffer and then reset it
 	vkWaitForFences(m_pDevice->getDevice(), 1, &m_Fence, VK_TRUE, UINT64_MAX);
 	vkResetFences(m_pDevice->getDevice(), 1, &m_Fence);
+}
 
+void CommandBufferVK::begin()
+{
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.pNext = nullptr;

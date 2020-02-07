@@ -22,6 +22,7 @@ public:
 
 	DECL_NO_COPY(CommandBufferVK);
 
+	void reset();
 	void begin();
 	void end();
 

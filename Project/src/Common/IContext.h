@@ -31,6 +31,8 @@ public:
 	virtual IImage* createImage() = 0;
 	virtual IImageView* createImageView() = 0;
 	virtual ITexture2D* createTexture2D() = 0;
+
+	virtual void swapBuffers() = 0;
 	
 public:
 	static IContext* create(IWindow* pWindow, API api);

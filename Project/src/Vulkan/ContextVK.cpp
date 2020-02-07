@@ -1,5 +1,6 @@
 #include "ContextVK.h"
 #include "ShaderVK.h"
+#include "RendererVK.h"
 #include "SwapChainVK.h"
 
 #include "Core/GLFWWindow.h"
@@ -48,8 +49,7 @@ void ContextVK::init()
 
 IRenderer* ContextVK::createRenderer()
 {
-	//Todo: Implement
-	return nullptr;
+	return new RendererVK(this);
 }
 
 IShader* ContextVK::createShader()
@@ -85,4 +85,9 @@ ITexture2D* ContextVK::createTexture2D()
 {
 	//Todo: Implement
 	return nullptr;
+}
+
+void ContextVK::swapBuffers()
+{
+	m_pSwapChain->present(VK_NULL_HANDLE);
 }
