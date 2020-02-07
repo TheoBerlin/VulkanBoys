@@ -50,6 +50,8 @@ CommandBufferVK* CommandPoolVK::allocateCommandBuffer()
 		LOG("vkAllocateCommandBuffers failed");
 		return nullptr;
 	}
+
+	D_LOG("--- CommandPool: Vulkan CommandBuffer allocated successfully");
 	
 	CommandBufferVK* pCommandBuffer = new CommandBufferVK(m_pDevice);
 	pCommandBuffer->finalize(commandBuffer);
