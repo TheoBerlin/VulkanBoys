@@ -19,9 +19,6 @@ public:
     void addBindingSampledImage(VkShaderStageFlags shaderStageFlags, const VkSampler* pImmutableSampler, uint32_t bindingSlot, uint32_t descriptorCount);
     bool finalizeLayout();
 
-    //TODO: Remove?
-    //void createDescriptorSetLayouts(DeviceVK* pDevice, const std::vector<VkDescriptorSetLayoutBinding>& descriptorSetLayoutBindings);
-
     VkDescriptorSetLayout getLayout() const { return m_DescriptorSetLayout; }
     DescriptorCounts getBindingCounts() const;
 

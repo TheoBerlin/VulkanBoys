@@ -18,7 +18,7 @@ void PipelineLayoutVK::createPipelineLayout(DeviceVK* pDevice, std::vector<const
 
     // Serialize the vulkan handles for the descriptor set layouts
     std::vector<VkDescriptorSetLayout> vkDescriptorSetLayouts;
-	vkDescriptorSetLayouts.reserve(descriptorSetLayouts.size());
+    vkDescriptorSetLayouts.reserve(descriptorSetLayouts.size());
     for (const DescriptorSetLayoutVK* layout : descriptorSetLayouts) {
         vkDescriptorSetLayouts.push_back(layout->getLayout());
     }

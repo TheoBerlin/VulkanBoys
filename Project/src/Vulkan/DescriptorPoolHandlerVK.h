@@ -21,7 +21,7 @@ public:
     void setCurrentFrame(unsigned int currentFrame) { m_CurrentFrame = currentFrame; }
 
     // Picks or creates a descriptor pool and allocates the descriptor set
-    bool allocDescriptorSet(DescriptorSetVK* pDescriptorSet, const DescriptorSetLayoutVK* pDescriptorSetLayout);
+    DescriptorSetVK* allocDescriptorSet(const DescriptorSetLayoutVK* pDescriptorSetLayout);
 
 private:
     DeviceVK* m_pDevice;

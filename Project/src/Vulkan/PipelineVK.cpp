@@ -28,7 +28,7 @@ void PipelineVK::create(std::vector<IShader*> shaders, RenderPassVK* pRenderPass
 
     for (IShader* shader : shaders) {
         VkPipelineShaderStageCreateInfo shaderStageInfo;
-        createShaderStageInfo(shaderStageInfo, *shader);
+        createShaderStageInfo(shaderStageInfo, shader);
         shaderStagesInfos.push_back(shaderStageInfo);
     }
 
@@ -135,16 +135,16 @@ void PipelineVK::create(std::vector<IShader*> shaders, RenderPassVK* pRenderPass
     }
 }
 
-void PipelineVK::createShaderStageInfo(VkPipelineShaderStageCreateInfo& shaderStageInfo, const IShader& shader)
+void PipelineVK::createShaderStageInfo(VkPipelineShaderStageCreateInfo& shaderStageInfo, const IShader* shader)
 {
     shaderStageInfo = {};
-
-    const ShaderVK& shaderVK = reinterpret_cast<const ShaderVK&>(shader);
-    shaderStageInfo.stage     = convertShaderType(shaderVK.getShaderType());
+    const ShaderVK* shaderVK  = reinterpret_cast<const ShaderVK*>(shader);
+    shaderStageInfo.stage     = convertShaderType(shaderVK->getShaderType());
     shaderStageInfo.sType     = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     shaderStageInfo.pNext     = nullptr;
     shaderStageInfo.flags     = 0;
-    shaderStageInfo.module    = shaderVK.getShaderModule();
-    shaderStageInfo.pName     = shader.getEntryPoint().c_str();
+    shaderStageInfo.stage     = convertShaderType(shader->getShaderType());
+    shaderStageInfo.module    = shaderVK->getShaderModule();
+    shaderStageInfo.pName     = shader->getEntryPoint().c_str();
     shaderStageInfo.pSpecializationInfo = nullptr;
 }

@@ -20,7 +20,7 @@ public:
 	VkPipeline getPipeline() const { return m_Pipeline; }
 
 private:
-    void createShaderStageInfo(VkPipelineShaderStageCreateInfo& shaderStageInfo, const IShader& shader);
+    void createShaderStageInfo(VkPipelineShaderStageCreateInfo& shaderStageInfo, const IShader* shader);
 
 private:
 	DeviceVK* m_pDevice;
