@@ -47,7 +47,7 @@ bool BufferVK::create(const BufferVkParams& params)
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateBuffer(m_pDevice->getDevice(), &bufferInfo, nullptr, &m_Buffer), "Failed to create buffer");
 	
 	m_Params = params;
-	D_LOG("Created Buffer sizeInBytes=%d\n", params.SizeInBytes);
+	D_LOG("--- Buffer: Vulkan Buffer created successfully. SizeInBytes=%d", m_Params.SizeInBytes);
 
 	VkMemoryRequirements memRequirements = {};
 	vkGetBufferMemoryRequirements(m_pDevice->getDevice(), m_Buffer, &memRequirements);
@@ -56,12 +56,12 @@ bool BufferVK::create(const BufferVkParams& params)
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.pNext = nullptr;
 	allocInfo.allocationSize	= memRequirements.size;
-	allocInfo.memoryTypeIndex	= findMemoryType(m_pDevice->getPhysicalDevice(), memRequirements.memoryTypeBits, params.SizeInBytes);
+	allocInfo.memoryTypeIndex	= findMemoryType(m_pDevice->getPhysicalDevice(), memRequirements.memoryTypeBits, params.MemoryUsage);
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkAllocateMemory(m_pDevice->getDevice(), &allocInfo, nullptr, &m_Memory), "Failed to allocate memory for buffer");
 
 	vkBindBufferMemory(m_pDevice->getDevice(), m_Buffer, m_Memory, 0);
-	LOG("Allocated '%d' bytes for buffer\n", memRequirements.size);
+	D_LOG("--- Buffer: Vulkan Allocated '%d' bytes for buffer", memRequirements.size);
 }
 
 void BufferVK::map(void** ppMappedMemory)

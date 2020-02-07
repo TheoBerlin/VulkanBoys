@@ -27,6 +27,7 @@ public:
 	IImageView* createImageView() override;
 	ITexture2D* createTexture2D() override;
 
+	DeviceVK* getDevice() { return &m_Device; }
 private:
 	InstanceVK m_Instance;
 	DeviceVK m_Device;

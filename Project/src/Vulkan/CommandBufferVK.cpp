@@ -23,14 +23,18 @@ CommandBufferVK::~CommandBufferVK()
 	m_pDevice = nullptr;
 }
 
-bool CommandBufferVK::finalize()
+bool CommandBufferVK::finalize(VkCommandBuffer commandBuffer)
 {
+	//Set buffer
+	m_CommandBuffer = commandBuffer;
+
 	// Create fence
 	VkFenceCreateInfo fenceInfo = {};
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateFence(m_pDevice->getDevice(), &fenceInfo, nullptr, &m_Fence), "Create Fence for CommandBuffer Failed");
+	D_LOG("--- CommandBuffer: Vulkan Fence created successfully");
 
 	//Create stackingbuffer
 	m_pStack = new StackVK(m_pDevice);

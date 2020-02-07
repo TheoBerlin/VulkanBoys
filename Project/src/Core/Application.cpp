@@ -1,8 +1,10 @@
 #include "Application.h"
 #include "IWindow.h"
 #include "Common/IContext.h"
+#include "Common/IShader.h"
 
-#include "Vulkan/ShaderVK.h"
+#include "Vulkan/ContextVK.h"
+#include "Vulkan/CommandPoolVK.h"
 
 Application g_Application;
 
@@ -27,6 +29,15 @@ void Application::init()
 	pVertexShader->finalize();
 
 	delete pVertexShader;
+
+	//Should we have ICommandBuffer? Or is commandbuffers internal i.e belongs in the renderer?
+	DeviceVK* pDevice = reinterpret_cast<ContextVK*>(m_pIContext)->getDevice();
+	uint32_t queueFamilyIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
+
+	CommandPoolVK* pCommandPool = new CommandPoolVK(pDevice, queueFamilyIndex);
+	pCommandPool->init();
+
+	CommandBufferVK* pCommandBuffer = pCommandPool->allocateCommandBuffer();
 }
 
 void Application::run()

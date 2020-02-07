@@ -27,4 +27,4 @@
 	#define D_LOG(...)
 #endif
 
-#define MB(bytes) bytes * 1000 * 1000
+#define MB(bytes) bytes * 1024 * 1024

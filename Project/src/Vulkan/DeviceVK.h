@@ -43,6 +43,8 @@ public:
 	VkQueue getTransferQueue() { return m_TransferQueue; }
 	VkQueue getPresentQueue() { return m_PresentQueue; }
 
+	const QueueFamilyIndices& getQueueFamilyIndices() const { return m_DeviceQueueFamilyIndices; }
+
 private:
 	bool initPhysicalDevice(InstanceVK* pInstance);
 	bool initLogicalDevice(InstanceVK* pInstance);

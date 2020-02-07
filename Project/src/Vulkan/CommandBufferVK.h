@@ -40,7 +40,7 @@ public:
 	void drawInstanced(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance);
 
 private:
-	bool finalize();
+	bool finalize(VkCommandBuffer commandBuffer);
 
 private:
 	DeviceVK* m_pDevice;

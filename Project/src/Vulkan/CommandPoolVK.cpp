@@ -30,7 +30,7 @@ bool CommandPoolVK::init()
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateCommandPool(m_pDevice->getDevice(), &createInfo, nullptr, &m_CommandPool), "Create CommandPool Failed");
 
-	D_LOG("Created CommandPool");
+	D_LOG("--- CommandPool: Vulkan CommandPool created successfully");
 	return true;
 }
 
@@ -43,7 +43,7 @@ CommandBufferVK* CommandPoolVK::allocateCommandBuffer()
 	allocInfo.commandPool = m_CommandPool;
 	allocInfo.commandBufferCount = 1;
 
-	VkCommandBuffer commandBuffer;
+	VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
 	VkResult result = vkAllocateCommandBuffers(m_pDevice->getDevice(), &allocInfo, &commandBuffer);
 	if (result != VK_SUCCESS)
 	{
@@ -52,8 +52,7 @@ CommandBufferVK* CommandPoolVK::allocateCommandBuffer()
 	}
 	
 	CommandBufferVK* pCommandBuffer = new CommandBufferVK(m_pDevice);
-	pCommandBuffer->m_CommandBuffer = commandBuffer;
-	pCommandBuffer->finalize();
+	pCommandBuffer->finalize(commandBuffer);
 
 	return pCommandBuffer;
 }

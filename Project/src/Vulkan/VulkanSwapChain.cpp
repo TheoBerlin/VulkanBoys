@@ -133,7 +133,7 @@ void VulkanSwapChain::createSurface(void* hwnd)
 	info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 	info.pNext = nullptr;
 	info.flags = 0;
-	info.hwnd = hwnd;
+	info.hwnd = (HWND)hwnd;
 	info.hinstance = (HINSTANCE)GetModuleHandle(nullptr);
 	
 	VkResult result = vkCreateWin32SurfaceKHR(m_pDevice->getInstance(), &info, nullptr, &m_Surface);
