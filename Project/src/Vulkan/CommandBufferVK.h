@@ -3,6 +3,7 @@
 
 #include <vector>
 
+class ImageVK;
 class StackVK;
 class DeviceVK;
 class BufferVK;
@@ -37,6 +38,11 @@ public:
 	void updateBuffer(BufferVK* pDestination, uint64_t destinationOffset, const void* pSource, uint64_t sizeInBytes);
 	void copyBuffer(BufferVK* pSource, uint64_t sourceOffset, BufferVK* pDestination, uint64_t destinationOffset, uint64_t sizeInBytes);
 
+	void updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height);
+	void copyBufferToImage(BufferVK* pSource, ImageVK* pImage, uint32_t width, uint32_t height);
+	
+	void transitionImageLayout(ImageVK* pImage, VkImageLayout oldLayout, VkImageLayout newLayout);
+	
 	void drawInstanced(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance);
 
 private:
