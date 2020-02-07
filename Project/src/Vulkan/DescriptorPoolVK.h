@@ -3,11 +3,6 @@
 #include "Common.h"
 #include "vulkan/vulkan.h"
 
-#define UNIFORM_BUFFERS_PER_POOL 10
-#define STORAGE_BUFFERS_PER_POOL 10
-#define SAMPLED_IMAGES_PER_POOL 10
-#define DESCRIPTOR_SETS_PER_POOL 10
-
 class DescriptorSetVK;
 class DescriptorSetLayoutVK;
 class DeviceVK;
