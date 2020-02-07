@@ -1,8 +1,11 @@
 #include "CommandBufferVK.h"
-#include "DeviceVK.h"
-#include "StackVK.h"
-#include "BufferVK.h"
 #include "ImageVK.h"
+#include "StackVK.h"
+#include "DeviceVK.h"
+#include "BufferVK.h"
+#include "RenderPassVK.h"
+#include "PipelineVK.h"
+#include "FrameBufferVK.h"
 
 CommandBufferVK::CommandBufferVK(DeviceVK* pDevice, VkCommandBuffer commandBuffer)
 	: m_pDevice(pDevice),
@@ -44,12 +47,15 @@ bool CommandBufferVK::finalize()
 	return true;
 }
 
-void CommandBufferVK::begin()
+void CommandBufferVK::reset()
 {
 	//Wait for GPU to finish with this commandbuffer and then reset it
 	vkWaitForFences(m_pDevice->getDevice(), 1, &m_Fence, VK_TRUE, UINT64_MAX);
 	vkResetFences(m_pDevice->getDevice(), 1, &m_Fence);
+}
 
+void CommandBufferVK::begin()
+{
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.pNext = nullptr;
@@ -64,13 +70,13 @@ void CommandBufferVK::end()
 	VK_CHECK_RESULT(vkEndCommandBuffer(m_CommandBuffer), "End CommandBuffer Failed");
 }
 
-void CommandBufferVK::beginRenderPass(RenderPassVK* pRenderPass, FramebufferVK* pFrameBuffer, uint32_t width, uint32_t height, VkClearValue* pClearVales, uint32_t clearValueCount)
+void CommandBufferVK::beginRenderPass(RenderPassVK* pRenderPass, FrameBufferVK* pFrameBuffer, uint32_t width, uint32_t height, VkClearValue* pClearVales, uint32_t clearValueCount)
 {
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.pNext = nullptr;
-	//renderPassInfo.renderPass		= pRenderPass->getRenderPass();
-	//renderPassInfo.framebuffer	= pFrameBuffer->getFrameBuffer();
+	renderPassInfo.renderPass	= pRenderPass->getRenderPass();
+	renderPassInfo.framebuffer	= pFrameBuffer->getFrameBuffer();
 	renderPassInfo.renderArea.offset	= { 0, 0 };
 	renderPassInfo.renderArea.extent	= { width, height };
 	renderPassInfo.pClearValues			= pClearVales;
@@ -84,9 +90,9 @@ void CommandBufferVK::endRenderPass()
 	vkCmdEndRenderPass(m_CommandBuffer);
 }
 
-void CommandBufferVK::bindGraphicsPipelineState(PipelineStateVK* pPipelineState)
+void CommandBufferVK::bindGraphicsPipeline(PipelineVK* pPipeline)
 {
-	//vkCmdBindPipeline(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pPipelineState->getPipeline());
+	vkCmdBindPipeline(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pPipeline->getPipeline());
 }
 
 void CommandBufferVK::bindDescriptorSet(VkPipelineBindPoint bindPoint, PipelineLayoutVK* pPipelineLayout, uint32_t firstSet, uint32_t count, const DescriptorSetVK* const* ppDescriptorSets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets)
@@ -192,7 +198,7 @@ void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLa
 	}
 	else 
 	{
-		std::cerr << "unsupported layout transition!" << std::endl;
+		LOG("Unsupported layout transition");
 	}
 
 	vkCmdPipelineBarrier(

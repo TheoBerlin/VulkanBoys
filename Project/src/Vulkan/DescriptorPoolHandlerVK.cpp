@@ -19,11 +19,11 @@ DescriptorSetVK* DescriptorPoolHandlerVK::allocDescriptorSet(const DescriptorSet
     // Calculate the requested amount of descriptor allocations
     DescriptorCounts allocationRequest = pDescriptorSetLayout->getBindingCounts();
 
-    for (DescriptorPoolVK descriptorPool : framePool) {
+    /*for (DescriptorPoolVK descriptorPool : framePool) {
         if (descriptorPool.hasRoomFor(allocationRequest)) {
             return descriptorPool.allocDescriptorSet(pDescriptorSetLayout);
         }
-    }
+    }*/
 
     // No existing descriptor pool had room for the descriptor set, make a new one
     constexpr uint32_t setsPerPool = 10;

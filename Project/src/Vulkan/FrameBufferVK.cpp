@@ -35,12 +35,11 @@ bool FrameBufferVK::finalize(RenderPassVK* pRenderPass, uint32_t width, uint32_t
 	uint32_t attachmentCount = m_ColorAttachments.size() + (m_pDepthStencilAttachment != nullptr ? 1 : 0);
 
 	std::vector<VkImageView> attachments(attachmentCount);
-
-	for (auto colorAttachment : m_ColorAttachments)
-		attachments.push_back(colorAttachment->getImageView());
+	for (uint32_t i = 0; i < m_ColorAttachments.size(); i++)
+		attachments[i] = m_ColorAttachments[i]->getImageView();
 
 	if (m_pDepthStencilAttachment != nullptr)
-		attachments.push_back(m_pDepthStencilAttachment->getImageView());
+		attachments[attachmentCount - 1] = m_pDepthStencilAttachment->getImageView();
 	
 	VkFramebufferCreateInfo framebufferInfo = {};
 	framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -49,7 +48,7 @@ bool FrameBufferVK::finalize(RenderPassVK* pRenderPass, uint32_t width, uint32_t
 	framebufferInfo.width = width;
 	framebufferInfo.height = height;
 	framebufferInfo.attachmentCount = attachmentCount;
-	framebufferInfo.pAttachments = attachments.data();
+	framebufferInfo.pAttachments	= attachments.data();
 	framebufferInfo.renderPass = pRenderPass->getRenderPass();
 	framebufferInfo.layers = 1;
 

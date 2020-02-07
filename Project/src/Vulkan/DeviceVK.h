@@ -34,6 +34,8 @@ public:
 	void addRequiredExtension(const char* extensionName);
 	void addOptionalExtension(const char* extensionName);
 
+	void wait();
+
 	//GETTERS
 	VkPhysicalDevice getPhysicalDevice() { return m_PhysicalDevice; };
 	VkDevice getDevice() { return m_Device; }

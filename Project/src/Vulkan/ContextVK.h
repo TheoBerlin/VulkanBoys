@@ -20,14 +20,17 @@ public:
 	void init();
 
 	//OVERRIDE
-	IRenderer* createRenderer() override;
-	IShader* createShader() override;
+	virtual IRenderer* createRenderer() override;
+	virtual IShader* createShader() override;
 	
-	IBuffer* createBuffer() override;
+	virtual IBuffer* createBuffer() override;
+	virtual IFrameBuffer* createFrameBuffer() override;
 	
-	IImage* createImage() override;
-	IImageView* createImageView() override;
-	ITexture2D* createTexture2D() override;
+	virtual IImage* createImage() override;
+	virtual IImageView* createImageView() override;
+	virtual ITexture2D* createTexture2D() override;
+
+	void swapBuffers(VkSemaphore renderSemaphore);
 
 	DeviceVK* getDevice() { return &m_Device; } //Const function?
 	SwapChainVK* getSwapChain() const { return m_pSwapChain; }

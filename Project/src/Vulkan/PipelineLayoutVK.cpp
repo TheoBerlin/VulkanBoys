@@ -25,10 +25,12 @@ void PipelineLayoutVK::createPipelineLayout(DeviceVK* pDevice, std::vector<const
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = (uint32_t)vkDescriptorSetLayouts.size();
-	pipelineLayoutInfo.pSetLayouts = vkDescriptorSetLayouts.data();
-	pipelineLayoutInfo.pushConstantRangeCount = 0;
-	pipelineLayoutInfo.pPushConstantRanges = nullptr;
+	pipelineLayoutInfo.pNext = nullptr;
+	pipelineLayoutInfo.flags = 0;
+    pipelineLayoutInfo.setLayoutCount			= uint32_t(vkDescriptorSetLayouts.size());
+	pipelineLayoutInfo.pSetLayouts				= vkDescriptorSetLayouts.data();
+	pipelineLayoutInfo.pushConstantRangeCount	= 0;
+	pipelineLayoutInfo.pPushConstantRanges		= nullptr;
 
 	if (vkCreatePipelineLayout(m_pDevice->getDevice(), &pipelineLayoutInfo, nullptr, &m_PipelineLayout) != VK_SUCCESS) {
 		std::cout << "Failed to create PipelineLayout" << std::endl;
