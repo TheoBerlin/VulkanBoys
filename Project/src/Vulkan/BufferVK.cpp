@@ -56,7 +56,7 @@ bool BufferVK::create(const BufferVkParams& params)
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.pNext = nullptr;
 	allocInfo.allocationSize	= memRequirements.size;
-	allocInfo.memoryTypeIndex	= findMemoryType(m_pDevice->getPhysicalDevice(), memRequirements.memoryTypeBits, params.MemoryUsage);
+	allocInfo.memoryTypeIndex	= findMemoryType(m_pDevice->getPhysicalDevice(), memRequirements.memoryTypeBits, params.MemoryProperty);
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkAllocateMemory(m_pDevice->getDevice(), &allocInfo, nullptr, &m_Memory), "Failed to allocate memory for buffer");
 
@@ -66,7 +66,7 @@ bool BufferVK::create(const BufferVkParams& params)
 
 void BufferVK::map(void** ppMappedMemory)
 {
-	assert((ppMappedMemory != nullptr) && (m_Params.MemoryUsage & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT));
+	assert((ppMappedMemory != nullptr) && (m_Params.MemoryProperty & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT));
 	
 	if (!m_IsMapped)
 	{

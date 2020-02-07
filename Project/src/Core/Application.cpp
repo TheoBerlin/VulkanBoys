@@ -22,13 +22,18 @@ void Application::init()
 		m_pWindow->setEventHandler(this);
 	}
 
-	m_pIContext = IContext::create(API::VULKAN);
+	m_pIContext = IContext::create(m_pWindow, API::VULKAN);
 
 	IShader* pVertexShader = m_pIContext->createShader();
 	pVertexShader->loadFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/vertex.spv");
 	pVertexShader->finalize();
 
+	IShader* pPixelShader = m_pIContext->createShader();
+	pPixelShader->loadFromFile(EShader::PIXEL_SHADER, "main", "assets/shaders/fragment.spv");
+	pPixelShader->finalize();
+
 	delete pVertexShader;
+	delete pPixelShader;
 
 	//Should we have ICommandBuffer? Or is commandbuffers internal i.e belongs in the renderer?
 	DeviceVK* pDevice = reinterpret_cast<ContextVK*>(m_pIContext)->getDevice();
@@ -56,6 +61,7 @@ void Application::run()
 void Application::release()
 {
 	SAFEDELETE(m_pWindow);
+	SAFEDELETE(m_pIContext);
 }
 
 void Application::OnWindowResize(uint32_t width, uint32_t height)

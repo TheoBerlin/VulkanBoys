@@ -7,7 +7,7 @@ struct BufferVkParams
 {
 	VkDeviceSize SizeInBytes = 0;
 	VkBufferUsageFlags Usage = 0;
-	VkMemoryPropertyFlags MemoryUsage = 0;
+	VkMemoryPropertyFlags MemoryProperty = 0;
 };
 
 class BufferVK

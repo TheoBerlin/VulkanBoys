@@ -402,7 +402,7 @@ void VulkanRenderer::setWinTitle(const char* title)
 
 void VulkanRenderer::present()
 {
-	m_Swapchain.present(m_RenderFinishedSemaphores[m_FrameIndex]);
+	//m_Swapchain.present(m_RenderFinishedSemaphores[m_FrameIndex]);
 	m_FrameIndex = (m_FrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 
 	for (VulkanConstantBuffer* pConstantBuffer : m_ConstantBuffers) {
@@ -452,7 +452,7 @@ int VulkanRenderer::shutdown()
 		delete pRenderState;
 	}
 
-	m_Swapchain.release();
+	//m_Swapchain.release();
 	m_VulkanDevice.release();
 
 	//SDL_DestroyWindow(m_pWindow);
@@ -486,7 +486,7 @@ void VulkanRenderer::submit(Mesh* mesh)
 
 void VulkanRenderer::frame()
 {
-	m_Swapchain.acquireNextImage(m_ImageAvailableSemaphores[m_FrameIndex]);
+	//m_Swapchain.acquireNextImage(m_ImageAvailableSemaphores[m_FrameIndex]);
 
 	//m_VulkanCommandBuffers[m_FrameIndex].reset();
 	m_VulkanDevice.cleanDescriptorPools(m_FrameIndex);
@@ -509,12 +509,12 @@ void VulkanRenderer::frame()
 	viewport.y = 0.0f;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
-	viewport.width = m_Swapchain.getExtent().width;
-	viewport.height = m_Swapchain.getExtent().height;
+	//viewport.width = m_Swapchain.getExtent().width;
+	//viewport.height = m_Swapchain.getExtent().height;
 	//m_VulkanCommandBuffers[m_FrameIndex].setViewport(viewport);
 
 	VkRect2D scissor = {};
-	scissor.extent = m_Swapchain.getExtent();
+	//scissor.extent = m_Swapchain.getExtent();
 	scissor.offset = { 0, 0 };
 	//m_VulkanCommandBuffers[m_FrameIndex].setScissor(scissor);
 
