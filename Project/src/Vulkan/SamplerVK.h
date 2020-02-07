@@ -12,7 +12,7 @@ public:
 	SamplerVK(DeviceVK* pDevice);
 	~SamplerVK();
 
-	bool finalize(VkFilter magFilter, VkFilter minFilter, VkSamplerAddressMode wrapModeS, VkSamplerAddressMode wrapModeT);
+	bool init(VkFilter magFilter, VkFilter minFilter, VkSamplerAddressMode wrapModeS, VkSamplerAddressMode wrapModeT);
 
 	VkSampler getSampler() { return m_Sampler; }
 
