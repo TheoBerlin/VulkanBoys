@@ -265,6 +265,11 @@ void DeviceVK::registerExtensionFunctions()
 		vkCreateRayTracingPipelinesNV = reinterpret_cast<PFN_vkCreateRayTracingPipelinesNV>(vkGetDeviceProcAddr(m_Device, "vkCreateRayTracingPipelinesNV"));
 		vkGetRayTracingShaderGroupHandlesNV = reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesNV>(vkGetDeviceProcAddr(m_Device, "vkGetRayTracingShaderGroupHandlesNV"));
 		vkCmdTraceRaysNV = reinterpret_cast<PFN_vkCmdTraceRaysNV>(vkGetDeviceProcAddr(m_Device, "vkCmdTraceRaysNV"));
+		std::cout << "--- Device: Successfully intialized [ VK_NV_ray_tracing ] function pointers!" << std::endl;
+	}
+	else
+	{
+		std::cerr << "--- Device: Failed to intialize [ VK_NV_ray_tracing ] function pointers!" << std::endl;
 	}
 }
 
