@@ -39,11 +39,17 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 					pEventHandler->OnWindowClose();
 				});
 
-			glfwSetWindowSizeCallback(m_pWindow, [](GLFWwindow* pWindow, int width, int height)
+            glfwSetFramebufferSizeCallback(m_pWindow, [](GLFWwindow* pWindow, int width, int height)
+            {
+                IEventHandler* pEventHandler = GET_EVENTHANDLER(pWindow);
+                pEventHandler->OnWindowResize(uint32_t(width), uint32_t(height));
+            });
+            
+			/*glfwSetWindowSizeCallback(m_pWindow, [](GLFWwindow* pWindow, int width, int height)
 				{
 					IEventHandler* pEventHandler = GET_EVENTHANDLER(pWindow);
 					pEventHandler->OnWindowResize(uint32_t(width), uint32_t(height));
-				});
+				});*/
 		}
 		else
 		{
@@ -74,17 +80,21 @@ void GLFWWindow::show()
 
 uint32_t GLFWWindow::getWidth()
 {
+    //TODO: Keep these as members instead?
+    
 	int width = 0;
 	int height = 0;
-	glfwGetWindowSize(m_pWindow, &width, &height);
+	glfwGetFramebufferSize(m_pWindow, &width, &height);
 	return uint32_t(width);
 }
 
 uint32_t GLFWWindow::getHeight()
 {
+    //TODO: Keep these as members instead?
+    
 	int width = 0;
 	int height = 0;
-	glfwGetWindowSize(m_pWindow, &width, &height);
+	glfwGetFramebufferSize(m_pWindow, &width, &height);
 	return uint32_t(height);
 }
 
