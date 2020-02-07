@@ -11,7 +11,7 @@ public:
     DescriptorSetVK();
     ~DescriptorSetVK();
 
-    void initialize(DeviceVK* pDevice, DescriptorPoolVK* pDescriptorPool, const DescriptorCounts& descriptorCounts);
+    void initialize(VkDescriptorSet descriptorSetHandle, DeviceVK* pDevice, DescriptorPoolVK* pDescriptorPool, const DescriptorCounts& descriptorCounts);
 
     VkDescriptorSet* getDescriptorSet() { return &m_DescriptorSet; }
     const DescriptorCounts& getDescriptorCounts() const { return m_DescriptorCounts; }

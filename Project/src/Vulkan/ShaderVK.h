@@ -17,6 +17,7 @@ public:
 
 	virtual EShader getShaderType() const override;
 	virtual const std::string& getEntryPoint() const override;
+	VkShaderModule getShaderModule() const { return m_ShaderModule; }
 
 private:
 	std::string m_EntryPoint;

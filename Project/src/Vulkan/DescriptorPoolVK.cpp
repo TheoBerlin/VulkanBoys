@@ -20,6 +20,10 @@ DescriptorPoolVK::~DescriptorPoolVK()
     if (m_pDevice != nullptr && m_DescriptorPool != VK_NULL_HANDLE) {
 		vkDestroyDescriptorPool(m_pDevice->getDevice(), m_DescriptorPool, nullptr);
     }
+
+	for (DescriptorSetVK* pAllocatedSet : m_AllocatedSets) {
+		delete pAllocatedSet;
+	}
 }
 
 bool DescriptorPoolVK::hasRoomFor(const DescriptorCounts& allocations)
@@ -66,7 +70,7 @@ void DescriptorPoolVK::initializeDescriptorPool(DeviceVK* pDevice, const Descrip
 	}
 }
 
-bool DescriptorPoolVK::allocDescriptorSet(DescriptorSetVK* pDescriptorSet, const DescriptorSetLayoutVK* pDescriptorSetLayout)
+DescriptorSetVK* DescriptorPoolVK::allocDescriptorSet(const DescriptorSetLayoutVK* pDescriptorSetLayout)
 {
 	VkDescriptorSetAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -77,16 +81,20 @@ bool DescriptorPoolVK::allocDescriptorSet(DescriptorSetVK* pDescriptorSet, const
 	VkDescriptorSetLayout layout = pDescriptorSetLayout->getLayout();
 	allocInfo.pSetLayouts = &layout;
 
-	if (vkAllocateDescriptorSets(m_pDevice->getDevice(), &allocInfo, pDescriptorSet->getDescriptorSet()) != VK_SUCCESS) {
+	VkDescriptorSet descriptorSetHandle = VK_NULL_HANDLE;
+	if (vkAllocateDescriptorSets(m_pDevice->getDevice(), &allocInfo, &descriptorSetHandle) != VK_SUCCESS) {
 		std::cout << "Failed to allocate descriptor set" << std::endl;
-		return false;
+		return nullptr;
 	}
 
-	DescriptorCounts allocatedDescriptors = pDescriptorSetLayout->getBindingCounts();
-	pDescriptorSet->initialize(m_pDevice, this, allocatedDescriptors);
-	m_DescriptorCounts += allocatedDescriptors;
+	DescriptorCounts allocatedDescriptorCount = pDescriptorSetLayout->getBindingCounts();
+	m_DescriptorCounts += allocatedDescriptorCount;
 
-	return true;
+	DescriptorSetVK* pDescriptorSet = new DescriptorSetVK();
+	pDescriptorSet->initialize(descriptorSetHandle, m_pDevice, this, allocatedDescriptorCount);
+	m_AllocatedSets.push_back(pDescriptorSet);
+
+	return pDescriptorSet;
 }
 
 void DescriptorPoolVK::deallocateDescriptorSet(DescriptorSetVK* pDescriptorSet)
@@ -96,4 +104,6 @@ void DescriptorPoolVK::deallocateDescriptorSet(DescriptorSetVK* pDescriptorSet)
 	}
 
 	m_DescriptorCounts -= pDescriptorSet->getDescriptorCounts();
+	m_AllocatedSets.remove(pDescriptorSet);
+	delete pDescriptorSet;
 }
