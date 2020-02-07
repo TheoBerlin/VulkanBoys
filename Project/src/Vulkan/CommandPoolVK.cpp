@@ -5,12 +5,18 @@
 CommandPoolVK::CommandPoolVK(DeviceVK* pDevice, uint32_t queueFamilyIndex)
 	: m_pDevice(pDevice),
 	m_QueueFamilyIndex(queueFamilyIndex),
-	m_CommandPool(VK_NULL_HANDLE)
+	m_CommandPool(VK_NULL_HANDLE),
+	m_ppCommandBuffers()
 {
 }
 
 CommandPoolVK::~CommandPoolVK()
 {
+	for (CommandBufferVK* pCommandBuffer : m_ppCommandBuffers)
+	{
+		SAFEDELETE(pCommandBuffer);
+	}
+
 	if (m_CommandPool != VK_NULL_HANDLE)
 	{
 		vkDestroyCommandPool(m_pDevice->getDevice(), m_CommandPool, nullptr);
@@ -56,6 +62,7 @@ CommandBufferVK* CommandPoolVK::allocateCommandBuffer()
 	CommandBufferVK* pCommandBuffer = new CommandBufferVK(m_pDevice, commandBuffer);
 	pCommandBuffer->finalize();
 
+	m_ppCommandBuffers.emplace_back(pCommandBuffer);
 	return pCommandBuffer;
 }
 
@@ -70,6 +77,15 @@ void CommandPoolVK::freeCommandBuffer(CommandBufferVK** ppCommandBuffer)
 		(*ppCommandBuffer)->m_CommandBuffer = VK_NULL_HANDLE;
 
 		D_LOG("--- CommandPool: Freed commanbuffer");
+	}
+
+	for (auto it = m_ppCommandBuffers.begin(); it != m_ppCommandBuffers.end(); it++)
+	{
+		if (*it == *ppCommandBuffer)
+		{
+			m_ppCommandBuffers.erase(it);
+			break;
+		}
 	}
 
 	SAFEDELETE(*ppCommandBuffer);

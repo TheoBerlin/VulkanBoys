@@ -1,6 +1,6 @@
 #pragma once
 #include <unordered_map>
-#include "IA.h"
+//#include "IA.h"
 #include "VertexBuffer.h"
 #include "Technique.h"
 #include "Transform.h"

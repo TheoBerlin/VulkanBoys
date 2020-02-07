@@ -1,6 +1,8 @@
 #pragma once
 #include "VulkanCommon.h"
 
+#include <vector>
+
 class DeviceVK;
 class CommandBufferVK;
 
@@ -20,6 +22,7 @@ public:
 
 private:
 	DeviceVK* m_pDevice;
+	std::vector<CommandBufferVK*> m_ppCommandBuffers;
 	uint32_t m_QueueFamilyIndex;
 	VkCommandPool m_CommandPool;
 };

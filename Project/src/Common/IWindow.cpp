@@ -1,5 +1,5 @@
 #include "IWindow.h"
-#include "GLFWWindow.h"
+#include "Core/GLFWWindow.h"
 
 IWindow* IWindow::create(const std::string& title, uint32_t width, uint32_t height)
 {

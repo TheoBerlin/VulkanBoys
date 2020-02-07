@@ -1,7 +1,5 @@
 #pragma once
-
-#include "vulkan/vulkan.h"
-
+#include "VulkanCommon.h"
 #include "DescriptorSetLayoutVK.h"
 
 class DeviceVK;
@@ -12,7 +10,7 @@ public:
     PipelineLayoutVK();
     ~PipelineLayoutVK();
 
-    void createPipelineLayout(DeviceVK* pDevice, std::vector<const DescriptorSetLayoutVK&> descriptorSetLayouts);
+    void createPipelineLayout(DeviceVK* pDevice, std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts);
 
     VkPipelineLayout getPipelineLayout() { return m_PipelineLayout; }
 

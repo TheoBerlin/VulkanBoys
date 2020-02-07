@@ -20,7 +20,6 @@ struct Color {
 class Material
 {
 public:
-
 	enum class ShaderType { VS = 0, PS = 1, GS = 2, CS = 3 };
 
 	Material() : isValid(false) {};

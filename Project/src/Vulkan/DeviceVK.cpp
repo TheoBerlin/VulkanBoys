@@ -51,6 +51,11 @@ void DeviceVK::addOptionalExtension(const char* extensionName)
 	m_RequestedOptionalExtensions.push_back(extensionName);
 }
 
+void DeviceVK::wait()
+{
+	vkDeviceWaitIdle(m_Device);
+}
+
 bool DeviceVK::initPhysicalDevice(InstanceVK* pInstance)
 {
 	uint32_t deviceCount = 0;
