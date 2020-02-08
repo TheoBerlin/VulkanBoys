@@ -31,7 +31,7 @@ private:
 
 private:
 	IWindow* m_pWindow;
-	IGraphicsContext* m_pIContext;
+	IGraphicsContext* m_pContext;
 	IRenderer* m_pRenderer;
 	bool m_IsRunning;
 };

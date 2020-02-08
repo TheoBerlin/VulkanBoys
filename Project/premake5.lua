@@ -35,6 +35,8 @@ workspace "Vulkan-Project"
 
 	group "Dependencies"
 		include "Dependencies/glfw"
+		include "Dependencies/imgui"
+		
 	group ""
 
     project "VulkanProject"
@@ -118,12 +120,14 @@ workspace "Vulkan-Project"
 		{
 			"Dependencies/stb",
 			"Dependencies/GLFW/include",
+			"Dependencies/imgui",
 			"Dependencies/glm",
 		}
 		
 		links 
 		{ 
 			"GLFW",
+			"imgui",
 		}
     project "*"
 
