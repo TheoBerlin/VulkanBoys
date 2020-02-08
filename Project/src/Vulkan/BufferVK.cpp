@@ -62,6 +62,8 @@ bool BufferVK::create(const BufferParams& params)
 
 	vkBindBufferMemory(m_pDevice->getDevice(), m_Buffer, m_Memory, 0);
 	D_LOG("--- Buffer: Vulkan Allocated '%d' bytes for buffer", memRequirements.size);
+    
+    return true;
 }
 
 void BufferVK::map(void** ppMappedMemory)
