@@ -1,11 +1,11 @@
-#include "ContextVK.h"
+#include "GraphicsContextVK.h"
 #include "ShaderVK.h"
 #include "RendererVK.h"
 #include "SwapChainVK.h"
 
 #include "Core/GLFWWindow.h"
 
-ContextVK::ContextVK(IWindow* pWindow)
+GraphicsContextVK::GraphicsContextVK(IWindow* pWindow)
 	: m_pWindow(pWindow),
 	m_pSwapChain(nullptr),
 	m_Device(),
@@ -13,7 +13,7 @@ ContextVK::ContextVK(IWindow* pWindow)
 {
 }
 
-ContextVK::~ContextVK()
+GraphicsContextVK::~GraphicsContextVK()
 {
 	SAFEDELETE(m_pSwapChain);
 	m_pWindow = nullptr;
@@ -22,7 +22,7 @@ ContextVK::~ContextVK()
 	m_Instance.release();
 }
 
-void ContextVK::init()
+void GraphicsContextVK::init()
 {
 	//Instance Init
 #if VALIDATION_LAYERS_ENABLED
@@ -57,47 +57,47 @@ void ContextVK::init()
 	m_pSwapChain->init(m_pWindow, VK_FORMAT_B8G8R8A8_UNORM, MAX_FRAMES_IN_FLIGHT, true);
 }
 
-IRenderer* ContextVK::createRenderer()
+IRenderer* GraphicsContextVK::createRenderer()
 {
 	return new RendererVK(this);
 }
 
-IShader* ContextVK::createShader()
+IShader* GraphicsContextVK::createShader()
 {
 	return new ShaderVK(&m_Device);
 }
 
-IBuffer* ContextVK::createBuffer()
+IBuffer* GraphicsContextVK::createBuffer()
 {
 	//Todo: Implement
 	return nullptr;
 }
 
-IFrameBuffer* ContextVK::createFrameBuffer()
+IFrameBuffer* GraphicsContextVK::createFrameBuffer()
 {
 	//Todo: Implement
 	return nullptr;
 }
 
-IImage* ContextVK::createImage()
+IImage* GraphicsContextVK::createImage()
 {
 	//Todo: Implement
 	return nullptr;
 }
 
-IImageView* ContextVK::createImageView()
+IImageView* GraphicsContextVK::createImageView()
 {
 	//Todo: Implement
 	return nullptr;
 }
 
-ITexture2D* ContextVK::createTexture2D()
+ITexture2D* GraphicsContextVK::createTexture2D()
 {
 	//Todo: Implement
 	return nullptr;
 }
 
-void ContextVK::swapBuffers(VkSemaphore renderSemaphore)
+void GraphicsContextVK::swapBuffers(VkSemaphore renderSemaphore)
 {
 	m_pSwapChain->present(renderSemaphore);
 }

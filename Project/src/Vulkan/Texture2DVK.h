@@ -2,19 +2,18 @@
 #include "ImageViewVK.h"
 #include "CommandPoolVK.h"
 
-class IContext;
+class IGraphicsContext;
 
 class ImageVK;
-class ContextVK;
 class DeviceVK;
-class VulkanRenderer;
+class GraphicsContextVK;
 
 class Texture2DVK
 {
 public:
 	DECL_NO_COPY(Texture2DVK);
 	
-	Texture2DVK(IContext* pContext);
+	Texture2DVK(IGraphicsContext* pContext);
 	~Texture2DVK();
 
 	bool loadFromFile(std::string filename);
@@ -24,7 +23,7 @@ public:
 	ImageViewVK* getImageView() const { return m_pTextureImageView; }
 	
 private:
-	ContextVK* m_pContext;
+	GraphicsContextVK* m_pContext;
 
 	ImageVK* m_pTextureImage;
 	ImageViewVK* m_pTextureImageView;

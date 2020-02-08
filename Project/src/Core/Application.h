@@ -2,7 +2,7 @@
 #include "Common/IEventHandler.h"
 
 class IWindow;
-class IContext;
+class IGraphicsContext;
 class IRenderer;
 
 class Application : public IEventHandler
@@ -19,17 +19,19 @@ public:
 
 	IWindow* getWindow() const { return m_pWindow; }
 
-	virtual void OnWindowResize(uint32_t width, uint32_t height) override;
-	virtual void OnWindowClose() override;
+	virtual void onWindowClose() override;
+	virtual void onWindowResize(uint32_t width, uint32_t height) override;
+	virtual void onWindowFocusChanged(IWindow* pWindow, bool hasFocus) override;
 
 	static Application& getInstance();
+
 private:
 	void update();
 	void render();
 
 private:
 	IWindow* m_pWindow;
-	IContext* m_pIContext;
+	IGraphicsContext* m_pIContext;
 	IRenderer* m_pRenderer;
 	bool m_IsRunning;
 };

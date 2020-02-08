@@ -1,16 +1,16 @@
 #include "Texture2DVK.h"
-#include "DeviceVK.h"
-#include "ContextVK.h"
 #include "ImageVK.h"
+#include "DeviceVK.h"
 #include "CommandPoolVK.h"
+#include "GraphicsContextVK.h"
 
 #include "stb_image.h"
 #include "BufferVK.h"
 #include "ImageVK.h"
 #include "CommandBufferVK.h"
 
-Texture2DVK::Texture2DVK(IContext* pContext) :
-	m_pContext(reinterpret_cast<ContextVK*>(pContext)),
+Texture2DVK::Texture2DVK(IGraphicsContext* pContext) :
+	m_pContext(reinterpret_cast<GraphicsContextVK*>(pContext)),
 	m_pTextureImage(nullptr),
 	m_pTextureImageView(nullptr),
 	m_pTempCommandPool(nullptr),
@@ -41,24 +41,6 @@ Texture2DVK::~Texture2DVK()
 		delete m_pTextureImageView;
 		m_pTextureImageView = nullptr;
 	}
-
-	//if (m_TextureImage != VK_NULL_HANDLE) 
-	//{
-	//	vkDestroyImage(m_pContext->getDevice()->getDevice(), m_TextureImage, nullptr);
-	//	m_TextureImage = VK_NULL_HANDLE;
-	//}
-
-	//if (m_TextureImageView != VK_NULL_HANDLE) 
-	//{
-	//	vkDestroyImageView(m_pContext->getDevice()->getDevice(), m_TextureImageView, nullptr);
-	//	m_TextureImageView = VK_NULL_HANDLE;
-	//}
-
-	//if (m_TextureImageMemory != VK_NULL_HANDLE)
-	//{
-	//	vkFreeMemory(m_pContext->getDevice()->getDevice(), m_TextureImageMemory, nullptr);
-	//	m_TextureImageMemory = VK_NULL_HANDLE;
-	//}
 }
 
 bool Texture2DVK::loadFromFile(std::string filename)
