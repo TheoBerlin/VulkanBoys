@@ -9,6 +9,9 @@
 #include "Vulkan/GraphicsContextVK.h"
 #include "Vulkan/DescriptorSetLayoutVK.h"
 
+#include <thread>
+#include <chrono>
+
 Application g_Application;
 
 Application::Application()
@@ -23,6 +26,7 @@ void Application::init()
 	if (m_pWindow)
 	{
 		m_pWindow->setEventHandler(this);
+		m_pWindow->setFullscreenState(false);
 	}
 
 	m_pIContext = IGraphicsContext::create(m_pWindow, API::VULKAN);
@@ -50,9 +54,15 @@ void Application::run()
 	while (m_IsRunning)
 	{
 		m_pWindow->peekEvents();
-
-		update();
-		render();
+		if (m_pWindow->hasFocus())
+		{
+			update();
+			render();
+		}
+		else
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(16));
+		}
 	}
 }
 
@@ -67,11 +77,18 @@ void Application::onWindowResize(uint32_t width, uint32_t height)
 {
 	D_LOG("Resize w=%d h%d", width , height);
 
-	if (m_pRenderer) 
+	if (width != 0 && height != 0)
 	{
-		m_pRenderer->setViewport(width, height, 0.0f, 1.0f, 0.0f, 0.0f);
-		m_pRenderer->onWindowResize(width, height);
+		if (m_pRenderer)
+		{
+			m_pRenderer->setViewport(width, height, 0.0f, 1.0f, 0.0f, 0.0f);
+			m_pRenderer->onWindowResize(width, height);
+		}
 	}
+}
+
+void Application::onWindowFocusChanged(IWindow* pWindow, bool hasFocus)
+{
 }
 
 void Application::onWindowClose()
@@ -86,7 +103,8 @@ Application& Application::getInstance()
 }
 
 void Application::update()
-{}
+{
+}
 
 void Application::render()
 {

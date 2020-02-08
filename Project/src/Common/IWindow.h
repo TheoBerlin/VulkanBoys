@@ -15,7 +15,10 @@ public:
 	virtual void peekEvents() = 0;
 	virtual void show() = 0;
 
-	virtual void setFullscreen(bool enable) = 0;
+	virtual void setFullscreenState(bool enable) = 0;
+	virtual bool getFullscreenState() const = 0;
+
+	virtual bool hasFocus() const = 0;
 
 	virtual uint32_t getWidth() = 0;
 	virtual uint32_t getHeight() = 0;

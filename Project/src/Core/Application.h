@@ -19,8 +19,9 @@ public:
 
 	IWindow* getWindow() const { return m_pWindow; }
 
-	virtual void onWindowResize(uint32_t width, uint32_t height) override;
 	virtual void onWindowClose() override;
+	virtual void onWindowResize(uint32_t width, uint32_t height) override;
+	virtual void onWindowFocusChanged(IWindow* pWindow, bool hasFocus) override;
 
 	static Application& getInstance();
 

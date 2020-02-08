@@ -14,7 +14,10 @@ public:
 	virtual void peekEvents() override;
 	virtual void show() override;
 
-	virtual void setFullscreen(bool enable) override;
+	virtual void setFullscreenState(bool enable) override;
+	virtual bool getFullscreenState() const override;
+	
+	virtual bool hasFocus() const override;
 
 	virtual uint32_t getWidth() override;
 	virtual uint32_t getHeight() override;
@@ -26,6 +29,7 @@ private:
 	uint32_t m_Width;
 	uint32_t m_Height;
 	bool m_IsFullscreen;
+	bool m_HasFocus;
 
 	static bool s_HasGLFW;
 };
