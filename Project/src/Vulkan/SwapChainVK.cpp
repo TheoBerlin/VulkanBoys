@@ -104,9 +104,9 @@ void SwapChainVK::resize(uint32_t width, uint32_t height)
 	//Handle minimize
 	if (width != 0 && height != 0)
 	{
-		vkDeviceWaitIdle(m_pDevice->getDevice());
+		m_pDevice->wait();
 
-		release();
+		releaseResources();
 
 		createSwapChain(width, height);
 		createImageViews();
@@ -291,21 +291,24 @@ void SwapChainVK::createDepthStencil()
 
 void SwapChainVK::releaseResources()
 {
-	if (m_pDevice->getDevice() != VK_NULL_HANDLE)
-	{
-		vkDeviceWaitIdle(m_pDevice->getDevice());
-	}
-
+	m_pDevice->wait();
 	if (m_SwapChain != VK_NULL_HANDLE)
 	{
 		vkDestroySwapchainKHR(m_pDevice->getDevice(), m_SwapChain, nullptr);
 		m_SwapChain = VK_NULL_HANDLE;
 	}
 
-	for (ImageViewVK*& imageView : m_ImageViews)
+	for (ImageVK* image : m_Images)
+	{
+		SAFEDELETE(image);
+	}
+	m_Images.clear();
+
+	for (ImageViewVK* imageView : m_ImageViews)
 	{
 		SAFEDELETE(imageView);
 	}
+	m_ImageViews.clear();
 
 	SAFEDELETE(m_pDepthStencilImage);
 	SAFEDELETE(m_pDepthStencilImageView);

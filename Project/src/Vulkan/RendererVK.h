@@ -2,7 +2,7 @@
 #include "Common/IRenderer.h"
 #include "VulkanCommon.h"
 
-class ContextVK;
+class GraphicsContextVK;
 class PipelineVK;
 class RenderPassVK;
 class FrameBufferVK;
@@ -13,10 +13,12 @@ class PipelineLayoutVK;
 class RendererVK : public IRenderer
 {
 public:
-	RendererVK(ContextVK* pContext);
+	RendererVK(GraphicsContextVK* pContext);
 	~RendererVK();
 
 	virtual bool init() override;
+
+	virtual void onWindowResize(uint32_t width, uint32_t height) override;
 
 	virtual void beginFrame() override;
 	virtual void endFrame() override;
@@ -30,7 +32,11 @@ public:
 	virtual void drawTriangle() override;
 
 private:
-	ContextVK* m_pContext;
+	void createFramebuffers();
+	void releaseFramebuffers();
+
+private:
+	GraphicsContextVK* m_pContext;
 	CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
 	RenderPassVK* m_pRenderPass;

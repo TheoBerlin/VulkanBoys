@@ -36,13 +36,13 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 			glfwSetWindowCloseCallback(m_pWindow, [](GLFWwindow* pWindow)
 				{
 					IEventHandler* pEventHandler = GET_EVENTHANDLER(pWindow);
-					pEventHandler->OnWindowClose();
+					pEventHandler->onWindowClose();
 				});
 
 			glfwSetWindowSizeCallback(m_pWindow, [](GLFWwindow* pWindow, int width, int height)
 				{
 					IEventHandler* pEventHandler = GET_EVENTHANDLER(pWindow);
-					pEventHandler->OnWindowResize(uint32_t(width), uint32_t(height));
+					pEventHandler->onWindowResize(uint32_t(width), uint32_t(height));
 				});
 		}
 		else
@@ -70,6 +70,10 @@ void GLFWWindow::peekEvents()
 void GLFWWindow::show()
 {
 	glfwShowWindow(m_pWindow);
+}
+
+void GLFWWindow::setFullscreen(bool enable)
+{
 }
 
 uint32_t GLFWWindow::getWidth()

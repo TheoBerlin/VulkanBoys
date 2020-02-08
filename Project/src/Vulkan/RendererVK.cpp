@@ -1,5 +1,4 @@
 #include "RendererVK.h"
-#include "ContextVK.h"
 #include "PipelineVK.h"
 #include "SwapChainVK.h"
 #include "RenderPassVK.h"
@@ -7,8 +6,9 @@
 #include "FrameBufferVK.h"
 #include "CommandBufferVK.h"
 #include "PipelineLayoutVK.h"
+#include "GraphicsContextVK.h"
 
-RendererVK::RendererVK(ContextVK* pContext)
+RendererVK::RendererVK(GraphicsContextVK* pContext)
 	: m_pContext(pContext),
 	m_ppCommandPools(),
 	m_ppCommandBuffers(),
@@ -30,10 +30,11 @@ RendererVK::~RendererVK()
 {
 	m_pContext->getDevice()->wait();
 
+	releaseFramebuffers();
+
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
 		SAFEDELETE(m_ppCommandPools[i]);
-		SAFEDELETE(m_ppBackbuffers[i]);
 		if (m_ImageAvailableSemaphores[i] != VK_NULL_HANDLE) {
 			vkDestroySemaphore(m_pContext->getDevice()->getDevice(), m_ImageAvailableSemaphores[i], nullptr);
 		}
@@ -88,20 +89,14 @@ bool RendererVK::init()
 	m_pRenderPass->finalize();
 
 	//Create commandbuffers, -pools and framebuffers
-	const uint32_t queueFamilyIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
+	createFramebuffers();
 
-	VkExtent2D extent = pSwapChain->getExtent();
-	ImageViewVK* pDepthStencilView = pSwapChain->getDepthStencilView();
+	const uint32_t queueFamilyIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
 		m_ppCommandPools[i]	= new CommandPoolVK(pDevice, queueFamilyIndex);
 		m_ppCommandPools[i]->init();
 		m_ppCommandBuffers[i]	= m_ppCommandPools[i]->allocateCommandBuffer();
-
-		m_ppBackbuffers[i] = new FrameBufferVK(pDevice);
-		m_ppBackbuffers[i]->addColorAttachment(pSwapChain->getImageView(i));
-		m_ppBackbuffers[i]->setDepthStencilAttachment(pDepthStencilView);
-		m_ppBackbuffers[i]->finalize(m_pRenderPass, extent.width, extent.height);
 	}
 
 	//Create pipelinestate
@@ -142,6 +137,16 @@ bool RendererVK::init()
 	}
 
 	return true;
+}
+
+void RendererVK::onWindowResize(uint32_t width, uint32_t height)
+{
+	m_pContext->getDevice()->wait();
+	releaseFramebuffers();
+	
+	m_pContext->getSwapChain()->resize(width, height);
+
+	createFramebuffers();
 }
 
 void RendererVK::beginFrame()
@@ -223,4 +228,28 @@ void RendererVK::drawTriangle()
 {
 	m_ppCommandBuffers[m_CurrentFrame]->bindGraphicsPipeline(m_pPipeline);
 	m_ppCommandBuffers[m_CurrentFrame]->drawInstanced(3, 1, 0, 0);
+}
+
+void RendererVK::createFramebuffers()
+{
+	SwapChainVK* pSwapChain = m_pContext->getSwapChain();
+	DeviceVK* pDevice = m_pContext->getDevice();
+
+	VkExtent2D extent = pSwapChain->getExtent();
+	ImageViewVK* pDepthStencilView = pSwapChain->getDepthStencilView();
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		m_ppBackbuffers[i] = new FrameBufferVK(pDevice);
+		m_ppBackbuffers[i]->addColorAttachment(pSwapChain->getImageView(i));
+		m_ppBackbuffers[i]->setDepthStencilAttachment(pDepthStencilView);
+		m_ppBackbuffers[i]->finalize(m_pRenderPass, extent.width, extent.height);
+	}
+}
+
+void RendererVK::releaseFramebuffers()
+{
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		SAFEDELETE(m_ppBackbuffers[i]);
+	}
 }

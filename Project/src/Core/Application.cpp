@@ -1,12 +1,12 @@
 #include "Application.h"
 #include "Common/IWindow.h"
 #include "Common/IShader.h"
-#include "Common/IContext.h"
 #include "Common/IRenderer.h"
+#include "Common/IGraphicsContext.h"
 
-#include "Vulkan/ContextVK.h"
-#include "Vulkan/CommandPoolVK.h"
 #include "Vulkan/RenderPassVK.h"
+#include "Vulkan/CommandPoolVK.h"
+#include "Vulkan/GraphicsContextVK.h"
 #include "Vulkan/DescriptorSetLayoutVK.h"
 
 Application g_Application;
@@ -25,14 +25,14 @@ void Application::init()
 		m_pWindow->setEventHandler(this);
 	}
 
-	m_pIContext = IContext::create(m_pWindow, API::VULKAN);
+	m_pIContext = IGraphicsContext::create(m_pWindow, API::VULKAN);
 	m_pRenderer = m_pIContext->createRenderer();
 	m_pRenderer->init();
 	m_pRenderer->setClearColor(0.0f, 0.0f, 0.0f);
 	m_pRenderer->setViewport(m_pWindow->getWidth(), m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
 
 	//Should we have ICommandBuffer? Or is commandbuffers internal i.e belongs in the renderer?
-	DeviceVK* pDevice = reinterpret_cast<ContextVK*>(m_pIContext)->getDevice();
+	DeviceVK* pDevice = reinterpret_cast<GraphicsContextVK*>(m_pIContext)->getDevice();
 
 	DescriptorSetLayoutVK* pDescriptorLayout = new DescriptorSetLayoutVK(pDevice);
 	pDescriptorLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0, 1); //Vertex
@@ -63,16 +63,18 @@ void Application::release()
 	SAFEDELETE(m_pIContext);
 }
 
-void Application::OnWindowResize(uint32_t width, uint32_t height)
+void Application::onWindowResize(uint32_t width, uint32_t height)
 {
 	D_LOG("Resize w=%d h%d", width , height);
 
-	if (m_pRenderer) {
+	if (m_pRenderer) 
+	{
 		m_pRenderer->setViewport(width, height, 0.0f, 1.0f, 0.0f, 0.0f);
+		m_pRenderer->onWindowResize(width, height);
 	}
 }
 
-void Application::OnWindowClose()
+void Application::onWindowClose()
 {
 	D_LOG("Window Closed");
 	m_IsRunning = false;

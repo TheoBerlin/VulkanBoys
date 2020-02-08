@@ -14,6 +14,8 @@ public:
 	virtual void peekEvents() override;
 	virtual void show() override;
 
+	virtual void setFullscreen(bool enable) override;
+
 	virtual uint32_t getWidth() override;
 	virtual uint32_t getHeight() override;
 	virtual void* getNativeHandle() override;
@@ -21,6 +23,9 @@ public:
 private:
 	GLFWwindow* m_pWindow;
 	IEventHandler* m_pEventHandler;
+	uint32_t m_Width;
+	uint32_t m_Height;
+	bool m_IsFullscreen;
 
 	static bool s_HasGLFW;
 };

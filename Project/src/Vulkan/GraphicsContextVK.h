@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Common/IContext.h"
+#include "Common/IGraphicsContext.h"
 #include "VulkanCommon.h"
 
 #include "InstanceVK.h"
@@ -9,13 +9,13 @@
 class IWindow;
 class SwapChainVK;
 
-class ContextVK : public IContext
+class GraphicsContextVK : public IGraphicsContext
 {
 public:
-	DECL_NO_COPY(ContextVK);
+	DECL_NO_COPY(GraphicsContextVK);
 
-	ContextVK(IWindow* pWindow);
-	~ContextVK();
+	GraphicsContextVK(IWindow* pWindow);
+	~GraphicsContextVK();
 
 	void init();
 

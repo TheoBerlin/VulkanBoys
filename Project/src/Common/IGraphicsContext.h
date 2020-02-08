@@ -16,10 +16,10 @@ enum API
 	VULKAN
 };
 
-class IContext
+class IGraphicsContext
 {
 public:
-	DECL_INTERFACE(IContext);
+	DECL_INTERFACE(IGraphicsContext);
 
 	virtual IRenderer* createRenderer() = 0;
 	
@@ -33,5 +33,5 @@ public:
 	virtual ITexture2D* createTexture2D() = 0;
 	
 public:
-	static IContext* create(IWindow* pWindow, API api);
+	static IGraphicsContext* create(IWindow* pWindow, API api);
 };

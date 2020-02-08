@@ -15,6 +15,8 @@ public:
 	virtual void peekEvents() = 0;
 	virtual void show() = 0;
 
+	virtual void setFullscreen(bool enable) = 0;
+
 	virtual uint32_t getWidth() = 0;
 	virtual uint32_t getHeight() = 0;
 	virtual void* getNativeHandle() = 0;
