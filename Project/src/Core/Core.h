@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cassert>
 #include <cstdio>
+#include <glm/glm.hpp>
 
 #define DECL_NO_COPY(Type) \
 	Type(Type&&) = delete; \
@@ -28,3 +29,12 @@
 #endif
 
 #define MB(bytes) bytes * 1024 * 1024
+
+struct Vertex
+{
+	//Todo: Padding? Yes No?
+	glm::vec3 Position;
+	glm::vec3 Normal;
+	glm::vec3 Tangent;
+	glm::vec2 UV;
+};

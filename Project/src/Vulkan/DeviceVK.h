@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "VulkanCommon.h"
+#include <unordered_map>
 
 class InstanceVK;
 
@@ -56,6 +57,8 @@ private:
 	void setEnabledExtensions();
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice physicalDevice);
 
+	void registerExtensionFunctions();
+	
 private:
 	static uint32_t getQueueFamilyIndex(VkQueueFlagBits queueFlags, const std::vector<VkQueueFamilyProperties>& queueFamilies);
 	
@@ -73,6 +76,19 @@ private:
 	std::vector<const char*> m_RequestedRequiredExtensions;
 	std::vector<const char*> m_RequestedOptionalExtensions;
 	std::vector<const char*> m_EnabledExtensions;
+	std::unordered_map<std::string, bool> m_OptionalRequestedExtensionsStatus;
 	std::vector<VkExtensionProperties> m_AvailabeExtensions;
+
+public:
+	//Extension Function Pointers
+	PFN_vkCreateAccelerationStructureNV					vkCreateAccelerationStructureNV;
+	PFN_vkDestroyAccelerationStructureNV				vkDestroyAccelerationStructureNV;
+	PFN_vkBindAccelerationStructureMemoryNV				vkBindAccelerationStructureMemoryNV;
+	PFN_vkGetAccelerationStructureHandleNV				vkGetAccelerationStructureHandleNV;
+	PFN_vkGetAccelerationStructureMemoryRequirementsNV	vkGetAccelerationStructureMemoryRequirementsNV;
+	PFN_vkCmdBuildAccelerationStructureNV				vkCmdBuildAccelerationStructureNV;
+	PFN_vkCreateRayTracingPipelinesNV					vkCreateRayTracingPipelinesNV;
+	PFN_vkGetRayTracingShaderGroupHandlesNV				vkGetRayTracingShaderGroupHandlesNV;
+	PFN_vkCmdTraceRaysNV								vkCmdTraceRaysNV;
 };
 

@@ -38,11 +38,18 @@ void GraphicsContextVK::init()
 		m_Instance.addRequiredExtension(ppExtensions[i]);
 	}
 
+	m_Instance.addOptionalExtension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+	
 	m_Instance.addValidationLayer("VK_LAYER_KHRONOS_validation");
 	m_Instance.finalize(VALIDATION_LAYERS_ENABLED);
 
 	//Device Init
 	m_Device.addRequiredExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
+	m_Device.addOptionalExtension(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
+	m_Device.addOptionalExtension(VK_KHR_MAINTENANCE3_EXTENSION_NAME);
+	m_Device.addOptionalExtension(VK_NV_RAY_TRACING_EXTENSION_NAME);
+	
 	m_Device.finalize(&m_Instance);
 
 	//SwapChain init

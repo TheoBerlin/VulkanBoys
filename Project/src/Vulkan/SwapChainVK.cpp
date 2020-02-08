@@ -205,7 +205,7 @@ void SwapChainVK::createSwapChain(uint32_t width, uint32_t height)
 	newExtent.height	= std::max(newExtent.height, 1u);
 	m_Extent = newExtent;
 
-	D_LOG("Chosen SwapChain extent w=%d h=%d", m_Extent.width, newExtent.height);
+	D_LOG("Chosen SwapChain extent w=%d h=%d", m_Extent.width, m_Extent.height);
 
 	VkSwapchainCreateInfoKHR swapChainInfo = {};
 	swapChainInfo.sType				= VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
