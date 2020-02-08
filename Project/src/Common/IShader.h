@@ -1,6 +1,8 @@
 #pragma once
 #include "Core/Core.h"
 
+#include <vector>
+
 enum class EShader : uint32_t
 {
 	NONE			= 0,
@@ -18,6 +20,7 @@ public:
 	DECL_INTERFACE(IShader);
 
 	virtual bool loadFromFile(EShader shaderType, const std::string& entrypoint, const std::string& filepath) = 0;
+	virtual bool loadFromByteCode(EShader shaderType, const std::string& entrypoint, const std::vector<char>& byteCode) = 0;
 	virtual bool finalize() = 0;
 
 	virtual EShader getShaderType() const = 0;

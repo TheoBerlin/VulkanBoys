@@ -16,7 +16,8 @@ public:
 
     void addBindingStorageBuffer(VkShaderStageFlags shaderStageFlags, uint32_t bindingSlot, uint32_t descriptorCount);
     void addBindingUniformBuffer(VkShaderStageFlags shaderStageFlags, uint32_t bindingSlot, uint32_t descriptorCount);
-    void addBindingSampledImage(VkShaderStageFlags shaderStageFlags, const VkSampler* pImmutableSampler, uint32_t bindingSlot, uint32_t descriptorCount);
+    void addBindingSampledImage(VkShaderStageFlags shaderStageFlags, uint32_t bindingSlot, uint32_t descriptorCount);
+    void addBindingCombinedImage(VkShaderStageFlags shaderStageFlags, const VkSampler* pImmutableSampler, uint32_t bindingSlot, uint32_t descriptorCount);
     bool finalizeLayout();
 
     VkDescriptorSetLayout getLayout() const { return m_DescriptorSetLayout; }

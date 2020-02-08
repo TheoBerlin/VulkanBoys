@@ -28,6 +28,8 @@ public:
 
 	virtual void swapBuffers() override;
 
+	virtual void drawImgui(IImgui* pImgui) override;
+
 	//Temporary function
 	virtual void drawTriangle() override;
 

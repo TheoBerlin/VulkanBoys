@@ -2,8 +2,10 @@
 
 #include "DeviceVK.h"
 
-PipelineLayoutVK::PipelineLayoutVK()
-{}
+PipelineLayoutVK::PipelineLayoutVK(DeviceVK* pDevice)
+	: m_pDevice(pDevice)
+{
+}
 
 PipelineLayoutVK::~PipelineLayoutVK()
 {
@@ -12,10 +14,8 @@ PipelineLayoutVK::~PipelineLayoutVK()
     }
 }
 
-void PipelineLayoutVK::createPipelineLayout(DeviceVK* pDevice, std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts)
+void PipelineLayoutVK::createPipelineLayout(const std::vector<const DescriptorSetLayoutVK*>& descriptorSetLayouts, const std::vector<VkPushConstantRange>& pushConstantRanges)
 {
-    m_pDevice = pDevice;
-
     // Serialize the vulkan handles for the descriptor set layouts
     std::vector<VkDescriptorSetLayout> vkDescriptorSetLayouts;
     vkDescriptorSetLayouts.reserve(descriptorSetLayouts.size());
@@ -28,13 +28,14 @@ void PipelineLayoutVK::createPipelineLayout(DeviceVK* pDevice, std::vector<const
 	pipelineLayoutInfo.pNext = nullptr;
 	pipelineLayoutInfo.flags = 0;
     pipelineLayoutInfo.setLayoutCount			= uint32_t(vkDescriptorSetLayouts.size());
-	pipelineLayoutInfo.pSetLayouts				= vkDescriptorSetLayouts.data();
-	pipelineLayoutInfo.pushConstantRangeCount	= 0;
-	pipelineLayoutInfo.pPushConstantRanges		= nullptr;
+	pipelineLayoutInfo.pSetLayouts				= (vkDescriptorSetLayouts.size() > 0) ? vkDescriptorSetLayouts.data() : nullptr;
+	pipelineLayoutInfo.pushConstantRangeCount	= uint32_t(pushConstantRanges.size());
+	pipelineLayoutInfo.pPushConstantRanges		= (pushConstantRanges.size() > 0) ? pushConstantRanges.data() : nullptr;
 
-	if (vkCreatePipelineLayout(m_pDevice->getDevice(), &pipelineLayoutInfo, nullptr, &m_PipelineLayout) != VK_SUCCESS) {
-		std::cout << "Failed to create PipelineLayout" << std::endl;
+	if (vkCreatePipelineLayout(m_pDevice->getDevice(), &pipelineLayoutInfo, nullptr, &m_PipelineLayout) != VK_SUCCESS) 
+	{
+		LOG("Failed to create PipelineLayout");
 	} else {
-		std::cout << "Created PipelineLayout" << std::endl;
+		LOG("--- PipelineLayout: Vulkan PipelineLayout created successfully");
 	}
 }

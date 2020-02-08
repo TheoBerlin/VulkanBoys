@@ -1,5 +1,6 @@
 #include "DeviceVK.h"
 #include "InstanceVK.h"
+#include "CommandBufferVK.h"
 
 #include <iostream>
 #include <map>
@@ -51,6 +52,26 @@ void DeviceVK::addRequiredExtension(const char* extensionName)
 void DeviceVK::addOptionalExtension(const char* extensionName)
 {
 	m_RequestedOptionalExtensions.push_back(extensionName);
+}
+
+void DeviceVK::executeCommandBuffer(VkQueue queue, CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages, 
+	uint32_t waitSemaphoreCount, const VkSemaphore* pSignalSemaphores, uint32_t signalSemaphoreCount)
+{
+	//Submit
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.pNext = nullptr;
+	submitInfo.waitSemaphoreCount	= waitSemaphoreCount;
+	submitInfo.pWaitSemaphores		= pWaitSemaphore;
+	submitInfo.pWaitDstStageMask	= pWaitStages;
+
+	VkCommandBuffer commandBuffers[] = { pCommandBuffer->getCommandBuffer() };
+	submitInfo.pCommandBuffers		= commandBuffers;
+	submitInfo.commandBufferCount	= 1;
+	submitInfo.signalSemaphoreCount = signalSemaphoreCount;
+	submitInfo.pSignalSemaphores	= pSignalSemaphores;
+
+	VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, pCommandBuffer->getFence()), "vkQueueSubmit failed");
 }
 
 void DeviceVK::wait()

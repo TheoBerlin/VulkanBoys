@@ -118,9 +118,9 @@ workspace "Vulkan-Project"
         
 		sysincludedirs
 		{
+			"Dependencies/",
 			"Dependencies/stb",
 			"Dependencies/GLFW/include",
-			"Dependencies/imgui",
 			"Dependencies/glm",
 		}
 		

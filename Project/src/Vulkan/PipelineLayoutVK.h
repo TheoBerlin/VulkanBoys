@@ -7,10 +7,10 @@ class DeviceVK;
 class PipelineLayoutVK
 {
 public:
-    PipelineLayoutVK();
+    PipelineLayoutVK(DeviceVK* pDevice);
     ~PipelineLayoutVK();
 
-    void createPipelineLayout(DeviceVK* pDevice, std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts);
+    void createPipelineLayout(const std::vector<const DescriptorSetLayoutVK*>& descriptorSetLayouts, const std::vector<VkPushConstantRange>& pushConstantRanges);
 
     VkPipelineLayout getPipelineLayout() { return m_PipelineLayout; }
 

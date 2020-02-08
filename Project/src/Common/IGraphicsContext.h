@@ -2,6 +2,7 @@
 
 #include "Core/Core.h"
 
+class IImgui;
 class IImage;
 class IWindow;
 class IShader;
@@ -22,7 +23,8 @@ public:
 	DECL_INTERFACE(IGraphicsContext);
 
 	virtual IRenderer* createRenderer() = 0;
-	
+	virtual IImgui* createImgui() = 0;
+
 	virtual IShader* createShader() = 0;
 	
 	virtual IBuffer* createBuffer() = 0;

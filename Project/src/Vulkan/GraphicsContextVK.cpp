@@ -1,7 +1,9 @@
 #include "GraphicsContextVK.h"
+#include "ImguiVK.h"
 #include "ShaderVK.h"
 #include "RendererVK.h"
 #include "SwapChainVK.h"
+#include "Texture2DVK.h"
 
 #include "Core/GLFWWindow.h"
 
@@ -62,6 +64,11 @@ IRenderer* GraphicsContextVK::createRenderer()
 	return new RendererVK(this);
 }
 
+IImgui* GraphicsContextVK::createImgui()
+{
+	return new ImguiVK(this);
+}
+
 IShader* GraphicsContextVK::createShader()
 {
 	return new ShaderVK(&m_Device);
@@ -93,8 +100,7 @@ IImageView* GraphicsContextVK::createImageView()
 
 ITexture2D* GraphicsContextVK::createTexture2D()
 {
-	//Todo: Implement
-	return nullptr;
+	return new Texture2DVK(this);
 }
 
 void GraphicsContextVK::swapBuffers(VkSemaphore renderSemaphore)

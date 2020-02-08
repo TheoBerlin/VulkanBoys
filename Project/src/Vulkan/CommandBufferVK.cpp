@@ -3,9 +3,11 @@
 #include "StackVK.h"
 #include "DeviceVK.h"
 #include "BufferVK.h"
-#include "RenderPassVK.h"
 #include "PipelineVK.h"
+#include "RenderPassVK.h"
 #include "FrameBufferVK.h"
+#include "DescriptorSetVK.h"
+#include "PipelineLayoutVK.h"
 
 CommandBufferVK::CommandBufferVK(DeviceVK* pDevice, VkCommandBuffer commandBuffer)
 	: m_pDevice(pDevice),
@@ -90,6 +92,22 @@ void CommandBufferVK::endRenderPass()
 	vkCmdEndRenderPass(m_CommandBuffer);
 }
 
+void CommandBufferVK::bindVertexBuffers(const BufferVK* const* ppVertexBuffers, uint32_t vertexBufferCount, const VkDeviceSize* pOffsets)
+{
+	for (uint32_t i = 0; i < vertexBufferCount; i++)
+	{
+		m_VertexBuffers.emplace_back(ppVertexBuffers[i]->getBuffer());
+	}
+
+	vkCmdBindVertexBuffers(m_CommandBuffer, 0, vertexBufferCount, m_VertexBuffers.data(), pOffsets);
+	m_VertexBuffers.clear();
+}
+
+void CommandBufferVK::bindIndexBuffer(const BufferVK* pIndexBuffer, VkDeviceSize offset, VkIndexType indexType)
+{
+	vkCmdBindIndexBuffer(m_CommandBuffer, pIndexBuffer->getBuffer(), offset, indexType);
+}
+
 void CommandBufferVK::bindGraphicsPipeline(PipelineVK* pPipeline)
 {
 	vkCmdBindPipeline(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pPipeline->getPipeline());
@@ -99,11 +117,16 @@ void CommandBufferVK::bindDescriptorSet(VkPipelineBindPoint bindPoint, PipelineL
 {
 	for (uint32_t i = 0; i < count; i++)
 	{
-		//m_DescriptorSets.emplace_back(ppDescriptorSets[i]->getDescriptorSet());
+		m_DescriptorSets.emplace_back(ppDescriptorSets[i]->getDescriptorSet());
 	}
 
-	//vkCmdBindDescriptorSets(m_CommandBuffer, bindPoint, pPipelineLayout->getPipelineLayout(), firstSet, count, m_DescriptorSet.data(), dynamicOffsetCount, pDynamicOffsets);
+	vkCmdBindDescriptorSets(m_CommandBuffer, bindPoint, pPipelineLayout->getPipelineLayout(), firstSet, count, m_DescriptorSets.data(), dynamicOffsetCount, pDynamicOffsets);
 	m_DescriptorSets.clear();
+}
+
+void CommandBufferVK::pushConstants(PipelineLayoutVK* pPipelineLayout, VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size, const void* pValues)
+{
+	vkCmdPushConstants(m_CommandBuffer, pPipelineLayout->getPipelineLayout(), stageFlags, offset, size, pValues);
 }
 
 void CommandBufferVK::setScissorRects(VkRect2D* pScissorRects, uint32_t scissorRectCount)
@@ -215,4 +238,9 @@ void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLa
 void CommandBufferVK::drawInstanced(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
 {
 	vkCmdDraw(m_CommandBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
+}
+
+void CommandBufferVK::drawIndexInstanced(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset, uint32_t firstInstance)
+{
+	vkCmdDrawIndexed(m_CommandBuffer, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
 }

@@ -3,7 +3,7 @@
 
 class DeviceVK;
 
-struct BufferVkParams
+struct BufferParams
 {
 	VkDeviceSize SizeInBytes = 0;
 	VkBufferUsageFlags Usage = 0;
@@ -18,7 +18,7 @@ public:
 
 	DECL_NO_COPY(BufferVK);
 
-	bool create(const BufferVkParams& params);
+	bool create(const BufferParams& params);
 	void map(void** ppMappedMemory);
 	void unmap();
 
@@ -28,7 +28,7 @@ private:
 	DeviceVK* m_pDevice;
 	VkBuffer m_Buffer;
 	VkDeviceMemory m_Memory;
-	BufferVkParams m_Params;
+	BufferParams m_Params;
 	bool m_IsMapped;
 };
 

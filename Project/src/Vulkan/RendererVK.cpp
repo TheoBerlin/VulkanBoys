@@ -1,4 +1,5 @@
 #include "RendererVK.h"
+#include "ImguiVK.h"
 #include "PipelineVK.h"
 #include "SwapChainVK.h"
 #include "RenderPassVK.h"
@@ -111,15 +112,17 @@ bool RendererVK::init()
 	DescriptorSetLayoutVK* pDescriptorSetLayout = new DescriptorSetLayoutVK(pDevice);
 	pDescriptorSetLayout->finalizeLayout();
 
+	std::vector<VkPushConstantRange> pushConstantRanges;
 	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { pDescriptorSetLayout };
-	m_pPipelineLayout = new PipelineLayoutVK();
-	m_pPipelineLayout->createPipelineLayout(pDevice, descriptorSetLayouts);
+	m_pPipelineLayout = new PipelineLayoutVK(pDevice);
+	m_pPipelineLayout->createPipelineLayout(descriptorSetLayouts, pushConstantRanges);
 
 	SAFEDELETE(pDescriptorSetLayout);
 
 	std::vector<IShader*> shaders = { pVertexShader, pPixelShader };
-	m_pPipeline = new PipelineVK();
-	m_pPipeline->create(shaders, m_pRenderPass, m_pPipelineLayout, pDevice);
+	m_pPipeline = new PipelineVK(pDevice);
+	m_pPipeline->addColorBlendAttachment(false, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
+	m_pPipeline->create(shaders, m_pRenderPass, m_pPipelineLayout);
 
 	SAFEDELETE(pVertexShader);
 	SAFEDELETE(pPixelShader);
@@ -222,6 +225,11 @@ void RendererVK::swapBuffers()
 {
 	m_pContext->swapBuffers(m_RenderFinishedSemaphores[m_CurrentFrame]);
 	m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+}
+
+void RendererVK::drawImgui(IImgui* pImgui)
+{
+	pImgui->render(m_ppCommandBuffers[m_CurrentFrame]);
 }
 
 void RendererVK::drawTriangle()

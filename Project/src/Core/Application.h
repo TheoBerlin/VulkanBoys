@@ -1,9 +1,10 @@
 #pragma once
 #include "Common/IEventHandler.h"
 
+class IImgui;
 class IWindow;
-class IGraphicsContext;
 class IRenderer;
+class IGraphicsContext;
 
 class Application : public IEventHandler
 {
@@ -27,12 +28,14 @@ public:
 
 private:
 	void update();
+	void renderUI();
 	void render();
 
 private:
 	IWindow* m_pWindow;
 	IGraphicsContext* m_pContext;
 	IRenderer* m_pRenderer;
+	IImgui* m_pImgui;
 	bool m_IsRunning;
 };
 

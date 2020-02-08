@@ -1,6 +1,8 @@
 #pragma once
 #include "Core/Core.h"
 
+class IImgui;
+
 class IRenderer
 {
 public:
@@ -17,6 +19,8 @@ public:
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) = 0;
 
 	virtual void swapBuffers() = 0;
+
+	virtual void drawImgui(IImgui* pImgui) = 0;
 
 	//Temporary function
 	virtual void drawTriangle() = 0;

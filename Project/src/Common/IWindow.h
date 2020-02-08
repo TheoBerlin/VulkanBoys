@@ -10,7 +10,8 @@ class IWindow
 public:
 	DECL_INTERFACE(IWindow);
 
-	virtual void setEventHandler(IEventHandler* pEventHandler) = 0;
+	virtual void addEventHandler(IEventHandler* pEventHandler) = 0;
+	virtual void removeEventHandler(IEventHandler* pEventHandler) = 0;
 
 	virtual void peekEvents() = 0;
 	virtual void show() = 0;
