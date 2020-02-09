@@ -1,9 +1,0 @@
-# comment can only be a complete line
-# FILENAME is the shader name without the extension.
-# extension will be automatically determined by BACKEND.
-# very fragile format parsing...
-count 4
-texture name FILENAME
-texture name FILENAME
-texture name FILENAME
-texture name FILENAME
