@@ -30,15 +30,16 @@ public:
 	virtual void onMouseReleased(int32_t button) override;
 
 	virtual void onKeyTyped(uint32_t character) override;
-	virtual void onKeyPressed(int32_t key) override;
-	virtual void onKeyReleased(int32_t key) override;
+	virtual void onKeyPressed(EKey key) override;
+	virtual void onKeyReleased(EKey key) override;
 
 	static Application& getInstance();
 
 private:
-	void update();
-	void renderUI();
-	void render();
+	//Deltatime should be in milliseconds
+	void update(double dt);
+	void renderUI(double dt);
+	void render(double dt);
 
 private:
 	IWindow* m_pWindow;

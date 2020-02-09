@@ -195,6 +195,7 @@ bool ImguiVK::init()
 		return false;
 	}
 
+	//TODO: Fix resizeable buffers
 	if (!createBuffers(MB(16), MB(16)))
 	{
 		return false;
@@ -213,8 +214,15 @@ bool ImguiVK::init()
 	return true;
 }
 
-void ImguiVK::begin()
+void ImguiVK::begin(double deltatime)
 {
+	ImGuiIO& io = ImGui::GetIO();
+
+	io.DeltaTime = float(deltatime / 1000.0);
+
+	IWindow* pWindow = Application::getInstance().getWindow();
+	io.DisplayFramebufferScale = ImVec2(pWindow->getScaleX(), pWindow->getScaleY());
+
 	ImGui::NewFrame();
 }
 
@@ -341,7 +349,6 @@ void ImguiVK::onWindowResize(uint32_t width, uint32_t height)
 {
 	ImGuiIO& io = ImGui::GetIO();
 	io.DisplaySize = ImVec2(float(width), float(height));
-	io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 }
 
 void ImguiVK::onWindowFocusChanged(IWindow* pWindow, bool hasFocus)
@@ -379,24 +386,24 @@ void ImguiVK::onKeyTyped(uint32_t character)
 	io.AddInputCharacter(character);
 }
 
-void ImguiVK::onKeyPressed(int32_t key)
+void ImguiVK::onKeyPressed(EKey key)
 {
 	ImGuiIO& io = ImGui::GetIO();
 	io.KeysDown[key] = true;
-	io.KeyCtrl	= io.KeysDown[GLFW_KEY_LEFT_CONTROL] || io.KeysDown[GLFW_KEY_RIGHT_CONTROL];
-	io.KeyShift	= io.KeysDown[GLFW_KEY_LEFT_SHIFT]	 || io.KeysDown[GLFW_KEY_RIGHT_SHIFT];
-	io.KeyAlt	= io.KeysDown[GLFW_KEY_LEFT_ALT]	 || io.KeysDown[GLFW_KEY_RIGHT_ALT];
-	io.KeySuper	= io.KeysDown[GLFW_KEY_LEFT_SUPER]	 || io.KeysDown[GLFW_KEY_RIGHT_SUPER];
+	io.KeyCtrl	= io.KeysDown[EKey::KEY_LEFT_CONTROL]	|| io.KeysDown[EKey::KEY_RIGHT_CONTROL];
+	io.KeyShift	= io.KeysDown[EKey::KEY_LEFT_SHIFT]		|| io.KeysDown[EKey::KEY_RIGHT_SHIFT];
+	io.KeyAlt	= io.KeysDown[EKey::KEY_LEFT_ALT]		|| io.KeysDown[EKey::KEY_RIGHT_ALT];
+	io.KeySuper	= io.KeysDown[EKey::KEY_LEFT_SUPER]		|| io.KeysDown[EKey::KEY_RIGHT_SUPER];
 }
 
-void ImguiVK::onKeyReleased(int32_t key)
+void ImguiVK::onKeyReleased(EKey key)
 {
 	ImGuiIO& io = ImGui::GetIO();
 	io.KeysDown[key] = false;
-	io.KeyCtrl	= io.KeysDown[GLFW_KEY_LEFT_CONTROL]	|| io.KeysDown[GLFW_KEY_RIGHT_CONTROL];
-	io.KeyShift = io.KeysDown[GLFW_KEY_LEFT_SHIFT]		|| io.KeysDown[GLFW_KEY_RIGHT_SHIFT];
-	io.KeyAlt	= io.KeysDown[GLFW_KEY_LEFT_ALT]		|| io.KeysDown[GLFW_KEY_RIGHT_ALT];
-	io.KeySuper = io.KeysDown[GLFW_KEY_LEFT_SUPER]		|| io.KeysDown[GLFW_KEY_RIGHT_SUPER];
+	io.KeyCtrl	= io.KeysDown[EKey::KEY_LEFT_CONTROL]	|| io.KeysDown[EKey::KEY_RIGHT_CONTROL];
+	io.KeyShift = io.KeysDown[EKey::KEY_LEFT_SHIFT]		|| io.KeysDown[EKey::KEY_RIGHT_SHIFT];
+	io.KeyAlt	= io.KeysDown[EKey::KEY_LEFT_ALT]		|| io.KeysDown[EKey::KEY_RIGHT_ALT];
+	io.KeySuper = io.KeysDown[EKey::KEY_LEFT_SUPER]		|| io.KeysDown[EKey::KEY_RIGHT_SUPER];
 }
 
 bool ImguiVK::initImgui()
@@ -414,34 +421,36 @@ bool ImguiVK::initImgui()
 	io.DisplaySize = ImVec2(float(pWindow->getWidth()), float(pWindow->getHeight()));
 	io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 
-	io.KeyMap[ImGuiKey_Tab]			= GLFW_KEY_TAB;
-	io.KeyMap[ImGuiKey_LeftArrow]	= GLFW_KEY_LEFT;
-	io.KeyMap[ImGuiKey_RightArrow]	= GLFW_KEY_RIGHT;
-	io.KeyMap[ImGuiKey_UpArrow]		= GLFW_KEY_UP;
-	io.KeyMap[ImGuiKey_DownArrow]	= GLFW_KEY_DOWN;
-	io.KeyMap[ImGuiKey_PageUp]		= GLFW_KEY_PAGE_UP;
-	io.KeyMap[ImGuiKey_PageDown]	= GLFW_KEY_PAGE_DOWN;
-	io.KeyMap[ImGuiKey_Home]		= GLFW_KEY_HOME;
-	io.KeyMap[ImGuiKey_End]			= GLFW_KEY_END;
-	io.KeyMap[ImGuiKey_Insert]		= GLFW_KEY_INSERT;
-	io.KeyMap[ImGuiKey_Delete]		= GLFW_KEY_DELETE;
-	io.KeyMap[ImGuiKey_Backspace]	= GLFW_KEY_BACKSPACE;
-	io.KeyMap[ImGuiKey_Space]		= GLFW_KEY_SPACE;
-	io.KeyMap[ImGuiKey_Enter]		= GLFW_KEY_ENTER;
-	io.KeyMap[ImGuiKey_Escape]		= GLFW_KEY_ESCAPE;
-	io.KeyMap[ImGuiKey_KeyPadEnter] = GLFW_KEY_KP_ENTER;
-	io.KeyMap[ImGuiKey_A]			= GLFW_KEY_A;
-	io.KeyMap[ImGuiKey_C]			= GLFW_KEY_C;
-	io.KeyMap[ImGuiKey_V]			= GLFW_KEY_V;
-	io.KeyMap[ImGuiKey_X]			= GLFW_KEY_X;
-	io.KeyMap[ImGuiKey_Y]			= GLFW_KEY_Y;
-	io.KeyMap[ImGuiKey_Z]			= GLFW_KEY_Z;
+	io.KeyMap[ImGuiKey_Tab]			= EKey::KEY_TAB;
+	io.KeyMap[ImGuiKey_LeftArrow]	= EKey::KEY_LEFT;
+	io.KeyMap[ImGuiKey_RightArrow]	= EKey::KEY_RIGHT;
+	io.KeyMap[ImGuiKey_UpArrow]		= EKey::KEY_UP;
+	io.KeyMap[ImGuiKey_DownArrow]	= EKey::KEY_DOWN;
+	io.KeyMap[ImGuiKey_PageUp]		= EKey::KEY_PAGE_UP;
+	io.KeyMap[ImGuiKey_PageDown]	= EKey::KEY_PAGE_DOWN;
+	io.KeyMap[ImGuiKey_Home]		= EKey::KEY_HOME;
+	io.KeyMap[ImGuiKey_End]			= EKey::KEY_END;
+	io.KeyMap[ImGuiKey_Insert]		= EKey::KEY_INSERT;
+	io.KeyMap[ImGuiKey_Delete]		= EKey::KEY_DELETE;
+	io.KeyMap[ImGuiKey_Backspace]	= EKey::KEY_BACKSPACE;
+	io.KeyMap[ImGuiKey_Space]		= EKey::KEY_SPACE;
+	io.KeyMap[ImGuiKey_Enter]		= EKey::KEY_ENTER;
+	io.KeyMap[ImGuiKey_Escape]		= EKey::KEY_ESCAPE;
+	io.KeyMap[ImGuiKey_KeyPadEnter] = EKey::KEY_KP_ENTER;
+	io.KeyMap[ImGuiKey_A]			= EKey::KEY_A;
+	io.KeyMap[ImGuiKey_C]			= EKey::KEY_C;
+	io.KeyMap[ImGuiKey_V]			= EKey::KEY_V;
+	io.KeyMap[ImGuiKey_X]			= EKey::KEY_X;
+	io.KeyMap[ImGuiKey_Y]			= EKey::KEY_Y;
+	io.KeyMap[ImGuiKey_Z]			= EKey::KEY_Z;
 
+	//TODO: Not based on glfw
 	GLFWwindow* pNativeWindow = (GLFWwindow*)pWindow->getNativeHandle();
 #if defined(_WIN32)
 	io.ImeWindowHandle = (void*)glfwGetWin32Window(pNativeWindow);
 #endif
 	
+	//TODO: Not based on glfw
 	io.SetClipboardTextFn	= ImGuiSetClipboardText;
 	io.GetClipboardTextFn	= ImGuiGetClipboardText;
 	io.ClipboardUserData	= pWindow;
@@ -454,6 +463,7 @@ bool ImguiVK::initImgui()
 	ImGui::GetStyle().PopupRounding		= 0.0f;
 	ImGui::GetStyle().ScrollbarRounding = 0.0f;
 
+	//TODO: Not based on glfw
 	GLFWerrorfun prev_error_callback = glfwSetErrorCallback(NULL);
 	g_MouseCursors[ImGuiMouseCursor_Arrow]		= glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 	g_MouseCursors[ImGuiMouseCursor_TextInput]	= glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
@@ -536,9 +546,13 @@ bool ImguiVK::createPipeline()
 	m_pPipeline->addVertexAttribute(0, VK_FORMAT_R32G32_SFLOAT, 0, IM_OFFSETOF(ImDrawVert, pos));
 	m_pPipeline->addVertexAttribute(0, VK_FORMAT_R32G32_SFLOAT, 1, IM_OFFSETOF(ImDrawVert, uv));
 	m_pPipeline->addVertexAttribute(0, VK_FORMAT_R8G8B8A8_UNORM, 2, IM_OFFSETOF(ImDrawVert, col));
+
 	m_pPipeline->addVertexBinding(0, VK_VERTEX_INPUT_RATE_VERTEX, sizeof(ImDrawVert));
+	
 	m_pPipeline->addColorBlendAttachment(true, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
+	
 	m_pPipeline->setWireFrame(false);
+
 	m_pPipeline->create(shaders, m_pRenderPass, m_pPipelineLayout);
 
 	SAFEDELETE(pVertexShader);

@@ -4,11 +4,11 @@
 class DeviceVK;
 class BufferVK;
 
-class StackVK
+class StaginBufferVK
 {
 public:
-	StackVK(DeviceVK* pDevice);
-	~StackVK();
+	StaginBufferVK(DeviceVK* pDevice);
+	~StaginBufferVK();
 
 	bool create(VkDeviceSize initalSizeInBytes);
 

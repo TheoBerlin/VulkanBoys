@@ -37,7 +37,7 @@ ImageVK::~ImageVK()
 	}
 }
 
-void ImageVK::init(const ImageParams& params)
+bool ImageVK::init(const ImageParams& params)
 {
 	VkImageCreateInfo imageInfo = {};
 	imageInfo.sType	 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -56,7 +56,7 @@ void ImageVK::init(const ImageParams& params)
 	imageInfo.arrayLayers	= params.ArrayLayers;
 	imageInfo.extent		= params.Extent;
 
-	VK_CHECK_RESULT(vkCreateImage(m_pDevice->getDevice(), &imageInfo, nullptr, &m_Image), "vkCreateImage failed");
+	VK_CHECK_RESULT_RETURN_FALSE(vkCreateImage(m_pDevice->getDevice(), &imageInfo, nullptr, &m_Image), "vkCreateImage failed");
 
 	D_LOG("--- Image: Vulkan Image created successfully");
 
@@ -68,10 +68,12 @@ void ImageVK::init(const ImageParams& params)
 	allocInfo.allocationSize = memRequirements.size;
 	allocInfo.memoryTypeIndex = findMemoryType(m_pDevice->getPhysicalDevice(), memRequirements.memoryTypeBits, params.MemoryProperty);
 
-	VK_CHECK_RESULT(vkAllocateMemory(m_pDevice->getDevice(), &allocInfo, nullptr, &m_Memory), "Failed to allocate image memory");
+	VK_CHECK_RESULT_RETURN_FALSE(vkAllocateMemory(m_pDevice->getDevice(), &allocInfo, nullptr, &m_Memory), "Failed to allocate image memory");
 
 	m_Params = params;
 	D_LOG("--- Image: Allocated '%d' bytes for image", memRequirements.size);
 
-	VK_CHECK_RESULT(vkBindImageMemory(m_pDevice->getDevice(), m_Image, m_Memory, 0), "Failed to bind image memory");
+	VK_CHECK_RESULT_RETURN_FALSE(vkBindImageMemory(m_pDevice->getDevice(), m_Image, m_Memory, 0), "Failed to bind image memory");
+
+	return true;
 }

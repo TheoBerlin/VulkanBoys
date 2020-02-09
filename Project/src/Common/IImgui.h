@@ -11,7 +11,7 @@ public:
 
 	virtual bool init() = 0;
 
-	virtual void begin() = 0;
+	virtual void begin(double deltatime) = 0;
 	virtual void end() = 0;
 	
 	virtual void render(CommandBufferVK* pCommandBuffer) = 0;

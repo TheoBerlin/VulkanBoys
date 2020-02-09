@@ -46,7 +46,7 @@ void Application::init()
 	//Setup renderer
 	m_pRenderer = m_pContext->createRenderer();
 	m_pRenderer->init();
-	m_pRenderer->setClearColor(1.0f, 1.0f, 1.0f);
+	m_pRenderer->setClearColor(0.0f, 0.0f, 0.0f);
 	m_pRenderer->setViewport(m_pWindow->getWidth(), m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
 }
 
@@ -54,14 +54,24 @@ void Application::run()
 {
 	m_IsRunning = true;
 	
+	auto currentTime	= std::chrono::high_resolution_clock::now();
+	auto lastTime		= currentTime;
+
+	//HACK to get a non-null deltatime
+	std::this_thread::sleep_for(std::chrono::milliseconds(16));
+
 	while (m_IsRunning)
 	{
+		lastTime	= currentTime;
+		currentTime = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double, std::milli> deltatime = currentTime - lastTime;
+
 		m_pWindow->peekEvents();
 		if (m_pWindow->hasFocus())
 		{
-			update();
-			renderUI();
-			render();
+			update(deltatime.count());
+			renderUI(deltatime.count());
+			render(deltatime.count());
 		}
 		else
 		{
@@ -119,11 +129,16 @@ void Application::onKeyTyped(uint32_t character)
 {
 }
 
-void Application::onKeyPressed(int32_t key)
+void Application::onKeyPressed(EKey key)
 {
+	//Exit application by pressing escape
+	if (key == EKey::KEY_ESCAPE)
+	{
+		m_IsRunning = false;
+	}
 }
 
-void Application::onKeyReleased(int32_t key)
+void Application::onKeyReleased(EKey key)
 {
 }
 
@@ -138,18 +153,18 @@ Application& Application::getInstance()
 	return g_Application;
 }
 
-void Application::update()
+void Application::update(double ms)
 {
 }
 
-void Application::renderUI()
+void Application::renderUI(double ms)
 {
-	m_pImgui->begin();
+	m_pImgui->begin(ms);
 	ImGui::ShowDemoWindow();
 	m_pImgui->end();
 }
 
-void Application::render()
+void Application::render(double ms)
 {
 	m_pRenderer->beginFrame();
 	m_pRenderer->drawTriangle();

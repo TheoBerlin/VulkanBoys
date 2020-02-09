@@ -1,7 +1,7 @@
 #include "StackVK.h"
 #include "BufferVK.h"
 
-StackVK::StackVK(DeviceVK* pDevice)
+StaginBufferVK::StaginBufferVK(DeviceVK* pDevice)
 	: m_pDevice(pDevice),
 	m_pBuffer(nullptr),
 	m_pHostMemory(nullptr),
@@ -9,13 +9,13 @@ StackVK::StackVK(DeviceVK* pDevice)
 {
 }
 
-StackVK::~StackVK()
+StaginBufferVK::~StaginBufferVK()
 {
 	SAFEDELETE(m_pBuffer);
 	m_pDevice = nullptr;
 }
 
-bool StackVK::create(VkDeviceSize initalSizeInBytes)
+bool StaginBufferVK::create(VkDeviceSize initalSizeInBytes)
 {
 	BufferParams params = {};
 	params.Usage		= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -33,13 +33,18 @@ bool StackVK::create(VkDeviceSize initalSizeInBytes)
 	return false;
 }
 
-void* StackVK::allocate(VkDeviceSize sizeInBytes)
+void* StaginBufferVK::allocate(VkDeviceSize sizeInBytes)
 {
-	VkDeviceSize newBufferOffset = m_BufferOffset + sizeInBytes;
-	if (newBufferOffset <= m_pBuffer->getSizeInBytes())
+	VkDeviceSize oldBufferOffset = m_BufferOffset;
+	m_BufferOffset = m_BufferOffset + sizeInBytes;
+	if (m_BufferOffset <= m_pBuffer->getSizeInBytes())
 	{
-		m_BufferOffset = newBufferOffset;
-		return (void*)(m_pHostMemory + m_BufferOffset);
+		return (void*)(m_pHostMemory + oldBufferOffset);
+	}
+	else
+	{
+		//Restore old offset, maybe not neccessary??
+		m_BufferOffset = oldBufferOffset;
 	}
 
 	D_LOG("-------- Error: Stack does not have enough space");
@@ -49,7 +54,7 @@ void* StackVK::allocate(VkDeviceSize sizeInBytes)
 	return nullptr;
 }
 
-void StackVK::reset()
+void StaginBufferVK::reset()
 {
 	m_BufferOffset = 0;
 }

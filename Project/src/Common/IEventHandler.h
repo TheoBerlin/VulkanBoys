@@ -1,6 +1,8 @@
 #pragma once
 #include "Core/Core.h"
 
+#include "Keycodes.h"
+
 class IWindow;
 
 class IEventHandler
@@ -18,6 +20,6 @@ public:
 	virtual void onMouseReleased(int32_t button) = 0;
 
 	virtual void onKeyTyped(uint32_t character) = 0;
-	virtual void onKeyPressed(int32_t key) = 0;
-	virtual void onKeyReleased(int32_t key) = 0;
+	virtual void onKeyPressed(EKey key) = 0;
+	virtual void onKeyReleased(EKey key) = 0;
 };

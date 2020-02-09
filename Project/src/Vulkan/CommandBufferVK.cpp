@@ -40,7 +40,7 @@ bool CommandBufferVK::finalize()
 	D_LOG("--- CommandBuffer: Vulkan Fence created successfully");
 
 	//Create stackingbuffer
-	m_pStack = new StackVK(m_pDevice);
+	m_pStack = new StaginBufferVK(m_pDevice);
 	if (!m_pStack->create(MB(2)))
 	{
 		return false;
@@ -165,7 +165,7 @@ void CommandBufferVK::updateImage(const void* pPixelData, ImageVK* pImage, uint3
 	VkDeviceSize offset = m_pStack->getCurrentOffset();
 	void* pHostMemory = m_pStack->allocate(sizeInBytes);
 	memcpy(pHostMemory, pPixelData, sizeInBytes);
-
+	
 	copyBufferToImage(m_pStack->getBuffer(), offset, pImage, width, height);
 }
 

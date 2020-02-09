@@ -23,7 +23,7 @@ public:
 
 	virtual bool init() override;
 	
-	virtual void begin() override;
+	virtual void begin(double deltatime) override;
 	virtual void end() override;
 	
 	virtual void render(CommandBufferVK* pCommandBuffer) override;
@@ -38,8 +38,8 @@ public:
 	virtual void onMouseReleased(int32_t button) override;
 
 	virtual void onKeyTyped(uint32_t character) override;
-	virtual void onKeyPressed(int32_t key) override;
-	virtual void onKeyReleased(int32_t key) override;
+	virtual void onKeyPressed(EKey key) override;
+	virtual void onKeyReleased(EKey key) override;
 
 private:
 	bool initImgui();

@@ -44,6 +44,12 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 					}
 				});
 
+			glfwSetWindowSizeCallback(m_pWindow, [](GLFWwindow* pWindow, int32_t width, int32_t height)
+				{
+					GET_WINDOW(pWindow)->m_ClientWidth	= width;
+					GET_WINDOW(pWindow)->m_ClientHeight	= height;
+				});
+
             glfwSetFramebufferSizeCallback(m_pWindow, [](GLFWwindow* pWindow, int32_t width, int32_t height)
 				{
 					GET_WINDOW(pWindow)->m_Width	= width;
@@ -70,13 +76,15 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 			{
 				for (IEventHandler* pEventHandler : GET_EVENTHANDLERS(pWindow))
 				{
+					//TODO: GLFW and EKey have the same integer value so this is valid however, a convertion function maybe should be 
+					//considered in the future
 					if (action == GLFW_PRESS)
 					{
-						pEventHandler->onKeyPressed(key);
+						pEventHandler->onKeyPressed(EKey(key));
 					}
 					else if (action == GLFW_RELEASE)
 					{
-						pEventHandler->onKeyReleased(key);
+						pEventHandler->onKeyReleased(EKey(key));
 					}
 				}
 			});
@@ -127,6 +135,13 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 
 			m_Width		= width;
 			m_Height	= height;
+
+			width	= 0;
+			height	= 0;
+			glfwGetWindowSize(m_pWindow, &width, &height);
+
+			m_ClientWidth	= width;
+			m_ClientHeight	= height;
 		}
 		else
 		{
@@ -202,6 +217,26 @@ uint32_t GLFWWindow::getWidth()
 uint32_t GLFWWindow::getHeight()
 {
 	return m_Height;
+}
+
+uint32_t GLFWWindow::getClientWidth()
+{
+	return m_ClientWidth;
+}
+
+uint32_t GLFWWindow::getClientHeight()
+{
+	return m_ClientHeight;
+}
+
+float GLFWWindow::getScaleX()
+{
+	return float(m_Width) / float(m_ClientWidth);
+}
+
+float GLFWWindow::getScaleY()
+{
+	return float(m_Height) / float(m_ClientHeight);
 }
 
 void* GLFWWindow::getNativeHandle()
