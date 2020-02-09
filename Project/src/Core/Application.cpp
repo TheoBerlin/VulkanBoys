@@ -13,6 +13,7 @@
 #include <thread>
 #include <chrono>
 #include <imgui/imgui.h>
+#include <glm/gtc/type_ptr.hpp>
 
 Application g_Application;
 
@@ -157,17 +158,26 @@ void Application::update(double ms)
 {
 }
 
+static glm::vec4 g_TriangleColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+
 void Application::renderUI(double ms)
 {
 	m_pImgui->begin(ms);
-	ImGui::ShowDemoWindow();
+
+	ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);
+	if (ImGui::Begin("Color", NULL, ImGuiWindowFlags_NoResize))
+	{
+		ImGui::ColorPicker4("##picker", glm::value_ptr(g_TriangleColor), ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview);
+	}
+	ImGui::End();
+
 	m_pImgui->end();
 }
 
 void Application::render(double ms)
 {
 	m_pRenderer->beginFrame();
-	m_pRenderer->drawTriangle();
+	m_pRenderer->drawTriangle(g_TriangleColor);
 	m_pRenderer->drawImgui(m_pImgui);
 	m_pRenderer->endFrame();
 

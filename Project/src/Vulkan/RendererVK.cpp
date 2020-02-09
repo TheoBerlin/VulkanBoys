@@ -109,11 +109,18 @@ bool RendererVK::init()
 	pPixelShader->loadFromFile(EShader::PIXEL_SHADER, "main", "assets/shaders/fragment.spv");
 	pPixelShader->finalize();
 
+	//DescriptorSetLayout
 	DescriptorSetLayoutVK* pDescriptorSetLayout = new DescriptorSetLayoutVK(pDevice);
 	pDescriptorSetLayout->finalizeLayout();
-
-	std::vector<VkPushConstantRange> pushConstantRanges;
 	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { pDescriptorSetLayout };
+
+	//PushConstant - Triangle color
+	VkPushConstantRange pushConstantRange = {};
+	pushConstantRange.size = sizeof(glm::vec4);
+	pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	pushConstantRange.offset = 0;
+	std::vector<VkPushConstantRange> pushConstantRanges = { pushConstantRange };
+
 	m_pPipelineLayout = new PipelineLayoutVK(pDevice);
 	m_pPipelineLayout->createPipelineLayout(descriptorSetLayouts, pushConstantRanges);
 
@@ -186,9 +193,14 @@ void RendererVK::endFrame()
 
 void RendererVK::setClearColor(float r, float g, float b)
 {
-	m_ClearColor.color.float32[0] = r;
-	m_ClearColor.color.float32[1] = g;
-	m_ClearColor.color.float32[2] = b;
+	setClearColor(glm::vec3(r, g, b));
+}
+
+void RendererVK::setClearColor(const glm::vec3& color)
+{
+	m_ClearColor.color.float32[0] = color.r;
+	m_ClearColor.color.float32[1] = color.g;
+	m_ClearColor.color.float32[2] = color.b;
 	m_ClearColor.color.float32[3] = 1.0f;
 }
 
@@ -218,9 +230,10 @@ void RendererVK::drawImgui(IImgui* pImgui)
 	pImgui->render(m_ppCommandBuffers[m_CurrentFrame]);
 }
 
-void RendererVK::drawTriangle()
+void RendererVK::drawTriangle(const glm::vec4& color)
 {
 	m_ppCommandBuffers[m_CurrentFrame]->bindGraphicsPipeline(m_pPipeline);
+	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4), &color);
 	m_ppCommandBuffers[m_CurrentFrame]->drawInstanced(3, 1, 0, 0);
 }
 

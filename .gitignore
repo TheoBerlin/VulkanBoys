@@ -14,3 +14,6 @@ VulkanProject
 *.xcworkspacedata
 *.ini
 *.spv
+*.spv
+Project/assets/shaders/fragment.spv
+Project/assets/shaders/vertex.spv
