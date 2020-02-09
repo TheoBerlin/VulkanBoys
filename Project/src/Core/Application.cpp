@@ -131,6 +131,8 @@ void Application::onWindowResize(uint32_t width, uint32_t height)
 			m_pRenderer->setViewport(width, height, 0.0f, 1.0f, 0.0f, 0.0f);
 			m_pRenderer->onWindowResize(width, height);
 		}
+
+		m_Camera.setProjection(90.0f, float(width), float(height), 0.1f, 100.0f);
 	}
 }
 
