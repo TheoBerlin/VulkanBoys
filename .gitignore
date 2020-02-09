@@ -13,3 +13,4 @@ VulkanProject
 *.xcuserstate
 *.xcworkspacedata
 *.ini
+*.spv

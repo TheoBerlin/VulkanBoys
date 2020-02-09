@@ -216,11 +216,12 @@ bool ImguiVK::init()
 
 void ImguiVK::begin(double deltatime)
 {
-	ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO& io = ImGui::GetIO();
+	io.DeltaTime = float(deltatime / 1000.0); //Convert deltatime from ms to s
 
-	io.DeltaTime = float(deltatime / 1000.0);
-
-	IWindow* pWindow = Application::getInstance().getWindow();
+    //Maybe should not be dependent on Application?
+    IWindow* pWindow = Application::getInstance().getWindow();
+    io.DisplaySize = ImVec2(float(pWindow->getClientWidth()), float(pWindow->getClientHeight()));
 	io.DisplayFramebufferScale = ImVec2(pWindow->getScaleX(), pWindow->getScaleY());
 
 	ImGui::NewFrame();
@@ -275,8 +276,8 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width	= io.DisplaySize.x;
-	viewport.height = io.DisplaySize.y;
+	viewport.width	= io.DisplaySize.x * io.DisplayFramebufferScale.x;
+	viewport.height = io.DisplaySize.y * io.DisplayFramebufferScale.y;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 	pCommandBuffer->setViewports(&viewport, 1);
@@ -347,8 +348,6 @@ void ImguiVK::onWindowClose()
 
 void ImguiVK::onWindowResize(uint32_t width, uint32_t height)
 {
-	ImGuiIO& io = ImGui::GetIO();
-	io.DisplaySize = ImVec2(float(width), float(height));
 }
 
 void ImguiVK::onWindowFocusChanged(IWindow* pWindow, bool hasFocus)
@@ -416,10 +415,6 @@ bool ImguiVK::initImgui()
 	io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
 	io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
 	io.BackendPlatformName = "VulkanBoys";
-	
-	IWindow* pWindow = Application::getInstance().getWindow();
-	io.DisplaySize = ImVec2(float(pWindow->getWidth()), float(pWindow->getHeight()));
-	io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 
 	io.KeyMap[ImGuiKey_Tab]			= EKey::KEY_TAB;
 	io.KeyMap[ImGuiKey_LeftArrow]	= EKey::KEY_LEFT;
@@ -445,6 +440,7 @@ bool ImguiVK::initImgui()
 	io.KeyMap[ImGuiKey_Z]			= EKey::KEY_Z;
 
 	//TODO: Not based on glfw
+    IWindow* pWindow = Application::getInstance().getWindow();
 	GLFWwindow* pNativeWindow = (GLFWwindow*)pWindow->getNativeHandle();
 #if defined(_WIN32)
 	io.ImeWindowHandle = (void*)glfwGetWin32Window(pNativeWindow);
