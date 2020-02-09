@@ -73,7 +73,7 @@ private:
 
 	std::vector<GeometryInstance> m_AllGeometryInstances; //Possibly Temp?
 
-	uint32_t m_MaxMemReqBLAS;
+	VkDeviceSize m_MaxMemReqBLAS;
 	
 	CommandPoolVK* m_pTempCommandPool;
 	CommandBufferVK* m_pTempCommandBuffer;

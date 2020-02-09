@@ -7,6 +7,11 @@
 #include "../CommandPoolVK.h"
 #include "../CommandBufferVK.h"
 
+#include <algorithm>
+
+#ifdef max
+    #undef max
+#endif
 
 AccelerationTableVK::AccelerationTableVK(IGraphicsContext* pContext) :
 	m_pContext(reinterpret_cast<GraphicsContextVK*>(pContext)),
@@ -196,7 +201,7 @@ bool AccelerationTableVK::buildAccelerationTable()
 	BufferParams scratchBufferParams = {};
 	scratchBufferParams.Usage = VK_BUFFER_USAGE_RAY_TRACING_BIT_NV;
 	scratchBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	scratchBufferParams.SizeInBytes = max(m_MaxMemReqBLAS, memReqTLAS.memoryRequirements.size);
+	scratchBufferParams.SizeInBytes = std::max(m_MaxMemReqBLAS, memReqTLAS.memoryRequirements.size);
 
 	BufferVK* pScratchBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
 	pScratchBuffer->create(scratchBufferParams);
