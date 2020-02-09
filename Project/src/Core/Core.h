@@ -15,6 +15,11 @@
 		Type() = default; \
 		virtual ~Type() = default; \
 		DECL_NO_COPY(Type)
+
+#define DECL_STATIC_CLASS(Type) \
+		Type()	= delete; \
+		~Type() = delete; \
+		DECL_NO_COPY(Type)
 	
 #define SAFEDELETE(object) if ((object)) { delete (object); (object) = nullptr; }
 
@@ -25,7 +30,7 @@
 #if _DEBUG
 	#define D_LOG(...) LOG(__VA_ARGS__)
 #else
-	#define D_LOG(...)
+	#define D_LOG(...) LOG(__VA_ARGS__)
 #endif
 
 #define MB(bytes) bytes * 1024 * 1024

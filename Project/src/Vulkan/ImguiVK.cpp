@@ -217,7 +217,7 @@ bool ImguiVK::init()
 void ImguiVK::begin(double deltatime)
 {
     ImGuiIO& io = ImGui::GetIO();
-	io.DeltaTime = float(deltatime / 1000.0); //Convert deltatime from ms to s
+	io.DeltaTime = deltatime;
 
     //Maybe should not be dependent on Application?
     IWindow* pWindow = Application::get()->getWindow();

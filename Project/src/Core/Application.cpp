@@ -4,6 +4,7 @@
 #include "Common/IShader.h"
 #include "Common/IRenderer.h"
 #include "Common/IGraphicsContext.h"
+#include "Common/IInputHandler.h"
 
 #include "Vulkan/RenderPassVK.h"
 #include "Vulkan/CommandPoolVK.h"
@@ -11,6 +12,7 @@
 #include "Vulkan/DescriptorSetLayoutVK.h"
 
 #include "Camera.h"
+#include "Input.h"
 
 #include <thread>
 #include <chrono>
@@ -45,6 +47,11 @@ void Application::init()
 		m_pWindow->setFullscreenState(false);
 	}
 
+	//Create input
+	m_pInputHandler = IInputHandler::create();
+	Input::setInputHandler(m_pInputHandler);
+	m_pWindow->addEventHandler(m_pInputHandler);
+
 	//Create context
 	m_pContext = IGraphicsContext::create(m_pWindow, API::VULKAN);
 	
@@ -58,6 +65,12 @@ void Application::init()
 	m_pRenderer->init();
 	m_pRenderer->setClearColor(0.0f, 0.0f, 0.0f);
 	m_pRenderer->setViewport(m_pWindow->getWidth(), m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
+
+	//Setup camera
+	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
+	m_Camera.setPosition(glm::vec3(0.0f, 0.0f, -1.0f));
+	m_Camera.setProjection(90.0f, m_pWindow->getWidth(), m_pWindow->getHeight(), 0.1f, 100.0f);
+	m_Camera.update();
 }
 
 void Application::run()
@@ -75,13 +88,14 @@ void Application::run()
 		lastTime	= currentTime;
 		currentTime = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double, std::milli> deltatime = currentTime - lastTime;
+		double seconds = deltatime.count() / 1000.0;
 
 		m_pWindow->peekEvents();
 		if (m_pWindow->hasFocus())
 		{
-			update(deltatime.count());
-			renderUI(deltatime.count());
-			render(deltatime.count());
+			update(seconds);
+			renderUI(seconds);
+			render(seconds);
 		}
 		else
 		{
@@ -92,12 +106,17 @@ void Application::run()
 
 void Application::release()
 {
+	m_pWindow->removeEventHandler(m_pInputHandler);
 	m_pWindow->removeEventHandler(m_pImgui);
 	m_pWindow->removeEventHandler(this);
 
 	SAFEDELETE(m_pRenderer);
 	SAFEDELETE(m_pImgui);
 	SAFEDELETE(m_pContext);
+
+	SAFEDELETE(m_pInputHandler);
+	Input::setInputHandler(nullptr);
+
 	SAFEDELETE(m_pWindow);
 }
 
@@ -163,15 +182,36 @@ Application* Application::get()
 	return s_pInstance;
 }
 
-void Application::update(double ms)
+static glm::mat4 g_Rotation = glm::mat4(1.0f);
+
+void Application::update(double dt)
 {
+	if (Input::isKeyPressed(EKey::KEY_A))
+	{
+		m_Camera.translate(glm::vec3(0.2f * dt, 0.0f, 0.0f));
+	}
+	else if (Input::isKeyPressed(EKey::KEY_D))
+	{
+		m_Camera.translate(glm::vec3(-0.2f * dt, 0.0f, 0.0f));
+	}
+
+	if (Input::isKeyPressed(EKey::KEY_W))
+	{
+		m_Camera.translate(glm::vec3(0.0f, 0.0f, 0.2f * dt));
+	}
+	else if (Input::isKeyPressed(EKey::KEY_S))
+	{
+		m_Camera.translate(glm::vec3(0.0f, 0.0f, -0.2f * dt));
+	}
+
+	m_Camera.update();
 }
 
 static glm::vec4 g_TriangleColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
 
-void Application::renderUI(double ms)
+void Application::renderUI(double dt)
 {
-	m_pImgui->begin(ms);
+	m_pImgui->begin(dt);
 
 	ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);
 	if (ImGui::Begin("Color", NULL, ImGuiWindowFlags_NoResize))
@@ -183,13 +223,15 @@ void Application::renderUI(double ms)
 	m_pImgui->end();
 }
 
-void Application::render(double ms)
+void Application::render(double dt)
 {
 	m_pRenderer->beginFrame(m_Camera);
 
-	m_pRenderer->drawTriangle(g_TriangleColor, glm::translate(glm::mat4(1.0f), glm::vec3( 0.5f, 0.5f, 0.0f)));
-	m_pRenderer->drawTriangle(g_TriangleColor, glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, 0.5f, 0.0f)));
-	m_pRenderer->drawTriangle(g_TriangleColor, glm::translate(glm::mat4(1.0f), glm::vec3( 0.5f, -0.5f, 0.0f)));
+	g_Rotation = glm::rotate(g_Rotation, glm::radians(15.0f * float(dt)), glm::vec3(0.0f, 0.0f, 1.0f));
+
+	m_pRenderer->drawTriangle(g_TriangleColor, glm::translate(glm::mat4(1.0f), glm::vec3( 0.5f, 0.5f, 0.0f)) * g_Rotation);
+	m_pRenderer->drawTriangle(g_TriangleColor, glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, 0.5f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(0.5f)));
+	m_pRenderer->drawTriangle(g_TriangleColor, glm::translate(glm::mat4(1.0f), glm::vec3( 0.5f, -0.5f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(0.5f)));
 	m_pRenderer->drawTriangle(g_TriangleColor, glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, -0.5f, 0.0f)));
 
 	m_pRenderer->drawImgui(m_pImgui);

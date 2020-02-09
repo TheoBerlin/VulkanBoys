@@ -78,7 +78,7 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 				{
 					//TODO: GLFW and EKey have the same integer value so this is valid however, a convertion function maybe should be 
 					//considered in the future
-					if (action == GLFW_PRESS)
+					if (action == GLFW_PRESS || action == GLFW_REPEAT)
 					{
 						pEventHandler->onKeyPressed(EKey(key));
 					}
@@ -109,7 +109,7 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 				{
 					for (IEventHandler* pEventHandler : GET_EVENTHANDLERS(pWindow))
 					{
-						if (action == GLFW_PRESS)
+						if (action == GLFW_PRESS || action == GLFW_REPEAT)
 						{
 							pEventHandler->onMousePressed(button);
 						}

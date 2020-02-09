@@ -329,9 +329,9 @@ inline const char* formatAsString(VkFormat format)
 }
 
 #ifdef NDEBUG
-#define VALIDATION_LAYERS_ENABLED false
+    #define VALIDATION_LAYERS_ENABLED false
 #else
-#define VALIDATION_LAYERS_ENABLED true
+    #define VALIDATION_LAYERS_ENABLED true
 #endif
 
 #define VK_CHECK_RESULT(_func_call_, _err_msg_)                 if (_func_call_ != VK_SUCCESS) { LOG(_err_msg_); }

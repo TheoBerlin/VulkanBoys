@@ -129,5 +129,6 @@ enum EKey : int16_t
 	KEY_RIGHT_SUPER        = 347,
 	KEY_MENU               = 348,
 	
-	KEY_LAST = KEY_MENU
+	KEY_LAST	= KEY_MENU,
+	KEY_COUNT	= KEY_LAST+1
 };

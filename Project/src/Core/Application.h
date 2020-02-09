@@ -7,6 +7,7 @@ class IImgui;
 class IWindow;
 class IRenderer;
 class IGraphicsContext;
+class IInputHandler;
 
 class Application : public IEventHandler
 {
@@ -49,6 +50,7 @@ private:
 	IGraphicsContext* m_pContext;
 	IRenderer* m_pRenderer;
 	IImgui* m_pImgui;
+	IInputHandler* m_pInputHandler;
 	bool m_IsRunning;
 
 	static Application* s_pInstance;

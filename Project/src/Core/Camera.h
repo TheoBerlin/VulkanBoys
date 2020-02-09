@@ -13,8 +13,13 @@ public:
 	Camera();
 	~Camera() = default;
 
-	void setProjection();
-	void setView();
+	void setDirection(const glm::vec3& direction);
+	void setPosition(const glm::vec3& position);
+	void setProjection(float fovDegrees, float width, float height, float nearPlane, float farPlane);
+	
+	void translate(const glm::vec3& translation);
+
+	void update();
 
 	const glm::mat4& getProjectionMat() const { return m_Projection; }
 	const glm::mat4& getProjectionInvMat() const { return m_ProjectionInv; }
@@ -26,6 +31,12 @@ private:
 	glm::mat4 m_ProjectionInv;
 	glm::mat4 m_View;
 	glm::mat4 m_ViewInv;
+	
+	glm::vec3 m_Position;
+	glm::vec3 m_Direction;
+	glm::vec3 m_Right;
+	glm::vec3 m_Up;
+
 	bool m_IsDirty;
 };
 
