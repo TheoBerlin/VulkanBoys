@@ -24,12 +24,15 @@ public:
 	virtual void endFrame() override;
 
 	virtual void setClearColor(float r, float g, float b) override;
+	virtual void setClearColor(const glm::vec3& color) override;
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
 
 	virtual void swapBuffers() override;
 
+	virtual void drawImgui(IImgui* pImgui) override;
+
 	//Temporary function
-	virtual void drawTriangle() override;
+	virtual void drawTriangle(const glm::vec4& color) override;
 
 private:
 	void createFramebuffers();

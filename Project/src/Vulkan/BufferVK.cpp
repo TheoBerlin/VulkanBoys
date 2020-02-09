@@ -32,7 +32,7 @@ BufferVK::~BufferVK()
 	m_pDevice = nullptr;
 }
 
-bool BufferVK::create(const BufferVkParams& params)
+bool BufferVK::create(const BufferParams& params)
 {
 	VkBufferCreateInfo bufferInfo = {};
 	bufferInfo.sType	= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -62,6 +62,8 @@ bool BufferVK::create(const BufferVkParams& params)
 
 	vkBindBufferMemory(m_pDevice->getDevice(), m_Buffer, m_Memory, 0);
 	D_LOG("--- Buffer: Vulkan Allocated '%d' bytes for buffer", memRequirements.size);
+    
+    return true;
 }
 
 void BufferVK::map(void** ppMappedMemory)
@@ -78,5 +80,5 @@ void BufferVK::map(void** ppMappedMemory)
 void BufferVK::unmap()
 {
 	vkUnmapMemory(m_pDevice->getDevice(), m_Memory);
-	m_IsMapped;
+	m_IsMapped = false;
 }

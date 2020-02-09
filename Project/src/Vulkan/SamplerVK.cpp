@@ -37,7 +37,7 @@ bool SamplerVK::init(VkFilter magFilter, VkFilter minFilter, VkSamplerAddressMod
 	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 	samplerInfo.mipLodBias = 0.0f;
 	samplerInfo.minLod = 0.0f;
-	samplerInfo.maxLod = 0.0f;
+	samplerInfo.maxLod = 1.0f;
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateSampler(m_pDevice->getDevice(), &samplerInfo, nullptr, &m_Sampler), "--- SamplerVK: vkCreateSampler failed");
 	return true;

@@ -35,6 +35,8 @@ workspace "Vulkan-Project"
 
 	group "Dependencies"
 		include "Dependencies/glfw"
+		include "Dependencies/imgui"
+		
 	group ""
 
     project "VulkanProject"
@@ -116,6 +118,7 @@ workspace "Vulkan-Project"
         
 		sysincludedirs
 		{
+			"Dependencies/",
 			"Dependencies/stb",
 			"Dependencies/GLFW/include",
 			"Dependencies/glm",
@@ -124,6 +127,7 @@ workspace "Vulkan-Project"
 		links 
 		{ 
 			"GLFW",
+			"imgui",
 		}
     project "*"
 

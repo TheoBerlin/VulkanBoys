@@ -28,21 +28,26 @@ bool ShaderVK::loadFromFile(EShader shaderType, const std::string& entrypoint, c
 	if (shaderFile.is_open())
 	{
 		size_t fileSize = (size_t)shaderFile.tellg();
-		m_Source.resize(fileSize);
+		std::vector<char> byteCode(fileSize);
 
 		shaderFile.seekg(0);
-		shaderFile.read(m_Source.data(), fileSize);
+		shaderFile.read(byteCode.data(), fileSize);
 		shaderFile.close();
 
-		m_EntryPoint = entrypoint;
-		m_ShaderType = shaderType;
-
-		D_LOG("Loaded shaderfile: %s - Entrypoint: %s", filepath.c_str(), m_EntryPoint.c_str());
-		return true;
+		D_LOG("Loaded shaderfile: %s - Entrypoint: %s", filepath.c_str(), entrypoint.c_str());
+		return loadFromByteCode(shaderType, entrypoint, byteCode);
 	}
 	
 	LOG("Failed to load shaderfile: %s", filepath.c_str());
 	return false;
+}
+
+bool ShaderVK::loadFromByteCode(EShader shaderType, const std::string& entrypoint, const std::vector<char>& byteCode)
+{
+	m_EntryPoint = entrypoint;
+	m_ShaderType = shaderType;
+	m_Source = byteCode;
+	return true;
 }
 
 bool ShaderVK::finalize()

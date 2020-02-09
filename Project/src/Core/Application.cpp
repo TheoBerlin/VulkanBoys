@@ -1,4 +1,5 @@
 #include "Application.h"
+#include "Common/IImgui.h"
 #include "Common/IWindow.h"
 #include "Common/IShader.h"
 #include "Common/IRenderer.h"
@@ -11,53 +12,67 @@
 
 #include <thread>
 #include <chrono>
+#include <imgui/imgui.h>
+#include <glm/gtc/type_ptr.hpp>
 
 Application g_Application;
 
 Application::Application()
 	: m_pWindow(nullptr),
+	m_pContext(nullptr),
+	m_pRenderer(nullptr),
+	m_pImgui(nullptr),
 	m_IsRunning(false)
 {
 }
 
 void Application::init()
 {
+	//Create window
 	m_pWindow = IWindow::create("Hello Vulkan", 800, 600);
 	if (m_pWindow)
 	{
-		m_pWindow->setEventHandler(this);
+		m_pWindow->addEventHandler(this);
 		m_pWindow->setFullscreenState(false);
 	}
 
-	m_pIContext = IGraphicsContext::create(m_pWindow, API::VULKAN);
-	m_pRenderer = m_pIContext->createRenderer();
+	//Create context
+	m_pContext = IGraphicsContext::create(m_pWindow, API::VULKAN);
+	
+	//Setup Imgui
+	m_pImgui = m_pContext->createImgui();
+	m_pImgui->init();
+	m_pWindow->addEventHandler(m_pImgui);
+
+	//Setup renderer
+	m_pRenderer = m_pContext->createRenderer();
 	m_pRenderer->init();
 	m_pRenderer->setClearColor(0.0f, 0.0f, 0.0f);
 	m_pRenderer->setViewport(m_pWindow->getWidth(), m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
-
-	//Should we have ICommandBuffer? Or is commandbuffers internal i.e belongs in the renderer?
-	DeviceVK* pDevice = reinterpret_cast<GraphicsContextVK*>(m_pIContext)->getDevice();
-
-	DescriptorSetLayoutVK* pDescriptorLayout = new DescriptorSetLayoutVK(pDevice);
-	pDescriptorLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0, 1); //Vertex
-	pDescriptorLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 1, 1); //Transform
-	pDescriptorLayout->addBindingSampledImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, 2, 1); //texture
-	pDescriptorLayout->finalizeLayout();
-
-	SAFEDELETE(pDescriptorLayout);
 }
 
 void Application::run()
 {
 	m_IsRunning = true;
 	
+	auto currentTime	= std::chrono::high_resolution_clock::now();
+	auto lastTime		= currentTime;
+
+	//HACK to get a non-null deltatime
+	std::this_thread::sleep_for(std::chrono::milliseconds(16));
+
 	while (m_IsRunning)
 	{
+		lastTime	= currentTime;
+		currentTime = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double, std::milli> deltatime = currentTime - lastTime;
+
 		m_pWindow->peekEvents();
 		if (m_pWindow->hasFocus())
 		{
-			update();
-			render();
+			update(deltatime.count());
+			renderUI(deltatime.count());
+			render(deltatime.count());
 		}
 		else
 		{
@@ -68,9 +83,13 @@ void Application::run()
 
 void Application::release()
 {
-	SAFEDELETE(m_pWindow);
+	m_pWindow->removeEventHandler(m_pImgui);
+	m_pWindow->removeEventHandler(this);
+
 	SAFEDELETE(m_pRenderer);
-	SAFEDELETE(m_pIContext);
+	SAFEDELETE(m_pImgui);
+	SAFEDELETE(m_pContext);
+	SAFEDELETE(m_pWindow);
 }
 
 void Application::onWindowResize(uint32_t width, uint32_t height)
@@ -91,6 +110,39 @@ void Application::onWindowFocusChanged(IWindow* pWindow, bool hasFocus)
 {
 }
 
+void Application::onMouseMove(uint32_t x, uint32_t y)
+{
+}
+
+void Application::onMousePressed(int32_t button)
+{
+}
+
+void Application::onMouseScroll(double x, double y)
+{
+}
+
+void Application::onMouseReleased(int32_t button)
+{
+}
+
+void Application::onKeyTyped(uint32_t character)
+{
+}
+
+void Application::onKeyPressed(EKey key)
+{
+	//Exit application by pressing escape
+	if (key == EKey::KEY_ESCAPE)
+	{
+		m_IsRunning = false;
+	}
+}
+
+void Application::onKeyReleased(EKey key)
+{
+}
+
 void Application::onWindowClose()
 {
 	D_LOG("Window Closed");
@@ -102,14 +154,31 @@ Application& Application::getInstance()
 	return g_Application;
 }
 
-void Application::update()
+void Application::update(double ms)
 {
 }
 
-void Application::render()
+static glm::vec4 g_TriangleColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+
+void Application::renderUI(double ms)
+{
+	m_pImgui->begin(ms);
+
+	ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);
+	if (ImGui::Begin("Color", NULL, ImGuiWindowFlags_NoResize))
+	{
+		ImGui::ColorPicker4("##picker", glm::value_ptr(g_TriangleColor), ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview);
+	}
+	ImGui::End();
+
+	m_pImgui->end();
+}
+
+void Application::render(double ms)
 {
 	m_pRenderer->beginFrame();
-	m_pRenderer->drawTriangle();
+	m_pRenderer->drawTriangle(g_TriangleColor);
+	m_pRenderer->drawImgui(m_pImgui);
 	m_pRenderer->endFrame();
 
 	m_pRenderer->swapBuffers();

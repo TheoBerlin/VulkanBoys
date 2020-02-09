@@ -1,4 +1,5 @@
 #include "RendererVK.h"
+#include "ImguiVK.h"
 #include "PipelineVK.h"
 #include "SwapChainVK.h"
 #include "RenderPassVK.h"
@@ -108,18 +109,27 @@ bool RendererVK::init()
 	pPixelShader->loadFromFile(EShader::PIXEL_SHADER, "main", "assets/shaders/fragment.spv");
 	pPixelShader->finalize();
 
+	//DescriptorSetLayout
 	DescriptorSetLayoutVK* pDescriptorSetLayout = new DescriptorSetLayoutVK(pDevice);
 	pDescriptorSetLayout->finalizeLayout();
-
 	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { pDescriptorSetLayout };
-	m_pPipelineLayout = new PipelineLayoutVK();
-	m_pPipelineLayout->createPipelineLayout(pDevice, descriptorSetLayouts);
+
+	//PushConstant - Triangle color
+	VkPushConstantRange pushConstantRange = {};
+	pushConstantRange.size = sizeof(glm::vec4);
+	pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	pushConstantRange.offset = 0;
+	std::vector<VkPushConstantRange> pushConstantRanges = { pushConstantRange };
+
+	m_pPipelineLayout = new PipelineLayoutVK(pDevice);
+	m_pPipelineLayout->createPipelineLayout(descriptorSetLayouts, pushConstantRanges);
 
 	SAFEDELETE(pDescriptorSetLayout);
 
 	std::vector<IShader*> shaders = { pVertexShader, pPixelShader };
-	m_pPipeline = new PipelineVK();
-	m_pPipeline->create(shaders, m_pRenderPass, m_pPipelineLayout, pDevice);
+	m_pPipeline = new PipelineVK(pDevice);
+	m_pPipeline->addColorBlendAttachment(false, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
+	m_pPipeline->create(shaders, m_pRenderPass, m_pPipelineLayout);
 
 	SAFEDELETE(pVertexShader);
 	SAFEDELETE(pPixelShader);
@@ -172,34 +182,25 @@ void RendererVK::endFrame()
 	m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
 	m_ppCommandBuffers[m_CurrentFrame]->end();
 
-	//Submit
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.pNext = nullptr;
-
-	VkSemaphore waitSemaphores[]	= { m_ImageAvailableSemaphores[m_CurrentFrame] };
-	submitInfo.waitSemaphoreCount	= 1;
-	submitInfo.pWaitSemaphores = waitSemaphores;
-
+	//Execute commandbuffer
+	VkSemaphore waitSemaphores[] = { m_ImageAvailableSemaphores[m_CurrentFrame] };
+	VkSemaphore signalSemaphores[] = { m_RenderFinishedSemaphores[m_CurrentFrame] };
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	submitInfo.pWaitDstStageMask = waitStages;
 
-	VkCommandBuffer commandBuffers[] = { m_ppCommandBuffers[m_CurrentFrame]->getCommandBuffer() };
-	submitInfo.pCommandBuffers		= commandBuffers;
-	submitInfo.commandBufferCount	= 1;
-
-	VkSemaphore signalSemaphores[]	= { m_RenderFinishedSemaphores[m_CurrentFrame] };
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores	= signalSemaphores;
-
-	VK_CHECK_RESULT(vkQueueSubmit(m_pContext->getDevice()->getGraphicsQueue(), 1, &submitInfo, m_ppCommandBuffers[m_CurrentFrame]->getFence()), "vkQueueSubmit failed");
+	DeviceVK* pDevice = m_pContext->getDevice();
+	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppCommandBuffers[m_CurrentFrame], waitSemaphores, waitStages, 1, signalSemaphores, 1);
 }
 
 void RendererVK::setClearColor(float r, float g, float b)
 {
-	m_ClearColor.color.float32[0] = r;
-	m_ClearColor.color.float32[1] = g;
-	m_ClearColor.color.float32[2] = b;
+	setClearColor(glm::vec3(r, g, b));
+}
+
+void RendererVK::setClearColor(const glm::vec3& color)
+{
+	m_ClearColor.color.float32[0] = color.r;
+	m_ClearColor.color.float32[1] = color.g;
+	m_ClearColor.color.float32[2] = color.b;
 	m_ClearColor.color.float32[3] = 1.0f;
 }
 
@@ -224,9 +225,15 @@ void RendererVK::swapBuffers()
 	m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void RendererVK::drawTriangle()
+void RendererVK::drawImgui(IImgui* pImgui)
+{
+	pImgui->render(m_ppCommandBuffers[m_CurrentFrame]);
+}
+
+void RendererVK::drawTriangle(const glm::vec4& color)
 {
 	m_ppCommandBuffers[m_CurrentFrame]->bindGraphicsPipeline(m_pPipeline);
+	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4), &color);
 	m_ppCommandBuffers[m_CurrentFrame]->drawInstanced(3, 1, 0, 0);
 }
 

@@ -12,12 +12,12 @@ class DeviceVK;
 class DescriptorPoolVK
 {
 public:
-    DescriptorPoolVK();
+    DescriptorPoolVK(DeviceVK* pDevice);
     ~DescriptorPoolVK();
 
     bool hasRoomFor(const DescriptorCounts& descriptors);
 
-    void initializeDescriptorPool(DeviceVK* pDevice, const DescriptorCounts& descriptorCounts, uint32_t descriptorSetCount);
+    void initializeDescriptorPool(const DescriptorCounts& descriptorCounts, uint32_t descriptorSetCount);
 
     DescriptorSetVK* allocDescriptorSet(const DescriptorSetLayoutVK* pDescriptorSetLayout);
     void deallocateDescriptorSet(DescriptorSetVK* pDescriptorSet);

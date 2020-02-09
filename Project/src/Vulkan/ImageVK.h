@@ -24,7 +24,7 @@ public:
 
 	DECL_NO_COPY(ImageVK);
 
-	void init(const ImageParams& params);
+	bool init(const ImageParams& params);
 
 	VkImage getImage() const { return m_Image; }
 	VkFormat getFormat() const { return m_Params.Format; }

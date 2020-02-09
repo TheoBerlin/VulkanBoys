@@ -1,12 +1,12 @@
 #pragma once
+#include "VulkanCommon.h"
 
 #include <optional>
 #include <vector>
-
-#include "VulkanCommon.h"
 #include <unordered_map>
 
 class InstanceVK;
+class CommandBufferVK;
 
 struct QueueFamilyIndices
 {
@@ -35,6 +35,8 @@ public:
 	void addRequiredExtension(const char* extensionName);
 	void addOptionalExtension(const char* extensionName);
 
+	void executeCommandBuffer(VkQueue queue, CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages,
+		uint32_t waitSemaphoreCount, const VkSemaphore* pSignalSemaphores, uint32_t signalSemaphoreCount);
 	void wait();
 
 	//GETTERS

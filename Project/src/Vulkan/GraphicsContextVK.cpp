@@ -1,7 +1,9 @@
 #include "GraphicsContextVK.h"
+#include "ImguiVK.h"
 #include "ShaderVK.h"
 #include "RendererVK.h"
 #include "SwapChainVK.h"
+#include "Texture2DVK.h"
 
 #include "Core/GLFWWindow.h"
 
@@ -40,6 +42,10 @@ void GraphicsContextVK::init()
 
 	m_Instance.addOptionalExtension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 	
+	//m_Instance.debugPrintAvailableExtensions();
+	//m_Instance.debugPrintAvailableLayers();
+
+	//m_Instance.addValidationLayer("VK_LAYER_RENDERDOC_Capture");
 	m_Instance.addValidationLayer("VK_LAYER_KHRONOS_validation");
 	m_Instance.finalize(VALIDATION_LAYERS_ENABLED);
 
@@ -60,6 +66,11 @@ void GraphicsContextVK::init()
 IRenderer* GraphicsContextVK::createRenderer()
 {
 	return new RendererVK(this);
+}
+
+IImgui* GraphicsContextVK::createImgui()
+{
+	return new ImguiVK(this);
 }
 
 IShader* GraphicsContextVK::createShader()
@@ -93,8 +104,7 @@ IImageView* GraphicsContextVK::createImageView()
 
 ITexture2D* GraphicsContextVK::createTexture2D()
 {
-	//Todo: Implement
-	return nullptr;
+	return new Texture2DVK(this);
 }
 
 void GraphicsContextVK::swapBuffers(VkSemaphore renderSemaphore)

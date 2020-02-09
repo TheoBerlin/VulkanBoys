@@ -2,6 +2,7 @@
 #include "Common/IWindow.h"
 
 #include <GLFW/glfw3.h>
+#include <vector>
 
 class GLFWWindow : public IWindow
 {
@@ -9,7 +10,8 @@ public:
 	GLFWWindow(const std::string& title, uint32_t width, uint32_t height);
 	~GLFWWindow();
 
-	virtual void setEventHandler(IEventHandler* pEventHandler) override;
+	virtual void addEventHandler(IEventHandler* pEventHandler) override;
+	virtual void removeEventHandler(IEventHandler* pEventHandler) override;
 
 	virtual void peekEvents() override;
 	virtual void show() override;
@@ -21,13 +23,19 @@ public:
 
 	virtual uint32_t getWidth() override;
 	virtual uint32_t getHeight() override;
+	virtual uint32_t getClientWidth() override;
+	virtual uint32_t getClientHeight() override;
+	virtual float getScaleX() override;
+	virtual float getScaleY() override;
 	virtual void* getNativeHandle() override;
 
 private:
 	GLFWwindow* m_pWindow;
-	IEventHandler* m_pEventHandler;
+	std::vector<IEventHandler*> m_ppEventHandlers;
 	uint32_t m_Width;
 	uint32_t m_Height;
+	uint32_t m_ClientWidth;
+	uint32_t m_ClientHeight;
 	bool m_IsFullscreen;
 	bool m_HasFocus;
 

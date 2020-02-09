@@ -31,6 +31,8 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 InstanceVK::InstanceVK() :
 	m_Instance(VK_NULL_HANDLE),
 	m_ValidationLayersEnabled(false),
+	m_HasRetrivedExtensions(false),
+	m_HasRetrivedLayers(false),
 	m_DebugMessenger(VK_NULL_HANDLE)
 {
 }
@@ -70,6 +72,28 @@ bool InstanceVK::finalize(bool validationLayersEnabled)
 
 void InstanceVK::release()
 {
+}
+
+void InstanceVK::debugPrintAvailableExtensions()
+{
+	retriveAvailableExtensions();
+
+	LOG("Available Instance Extensions:");
+	for (VkExtensionProperties& extensionProperties : m_AvailableExtensions)
+	{
+		LOG("   %s", extensionProperties.extensionName);
+	}
+}
+
+void InstanceVK::debugPrintAvailableLayers()
+{
+	retriveAvailableLayers();
+
+	LOG("Available Instance Layers:");
+	for (VkLayerProperties& layerProperties : m_AvailableLayers)
+	{
+		LOG("   %s", layerProperties.layerName);
+	}
 }
 
 void InstanceVK::addRequiredExtension(const char* extensionName)
@@ -150,17 +174,13 @@ bool InstanceVK::initializeDebugMessenger()
 
 bool InstanceVK::validationLayersSupported()
 {
-	uint32_t layerCount = 0;
-	vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-
-	std::vector<VkLayerProperties> availableLayers(layerCount);
-	vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+	retriveAvailableLayers();
 
 	for (const char* layerName : m_ValidationLayers)
 	{
 		bool layerFound = false;
 
-		for (const auto& layerProperties : availableLayers)
+		for (const auto& layerProperties : m_AvailableLayers)
 		{
 			if (strcmp(layerName, layerProperties.layerName) == 0)
 			{
@@ -179,11 +199,7 @@ bool InstanceVK::validationLayersSupported()
 
 bool InstanceVK::setEnabledExtensions()
 {
-	uint32_t extensionCount = 0;
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-
-	m_AvailableExtensions.resize(extensionCount);
-	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, m_AvailableExtensions.data());
+	retriveAvailableExtensions();
 
 	std::set<std::string> requiredExtensions(m_RequestedRequiredExtensions.begin(), m_RequestedRequiredExtensions.end());
 	std::set<std::string> optionalExtensions(m_RequestedOptionalExtensions.begin(), m_RequestedOptionalExtensions.end());
@@ -225,6 +241,34 @@ void InstanceVK::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInf
 	createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 	createInfo.pfnUserCallback = DebugCallback;
 	createInfo.pUserData = nullptr;
+}
+
+void InstanceVK::retriveAvailableExtensions()
+{
+	if (!m_HasRetrivedExtensions)
+	{
+		uint32_t extensionCount = 0;
+		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+
+		m_AvailableExtensions.resize(extensionCount);
+		vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, m_AvailableExtensions.data());
+
+		m_HasRetrivedExtensions = true;
+	}
+}
+
+void InstanceVK::retriveAvailableLayers()
+{
+	if (!m_HasRetrivedLayers)
+	{
+		uint32_t layerCount = 0;
+		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+
+		m_AvailableLayers.resize(layerCount);
+		vkEnumerateInstanceLayerProperties(&layerCount, m_AvailableLayers.data());
+
+		m_HasRetrivedLayers = true;
+	}
 }
 
 VkBool32 InstanceVK::DebugCallback(

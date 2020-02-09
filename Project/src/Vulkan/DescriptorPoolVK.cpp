@@ -7,12 +7,12 @@
 #include <array>
 #include <iostream>
 
-DescriptorPoolVK::DescriptorPoolVK()
-    :m_pDevice(nullptr),
+DescriptorPoolVK::DescriptorPoolVK(DeviceVK* pDevice)
+    : m_pDevice(pDevice),
+	m_DescriptorPool(VK_NULL_HANDLE),
 	m_DescriptorCounts({0}),
 	m_DescriptorCapacities({0})
 {
-    m_DescriptorPool = VK_NULL_HANDLE;
 }
 
 DescriptorPoolVK::~DescriptorPoolVK()
@@ -22,7 +22,7 @@ DescriptorPoolVK::~DescriptorPoolVK()
     }
 
 	for (DescriptorSetVK* pAllocatedSet : m_AllocatedSets) {
-		delete pAllocatedSet;
+		SAFEDELETE(pAllocatedSet);
 	}
 }
 
@@ -33,13 +33,11 @@ bool DescriptorPoolVK::hasRoomFor(const DescriptorCounts& allocations)
 			m_DescriptorCounts.m_SampledImages 	+ allocations.m_SampledImages	< m_DescriptorCapacities.m_SampledImages;
 }
 
-void DescriptorPoolVK::initializeDescriptorPool(DeviceVK* pDevice, const DescriptorCounts& descriptorCounts, uint32_t descriptorSetCount)
+void DescriptorPoolVK::initializeDescriptorPool(const DescriptorCounts& descriptorCounts, uint32_t descriptorSetCount)
 {
-    m_pDevice = pDevice;
 	m_DescriptorCapacities = descriptorCounts;
 
 	std::array<VkDescriptorPoolSize, 3> poolSizes;
-
 	poolSizes[0] = {};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	poolSizes[0].descriptorCount = descriptorCounts.m_StorageBuffers;
@@ -58,15 +56,10 @@ void DescriptorPoolVK::initializeDescriptorPool(DeviceVK* pDevice, const Descrip
 	poolInfo.pPoolSizes = poolSizes.data();
 	poolInfo.maxSets = descriptorSetCount;
 
-	if (vkCreateDescriptorPool(pDevice->getDevice(), &poolInfo, nullptr, &m_DescriptorPool) != VK_SUCCESS) {
-		std::cerr << "Failed to create Descriptor Pool" << std::endl;
+	if (vkCreateDescriptorPool(m_pDevice->getDevice(), &poolInfo, nullptr, &m_DescriptorPool) != VK_SUCCESS) {
+		LOG("Failed to create Descriptor Pool");
 	} else {
-		/*std::cout << "Created descriptorpool." <<
-			"  sets="				<< descriptorSetCount << 
-			", storagebuffers="		<< vertexBufferDescriptorCount << 
-			", uniformBuffers="		<< constantBufferDescriptorCount << 
-			", imageSamplers="		<< samplerDescriptorCount 
-			<< std::endl;*/
+		D_LOG("Created descriptorpool. sets=%d, storagebuffers=%d, uniformBuffers=%d, imageSamplers=%d", descriptorSetCount, descriptorCounts.m_StorageBuffers, descriptorCounts.m_UniformBuffers, descriptorCounts.m_SampledImages);
 	}
 }
 
@@ -99,11 +92,13 @@ DescriptorSetVK* DescriptorPoolVK::allocDescriptorSet(const DescriptorSetLayoutV
 
 void DescriptorPoolVK::deallocateDescriptorSet(DescriptorSetVK* pDescriptorSet)
 {
-	if (vkFreeDescriptorSets(m_pDevice->getDevice(), m_DescriptorPool, 1, pDescriptorSet->getDescriptorSet()) != VK_SUCCESS) {
+	VkDescriptorSet descriptorSet = pDescriptorSet->getDescriptorSet();
+	if (vkFreeDescriptorSets(m_pDevice->getDevice(), m_DescriptorPool, 1, &descriptorSet) != VK_SUCCESS) {
 		std::cout << "Failed to deallocate descriptor set" << std::endl;
 	}
 
 	m_DescriptorCounts -= pDescriptorSet->getDescriptorCounts();
 	m_AllocatedSets.remove(pDescriptorSet);
-	delete pDescriptorSet;
+
+	SAFEDELETE(pDescriptorSet);
 }

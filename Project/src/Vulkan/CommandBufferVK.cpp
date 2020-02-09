@@ -3,9 +3,11 @@
 #include "StackVK.h"
 #include "DeviceVK.h"
 #include "BufferVK.h"
-#include "RenderPassVK.h"
 #include "PipelineVK.h"
+#include "RenderPassVK.h"
 #include "FrameBufferVK.h"
+#include "DescriptorSetVK.h"
+#include "PipelineLayoutVK.h"
 
 CommandBufferVK::CommandBufferVK(DeviceVK* pDevice, VkCommandBuffer commandBuffer)
 	: m_pDevice(pDevice),
@@ -38,7 +40,7 @@ bool CommandBufferVK::finalize()
 	D_LOG("--- CommandBuffer: Vulkan Fence created successfully");
 
 	//Create stackingbuffer
-	m_pStack = new StackVK(m_pDevice);
+	m_pStack = new StaginBufferVK(m_pDevice);
 	if (!m_pStack->create(MB(2)))
 	{
 		return false;
@@ -90,6 +92,22 @@ void CommandBufferVK::endRenderPass()
 	vkCmdEndRenderPass(m_CommandBuffer);
 }
 
+void CommandBufferVK::bindVertexBuffers(const BufferVK* const* ppVertexBuffers, uint32_t vertexBufferCount, const VkDeviceSize* pOffsets)
+{
+	for (uint32_t i = 0; i < vertexBufferCount; i++)
+	{
+		m_VertexBuffers.emplace_back(ppVertexBuffers[i]->getBuffer());
+	}
+
+	vkCmdBindVertexBuffers(m_CommandBuffer, 0, vertexBufferCount, m_VertexBuffers.data(), pOffsets);
+	m_VertexBuffers.clear();
+}
+
+void CommandBufferVK::bindIndexBuffer(const BufferVK* pIndexBuffer, VkDeviceSize offset, VkIndexType indexType)
+{
+	vkCmdBindIndexBuffer(m_CommandBuffer, pIndexBuffer->getBuffer(), offset, indexType);
+}
+
 void CommandBufferVK::bindGraphicsPipeline(PipelineVK* pPipeline)
 {
 	vkCmdBindPipeline(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pPipeline->getPipeline());
@@ -99,11 +117,16 @@ void CommandBufferVK::bindDescriptorSet(VkPipelineBindPoint bindPoint, PipelineL
 {
 	for (uint32_t i = 0; i < count; i++)
 	{
-		//m_DescriptorSets.emplace_back(ppDescriptorSets[i]->getDescriptorSet());
+		m_DescriptorSets.emplace_back(ppDescriptorSets[i]->getDescriptorSet());
 	}
 
-	//vkCmdBindDescriptorSets(m_CommandBuffer, bindPoint, pPipelineLayout->getPipelineLayout(), firstSet, count, m_DescriptorSet.data(), dynamicOffsetCount, pDynamicOffsets);
+	vkCmdBindDescriptorSets(m_CommandBuffer, bindPoint, pPipelineLayout->getPipelineLayout(), firstSet, count, m_DescriptorSets.data(), dynamicOffsetCount, pDynamicOffsets);
 	m_DescriptorSets.clear();
+}
+
+void CommandBufferVK::pushConstants(PipelineLayoutVK* pPipelineLayout, VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size, const void* pValues)
+{
+	vkCmdPushConstants(m_CommandBuffer, pPipelineLayout->getPipelineLayout(), stageFlags, offset, size, pValues);
 }
 
 void CommandBufferVK::setScissorRects(VkRect2D* pScissorRects, uint32_t scissorRectCount)
@@ -118,10 +141,11 @@ void CommandBufferVK::setViewports(VkViewport* pViewports, uint32_t viewportCoun
 
 void CommandBufferVK::updateBuffer(BufferVK* pDestination, uint64_t destinationOffset, const void* pSource, uint64_t sizeInBytes)
 {
+	VkDeviceSize offset = m_pStack->getCurrentOffset();
 	void* pHostMemory = m_pStack->allocate(sizeInBytes);
 	memcpy(pHostMemory, pSource, sizeInBytes);
 
-	copyBuffer(m_pStack->getBuffer(), m_pStack->getCurrentOffset(), pDestination, destinationOffset, sizeInBytes);
+	copyBuffer(m_pStack->getBuffer(), offset, pDestination, destinationOffset, sizeInBytes);
 }
 
 void CommandBufferVK::copyBuffer(BufferVK* pSource, uint64_t sourceOffset, BufferVK* pDestination, uint64_t destinationOffset, uint64_t sizeInBytes)
@@ -137,25 +161,27 @@ void CommandBufferVK::copyBuffer(BufferVK* pSource, uint64_t sourceOffset, Buffe
 void CommandBufferVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height)
 {
 	uint32_t sizeInBytes = width * height * 4;
+	
+	VkDeviceSize offset = m_pStack->getCurrentOffset();
 	void* pHostMemory = m_pStack->allocate(sizeInBytes);
 	memcpy(pHostMemory, pPixelData, sizeInBytes);
-
-	copyBufferToImage(m_pStack->getBuffer(), pImage, width, height);
+	
+	copyBufferToImage(m_pStack->getBuffer(), offset, pImage, width, height);
 }
 
-void CommandBufferVK::copyBufferToImage(BufferVK* pSource, ImageVK* pImage, uint32_t width, uint32_t height)
+void CommandBufferVK::copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffset, ImageVK* pImage, uint32_t width, uint32_t height)
 {
 	VkBufferImageCopy region = {};
 	region.bufferImageHeight = 0;
-	region.bufferOffset = 0;
-	region.bufferRowLength = 0;
+	region.bufferOffset		= sourceOffset;
+	region.bufferRowLength	= 0;
 	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	region.imageSubresource.baseArrayLayer = 0;
-	region.imageSubresource.mipLevel = 0;
-	region.imageSubresource.layerCount = 1;
-	region.imageExtent.depth = 1;
-	region.imageExtent.height = height;
-	region.imageExtent.width = width;
+	region.imageSubresource.mipLevel	= 0;
+	region.imageSubresource.layerCount	= 1;
+	region.imageExtent.depth	= 1;
+	region.imageExtent.height	= height;
+	region.imageExtent.width	= width;
 
 	vkCmdCopyBufferToImage(m_CommandBuffer, pSource->getBuffer(), pImage->getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 }
@@ -215,4 +241,9 @@ void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLa
 void CommandBufferVK::drawInstanced(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
 {
 	vkCmdDraw(m_CommandBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
+}
+
+void CommandBufferVK::drawIndexInstanced(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset, uint32_t firstInstance)
+{
+	vkCmdDrawIndexed(m_CommandBuffer, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
 }

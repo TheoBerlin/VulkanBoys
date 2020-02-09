@@ -76,7 +76,7 @@ void CommandPoolVK::freeCommandBuffer(CommandBufferVK** ppCommandBuffer)
 		vkFreeCommandBuffers(m_pDevice->getDevice(), m_CommandPool, 1, &commandBuffer);
 		(*ppCommandBuffer)->m_CommandBuffer = VK_NULL_HANDLE;
 
-		D_LOG("--- CommandPool: Freed commanbuffer");
+		D_LOG("--- CommandPool: Freed commandbuffer");
 	}
 
 	for (auto it = m_ppCommandBuffers.begin(); it != m_ppCommandBuffers.end(); it++)

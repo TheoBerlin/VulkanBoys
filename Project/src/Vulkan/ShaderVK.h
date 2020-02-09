@@ -13,6 +13,7 @@ public:
 	~ShaderVK();
 
 	virtual bool loadFromFile(EShader shaderType, const std::string& entrypoint, const std::string& filepath) override;
+	virtual bool loadFromByteCode(EShader shaderType, const std::string& entrypoint, const std::vector<char>& byteCode) override;
 	virtual bool finalize() override;
 
 	virtual EShader getShaderType() const override;
