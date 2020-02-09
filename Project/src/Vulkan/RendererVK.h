@@ -20,7 +20,7 @@ public:
 
 	virtual void onWindowResize(uint32_t width, uint32_t height) override;
 
-	virtual void beginFrame() override;
+	virtual void beginFrame(const Camera& camera) override;
 	virtual void endFrame() override;
 
 	virtual void setClearColor(float r, float g, float b) override;

@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 
 class IImgui;
+class Camera;
 
 class IRenderer
 {
@@ -14,7 +15,7 @@ public:
 
 	virtual void onWindowResize(uint32_t width, uint32_t height) = 0;
 
-	virtual void beginFrame() = 0;
+	virtual void beginFrame(const Camera& camera) = 0;
 	virtual void endFrame() = 0;
 
 	virtual void setClearColor(float r, float g, float b) = 0;

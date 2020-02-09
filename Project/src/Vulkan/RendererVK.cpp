@@ -159,7 +159,7 @@ void RendererVK::onWindowResize(uint32_t width, uint32_t height)
 	createFramebuffers();
 }
 
-void RendererVK::beginFrame()
+void RendererVK::beginFrame(const Camera& camera)
 {
 	m_pContext->getSwapChain()->acquireNextImage(m_ImageAvailableSemaphores[m_CurrentFrame]);
 	uint32_t backBufferIndex = m_pContext->getSwapChain()->getImageIndex();
