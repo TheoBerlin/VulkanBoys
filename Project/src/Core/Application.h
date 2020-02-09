@@ -1,6 +1,8 @@
 #pragma once
 #include "Common/IEventHandler.h"
 
+#include "Camera.h"
+
 class IImgui;
 class IWindow;
 class IRenderer;
@@ -42,6 +44,7 @@ private:
 	void render(double dt);
 
 private:
+	Camera m_Camera;
 	IWindow* m_pWindow;
 	IGraphicsContext* m_pContext;
 	IRenderer* m_pRenderer;

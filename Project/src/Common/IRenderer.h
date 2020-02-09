@@ -27,5 +27,5 @@ public:
 	virtual void drawImgui(IImgui* pImgui) = 0;
 
 	//Temporary function
-	virtual void drawTriangle(const glm::vec4& color) = 0;
+	virtual void drawTriangle(const glm::vec4& color, const glm::mat4& transform) = 0;
 };

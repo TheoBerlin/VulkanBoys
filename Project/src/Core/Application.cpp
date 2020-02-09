@@ -10,6 +10,8 @@
 #include "Vulkan/GraphicsContextVK.h"
 #include "Vulkan/DescriptorSetLayoutVK.h"
 
+#include "Camera.h"
+
 #include <thread>
 #include <chrono>
 #include <imgui/imgui.h>
@@ -183,9 +185,15 @@ void Application::renderUI(double ms)
 
 void Application::render(double ms)
 {
-	m_pRenderer->beginFrame();
-	m_pRenderer->drawTriangle(g_TriangleColor);
+	m_pRenderer->beginFrame(m_Camera);
+
+	m_pRenderer->drawTriangle(g_TriangleColor, glm::translate(glm::mat4(1.0f), glm::vec3( 0.5f, 0.5f, 0.0f)));
+	m_pRenderer->drawTriangle(g_TriangleColor, glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, 0.5f, 0.0f)));
+	m_pRenderer->drawTriangle(g_TriangleColor, glm::translate(glm::mat4(1.0f), glm::vec3( 0.5f, -0.5f, 0.0f)));
+	m_pRenderer->drawTriangle(g_TriangleColor, glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, -0.5f, 0.0f)));
+
 	m_pRenderer->drawImgui(m_pImgui);
+
 	m_pRenderer->endFrame();
 
 	m_pRenderer->swapBuffers();
