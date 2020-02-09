@@ -11,6 +11,8 @@
 
 CommandBufferVK::CommandBufferVK(DeviceVK* pDevice, VkCommandBuffer commandBuffer)
 	: m_pDevice(pDevice),
+	m_pStagingBuffer(nullptr),
+	m_pStagingTexture(nullptr),
 	m_CommandBuffer(commandBuffer),
 	m_Fence(VK_NULL_HANDLE),
 	m_DescriptorSets()
@@ -25,7 +27,8 @@ CommandBufferVK::~CommandBufferVK()
 		m_Fence = VK_NULL_HANDLE;
 	}
 
-	SAFEDELETE(m_pStack);
+	SAFEDELETE(m_pStagingBuffer);
+	SAFEDELETE(m_pStagingTexture);
 	m_pDevice = nullptr;
 }
 
@@ -39,9 +42,15 @@ bool CommandBufferVK::finalize()
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateFence(m_pDevice->getDevice(), &fenceInfo, nullptr, &m_Fence), "Create Fence for CommandBuffer Failed");
 	D_LOG("--- CommandBuffer: Vulkan Fence created successfully");
 
-	//Create stackingbuffer
-	m_pStack = new StaginBufferVK(m_pDevice);
-	if (!m_pStack->create(MB(2)))
+	//Create staging-buffers
+	m_pStagingBuffer = new StaginBufferVK(m_pDevice);
+	if (!m_pStagingBuffer->create(MB(2)))
+	{
+		return false;
+	}
+
+	m_pStagingTexture = new StaginBufferVK(m_pDevice);
+	if (!m_pStagingTexture->create(MB(8)))
 	{
 		return false;
 	}
@@ -54,6 +63,9 @@ void CommandBufferVK::reset()
 	//Wait for GPU to finish with this commandbuffer and then reset it
 	vkWaitForFences(m_pDevice->getDevice(), 1, &m_Fence, VK_TRUE, UINT64_MAX);
 	vkResetFences(m_pDevice->getDevice(), 1, &m_Fence);
+
+	m_pStagingBuffer->reset();
+	m_pStagingTexture->reset();
 }
 
 void CommandBufferVK::begin()
@@ -141,11 +153,11 @@ void CommandBufferVK::setViewports(VkViewport* pViewports, uint32_t viewportCoun
 
 void CommandBufferVK::updateBuffer(BufferVK* pDestination, uint64_t destinationOffset, const void* pSource, uint64_t sizeInBytes)
 {
-	VkDeviceSize offset = m_pStack->getCurrentOffset();
-	void* pHostMemory = m_pStack->allocate(sizeInBytes);
+	VkDeviceSize offset = m_pStagingBuffer->getCurrentOffset();
+	void* pHostMemory	= m_pStagingBuffer->allocate(sizeInBytes);
 	memcpy(pHostMemory, pSource, sizeInBytes);
 
-	copyBuffer(m_pStack->getBuffer(), offset, pDestination, destinationOffset, sizeInBytes);
+	copyBuffer(m_pStagingBuffer->getBuffer(), offset, pDestination, destinationOffset, sizeInBytes);
 }
 
 void CommandBufferVK::copyBuffer(BufferVK* pSource, uint64_t sourceOffset, BufferVK* pDestination, uint64_t destinationOffset, uint64_t sizeInBytes)
@@ -162,11 +174,11 @@ void CommandBufferVK::updateImage(const void* pPixelData, ImageVK* pImage, uint3
 {
 	uint32_t sizeInBytes = width * height * 4;
 	
-	VkDeviceSize offset = m_pStack->getCurrentOffset();
-	void* pHostMemory = m_pStack->allocate(sizeInBytes);
+	VkDeviceSize offset = m_pStagingTexture->getCurrentOffset();
+	void* pHostMemory = m_pStagingTexture->allocate(sizeInBytes);
 	memcpy(pHostMemory, pPixelData, sizeInBytes);
 	
-	copyBufferToImage(m_pStack->getBuffer(), offset, pImage, width, height);
+	copyBufferToImage(m_pStagingTexture->getBuffer(), offset, pImage, width, height);
 }
 
 void CommandBufferVK::copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffset, ImageVK* pImage, uint32_t width, uint32_t height)

@@ -2,13 +2,17 @@
 #include "Common/IRenderer.h"
 #include "VulkanCommon.h"
 
-class GraphicsContextVK;
+class BufferVK;
 class PipelineVK;
 class RenderPassVK;
 class FrameBufferVK;
 class CommandPoolVK;
 class CommandBufferVK;
+class DescriptorSetVK;
+class DescriptorPoolVK;
 class PipelineLayoutVK;
+class GraphicsContextVK;
+class DescriptorSetLayoutVK;
 
 class RendererVK : public IRenderer
 {
@@ -32,16 +36,24 @@ public:
 	virtual void drawImgui(IImgui* pImgui) override;
 
 	//Temporary function
-	virtual void drawTriangle(const glm::vec4& color) override;
+	virtual void drawTriangle(const glm::vec4& color, const glm::mat4& transform) override;
 
 private:
 	void createFramebuffers();
 	void releaseFramebuffers();
 
+	bool createSemaphores();
+	bool createCommandPoolAndBuffers();
+	bool createRenderPass();
+	bool createPipelines();
+	bool createPipelineLayouts();
+	bool createBuffers();
+
 private:
 	GraphicsContextVK* m_pContext;
 	CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
+
 	RenderPassVK* m_pRenderPass;
 	FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
@@ -50,6 +62,10 @@ private:
 	//TEMPORARY MOVE TO MATERIAL or SOMETHING
 	PipelineVK* m_pPipeline;
 	PipelineLayoutVK* m_pPipelineLayout;
+	DescriptorSetVK* m_pDescriptorSet;
+	DescriptorPoolVK* m_pDescriptorPool;
+	DescriptorSetLayoutVK* m_pDescriptorSetLayout;
+	BufferVK* m_pCameraBuffer;
 
 	VkClearValue m_ClearColor;
 	VkClearValue m_ClearDepth;

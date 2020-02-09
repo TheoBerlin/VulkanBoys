@@ -61,7 +61,8 @@ private:
 	std::vector<VkBuffer> m_VertexBuffers;
 	std::vector<VkDescriptorSet> m_DescriptorSets;
 	DeviceVK* m_pDevice;
-	StaginBufferVK* m_pStack;
+	StaginBufferVK* m_pStagingBuffer;
+	StaginBufferVK* m_pStagingTexture;
 	VkFence m_Fence;
 	VkCommandBuffer m_CommandBuffer;
 };

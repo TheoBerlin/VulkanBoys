@@ -1,13 +1,20 @@
 #include "RendererVK.h"
 #include "ImguiVK.h"
+#include "BufferVK.h"
 #include "PipelineVK.h"
 #include "SwapChainVK.h"
 #include "RenderPassVK.h"
 #include "CommandPoolVK.h"
 #include "FrameBufferVK.h"
+#include "DescriptorSetVK.h"
 #include "CommandBufferVK.h"
+#include "DescriptorPoolVK.h"
 #include "PipelineLayoutVK.h"
 #include "GraphicsContextVK.h"
+
+#include "Core/Camera.h"
+
+#include <glm/gtc/type_ptr.hpp>
 
 RendererVK::RendererVK(GraphicsContextVK* pContext)
 	: m_pContext(pContext),
@@ -16,6 +23,9 @@ RendererVK::RendererVK(GraphicsContextVK* pContext)
 	m_pRenderPass(nullptr),
 	m_ppBackbuffers(),
 	m_pPipeline(nullptr),
+	m_pDescriptorSet(nullptr),
+	m_pDescriptorPool(nullptr),
+	m_pDescriptorSetLayout(nullptr),
 	m_ClearColor(),
 	m_ClearDepth(),
 	m_Viewport(),
@@ -47,6 +57,10 @@ RendererVK::~RendererVK()
 	SAFEDELETE(m_pRenderPass);
 	SAFEDELETE(m_pPipelineLayout);
 	SAFEDELETE(m_pPipeline);
+	SAFEDELETE(m_pDescriptorPool);
+	SAFEDELETE(m_pDescriptorSetLayout);
+	SAFEDELETE(m_pCameraBuffer);
+
 	m_pContext = nullptr;
 }
 
@@ -55,96 +69,40 @@ bool RendererVK::init()
 	DeviceVK* pDevice = m_pContext->getDevice();
 	SwapChainVK* pSwapChain = m_pContext->getSwapChain();
 
-	//Create renderpass
-	m_pRenderPass = new RenderPassVK(pDevice);
-	VkAttachmentDescription description = {};
-	description.format	= VK_FORMAT_B8G8R8A8_UNORM;
-	description.samples = VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp	= VK_ATTACHMENT_LOAD_OP_CLEAR;				//Clear Before Rendering
-	description.storeOp	= VK_ATTACHMENT_STORE_OP_STORE;				//Store After Rendering
-	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;	//Dont care about stencil before
-	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;	//Still dont care about stencil
-	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;			//Dont care about what the initial layout of the image is (We do not need to save this memory)
-	description.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;		//The image will be used for presenting
-	m_pRenderPass->addAttachment(description);
+	if (!createRenderPass())
+	{
+		return false;
+	}
 
-	description.format	= VK_FORMAT_D24_UNORM_S8_UINT;
-	description.samples = VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp	= VK_ATTACHMENT_LOAD_OP_CLEAR;				//Clear Before Rendering
-	description.storeOp	= VK_ATTACHMENT_STORE_OP_STORE;				//Store After Rendering
-	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;	//Dont care about stencil before (If we need the stencil this needs to change)
-	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;	//Still dont care about stencil	 (If we need the stencil this needs to change)
-	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;							//Dont care about what the initial layout of the image is (We do not need to save this memory)
-	description.finalLayout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;		//The image will be used as depthstencil
-	m_pRenderPass->addAttachment(description);
-
-	VkAttachmentReference colorAttachmentRef = {};
-	colorAttachmentRef.attachment = 0;
-	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentReference depthStencilAttachmentRef = {};
-	depthStencilAttachmentRef.attachment = 1;
-	depthStencilAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	m_pRenderPass->addSubpass(&colorAttachmentRef, 1, &depthStencilAttachmentRef);
-	m_pRenderPass->addSubpassDependency(VK_SUBPASS_EXTERNAL, 0, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
-	m_pRenderPass->finalize();
-
-	//Create commandbuffers, -pools and framebuffers
 	createFramebuffers();
 
-	const uint32_t queueFamilyIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
-	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	if (!createCommandPoolAndBuffers())
 	{
-		m_ppCommandPools[i]	= new CommandPoolVK(pDevice, queueFamilyIndex);
-		m_ppCommandPools[i]->init();
-		m_ppCommandBuffers[i]	= m_ppCommandPools[i]->allocateCommandBuffer();
+		return false;
 	}
 
-	//Create pipelinestate
-	IShader* pVertexShader = m_pContext->createShader();
-	pVertexShader->loadFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/vertex.spv");
-	pVertexShader->finalize();
-
-	IShader* pPixelShader = m_pContext->createShader();
-	pPixelShader->loadFromFile(EShader::PIXEL_SHADER, "main", "assets/shaders/fragment.spv");
-	pPixelShader->finalize();
-
-	//DescriptorSetLayout
-	DescriptorSetLayoutVK* pDescriptorSetLayout = new DescriptorSetLayoutVK(pDevice);
-	pDescriptorSetLayout->finalizeLayout();
-	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { pDescriptorSetLayout };
-
-	//PushConstant - Triangle color
-	VkPushConstantRange pushConstantRange = {};
-	pushConstantRange.size = sizeof(glm::vec4);
-	pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-	pushConstantRange.offset = 0;
-	std::vector<VkPushConstantRange> pushConstantRanges = { pushConstantRange };
-
-	m_pPipelineLayout = new PipelineLayoutVK(pDevice);
-	m_pPipelineLayout->createPipelineLayout(descriptorSetLayouts, pushConstantRanges);
-
-	SAFEDELETE(pDescriptorSetLayout);
-
-	std::vector<IShader*> shaders = { pVertexShader, pPixelShader };
-	m_pPipeline = new PipelineVK(pDevice);
-	m_pPipeline->addColorBlendAttachment(false, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
-	m_pPipeline->create(shaders, m_pRenderPass, m_pPipelineLayout);
-
-	SAFEDELETE(pVertexShader);
-	SAFEDELETE(pPixelShader);
-
-	//Create semaphores
-	VkSemaphoreCreateInfo semaphoreInfo = {};
-	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	semaphoreInfo.pNext = nullptr;
-	semaphoreInfo.flags = 0;
-
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	if (!createPipelineLayouts())
 	{
-		VK_CHECK_RESULT(vkCreateSemaphore(m_pContext->getDevice()->getDevice(), &semaphoreInfo, nullptr, &m_ImageAvailableSemaphores[i]), "Failed to create semaphores for a Frame");
-		VK_CHECK_RESULT(vkCreateSemaphore(m_pContext->getDevice()->getDevice(), &semaphoreInfo, nullptr, &m_RenderFinishedSemaphores[i]), "Failed to create semaphores for a Frame");
+		return false;
 	}
+
+	if (!createPipelines())
+	{
+		return false;
+	}
+
+	if (!createSemaphores())
+	{
+		return false;
+	}
+
+	if (!createBuffers())
+	{
+		return false;
+	}
+
+	//Last thing is to write to the descriptor set
+	m_pDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer->getBuffer(), 0);
 
 	return true;
 }
@@ -161,6 +119,7 @@ void RendererVK::onWindowResize(uint32_t width, uint32_t height)
 
 void RendererVK::beginFrame(const Camera& camera)
 {
+	//Prepare for frame
 	m_pContext->getSwapChain()->acquireNextImage(m_ImageAvailableSemaphores[m_CurrentFrame]);
 	uint32_t backBufferIndex = m_pContext->getSwapChain()->getImageIndex();
 
@@ -169,12 +128,20 @@ void RendererVK::beginFrame(const Camera& camera)
 
 	m_ppCommandBuffers[m_CurrentFrame]->begin();
 
+	//Update camera
+	CameraBuffer cameraBuffer = {};
+	cameraBuffer.Projection = camera.getProjectionMat();
+	cameraBuffer.View = camera.getViewMat();
+	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraBuffer, 0, (const void*)&cameraBuffer, sizeof(CameraBuffer));
+
+	//Start renderpass
 	VkClearValue clearValues[] = { m_ClearColor, m_ClearDepth };
 	m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pRenderPass, m_ppBackbuffers[backBufferIndex], m_Viewport.width, m_Viewport.height, clearValues, 2);
 
 	m_ppCommandBuffers[m_CurrentFrame]->setViewports(&m_Viewport, 1);
 	m_ppCommandBuffers[m_CurrentFrame]->setScissorRects(&m_ScissorRect, 1);
 
+	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSet, 0, nullptr);
 }
 
 void RendererVK::endFrame()
@@ -230,11 +197,55 @@ void RendererVK::drawImgui(IImgui* pImgui)
 	pImgui->render(m_ppCommandBuffers[m_CurrentFrame]);
 }
 
-void RendererVK::drawTriangle(const glm::vec4& color)
+void RendererVK::drawTriangle(const glm::vec4& color, const glm::mat4& transform)
 {
 	m_ppCommandBuffers[m_CurrentFrame]->bindGraphicsPipeline(m_pPipeline);
-	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::vec4), &color);
+
+	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,					sizeof(glm::mat4), (const void*)glm::value_ptr(transform));
+	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4),	sizeof(glm::vec4), (const void*)glm::value_ptr(color));
+	
 	m_ppCommandBuffers[m_CurrentFrame]->drawInstanced(3, 1, 0, 0);
+}
+
+bool RendererVK::createSemaphores()
+{
+	//Create semaphores
+	VkSemaphoreCreateInfo semaphoreInfo = {};
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	semaphoreInfo.pNext = nullptr;
+	semaphoreInfo.flags = 0;
+
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		VK_CHECK_RESULT_RETURN_FALSE(vkCreateSemaphore(m_pContext->getDevice()->getDevice(), &semaphoreInfo, nullptr, &m_ImageAvailableSemaphores[i]), "Failed to create semaphores for a Frame");
+		VK_CHECK_RESULT_RETURN_FALSE(vkCreateSemaphore(m_pContext->getDevice()->getDevice(), &semaphoreInfo, nullptr, &m_RenderFinishedSemaphores[i]), "Failed to create semaphores for a Frame");
+	}
+
+	return true;
+}
+
+bool RendererVK::createCommandPoolAndBuffers()
+{
+	DeviceVK* pDevice = m_pContext->getDevice();
+
+	const uint32_t queueFamilyIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		m_ppCommandPools[i] = new CommandPoolVK(pDevice, queueFamilyIndex);
+		
+		if (!m_ppCommandPools[i]->init())
+		{
+			return false;
+		}
+
+		m_ppCommandBuffers[i] = m_ppCommandPools[i]->allocateCommandBuffer();
+		if (m_ppCommandBuffers[i] == nullptr)
+		{
+			return false;
+		}
+	}
+
+	return true;
 }
 
 void RendererVK::createFramebuffers()
@@ -259,4 +270,115 @@ void RendererVK::releaseFramebuffers()
 	{
 		SAFEDELETE(m_ppBackbuffers[i]);
 	}
+}
+
+bool RendererVK::createRenderPass()
+{
+	//Create renderpass
+	m_pRenderPass = new RenderPassVK(m_pContext->getDevice());
+	VkAttachmentDescription description = {};
+	description.format = VK_FORMAT_B8G8R8A8_UNORM;
+	description.samples = VK_SAMPLE_COUNT_1_BIT;
+	description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;				//Clear Before Rendering
+	description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;				//Store After Rendering
+	description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;	//Dont care about stencil before
+	description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;	//Still dont care about stencil
+	description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;			//Dont care about what the initial layout of the image is (We do not need to save this memory)
+	description.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;		//The image will be used for presenting
+	m_pRenderPass->addAttachment(description);
+
+	description.format = VK_FORMAT_D24_UNORM_S8_UINT;
+	description.samples = VK_SAMPLE_COUNT_1_BIT;
+	description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;				//Clear Before Rendering
+	description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;				//Store After Rendering
+	description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;	//Dont care about stencil before (If we need the stencil this needs to change)
+	description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;	//Still dont care about stencil	 (If we need the stencil this needs to change)
+	description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;							//Dont care about what the initial layout of the image is (We do not need to save this memory)
+	description.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;		//The image will be used as depthstencil
+	m_pRenderPass->addAttachment(description);
+
+	VkAttachmentReference colorAttachmentRef = {};
+	colorAttachmentRef.attachment = 0;
+	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference depthStencilAttachmentRef = {};
+	depthStencilAttachmentRef.attachment = 1;
+	depthStencilAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	m_pRenderPass->addSubpass(&colorAttachmentRef, 1, &depthStencilAttachmentRef);
+	m_pRenderPass->addSubpassDependency(VK_SUBPASS_EXTERNAL, 0, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+	return m_pRenderPass->finalize();
+}
+
+bool RendererVK::createPipelines()
+{
+	//Create pipelinestate
+	IShader* pVertexShader = m_pContext->createShader();
+	pVertexShader->loadFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/vertex.spv");
+	if (!pVertexShader->finalize())
+	{
+		return false;
+	}
+
+	IShader* pPixelShader = m_pContext->createShader();
+	pPixelShader->loadFromFile(EShader::PIXEL_SHADER, "main", "assets/shaders/fragment.spv");
+	if (!pPixelShader->finalize())
+	{
+		return false;
+	}
+
+	std::vector<IShader*> shaders = { pVertexShader, pPixelShader };
+	m_pPipeline = new PipelineVK(m_pContext->getDevice());
+	m_pPipeline->addColorBlendAttachment(false, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
+	
+	//TODO: Return bool
+	m_pPipeline->create(shaders, m_pRenderPass, m_pPipelineLayout);
+
+	SAFEDELETE(pVertexShader);
+	SAFEDELETE(pPixelShader);
+
+	return true;
+}
+
+bool RendererVK::createPipelineLayouts()
+{
+	//DescriptorSetLayout
+	m_pDescriptorSetLayout = new DescriptorSetLayoutVK(m_pContext->getDevice());
+	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0, 1);
+	m_pDescriptorSetLayout->finalizeLayout();
+	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { m_pDescriptorSetLayout };
+
+	//Descriptorpool
+	DescriptorCounts descriptorCounts = {};
+	descriptorCounts.m_SampledImages	= 32;
+	descriptorCounts.m_StorageBuffers	= 32;
+	descriptorCounts.m_UniformBuffers	= 32;
+
+	m_pDescriptorPool = new DescriptorPoolVK(m_pContext->getDevice());
+	m_pDescriptorPool->initializeDescriptorPool(descriptorCounts, 16);
+	m_pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
+
+	//PushConstant - Triangle color
+	VkPushConstantRange pushConstantRange = {};
+	pushConstantRange.size = sizeof(glm::mat4) + sizeof(glm::vec4);
+	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+	pushConstantRange.offset = 0;
+	std::vector<VkPushConstantRange> pushConstantRanges = { pushConstantRange };
+
+	m_pPipelineLayout = new PipelineLayoutVK(m_pContext->getDevice());
+	
+	//TODO: Return bool
+	m_pPipelineLayout->createPipelineLayout(descriptorSetLayouts, pushConstantRanges);
+
+	return true;
+}
+
+bool RendererVK::createBuffers()
+{
+	BufferParams cameraBufferParams = {};
+	cameraBufferParams.Usage			= VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	cameraBufferParams.SizeInBytes		= sizeof(CameraBuffer);
+	cameraBufferParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+	m_pCameraBuffer = new BufferVK(m_pContext->getDevice());
+	return m_pCameraBuffer->create(cameraBufferParams);
 }

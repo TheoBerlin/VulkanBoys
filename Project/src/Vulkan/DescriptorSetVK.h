@@ -26,8 +26,8 @@ private:
     void writeImageDescriptor(VkImageView imageView, VkSampler sampler, uint32_t binding, VkImageLayout layout, VkDescriptorType descriptorType);
 
 private:
-    VkDescriptorSet m_DescriptorSet;
     DescriptorCounts m_DescriptorCounts;
+    VkDescriptorSet m_DescriptorSet;
 
     // The pool that allocated the set
     DescriptorPoolVK* m_pDescriptorPool;
