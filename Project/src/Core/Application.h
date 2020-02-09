@@ -10,7 +10,7 @@ class Application : public IEventHandler
 {
 public:
 	Application();
-	~Application() = default;
+	~Application();
 	
 	DECL_NO_COPY(Application);
 
@@ -33,7 +33,7 @@ public:
 	virtual void onKeyPressed(EKey key) override;
 	virtual void onKeyReleased(EKey key) override;
 
-	static Application& getInstance();
+	static Application* get();
 
 private:
 	//Deltatime should be in milliseconds
@@ -47,6 +47,6 @@ private:
 	IRenderer* m_pRenderer;
 	IImgui* m_pImgui;
 	bool m_IsRunning;
-};
 
-extern Application g_Application;
+	static Application* s_pInstance;
+};

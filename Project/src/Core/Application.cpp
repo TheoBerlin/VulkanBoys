@@ -15,7 +15,7 @@
 #include <imgui/imgui.h>
 #include <glm/gtc/type_ptr.hpp>
 
-Application g_Application;
+Application* Application::s_pInstance = nullptr;
 
 Application::Application()
 	: m_pWindow(nullptr),
@@ -24,12 +24,19 @@ Application::Application()
 	m_pImgui(nullptr),
 	m_IsRunning(false)
 {
+	ASSERT(s_pInstance == nullptr);
+	s_pInstance = this;
+}
+
+Application::~Application()
+{
+	s_pInstance = nullptr;
 }
 
 void Application::init()
 {
 	//Create window
-	m_pWindow = IWindow::create("Hello Vulkan", 800, 600);
+	m_pWindow = IWindow::create("Hello Vulkan", 1440, 900);
 	if (m_pWindow)
 	{
 		m_pWindow->addEventHandler(this);
@@ -149,9 +156,9 @@ void Application::onWindowClose()
 	m_IsRunning = false;
 }
 
-Application& Application::getInstance()
+Application* Application::get()
 {
-	return g_Application;
+	return s_pInstance;
 }
 
 void Application::update(double ms)

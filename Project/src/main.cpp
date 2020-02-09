@@ -2,9 +2,10 @@
 
 int main(int argc, const char* argv[])
 {
-	g_Application.init();
-	g_Application.run();
-	g_Application.release();
+	Application app; 
+	app.init();
+	app.run();
+	app.release();
 	return 0;
 }
 

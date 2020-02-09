@@ -220,7 +220,7 @@ void ImguiVK::begin(double deltatime)
 	io.DeltaTime = float(deltatime / 1000.0); //Convert deltatime from ms to s
 
     //Maybe should not be dependent on Application?
-    IWindow* pWindow = Application::getInstance().getWindow();
+    IWindow* pWindow = Application::get()->getWindow();
     io.DisplaySize = ImVec2(float(pWindow->getClientWidth()), float(pWindow->getClientHeight()));
 	io.DisplayFramebufferScale = ImVec2(pWindow->getScaleX(), pWindow->getScaleY());
 
@@ -440,7 +440,7 @@ bool ImguiVK::initImgui()
 	io.KeyMap[ImGuiKey_Z]			= EKey::KEY_Z;
 
 	//TODO: Not based on glfw
-    IWindow* pWindow = Application::getInstance().getWindow();
+    IWindow* pWindow = Application::get()->getWindow();
 	GLFWwindow* pNativeWindow = (GLFWwindow*)pWindow->getNativeHandle();
 #if defined(_WIN32)
 	io.ImeWindowHandle = (void*)glfwGetWin32Window(pNativeWindow);
