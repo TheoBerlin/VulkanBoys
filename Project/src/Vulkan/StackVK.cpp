@@ -42,6 +42,8 @@ void* StackVK::allocate(VkDeviceSize sizeInBytes)
 		return (void*)(m_pHostMemory + m_BufferOffset);
 	}
 
+	D_LOG("-------- Error: Stack does not have enough space");
+
 	//TODO: Here we need to reallocate the buffer
 
 	return nullptr;

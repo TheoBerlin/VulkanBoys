@@ -12,3 +12,4 @@ VulkanProject
 *.xcbkptlist
 *.xcuserstate
 *.xcworkspacedata
+*.ini

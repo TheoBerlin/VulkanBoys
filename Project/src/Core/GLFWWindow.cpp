@@ -66,7 +66,61 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 					}					
 				});
 
+			glfwSetKeyCallback(m_pWindow, [](GLFWwindow* pWindow, int32_t key, int32_t scancode, int32_t action, int32_t mods)
+			{
+				for (IEventHandler* pEventHandler : GET_EVENTHANDLERS(pWindow))
+				{
+					if (action == GLFW_PRESS)
+					{
+						pEventHandler->onKeyPressed(key);
+					}
+					else if (action == GLFW_RELEASE)
+					{
+						pEventHandler->onKeyReleased(key);
+					}
+				}
+			});
 
+			glfwSetCharCallback(m_pWindow, [](GLFWwindow* pWindow, uint32_t codepoint)
+				{
+					for (IEventHandler* pEventHandler : GET_EVENTHANDLERS(pWindow))
+					{
+						pEventHandler->onKeyTyped(codepoint);
+					}
+				});
+
+			glfwSetCursorPosCallback(m_pWindow, [](GLFWwindow* pWindow, double x, double y)
+				{
+					for (IEventHandler* pEventHandler : GET_EVENTHANDLERS(pWindow))
+					{
+						pEventHandler->onMouseMove(uint32_t(x), uint32_t(y));
+					}
+				});
+
+			glfwSetMouseButtonCallback(m_pWindow, [](GLFWwindow* pWindow, int32_t button, int32_t action, int32_t mods)
+				{
+					for (IEventHandler* pEventHandler : GET_EVENTHANDLERS(pWindow))
+					{
+						if (action == GLFW_PRESS)
+						{
+							pEventHandler->onMousePressed(button);
+						}
+						else if (action == GLFW_RELEASE)
+						{
+							pEventHandler->onMouseReleased(button);
+						}
+					}
+				});
+
+			glfwSetScrollCallback(m_pWindow, [](GLFWwindow* pWindow, double x, double y)
+				{
+					for (IEventHandler* pEventHandler : GET_EVENTHANDLERS(pWindow))
+					{
+						pEventHandler->onMouseScroll(x, y);
+					}
+				});
+
+			//Init members
 			int32_t width	= 0;
 			int32_t height	= 0;
 			glfwGetFramebufferSize(m_pWindow, &width, &height);

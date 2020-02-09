@@ -12,8 +12,15 @@
 #include "PipelineLayoutVK.h"
 #include "GraphicsContextVK.h"
 
+#include "Core/Application.h"
+#include "Common/IWindow.h"
+
 //Dependent on GLFW maybe not so good
 #include <GLFW/glfw3.h>
+#if defined(_WIN32)
+	#define GLFW_EXPOSE_NATIVE_WIN32
+	#include <glfw/glfw3native.h>
+#endif
 #include <imgui/imgui.h>
 
 // glsl_shader.vert, compiled with:
@@ -121,6 +128,18 @@ static uint32_t __glsl_shader_frag_spv[] =
 	0x00010038
 };
 
+static const char* ImGuiGetClipboardText(void* user_data)
+{
+	return glfwGetClipboardString((GLFWwindow*)user_data);
+}
+
+static void ImGuiSetClipboardText(void* user_data, const char* text)
+{
+	glfwSetClipboardString((GLFWwindow*)user_data, text);
+}
+
+static GLFWcursor* g_MouseCursors[ImGuiMouseCursor_COUNT] = {};
+
 ImguiVK::ImguiVK(GraphicsContextVK* pContext)
 	: m_pContext(pContext),
 	m_pSampler(nullptr),
@@ -149,9 +168,9 @@ ImguiVK::~ImguiVK()
 	SAFEDELETE(m_pDescriptorSetLayout);
 }
 
-bool ImguiVK::init(uint32_t width, uint32_t height)
+bool ImguiVK::init()
 {
-	if (!initImgui(width, height))
+	if (!initImgui())
 	{
 		return false;
 	}
@@ -194,8 +213,20 @@ bool ImguiVK::init(uint32_t width, uint32_t height)
 	return true;
 }
 
+void ImguiVK::begin()
+{
+	ImGui::NewFrame();
+}
+
+void ImguiVK::end()
+{
+	ImGui::EndFrame();
+	ImGui::Render();
+}
+
 void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 {
+	//Start drawing
 	ImGuiIO& io = ImGui::GetIO();
 	ImDrawData* pDrawData = ImGui::GetDrawData();
 
@@ -230,13 +261,13 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 	//Setup vertex and indexbuffer
 	VkDeviceSize offset = 0;
 	pCommandBuffer->bindVertexBuffers(&m_pVertexBuffer, 1, &offset);
-	pCommandBuffer->bindIndexBuffer(m_pIndexBuffer, 0, (sizeof(ImDrawIdx) == 2) ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
+	pCommandBuffer->bindIndexBuffer(m_pIndexBuffer, 0, (sizeof(ImDrawIdx) == 2) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
 
 	//Setup viewport
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = io.DisplaySize.x;
+	viewport.width	= io.DisplaySize.x;
 	viewport.height = io.DisplaySize.y;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
@@ -247,10 +278,10 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 	{
 		float scale[2];
 		scale[0] = 2.0f / pDrawData->DisplaySize.x;
-		scale[1] = -2.0f / pDrawData->DisplaySize.y;
+		scale[1] = 2.0f / pDrawData->DisplaySize.y;
 		float translate[2];
-		translate[0] = -1.0f + pDrawData->DisplayPos.x * scale[0];
-		translate[1] = 1.0f - pDrawData->DisplayPos.y * scale[1];
+		translate[0] = -1.0f - pDrawData->DisplayPos.x * scale[0];
+		translate[1] = -1.0f - pDrawData->DisplayPos.y * scale[1];
 
 		pCommandBuffer->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(float) * 0, sizeof(float) * 2, scale);
 		pCommandBuffer->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(float) * 2, sizeof(float) * 2, translate);
@@ -289,8 +320,8 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 				VkRect2D scissor = {};
 				scissor.offset.x = clipRect.x;
 				scissor.offset.y = clipRect.y;
-				scissor.extent.width = clipRect.z - clipRect.x;
-				scissor.extent.height = clipRect.w - clipRect.y;
+				scissor.extent.width	= clipRect.z - clipRect.x;
+				scissor.extent.height	= clipRect.w - clipRect.y;
 				pCommandBuffer->setScissorRects(&scissor, 1);
 
 				// Draw
@@ -308,20 +339,80 @@ void ImguiVK::onWindowClose()
 
 void ImguiVK::onWindowResize(uint32_t width, uint32_t height)
 {
+	ImGuiIO& io = ImGui::GetIO();
+	io.DisplaySize = ImVec2(float(width), float(height));
+	io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 }
 
 void ImguiVK::onWindowFocusChanged(IWindow* pWindow, bool hasFocus)
 {
 }
 
-bool ImguiVK::initImgui(uint32_t width, uint32_t height)
+void ImguiVK::onMouseMove(uint32_t x, uint32_t y)
+{
+	ImGuiIO& io = ImGui::GetIO();
+	io.MousePos = ImVec2(float(x), float(y));
+}
+
+void ImguiVK::onMousePressed(int32_t button)
+{
+	ImGuiIO& io = ImGui::GetIO();
+	io.MouseDown[button] = true;
+}
+
+void ImguiVK::onMouseScroll(double x, double y)
+{
+	ImGuiIO& io = ImGui::GetIO();
+	io.MouseWheelH	+= x;
+	io.MouseWheel	+= y;
+}
+
+void ImguiVK::onMouseReleased(int32_t button)
+{
+	ImGuiIO& io = ImGui::GetIO();
+	io.MouseDown[button] = false;
+}
+
+void ImguiVK::onKeyTyped(uint32_t character)
+{
+	ImGuiIO& io = ImGui::GetIO();
+	io.AddInputCharacter(character);
+}
+
+void ImguiVK::onKeyPressed(int32_t key)
+{
+	ImGuiIO& io = ImGui::GetIO();
+	io.KeysDown[key] = true;
+	io.KeyCtrl	= io.KeysDown[GLFW_KEY_LEFT_CONTROL] || io.KeysDown[GLFW_KEY_RIGHT_CONTROL];
+	io.KeyShift	= io.KeysDown[GLFW_KEY_LEFT_SHIFT]	 || io.KeysDown[GLFW_KEY_RIGHT_SHIFT];
+	io.KeyAlt	= io.KeysDown[GLFW_KEY_LEFT_ALT]	 || io.KeysDown[GLFW_KEY_RIGHT_ALT];
+	io.KeySuper	= io.KeysDown[GLFW_KEY_LEFT_SUPER]	 || io.KeysDown[GLFW_KEY_RIGHT_SUPER];
+}
+
+void ImguiVK::onKeyReleased(int32_t key)
+{
+	ImGuiIO& io = ImGui::GetIO();
+	io.KeysDown[key] = false;
+	io.KeyCtrl	= io.KeysDown[GLFW_KEY_LEFT_CONTROL]	|| io.KeysDown[GLFW_KEY_RIGHT_CONTROL];
+	io.KeyShift = io.KeysDown[GLFW_KEY_LEFT_SHIFT]		|| io.KeysDown[GLFW_KEY_RIGHT_SHIFT];
+	io.KeyAlt	= io.KeysDown[GLFW_KEY_LEFT_ALT]		|| io.KeysDown[GLFW_KEY_RIGHT_ALT];
+	io.KeySuper = io.KeysDown[GLFW_KEY_LEFT_SUPER]		|| io.KeysDown[GLFW_KEY_RIGHT_SUPER];
+}
+
+bool ImguiVK::initImgui()
 {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 
 	ImGuiIO& io = ImGui::GetIO();
+	io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
+	io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
+	io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
 	io.BackendPlatformName = "VulkanBoys";
-	io.DisplaySize = ImVec2(float(width), float(height));
+	
+	IWindow* pWindow = Application::getInstance().getWindow();
+	io.DisplaySize = ImVec2(float(pWindow->getWidth()), float(pWindow->getHeight()));
+	io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 
 	io.KeyMap[ImGuiKey_Tab]			= GLFW_KEY_TAB;
 	io.KeyMap[ImGuiKey_LeftArrow]	= GLFW_KEY_LEFT;
@@ -346,8 +437,15 @@ bool ImguiVK::initImgui(uint32_t width, uint32_t height)
 	io.KeyMap[ImGuiKey_Y]			= GLFW_KEY_Y;
 	io.KeyMap[ImGuiKey_Z]			= GLFW_KEY_Z;
 
-	//io.ImeWindowHandle = reinterpret_cast<HWND>(pWindow->GetNativeHandle());
+	GLFWwindow* pNativeWindow = (GLFWwindow*)pWindow->getNativeHandle();
+#if defined(_WIN32)
+	io.ImeWindowHandle = (void*)glfwGetWin32Window(pNativeWindow);
+#endif
 	
+	io.SetClipboardTextFn	= ImGuiSetClipboardText;
+	io.GetClipboardTextFn	= ImGuiGetClipboardText;
+	io.ClipboardUserData	= pWindow;
+
 	ImGui::StyleColorsDark();
 	ImGui::GetStyle().WindowRounding	= 0.0f;
 	ImGui::GetStyle().ChildRounding		= 0.0f;
@@ -355,6 +453,25 @@ bool ImguiVK::initImgui(uint32_t width, uint32_t height)
 	ImGui::GetStyle().GrabRounding		= 0.0f;
 	ImGui::GetStyle().PopupRounding		= 0.0f;
 	ImGui::GetStyle().ScrollbarRounding = 0.0f;
+
+	GLFWerrorfun prev_error_callback = glfwSetErrorCallback(NULL);
+	g_MouseCursors[ImGuiMouseCursor_Arrow]		= glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+	g_MouseCursors[ImGuiMouseCursor_TextInput]	= glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
+	g_MouseCursors[ImGuiMouseCursor_ResizeNS]	= glfwCreateStandardCursor(GLFW_VRESIZE_CURSOR);
+	g_MouseCursors[ImGuiMouseCursor_ResizeEW]	= glfwCreateStandardCursor(GLFW_HRESIZE_CURSOR);
+	g_MouseCursors[ImGuiMouseCursor_Hand]		= glfwCreateStandardCursor(GLFW_HAND_CURSOR);
+#if GLFW_HAS_NEW_CURSORS
+	g_MouseCursors[ImGuiMouseCursor_ResizeAll]	= glfwCreateStandardCursor(GLFW_RESIZE_ALL_CURSOR);
+	g_MouseCursors[ImGuiMouseCursor_ResizeNESW] = glfwCreateStandardCursor(GLFW_RESIZE_NESW_CURSOR);
+	g_MouseCursors[ImGuiMouseCursor_ResizeNWSE] = glfwCreateStandardCursor(GLFW_RESIZE_NWSE_CURSOR);
+	g_MouseCursors[ImGuiMouseCursor_NotAllowed] = glfwCreateStandardCursor(GLFW_NOT_ALLOWED_CURSOR);
+#else
+	g_MouseCursors[ImGuiMouseCursor_ResizeAll]	= glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+	g_MouseCursors[ImGuiMouseCursor_ResizeNESW] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+	g_MouseCursors[ImGuiMouseCursor_ResizeNWSE] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+	g_MouseCursors[ImGuiMouseCursor_NotAllowed] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+#endif
+	glfwSetErrorCallback(prev_error_callback);
 
 	return true;
 }
@@ -364,24 +481,24 @@ bool ImguiVK::createRenderPass()
 	m_pRenderPass = new RenderPassVK(m_pContext->getDevice());
 
 	VkAttachmentDescription description = {};
-	description.format = VK_FORMAT_B8G8R8A8_UNORM;
-	description.samples = VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;				
-	description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;				
-	description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;	
-	description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;	
-	description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;			
-	description.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;		
+	description.format	= VK_FORMAT_B8G8R8A8_UNORM;
+	description.samples	= VK_SAMPLE_COUNT_1_BIT;
+	description.loadOp	= VK_ATTACHMENT_LOAD_OP_CLEAR;				
+	description.storeOp	= VK_ATTACHMENT_STORE_OP_STORE;				
+	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;	
+	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;	
+	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;			
+	description.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;		
 	m_pRenderPass->addAttachment(description);
 
-	description.format = VK_FORMAT_D24_UNORM_S8_UINT;
-	description.samples = VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;	
-	description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;	
-	description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;	
-	description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;	
-	description.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	description.format	= VK_FORMAT_D24_UNORM_S8_UINT;
+	description.samples	= VK_SAMPLE_COUNT_1_BIT;
+	description.loadOp	= VK_ATTACHMENT_LOAD_OP_CLEAR;
+	description.storeOp	= VK_ATTACHMENT_STORE_OP_STORE;	
+	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;	
+	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;	
+	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;	
+	description.finalLayout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	m_pRenderPass->addAttachment(description);
 
 	VkAttachmentReference colorAttachmentRef = {};
@@ -420,7 +537,7 @@ bool ImguiVK::createPipeline()
 	m_pPipeline->addVertexAttribute(0, VK_FORMAT_R32G32_SFLOAT, 1, IM_OFFSETOF(ImDrawVert, uv));
 	m_pPipeline->addVertexAttribute(0, VK_FORMAT_R8G8B8A8_UNORM, 2, IM_OFFSETOF(ImDrawVert, col));
 	m_pPipeline->addVertexBinding(0, VK_VERTEX_INPUT_RATE_VERTEX, sizeof(ImDrawVert));
-	m_pPipeline->addColorBlendAttachment(false, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
+	m_pPipeline->addColorBlendAttachment(true, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
 	m_pPipeline->setWireFrame(false);
 	m_pPipeline->create(shaders, m_pRenderPass, m_pPipelineLayout);
 
@@ -470,7 +587,7 @@ bool ImguiVK::createFontTexture()
 	int32_t width	= 0;
 	int32_t height	= 0;
 	io.Fonts->GetTexDataAsRGBA32(&pPixels, &width, &height);
-	size_t uploadSize = width * height * 4 * sizeof(uint8_t);
+	size_t uploadSize = width * height * 4;
 
 	m_pFontTexture = m_pContext->createTexture2D();
 	return m_pFontTexture->loadFromMemory(pPixels, width, height);

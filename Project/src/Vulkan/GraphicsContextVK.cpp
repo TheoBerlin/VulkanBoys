@@ -42,6 +42,10 @@ void GraphicsContextVK::init()
 
 	m_Instance.addOptionalExtension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 	
+	//m_Instance.debugPrintAvailableExtensions();
+	//m_Instance.debugPrintAvailableLayers();
+
+	//m_Instance.addValidationLayer("VK_LAYER_RENDERDOC_Capture");
 	m_Instance.addValidationLayer("VK_LAYER_KHRONOS_validation");
 	m_Instance.finalize(VALIDATION_LAYERS_ENABLED);
 

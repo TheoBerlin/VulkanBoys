@@ -41,7 +41,7 @@ public:
 	void copyBuffer(BufferVK* pSource, uint64_t sourceOffset, BufferVK* pDestination, uint64_t destinationOffset, uint64_t sizeInBytes);
 
 	void updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height);
-	void copyBufferToImage(BufferVK* pSource, ImageVK* pImage, uint32_t width, uint32_t height);
+	void copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffset, ImageVK* pImage, uint32_t width, uint32_t height);
 	
 	void transitionImageLayout(ImageVK* pImage, VkImageLayout oldLayout, VkImageLayout newLayout);
 	

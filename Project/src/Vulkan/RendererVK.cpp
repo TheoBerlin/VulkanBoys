@@ -175,27 +175,13 @@ void RendererVK::endFrame()
 	m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
 	m_ppCommandBuffers[m_CurrentFrame]->end();
 
-	//Submit
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.pNext = nullptr;
-
-	VkSemaphore waitSemaphores[]	= { m_ImageAvailableSemaphores[m_CurrentFrame] };
-	submitInfo.waitSemaphoreCount	= 1;
-	submitInfo.pWaitSemaphores = waitSemaphores;
-
+	//Execute commandbuffer
+	VkSemaphore waitSemaphores[] = { m_ImageAvailableSemaphores[m_CurrentFrame] };
+	VkSemaphore signalSemaphores[] = { m_RenderFinishedSemaphores[m_CurrentFrame] };
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	submitInfo.pWaitDstStageMask = waitStages;
 
-	VkCommandBuffer commandBuffers[] = { m_ppCommandBuffers[m_CurrentFrame]->getCommandBuffer() };
-	submitInfo.pCommandBuffers		= commandBuffers;
-	submitInfo.commandBufferCount	= 1;
-
-	VkSemaphore signalSemaphores[]	= { m_RenderFinishedSemaphores[m_CurrentFrame] };
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores	= signalSemaphores;
-
-	VK_CHECK_RESULT(vkQueueSubmit(m_pContext->getDevice()->getGraphicsQueue(), 1, &submitInfo, m_ppCommandBuffers[m_CurrentFrame]->getFence()), "vkQueueSubmit failed");
+	DeviceVK* pDevice = m_pContext->getDevice();
+	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppCommandBuffers[m_CurrentFrame], waitSemaphores, waitStages, 1, signalSemaphores, 1);
 }
 
 void RendererVK::setClearColor(float r, float g, float b)

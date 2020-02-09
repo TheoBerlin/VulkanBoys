@@ -141,10 +141,11 @@ void CommandBufferVK::setViewports(VkViewport* pViewports, uint32_t viewportCoun
 
 void CommandBufferVK::updateBuffer(BufferVK* pDestination, uint64_t destinationOffset, const void* pSource, uint64_t sizeInBytes)
 {
+	VkDeviceSize offset = m_pStack->getCurrentOffset();
 	void* pHostMemory = m_pStack->allocate(sizeInBytes);
 	memcpy(pHostMemory, pSource, sizeInBytes);
 
-	copyBuffer(m_pStack->getBuffer(), m_pStack->getCurrentOffset(), pDestination, destinationOffset, sizeInBytes);
+	copyBuffer(m_pStack->getBuffer(), offset, pDestination, destinationOffset, sizeInBytes);
 }
 
 void CommandBufferVK::copyBuffer(BufferVK* pSource, uint64_t sourceOffset, BufferVK* pDestination, uint64_t destinationOffset, uint64_t sizeInBytes)
@@ -160,25 +161,27 @@ void CommandBufferVK::copyBuffer(BufferVK* pSource, uint64_t sourceOffset, Buffe
 void CommandBufferVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height)
 {
 	uint32_t sizeInBytes = width * height * 4;
+	
+	VkDeviceSize offset = m_pStack->getCurrentOffset();
 	void* pHostMemory = m_pStack->allocate(sizeInBytes);
 	memcpy(pHostMemory, pPixelData, sizeInBytes);
 
-	copyBufferToImage(m_pStack->getBuffer(), pImage, width, height);
+	copyBufferToImage(m_pStack->getBuffer(), offset, pImage, width, height);
 }
 
-void CommandBufferVK::copyBufferToImage(BufferVK* pSource, ImageVK* pImage, uint32_t width, uint32_t height)
+void CommandBufferVK::copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffset, ImageVK* pImage, uint32_t width, uint32_t height)
 {
 	VkBufferImageCopy region = {};
 	region.bufferImageHeight = 0;
-	region.bufferOffset = 0;
-	region.bufferRowLength = 0;
+	region.bufferOffset		= sourceOffset;
+	region.bufferRowLength	= 0;
 	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	region.imageSubresource.baseArrayLayer = 0;
-	region.imageSubresource.mipLevel = 0;
-	region.imageSubresource.layerCount = 1;
-	region.imageExtent.depth = 1;
-	region.imageExtent.height = height;
-	region.imageExtent.width = width;
+	region.imageSubresource.mipLevel	= 0;
+	region.imageSubresource.layerCount	= 1;
+	region.imageExtent.depth	= 1;
+	region.imageExtent.height	= height;
+	region.imageExtent.width	= width;
 
 	vkCmdCopyBufferToImage(m_CommandBuffer, pSource->getBuffer(), pImage->getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 }

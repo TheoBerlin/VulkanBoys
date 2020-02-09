@@ -65,9 +65,9 @@ void DescriptorSetVK::writeBufferDescriptor(VkBuffer buffer, uint32_t binding, V
 void DescriptorSetVK::writeImageDescriptor(VkImageView imageView, VkSampler sampler, uint32_t binding, VkImageLayout layout, VkDescriptorType descriptorType)
 {
     VkDescriptorImageInfo imageInfo = {};
-    imageInfo.imageView = imageView;
-    imageInfo.sampler = sampler;
-    imageInfo.imageLayout = layout;
+    imageInfo.imageView     = imageView;
+    imageInfo.sampler       = sampler;
+    imageInfo.imageLayout   = layout;
 
     VkWriteDescriptorSet descriptorImageWrite = {};
     descriptorImageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

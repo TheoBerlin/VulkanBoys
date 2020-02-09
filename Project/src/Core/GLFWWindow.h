@@ -26,11 +26,6 @@ public:
 	virtual void* getNativeHandle() override;
 
 private:
-	void onWindowFocusChanged(IWindow* pWindow, bool hasFocus);
-	void onWindowResize(uint32_t width, uint32_t height);
-	void onWindowClose();
-
-private:
 	GLFWwindow* m_pWindow;
 	std::vector<IEventHandler*> m_ppEventHandlers;
 	uint32_t m_Width;

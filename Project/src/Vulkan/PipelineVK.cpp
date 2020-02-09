@@ -45,6 +45,12 @@ void PipelineVK::addColorBlendAttachment(bool blendEnable, VkColorComponentFlags
     VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
     colorBlendAttachment.colorWriteMask = colorWriteMask;
     colorBlendAttachment.blendEnable    = blendEnable ? VK_TRUE : VK_FALSE;
+    colorBlendAttachment.srcColorBlendFactor    = VK_BLEND_FACTOR_SRC_ALPHA;
+    colorBlendAttachment.dstColorBlendFactor    = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    colorBlendAttachment.colorBlendOp           = VK_BLEND_OP_ADD;
+    colorBlendAttachment.srcAlphaBlendFactor    = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    colorBlendAttachment.dstAlphaBlendFactor    = VK_BLEND_FACTOR_ZERO;
+    colorBlendAttachment.alphaBlendOp           = VK_BLEND_OP_ADD;
 
     m_ColorBlendAttachments.emplace_back(colorBlendAttachment);
 }
@@ -88,7 +94,7 @@ void PipelineVK::create(const std::vector<IShader*>& shaders, RenderPassVK* pRen
     rasterizer.polygonMode = m_WireFrame ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth    = 1.0f;
     rasterizer.cullMode     = VK_CULL_MODE_NONE;
-    rasterizer.frontFace    = VK_FRONT_FACE_CLOCKWISE;
+    rasterizer.frontFace    = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable  = VK_FALSE;
     rasterizer.depthClampEnable = VK_FALSE;
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
@@ -100,6 +106,8 @@ void PipelineVK::create(const std::vector<IShader*>& shaders, RenderPassVK* pRen
 
     VkPipelineColorBlendStateCreateInfo colorBlending = {};
     colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    colorBlending.flags = 0;
+    colorBlending.pNext = nullptr;
     colorBlending.logicOpEnable = VK_FALSE;
     colorBlending.logicOp       = VK_LOGIC_OP_COPY;
     colorBlending.pAttachments      = (m_ColorBlendAttachments.size() > 0) ? m_ColorBlendAttachments.data() : nullptr;
@@ -138,7 +146,7 @@ void PipelineVK::create(const std::vector<IShader*>& shaders, RenderPassVK* pRen
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     pipelineInfo.pNext = nullptr;
     pipelineInfo.flags = 0;
-    pipelineInfo.stageCount = 2;
+    pipelineInfo.stageCount = uint32_t(shaderStagesInfos.size());
     pipelineInfo.pStages    = shaderStagesInfos.data();
     pipelineInfo.pVertexInputState      = &vertexInputInfo;
     pipelineInfo.pInputAssemblyState    = &inputAssembly;

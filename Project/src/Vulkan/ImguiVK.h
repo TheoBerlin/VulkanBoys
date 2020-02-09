@@ -1,6 +1,8 @@
 #pragma once
 #include "Common/IImgui.h"
 
+#include "VulkanCommon.h"
+
 class IShader;
 class BufferVK;
 class SamplerVK;
@@ -19,15 +21,28 @@ public:
 	ImguiVK(GraphicsContextVK* pContext);
 	~ImguiVK();
 
-	virtual bool init(uint32_t width, uint32_t height) override;
+	virtual bool init() override;
+	
+	virtual void begin() override;
+	virtual void end() override;
+	
 	virtual void render(CommandBufferVK* pCommandBuffer) override;
 
 	virtual void onWindowClose() override;
 	virtual void onWindowResize(uint32_t width, uint32_t height) override;
 	virtual void onWindowFocusChanged(IWindow* pWindow, bool hasFocus) override;
+	
+	virtual void onMouseMove(uint32_t x, uint32_t y) override;
+	virtual void onMousePressed(int32_t button) override;
+	virtual void onMouseScroll(double x, double y) override;
+	virtual void onMouseReleased(int32_t button) override;
+
+	virtual void onKeyTyped(uint32_t character) override;
+	virtual void onKeyPressed(int32_t key) override;
+	virtual void onKeyReleased(int32_t key) override;
 
 private:
-	bool initImgui(uint32_t width, uint32_t height);
+	bool initImgui();
 	bool createRenderPass();
 	bool createPipeline();
 	bool createPipelineLayout();
@@ -47,4 +62,3 @@ private:
 	BufferVK* m_pVertexBuffer;
 	BufferVK* m_pIndexBuffer;
 };
-

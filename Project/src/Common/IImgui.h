@@ -9,6 +9,10 @@ class IImgui : public IEventHandler
 public:
 	DECL_INTERFACE(IImgui);
 
-	virtual bool init(uint32_t width, uint32_t height) = 0;
+	virtual bool init() = 0;
+
+	virtual void begin() = 0;
+	virtual void end() = 0;
+	
 	virtual void render(CommandBufferVK* pCommandBuffer) = 0;
 };

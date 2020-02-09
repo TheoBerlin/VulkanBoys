@@ -27,6 +27,7 @@ Application::Application()
 
 void Application::init()
 {
+	//Create window
 	m_pWindow = IWindow::create("Hello Vulkan", 800, 600);
 	if (m_pWindow)
 	{
@@ -34,15 +35,18 @@ void Application::init()
 		m_pWindow->setFullscreenState(false);
 	}
 
+	//Create context
 	m_pContext = IGraphicsContext::create(m_pWindow, API::VULKAN);
+	
+	//Setup Imgui
 	m_pImgui = m_pContext->createImgui();
-	m_pImgui->init(m_pWindow->getWidth(), m_pWindow->getHeight());
-
+	m_pImgui->init();
 	m_pWindow->addEventHandler(m_pImgui);
 
+	//Setup renderer
 	m_pRenderer = m_pContext->createRenderer();
 	m_pRenderer->init();
-	m_pRenderer->setClearColor(0.0f, 0.0f, 0.0f);
+	m_pRenderer->setClearColor(1.0f, 1.0f, 1.0f);
 	m_pRenderer->setViewport(m_pWindow->getWidth(), m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
 }
 
@@ -95,6 +99,34 @@ void Application::onWindowFocusChanged(IWindow* pWindow, bool hasFocus)
 {
 }
 
+void Application::onMouseMove(uint32_t x, uint32_t y)
+{
+}
+
+void Application::onMousePressed(int32_t button)
+{
+}
+
+void Application::onMouseScroll(double x, double y)
+{
+}
+
+void Application::onMouseReleased(int32_t button)
+{
+}
+
+void Application::onKeyTyped(uint32_t character)
+{
+}
+
+void Application::onKeyPressed(int32_t key)
+{
+}
+
+void Application::onKeyReleased(int32_t key)
+{
+}
+
 void Application::onWindowClose()
 {
 	D_LOG("Window Closed");
@@ -112,11 +144,9 @@ void Application::update()
 
 void Application::renderUI()
 {
-	ImGui::NewFrame();
+	m_pImgui->begin();
 	ImGui::ShowDemoWindow();
-	ImGui::EndFrame();
-
-	ImGui::Render();
+	m_pImgui->end();
 }
 
 void Application::render()
