@@ -14,6 +14,10 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 	m_ppEventHandlers(),
 	m_Width(0),
 	m_Height(0),
+	m_ClientWidth(0),
+	m_ClientHeight(0),
+	m_OldClientWidth(0),
+	m_OldClientHeight(0),
 	m_IsFullscreen(false)
 {
 	if (!s_HasGLFW)
@@ -128,6 +132,15 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 					}
 				});
 
+			glfwSetWindowPosCallback(m_pWindow, [](GLFWwindow* pWindow, int32_t x, int32_t y) 
+				{
+					if (!GET_WINDOW(pWindow)->m_IsFullscreen)
+					{
+						GET_WINDOW(pWindow)->m_PosX = x;
+						GET_WINDOW(pWindow)->m_PosY = y;
+					}
+				});
+
 			//Init members
 			int32_t width	= 0;
 			int32_t height	= 0;
@@ -142,6 +155,13 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 
 			m_ClientWidth	= width;
 			m_ClientHeight	= height;
+
+			int32_t x = 0;
+			int32_t y = 0;
+			glfwGetWindowPos(m_pWindow, &x, &y);
+
+			m_PosX = x;
+			m_PosY = y;
 		}
 		else
 		{
@@ -186,15 +206,23 @@ void GLFWWindow::setFullscreenState(bool enable)
 {
 	if (m_IsFullscreen != enable)
 	{
+		m_IsFullscreen = enable;
+
 		if (enable)
 		{
+			m_OldClientWidth	= m_ClientWidth;
+			m_OldClientHeight	= m_ClientHeight;
+
 			GLFWmonitor* pPrimary = glfwGetPrimaryMonitor();
 			const GLFWvidmode* pVidMode = glfwGetVideoMode(pPrimary);
 			glfwSetWindowMonitor(m_pWindow, pPrimary, 0, 0, pVidMode->width, pVidMode->height, pVidMode->refreshRate);
 		}
 		else
 		{
-			glfwSetWindowMonitor(m_pWindow, nullptr, 0, 0, 0, 0, 0);
+			glfwSetWindowMonitor(m_pWindow, nullptr, m_PosX, m_PosY, m_OldClientWidth, m_OldClientHeight, 0);
+
+			m_OldClientWidth	= 0;
+			m_OldClientHeight	= 0;
 		}
 	}
 }
@@ -202,6 +230,11 @@ void GLFWWindow::setFullscreenState(bool enable)
 bool GLFWWindow::getFullscreenState() const
 {
 	return m_IsFullscreen;
+}
+
+void GLFWWindow::toggleFullscreenState()
+{
+	setFullscreenState(!m_IsFullscreen);
 }
 
 bool GLFWWindow::hasFocus() const
