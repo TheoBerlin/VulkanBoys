@@ -1,5 +1,5 @@
 #pragma once
-#include <glm/glm.hpp>
+#include "Core.h"
 
 struct CameraBuffer
 {
@@ -26,6 +26,11 @@ public:
 	const glm::mat4& getProjectionInvMat() const { return m_ProjectionInv; }
 	const glm::mat4& getViewMat() const { return m_View; }
 	const glm::mat4& getViewInvMat() const { return m_ViewInv; }
+	const glm::vec3& getPosition() const { return m_Position; }
+	const glm::vec3& getRotation() const { return m_Rotation; }
+
+private:
+	void calculateVectors();
 
 private:
 	glm::mat4 m_Projection;
@@ -34,6 +39,8 @@ private:
 	glm::mat4 m_ViewInv;
 	
 	glm::vec3 m_Position;
+	glm::vec3 m_Rotation;
+
 	glm::vec3 m_Direction;
 	glm::vec3 m_Right;
 	glm::vec3 m_Up;
