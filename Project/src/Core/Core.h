@@ -36,14 +36,19 @@
 #define MB(bytes) bytes * 1024 * 1024
 
 //REMEBER ALIGNMENT OF 16 bytes
+//struct Vertex
+//{
+//	//Todo: Padding? Yes?
+//
+//	glm::vec4 Position;
+//	glm::vec3 Normal;
+//	glm::vec3 Tangent;
+//	glm::vec2 TexCoord;
+//};
+
 struct Vertex
 {
-	//Todo: Padding? Yes?
-
-	glm::vec4 Position;
-	glm::vec3 Normal;
-	glm::vec3 Tangent;
-	glm::vec2 TexCoord;
+	float pos[3];
 };
 
 enum class EMemoryUsage : uint32_t

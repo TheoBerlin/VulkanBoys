@@ -14,6 +14,20 @@ class PipelineLayoutVK;
 class GraphicsContextVK;
 class DescriptorSetLayoutVK;
 
+//Temp
+class AccelerationTableVK;
+class RayTracingPipelineVK;
+class ShaderBindingTableVK;
+class ImageVK;
+class ImageViewVK;
+
+struct TempRayTracingUniformData
+{
+	glm::mat4 viewInverse;
+	glm::mat4 projInverse;
+};
+
+
 class RendererVK : public IRenderer
 {
 public:
@@ -27,6 +41,9 @@ public:
 	virtual void beginFrame(const Camera& camera) override;
 	virtual void endFrame() override;
 
+	virtual void beginRayTraceFrame(const Camera& camera) override;
+	virtual void endRayTraceFrame() override;
+	
 	virtual void setClearColor(float r, float g, float b) override;
 	virtual void setClearColor(const glm::vec3& color) override;
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
@@ -34,6 +51,8 @@ public:
 	virtual void swapBuffers() override;
 
 	virtual void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform) override;
+
+	virtual void traceRays() override;
 
 	virtual void drawImgui(IImgui* pImgui) override;
 
@@ -51,10 +70,15 @@ private:
 	bool createPipelineLayouts();
 	bool createBuffers();
 
+	bool createRayTracingPipelineLayouts();
+	
 private:
 	GraphicsContextVK* m_pContext;
 	CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
+
+	CommandPoolVK* m_ppComputeCommandPools[MAX_FRAMES_IN_FLIGHT];
+	CommandBufferVK* m_ppComputeCommandBuffers[MAX_FRAMES_IN_FLIGHT];
 
 	RenderPassVK* m_pRenderPass;
 	FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
@@ -76,5 +100,19 @@ private:
 
 	uint64_t m_CurrentFrame;
 	uint32_t m_BackBufferIndex;
+
+	//Temp Ray Tracing Stuff
+	AccelerationTableVK* m_pAccelerationTable;
+	RayTracingPipelineVK* m_pRayTracingPipeline;
+	PipelineLayoutVK* m_pRayTracingPipelineLayout;
+	ShaderBindingTableVK* m_pSBT;
+	ImageVK* m_pRayTracingStorageImage;
+	ImageViewVK* m_pRayTracingStorageImageView;
+	
+	DescriptorSetVK* m_pRayTracingDescriptorSet;
+	DescriptorPoolVK* m_pRayTracingDescriptorPool;
+	DescriptorSetLayoutVK* m_pRayTracingDescriptorSetLayout;
+
+	BufferVK* m_pRayTracingUniformBuffer;
 };
 

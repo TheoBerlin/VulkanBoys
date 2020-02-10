@@ -41,6 +41,33 @@ void DescriptorSetVK::writeSampledImageDescriptor(VkImageView imageView, uint32_
     writeImageDescriptor(imageView, VK_NULL_HANDLE, binding, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 }
 
+void DescriptorSetVK::writeStorageImageDescriptor(VkImageView imageView, uint32_t binding)
+{
+	writeImageDescriptor(imageView, VK_NULL_HANDLE, binding, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+}
+
+void DescriptorSetVK::writeAccelerationStructureDescriptor(VkAccelerationStructureNV accelerationStructure, uint32_t binding)
+{
+	VkWriteDescriptorSetAccelerationStructureNV descriptorAccelerationStructureInfo = {};
+	descriptorAccelerationStructureInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_NV;
+	descriptorAccelerationStructureInfo.accelerationStructureCount = 1;
+	descriptorAccelerationStructureInfo.pAccelerationStructures = &accelerationStructure;
+
+	VkWriteDescriptorSet accelerationStructureWrite = {};
+	accelerationStructureWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	// The specialized acceleration structure descriptor has to be chained
+	accelerationStructureWrite.pNext = &descriptorAccelerationStructureInfo;
+	accelerationStructureWrite.dstSet = m_DescriptorSet;
+	accelerationStructureWrite.dstBinding = binding;
+	accelerationStructureWrite.descriptorCount = 1;
+	accelerationStructureWrite.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV;
+	accelerationStructureWrite.pBufferInfo = nullptr;
+	accelerationStructureWrite.pImageInfo = nullptr;
+	accelerationStructureWrite.pTexelBufferView = nullptr;
+
+	vkUpdateDescriptorSets(m_pDevice->getDevice(), 1, &accelerationStructureWrite, 0, nullptr);
+}
+
 void DescriptorSetVK::writeBufferDescriptor(VkBuffer buffer, uint32_t binding, VkDescriptorType bufferType)
 {
     VkDescriptorBufferInfo bufferInfo = {};

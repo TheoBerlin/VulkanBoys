@@ -581,6 +581,8 @@ bool ImguiVK::createPipelineLayout()
 	counts.m_SampledImages	= 1;
 	counts.m_StorageBuffers = 1;
 	counts.m_UniformBuffers = 1;
+	counts.m_StorageImages = 1;
+	counts.m_AccelerationStructures = 1;
 
 	m_pDescriptorPool = new DescriptorPoolVK(m_pContext->getDevice());
 	m_pDescriptorPool->init(counts, 1);

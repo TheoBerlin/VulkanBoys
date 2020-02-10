@@ -17,7 +17,9 @@ public:
     void writeStorageBufferDescriptor(VkBuffer buffer, uint32_t binding);
     void writeCombinedImageDescriptor(VkImageView imageView, VkSampler sampler, uint32_t binding);
     void writeSampledImageDescriptor(VkImageView imageView, uint32_t binding);
-    
+	void writeStorageImageDescriptor(VkImageView imageView, uint32_t binding);
+	void writeAccelerationStructureDescriptor(VkAccelerationStructureNV accelerationStructure, uint32_t binding);
+	
     VkDescriptorSet getDescriptorSet() const { return m_DescriptorSet; }
     const DescriptorCounts& getDescriptorCounts() const { return m_DescriptorCounts; }
 

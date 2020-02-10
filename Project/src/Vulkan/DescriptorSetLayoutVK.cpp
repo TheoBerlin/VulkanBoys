@@ -54,6 +54,30 @@ void DescriptorSetLayoutVK::addBindingSampledImage(VkShaderStageFlags shaderStag
     m_DescriptorSetLayoutBindings.push_back(descriptorSetLayoutBinding);
 }
 
+void DescriptorSetLayoutVK::addBindingStorageImage(VkShaderStageFlags shaderStageFlags, uint32_t bindingSlot, uint32_t descriptorCount)
+{
+	VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = {};
+	descriptorSetLayoutBinding.binding = bindingSlot;
+	descriptorSetLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	descriptorSetLayoutBinding.descriptorCount = descriptorCount;
+	descriptorSetLayoutBinding.stageFlags = shaderStageFlags;
+	descriptorSetLayoutBinding.pImmutableSamplers = nullptr;
+
+	m_DescriptorSetLayoutBindings.push_back(descriptorSetLayoutBinding);
+}
+
+void DescriptorSetLayoutVK::addBindingAccelerationStructure(VkShaderStageFlags shaderStageFlags, uint32_t bindingSlot, uint32_t descriptorCount)
+{
+	VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = {};
+	descriptorSetLayoutBinding.binding = bindingSlot;
+	descriptorSetLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV;
+	descriptorSetLayoutBinding.descriptorCount = descriptorCount;
+	descriptorSetLayoutBinding.stageFlags = shaderStageFlags;
+	descriptorSetLayoutBinding.pImmutableSamplers = nullptr;
+
+	m_DescriptorSetLayoutBindings.push_back(descriptorSetLayoutBinding);
+}
+
 void DescriptorSetLayoutVK::addBindingCombinedImage(VkShaderStageFlags shaderStageFlags, const VkSampler* pImmutableSampler, uint32_t bindingSlot, uint32_t descriptorCount)
 {
     VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = {};

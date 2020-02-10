@@ -80,74 +80,74 @@ void Application::init()
 	//Load mesh
 	using namespace glm;
 
-	Vertex vertices[] =
-	{
-		//FRONT FACE
-		{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-		{ vec4( 0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-		{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-		{ vec4( 0.5, -0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+	//Vertex vertices[] =
+	//{
+	//	//FRONT FACE
+	//	{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+	//	{ vec4( 0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+	//	{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+	//	{ vec4( 0.5, -0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
 
-		//BACK FACE
-		{ vec4( 0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-		{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-		{ vec4( 0.5, -0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-		{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+	//	//BACK FACE
+	//	{ vec4( 0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+	//	{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+	//	{ vec4( 0.5, -0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+	//	{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
 
-		//RIGHT FACE
-		{ vec4(0.5,  0.5, -0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 0.0f) },
-		{ vec4(0.5,  0.5,  0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 0.0f) },
-		{ vec4(0.5, -0.5, -0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 1.0f) },
-		{ vec4(0.5, -0.5,  0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 1.0f) },
+	//	//RIGHT FACE
+	//	{ vec4(0.5,  0.5, -0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 0.0f) },
+	//	{ vec4(0.5,  0.5,  0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 0.0f) },
+	//	{ vec4(0.5, -0.5, -0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 1.0f) },
+	//	{ vec4(0.5, -0.5,  0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 1.0f) },
 
-		//LEFT FACE
-		{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 0.0f) },
-		{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 0.0f) },
-		{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 1.0f) },
-		{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 1.0f) },
+	//	//LEFT FACE
+	//	{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 0.0f) },
+	//	{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 0.0f) },
+	//	{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 1.0f) },
+	//	{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 1.0f) },
 
-		//TOP FACE
-		{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-		{ vec4( 0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-		{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-		{ vec4( 0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+	//	//TOP FACE
+	//	{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+	//	{ vec4( 0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+	//	{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+	//	{ vec4( 0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
 
-		//BOTTOM FACE
-		{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-		{ vec4( 0.5, -0.5, -0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-		{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-		{ vec4( 0.5, -0.5,  0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
-	};
+	//	//BOTTOM FACE
+	//	{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+	//	{ vec4( 0.5, -0.5, -0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+	//	{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+	//	{ vec4( 0.5, -0.5,  0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+	//};
 
-	uint32_t indices[] =
-	{
-		//FRONT FACE
-		2, 1, 0,
-		2, 3, 1,
+	//uint32_t indices[] =
+	//{
+	//	//FRONT FACE
+	//	2, 1, 0,
+	//	2, 3, 1,
 
-		//BACK FACE
-		6, 5, 4,
-		6, 7, 5,
+	//	//BACK FACE
+	//	6, 5, 4,
+	//	6, 7, 5,
 
-		//RIGHT FACE
-		10, 9, 8,
-		10, 11, 9,
+	//	//RIGHT FACE
+	//	10, 9, 8,
+	//	10, 11, 9,
 
-		//LEFT FACE
-		12, 13, 14,
-		13, 15, 14,
+	//	//LEFT FACE
+	//	12, 13, 14,
+	//	13, 15, 14,
 
-		//TOP FACE
-		18, 17, 16,
-		18, 19, 17,
+	//	//TOP FACE
+	//	18, 17, 16,
+	//	18, 19, 17,
 
-		//BOTTOM FACE
-		22, 21, 20,
-		22, 23, 21
-	};
+	//	//BOTTOM FACE
+	//	22, 21, 20,
+	//	22, 23, 21
+	//};
 
-	m_pMesh = m_pContext->createMesh();
-	m_pMesh->initFromMemory(vertices, 24, indices, 36);
+	//m_pMesh = m_pContext->createMesh();
+	//m_pMesh->initFromMemory(vertices, 24, indices, 36);
 }
 
 void Application::run()
@@ -306,14 +306,24 @@ void Application::renderUI(double dt)
 
 void Application::render(double dt)
 {
-	m_pRenderer->beginFrame(m_Camera);
+	static bool enableRayTracing = true;
+	if (enableRayTracing)
+	{
+		m_pRenderer->beginRayTraceFrame(m_Camera);
+		m_pRenderer->traceRays();
+		m_pRenderer->endRayTraceFrame();
+	}
+	else
+	{
+		m_pRenderer->beginFrame(m_Camera);
 
-	//g_Rotation = glm::rotate(g_Rotation, glm::radians(15.0f * float(dt)), glm::vec3(0.0f, 0.0f, 1.0f));
+		//g_Rotation = glm::rotate(g_Rotation, glm::radians(15.0f * float(dt)), glm::vec3(0.0f, 0.0f, 1.0f));
 
-	m_pRenderer->submitMesh(m_pMesh, g_Color, glm::mat4(1.0f));
-	m_pRenderer->drawImgui(m_pImgui);
+		m_pRenderer->submitMesh(m_pMesh, g_Color, glm::mat4(1.0f));
+		m_pRenderer->drawImgui(m_pImgui);
 
-	m_pRenderer->endFrame();
+		m_pRenderer->endFrame();
+	}
 
 	m_pRenderer->swapBuffers();
 }

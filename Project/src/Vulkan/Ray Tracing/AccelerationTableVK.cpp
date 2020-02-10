@@ -15,7 +15,6 @@
 
 AccelerationTableVK::AccelerationTableVK(IGraphicsContext* pContext) :
 	m_pContext(reinterpret_cast<GraphicsContextVK*>(pContext)),
-	m_MaxMemReqBLAS(0),
 	m_pTempCommandPool(nullptr),
 	m_pTempCommandBuffer(nullptr)
 {
@@ -54,7 +53,7 @@ AccelerationTableVK::~AccelerationTableVK()
 
 bool AccelerationTableVK::finalize()
 {
-	m_pTempCommandPool = new CommandPoolVK(m_pContext->getDevice(), m_pContext->getDevice()->getQueueFamilyIndices().transferFamily.value());
+	m_pTempCommandPool = new CommandPoolVK(m_pContext->getDevice(), m_pContext->getDevice()->getQueueFamilyIndices().computeFamily.value());
 	m_pTempCommandPool->init();
 
 	m_pTempCommandBuffer = m_pTempCommandPool->allocateCommandBuffer();
@@ -69,23 +68,59 @@ bool AccelerationTableVK::finalize()
 	return true;
 }
 
-uint32_t AccelerationTableVK::addMeshInstance(MeshVK* pMesh, const glm::mat3x4& transform)
+uint32_t AccelerationTableVK::addMeshInstance(IMesh* pMesh, const glm::mat3x4& transform)
 {
+	//MeshVK* pVulkanMesh = reinterpret_cast<MeshVK*>(pMesh);
+	Vertex vertices[] =
+	{
+			{ { ( 1.0f,  1.0f, 0.0f) } },
+			{ { (-1.0f,  1.0f, 0.0f) } },
+			{ { ( 0.0f, -1.0f, 0.0f) } }
+	};
+
+	// Setup indices
+	uint32_t indices[] = { 0, 1, 2 };
+
+	void* pVertDst;
+	void* pIndexDst;
+
+	BufferParams vertBufferParams = {};
+	vertBufferParams.Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	vertBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	vertBufferParams.SizeInBytes = 3 * sizeof(Vertex);
+
+	BufferVK* pTempVertexBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
+	pTempVertexBuffer->init(vertBufferParams);
+	pTempVertexBuffer->map(&pVertDst);
+	memcpy(pVertDst, vertices, 3 * sizeof(Vertex));
+	pTempVertexBuffer->unmap();
+
+	BufferParams indexBufferParams = {};
+	indexBufferParams.Usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+	indexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	indexBufferParams.SizeInBytes = 3 * sizeof(uint32_t);
+	
+	BufferVK* pTempIndexBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
+	pTempIndexBuffer->init(indexBufferParams);
+	pTempIndexBuffer->map(&pIndexDst);
+	memcpy(pIndexDst, indices, 3 * sizeof(uint32_t));
+	pTempIndexBuffer->unmap();
+
 	BottomLevelAccelerationStructure bottomLevelAccelerationStructure = {};
 	
-	if (m_BottomLevelAccelerationStructures.find(pMesh) == m_BottomLevelAccelerationStructures.end())
+	if (m_BottomLevelAccelerationStructures.find(reinterpret_cast<MeshVK*>(pMesh)) == m_BottomLevelAccelerationStructures.end())
 	{
 		bottomLevelAccelerationStructure.geometry.sType = VK_STRUCTURE_TYPE_GEOMETRY_NV;
 		bottomLevelAccelerationStructure.geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_NV;
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NV;
-		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexData = ((BufferVK*)pMesh->getVertexBuffer())->getBuffer();
+		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexData = pTempVertexBuffer->getBuffer();//((BufferVK*)pVulkanMesh->getVertexBuffer())->getBuffer();
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexOffset = 0;
-		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexCount = static_cast<uint32_t>(pMesh->getVertexBuffer()->getSizeInBytes() / sizeof(Vertex));
+		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexCount = 3;//static_cast<uint32_t>(pVulkanMesh->getVertexBuffer()->getSizeInBytes() / sizeof(Vertex));
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexStride = sizeof(Vertex);
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
-		bottomLevelAccelerationStructure.geometry.geometry.triangles.indexData = ((BufferVK*)pMesh->getIndexBuffer())->getBuffer();
+		bottomLevelAccelerationStructure.geometry.geometry.triangles.indexData = pTempIndexBuffer->getBuffer();//((BufferVK*)pVulkanMesh->getIndexBuffer())->getBuffer();
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.indexOffset = 0;
-		bottomLevelAccelerationStructure.geometry.geometry.triangles.indexCount = pMesh->getIndexBuffer()->getSizeInBytes() / sizeof(uint32_t);
+		bottomLevelAccelerationStructure.geometry.geometry.triangles.indexCount = 3;//pVulkanMesh->getIndexBuffer()->getSizeInBytes() / sizeof(uint32_t);
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.indexType = VK_INDEX_TYPE_UINT32;
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.transformData = VK_NULL_HANDLE;
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.transformOffset = 0;
@@ -119,7 +154,7 @@ uint32_t AccelerationTableVK::addMeshInstance(MeshVK* pMesh, const glm::mat3x4& 
 		memoryAllocateInfo.memoryTypeIndex = findMemoryType(m_pDevice->getPhysicalDevice(), memoryRequirements2.memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 		VK_CHECK_RESULT(vkAllocateMemory(m_pDevice->getDevice(), &memoryAllocateInfo, nullptr, &bottomLevelAccelerationStructure.memory), "--- AccelerationTable: Could not allocate memory for BLAS!");
 
-		VkBindAccelerationStructureMemoryInfoNV accelerationStructureMemoryInfo{};
+		VkBindAccelerationStructureMemoryInfoNV accelerationStructureMemoryInfo = {};
 		accelerationStructureMemoryInfo.sType = VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NV;
 		accelerationStructureMemoryInfo.accelerationStructure = bottomLevelAccelerationStructure.accelerationStructure;
 		accelerationStructureMemoryInfo.memory = bottomLevelAccelerationStructure.memory;
@@ -127,24 +162,16 @@ uint32_t AccelerationTableVK::addMeshInstance(MeshVK* pMesh, const glm::mat3x4& 
 
 		VK_CHECK_RESULT(m_pDevice->vkGetAccelerationStructureHandleNV(m_pDevice->getDevice(), bottomLevelAccelerationStructure.accelerationStructure, sizeof(uint64_t), &bottomLevelAccelerationStructure.handle), "--- AccelerationTable: Could not get handle for BLAS!");
 
-		m_BottomLevelAccelerationStructures[pMesh] = bottomLevelAccelerationStructure;
-
-		VkMemoryRequirements2 memReqBLAS;
-		memoryRequirementsInfo.accelerationStructure = bottomLevelAccelerationStructure.accelerationStructure;
-		m_pDevice->vkGetAccelerationStructureMemoryRequirementsNV(m_pDevice->getDevice(), &memoryRequirementsInfo, &memReqBLAS);
-
-		if (memReqBLAS.memoryRequirements.size > m_MaxMemReqBLAS)
-			m_MaxMemReqBLAS = memReqBLAS.memoryRequirements.size;
-		
+		m_BottomLevelAccelerationStructures[reinterpret_cast<MeshVK*>(pMesh)] = bottomLevelAccelerationStructure;
 	}
 	else
 	{
-		bottomLevelAccelerationStructure = m_BottomLevelAccelerationStructures[pMesh];
+		bottomLevelAccelerationStructure = m_BottomLevelAccelerationStructures[reinterpret_cast<MeshVK*>(pMesh)];
 	}
 
 	GeometryInstance geometryInstance = {};
 	geometryInstance.transform = transform;
-	geometryInstance.instanceId = 0;
+	geometryInstance.instanceId = m_AllGeometryInstances.size();
 	geometryInstance.mask = 0xff;
 	geometryInstance.instanceOffset = 0;
 	geometryInstance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_CULL_DISABLE_BIT_NV;
@@ -181,7 +208,7 @@ bool AccelerationTableVK::initTLAS()
 	memoryAllocateInfo.memoryTypeIndex = findMemoryType(m_pDevice->getPhysicalDevice(), memoryRequirements2.memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	VK_CHECK_RESULT_RETURN_FALSE(vkAllocateMemory(m_pDevice->getDevice(), &memoryAllocateInfo, nullptr, &m_TopLevelAccelerationStructure.memory), "--- AccelerationTable: Could not allocate memory for TLAS!");
 
-	VkBindAccelerationStructureMemoryInfoNV accelerationStructureMemoryInfo{};
+	VkBindAccelerationStructureMemoryInfoNV accelerationStructureMemoryInfo = {};
 	accelerationStructureMemoryInfo.sType = VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NV;
 	accelerationStructureMemoryInfo.accelerationStructure = m_TopLevelAccelerationStructure.accelerationStructure;
 	accelerationStructureMemoryInfo.memory = m_TopLevelAccelerationStructure.memory;
@@ -193,7 +220,9 @@ bool AccelerationTableVK::initTLAS()
 
 bool AccelerationTableVK::buildAccelerationTable()
 {
-	//Create Buffers
+	//Create TLAS
+	if (!initTLAS())
+		return false;
 
 	// Acceleration structure build requires some scratch space to store temporary information
 	VkAccelerationStructureMemoryRequirementsInfoNV memoryRequirementsInfo = {};
@@ -207,7 +236,7 @@ bool AccelerationTableVK::buildAccelerationTable()
 	BufferParams scratchBufferParams = {};
 	scratchBufferParams.Usage = VK_BUFFER_USAGE_RAY_TRACING_BIT_NV;
 	scratchBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	scratchBufferParams.SizeInBytes = std::max(m_MaxMemReqBLAS, memReqTLAS.memoryRequirements.size);
+	scratchBufferParams.SizeInBytes = std::max(findMaxMemReqBLAS(), memReqTLAS.memoryRequirements.size);
 
 	BufferVK* pScratchBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
 	pScratchBuffer->init(scratchBufferParams);
@@ -231,11 +260,7 @@ bool AccelerationTableVK::buildAccelerationTable()
 	memoryBarrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NV | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NV;
 	memoryBarrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NV | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NV;
 	
-	//Create TLAS
-	
-	if (!initTLAS())
-		return false;
-	
+	m_pTempCommandBuffer->reset();
 	m_pTempCommandBuffer->begin();
 	
 	for (auto& bottomLevelAccelerationStructure : m_BottomLevelAccelerationStructures)
@@ -268,8 +293,9 @@ bool AccelerationTableVK::buildAccelerationTable()
 		Build top-level acceleration structure
 	*/
 	VkAccelerationStructureInfoNV buildInfo = {};
+	buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV;
 	buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_NV;
-	buildInfo.pGeometries = nullptr;
+	buildInfo.pGeometries = 0;
 	buildInfo.geometryCount = 0;
 	buildInfo.instanceCount = m_AllGeometryInstances.size();
 
@@ -287,9 +313,32 @@ bool AccelerationTableVK::buildAccelerationTable()
 	vkCmdPipelineBarrier(m_pTempCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, 0, 1, &memoryBarrier, 0, 0, 0, 0);
 
 	m_pTempCommandBuffer->end();
+	m_pContext->getDevice()->executeCommandBuffer(m_pContext->getDevice()->getComputeQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_pContext->getDevice()->wait();
 
 	delete pScratchBuffer;
 	delete pInstanceBuffer;
 
 	return true;
+}
+
+VkDeviceSize AccelerationTableVK::findMaxMemReqBLAS()
+{
+	VkDeviceSize maxSize = 0;
+	
+	VkAccelerationStructureMemoryRequirementsInfoNV memoryRequirementsInfo = {};
+	memoryRequirementsInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV;
+	memoryRequirementsInfo.type = VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_BUILD_SCRATCH_NV;
+	
+	for (auto& bottomLevelAccelerationStructure : m_BottomLevelAccelerationStructures)
+	{
+		VkMemoryRequirements2 memReqBLAS;
+		memoryRequirementsInfo.accelerationStructure = bottomLevelAccelerationStructure.second.accelerationStructure;
+		m_pDevice->vkGetAccelerationStructureMemoryRequirementsNV(m_pDevice->getDevice(), &memoryRequirementsInfo, &memReqBLAS);
+
+		if (memReqBLAS.memoryRequirements.size > maxSize)
+			maxSize = memReqBLAS.memoryRequirements.size;
+	}
+
+	return maxSize;
 }

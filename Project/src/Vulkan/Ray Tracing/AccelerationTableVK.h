@@ -48,12 +48,15 @@ public:
 	AccelerationTableVK(IGraphicsContext* pContext);
 	~AccelerationTableVK();
 
-	uint32_t addMeshInstance(MeshVK* pMesh, const glm::mat3x4& transform = glm::mat3x4());
+	uint32_t addMeshInstance(IMesh* pMesh, const glm::mat3x4& transform = glm::mat3x4(1.0f));
 	bool finalize();
 
+	const TopLevelAccelerationStructure& getTLAS() { return m_TopLevelAccelerationStructure; }
+	
 private:
 	bool initTLAS();
 	bool buildAccelerationTable();
+	VkDeviceSize findMaxMemReqBLAS();
 	
 private:
 	GraphicsContextVK* m_pContext;
@@ -63,8 +66,6 @@ private:
 	std::unordered_map<MeshVK*, BottomLevelAccelerationStructure> m_BottomLevelAccelerationStructures;
 
 	std::vector<GeometryInstance> m_AllGeometryInstances;
-
-	VkDeviceSize m_MaxMemReqBLAS;
 	
 	CommandPoolVK* m_pTempCommandPool;
 	CommandBufferVK* m_pTempCommandBuffer;

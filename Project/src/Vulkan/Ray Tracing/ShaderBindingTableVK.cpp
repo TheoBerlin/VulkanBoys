@@ -45,7 +45,13 @@ bool ShaderBindingTableVK::init(RayTracingPipelineVK* pRayTracingPipeline)
 		m_pSBT->unmap();
 		return false;
 	}
-	
 	m_pSBT->unmap();
+
+	m_BindingOffsetRaygenShaderGroup = 0;
+	m_BindingOffsetMissShaderGroup = pRayTracingPipeline->getNumRaygenShaderGroups() * shaderGroupHandleSize;
+	m_BindingOffsetIntersectShaderGroup = m_BindingOffsetMissShaderGroup + pRayTracingPipeline->getNumMissShaderGroups() * shaderGroupHandleSize;
+	m_BindingStride = shaderGroupHandleSize; //Todo: Is this even correct?
+	
+	LOG("--- ShaderBindingTable: Successfully created ShaderBindingTable!");
 	return true;
 }

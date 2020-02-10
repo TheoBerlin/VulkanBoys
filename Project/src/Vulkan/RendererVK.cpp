@@ -22,6 +22,9 @@
 #include "Ray Tracing/RayTracingPipelineVK.h"
 #include "Ray Tracing/AccelerationTableVK.h"
 #include "ShaderVK.h"
+#include "Scene.h"
+#include "ImageVK.h"
+#include "ImageViewVK.h"
 
 RendererVK::RendererVK(GraphicsContextVK* pContext)
 	: m_pContext(pContext),
@@ -109,12 +112,25 @@ bool RendererVK::init()
 	}
 
 	//Last thing is to write to the descriptor set
-	m_pDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer->getBuffer(), 0);
+	//m_pDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer->getBuffer(), 0);
 
 	//Testing
-	AccelerationTableVK* pAccelerationTable = new AccelerationTableVK(m_pContext);
-	pAccelerationTable->addMeshInstance(new Mesh());
-	pAccelerationTable->finalize();
+	Vertex vertices[] = 
+	{
+			{ { ( 1.0f,  1.0f, 0.0f) } },
+			{ { (-1.0f,  1.0f, 0.0f) } },
+			{ { ( 0.0f, -1.0f, 0.0f) } }
+	};
+
+	// Setup indices
+	uint32_t indices[] = { 0, 1, 2 };
+
+	IMesh* pMesh = m_pContext->createMesh();
+	pMesh->initFromMemory(vertices, 3, indices, 3);
+	
+	m_pAccelerationTable = new AccelerationTableVK(m_pContext);
+	m_pAccelerationTable->addMeshInstance(pMesh);
+	m_pAccelerationTable->finalize();
 
 	RaygenGroupParams raygenGroupParams = {};
 	IntersectGroupParams intersectGroupParams = {};
@@ -122,29 +138,120 @@ bool RendererVK::init()
 
 	{
 		ShaderVK* pRaygenShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-		pRaygenShader->loadFromFile(EShader::RAYGEN_SHADER, "main", "assets/shaders/raygen.spv");
+		pRaygenShader->initFromFile(EShader::RAYGEN_SHADER, "main", "assets/shaders/raytracing/raygen.spv");
+		pRaygenShader->finalize();
 		raygenGroupParams.pRaygenShader = pRaygenShader;
 
 		ShaderVK* pClosestHitShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-		pClosestHitShader->loadFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/closesthit.spv");
+		pClosestHitShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/closesthit.spv");
+		pClosestHitShader->finalize();
 		intersectGroupParams.pClosestHitShader = pClosestHitShader;
 
 		ShaderVK* pMissShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-		pMissShader->loadFromFile(EShader::MISS_SHADER, "main", "assets/shaders/miss.spv");
+		pMissShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/miss.spv");
+		pMissShader->finalize();
 		missGroupParams.pMissShader = pMissShader;
 	}
 
-	PipelineLayoutVK* pPipelineLayout = new PipelineLayoutVK(m_pContext->getDevice());
-	//pPipelineLayout->createPipelineLayout();
-		
-	RayTracingPipelineVK* pRayTracingPipeline = new RayTracingPipelineVK(m_pContext->getDevice());
-	pRayTracingPipeline->addRaygenShaderGroup(raygenGroupParams);
-	pRayTracingPipeline->addIntersectShaderGroup(intersectGroupParams);
-	pRayTracingPipeline->addMissShaderGroup(missGroupParams);
-	pRayTracingPipeline->finalize(pPipelineLayout);
+	std::cout << "Creating RTX Pipeline Layout" << std::endl;
+	createRayTracingPipelineLayouts();
 
-	ShaderBindingTableVK* pSBT = new ShaderBindingTableVK(m_pContext);
-	pSBT->init(pRayTracingPipeline);
+	m_pRayTracingPipeline = new RayTracingPipelineVK(m_pContext->getDevice());
+	m_pRayTracingPipeline->addRaygenShaderGroup(raygenGroupParams);
+	m_pRayTracingPipeline->addIntersectShaderGroup(intersectGroupParams);
+	m_pRayTracingPipeline->addMissShaderGroup(missGroupParams);
+	m_pRayTracingPipeline->finalize(m_pRayTracingPipelineLayout);
+	
+	m_pSBT = new ShaderBindingTableVK(m_pContext);
+	m_pSBT->init(m_pRayTracingPipeline);
+
+	ImageParams imageParams = {};
+	imageParams.Type = VK_IMAGE_TYPE_2D;
+	imageParams.Format = m_pContext->getSwapChain()->getFormat();
+	imageParams.Extent.width = m_pContext->getSwapChain()->getExtent().width;
+	imageParams.Extent.height = m_pContext->getSwapChain()->getExtent().height;
+	imageParams.Extent.depth = 1;
+	imageParams.MipLevels = 1;
+	imageParams.ArrayLayers = 1;
+	imageParams.Samples = VK_SAMPLE_COUNT_1_BIT;
+	imageParams.Usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+	imageParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	
+	m_pRayTracingStorageImage = new ImageVK(m_pContext->getDevice());
+	m_pRayTracingStorageImage->init(imageParams);
+
+	ImageViewParams imageViewParams = {};
+	imageViewParams.Type = VK_IMAGE_VIEW_TYPE_2D;
+	imageViewParams.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+	imageViewParams.FirstMipLevel = 0;
+	imageViewParams.MipLevels = 1;
+	imageViewParams.FirstLayer = 0;
+	imageViewParams.LayerCount = 1;
+	
+	m_pRayTracingStorageImageView = new ImageViewVK(m_pContext->getDevice(), m_pRayTracingStorageImage);
+	m_pRayTracingStorageImageView->init(imageViewParams);
+
+	CommandBufferVK* pTempCommandBuffer = m_ppCommandPools[0]->allocateCommandBuffer();
+	pTempCommandBuffer->reset();
+	pTempCommandBuffer->begin();
+	
+	VkImageMemoryBarrier imageMemoryBarrier = {};
+	imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	imageMemoryBarrier.image = m_pRayTracingStorageImage->getImage();
+	imageMemoryBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+	imageMemoryBarrier.srcAccessMask = 0;
+
+	vkCmdPipelineBarrier(
+		pTempCommandBuffer->getCommandBuffer(),
+		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		0,
+		0, nullptr,
+		0, nullptr,
+		1, &imageMemoryBarrier);
+	pTempCommandBuffer->end();
+	
+	m_pContext->getDevice()->executeCommandBuffer(m_pContext->getDevice()->getGraphicsQueue(), pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_pContext->getDevice()->wait();
+
+	BufferParams rayTracingUniformBufferParams = {};
+	rayTracingUniformBufferParams.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	rayTracingUniformBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	rayTracingUniformBufferParams.SizeInBytes = sizeof(TempRayTracingUniformData);
+	
+	m_pRayTracingUniformBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
+	m_pRayTracingUniformBuffer->init(rayTracingUniformBufferParams);
+
+	void* pMapped;
+	m_pRayTracingUniformBuffer->map(&pMapped);
+	static glm::mat4 perspective = glm::perspective(glm::radians(60.0f), (float)m_pContext->getSwapChain()->getExtent().width / (float)m_pContext->getSwapChain()->getExtent().height, 0.1f, 512.0f);
+
+	static glm::mat4 rotM = glm::mat4(1.0f);
+	static glm::mat4 transM;
+
+	rotM = glm::rotate(rotM, glm::radians(0.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+	rotM = glm::rotate(rotM, glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	rotM = glm::rotate(rotM, glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+
+	transM = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.5f));
+
+	static glm::mat4 viewMatrix = transM * rotM;
+
+	TempRayTracingUniformData rayTracingUniformData = {};
+	//glm::mat4 perspectiveInv(1.026400, 0.000000, -0.000000, 0.000000, 0.000000, 0.577350, 0.000000, -0.000000, -0.000000, 0.000000, -0.000000, -9.998046, 0.000000, -0.000000, -1.000000, 9.999999);
+	//glm::mat4 viewInv(1.000000, -0.000000, 0.000000, -0.000000, -0.000000, 1.000000, -0.000000, 0.000000, 0.000000, -0.000000, 1.000000, -0.000000, -0.000000, 0.000000, 2.500000, 1.000000);
+	//rayTracingUniformData.projInverse = perspectiveInv;
+	//rayTracingUniformData.viewInverse = viewInv;
+	rayTracingUniformData.projInverse = glm::inverse(perspective);
+	rayTracingUniformData.viewInverse = glm::inverse(viewMatrix);
+	memcpy(pMapped, &rayTracingUniformData, sizeof(TempRayTracingUniformData));
+	m_pRayTracingUniformBuffer->unmap();
+
+	m_pRayTracingDescriptorSet->writeAccelerationStructureDescriptor(m_pAccelerationTable->getTLAS().accelerationStructure, 0);
+	m_pRayTracingDescriptorSet->writeStorageImageDescriptor(m_pRayTracingStorageImageView->getImageView(), 1);
+	m_pRayTracingDescriptorSet->writeUniformBufferDescriptor(m_pRayTracingUniformBuffer->getBuffer(), 2);
 	
 	return true;
 }
@@ -197,6 +304,58 @@ void RendererVK::endFrame()
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 	DeviceVK* pDevice = m_pContext->getDevice();
+	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppCommandBuffers[m_CurrentFrame], waitSemaphores, waitStages, 1, signalSemaphores, 1);
+}
+
+void RendererVK::beginRayTraceFrame(const Camera& camera)
+{
+	m_ppComputeCommandBuffers[m_CurrentFrame]->reset();
+	m_ppComputeCommandPools[m_CurrentFrame]->reset();
+
+	m_ppComputeCommandBuffers[m_CurrentFrame]->begin();
+
+	m_ppComputeCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipelineLayout, 0, 1, &m_pRayTracingDescriptorSet, 0, nullptr);
+}
+
+void RendererVK::endRayTraceFrame()
+{
+	//m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
+	m_ppComputeCommandBuffers[m_CurrentFrame]->end();
+
+	DeviceVK* pDevice = m_pContext->getDevice();
+	pDevice->executeCommandBuffer(pDevice->getComputeQueue(), m_ppComputeCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
+
+	//Prepare for frame
+	m_pContext->getSwapChain()->acquireNextImage(m_ImageAvailableSemaphores[m_CurrentFrame]);
+	uint32_t backBufferIndex = m_pContext->getSwapChain()->getImageIndex();
+
+	m_ppCommandBuffers[m_CurrentFrame]->reset();
+	m_ppCommandPools[m_CurrentFrame]->reset();
+
+	m_ppCommandBuffers[m_CurrentFrame]->begin();
+
+	ImageVK* pCurrentImage = m_pContext->getSwapChain()->getImage(m_pContext->getSwapChain()->getImageIndex());
+	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(pCurrentImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pRayTracingStorageImage, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+	VkImageCopy copyRegion{};
+	copyRegion.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+	copyRegion.srcOffset = { 0, 0, 0 };
+	copyRegion.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+	copyRegion.dstOffset = { 0, 0, 0 };
+	copyRegion.extent = { m_pContext->getSwapChain()->getExtent().width, m_pContext->getSwapChain()->getExtent().height, 1 };
+	vkCmdCopyImage(m_ppCommandBuffers[m_CurrentFrame]->getCommandBuffer(), m_pRayTracingStorageImage->getImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pCurrentImage->getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+
+	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(pCurrentImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pRayTracingStorageImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+
+	m_ppCommandBuffers[m_CurrentFrame]->end();
+
+	//Execute commandbuffer
+	VkSemaphore waitSemaphores[] = { m_ImageAvailableSemaphores[m_CurrentFrame] };
+	VkSemaphore signalSemaphores[] = { m_RenderFinishedSemaphores[m_CurrentFrame] };
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
 	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppCommandBuffers[m_CurrentFrame], waitSemaphores, waitStages, 1, signalSemaphores, 1);
 }
 
@@ -258,6 +417,15 @@ void RendererVK::submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat
 	m_ppCommandBuffers[m_CurrentFrame]->drawInstanced(pMesh->getIndexCount(), 1, 0, 0);
 }
 
+void RendererVK::traceRays()
+{
+	vkCmdBindPipeline(m_ppComputeCommandBuffers[m_CurrentFrame]->getCommandBuffer(), VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipeline->getPipeline());
+
+	m_ppComputeCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipelineLayout, 0, 1, &m_pRayTracingDescriptorSet, 0, nullptr);
+
+	m_ppComputeCommandBuffers[m_CurrentFrame]->traceRays(m_pSBT, m_pContext->getSwapChain()->getExtent().width, m_pContext->getSwapChain()->getExtent().height);
+}
+
 void RendererVK::drawImgui(IImgui* pImgui)
 {
 	pImgui->render(m_ppCommandBuffers[m_CurrentFrame]);
@@ -294,10 +462,10 @@ bool RendererVK::createCommandPoolAndBuffers()
 {
 	DeviceVK* pDevice = m_pContext->getDevice();
 
-	const uint32_t queueFamilyIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
+	const uint32_t graphicsQueueFamilyIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		m_ppCommandPools[i] = new CommandPoolVK(pDevice, queueFamilyIndex);
+		m_ppCommandPools[i] = new CommandPoolVK(pDevice, graphicsQueueFamilyIndex);
 		
 		if (!m_ppCommandPools[i]->init())
 		{
@@ -306,6 +474,23 @@ bool RendererVK::createCommandPoolAndBuffers()
 
 		m_ppCommandBuffers[i] = m_ppCommandPools[i]->allocateCommandBuffer();
 		if (m_ppCommandBuffers[i] == nullptr)
+		{
+			return false;
+		}
+	}
+
+	const uint32_t computeQueueFamilyIndex = pDevice->getQueueFamilyIndices().computeFamily.value();
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		m_ppComputeCommandPools[i] = new CommandPoolVK(pDevice, computeQueueFamilyIndex);
+
+		if (!m_ppComputeCommandPools[i]->init())
+		{
+			return false;
+		}
+
+		m_ppComputeCommandBuffers[i] = m_ppComputeCommandPools[i]->allocateCommandBuffer();
+		if (m_ppComputeCommandBuffers[i] == nullptr)
 		{
 			return false;
 		}
@@ -421,6 +606,8 @@ bool RendererVK::createPipelineLayouts()
 	descriptorCounts.m_SampledImages	= 128;
 	descriptorCounts.m_StorageBuffers	= 128;
 	descriptorCounts.m_UniformBuffers	= 128;
+	descriptorCounts.m_StorageImages = 1;
+	descriptorCounts.m_AccelerationStructures = 1;
 
 	m_pDescriptorPool = new DescriptorPoolVK(m_pContext->getDevice());
 	m_pDescriptorPool->init(descriptorCounts, 16);
@@ -442,6 +629,39 @@ bool RendererVK::createPipelineLayouts()
 	//TODO: Return bool
 	m_pPipelineLayout->init(descriptorSetLayouts, pushConstantRanges);
 
+	return true;
+}
+
+bool RendererVK::createRayTracingPipelineLayouts()
+{
+	m_pRayTracingDescriptorSetLayout = new DescriptorSetLayoutVK(m_pContext->getDevice());
+	m_pRayTracingDescriptorSetLayout->addBindingAccelerationStructure(VK_SHADER_STAGE_RAYGEN_BIT_NV, 0, 1);
+	m_pRayTracingDescriptorSetLayout->addBindingStorageImage(VK_SHADER_STAGE_RAYGEN_BIT_NV, 1, 1);
+	m_pRayTracingDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_RAYGEN_BIT_NV, 2, 1);
+	m_pRayTracingDescriptorSetLayout->finalize();
+
+	std::vector<const DescriptorSetLayoutVK*> rayTracingDescriptorSetLayouts = { m_pRayTracingDescriptorSetLayout };
+	std::vector<VkPushConstantRange> rayTracingPushConstantRanges;
+
+	//Descriptorpool
+	DescriptorCounts descriptorCounts = {};
+	descriptorCounts.m_SampledImages = 16;
+	descriptorCounts.m_StorageBuffers = 16;
+	descriptorCounts.m_UniformBuffers = 16;
+	descriptorCounts.m_StorageImages = 1;
+	descriptorCounts.m_AccelerationStructures = 1;
+
+	m_pRayTracingDescriptorPool = new DescriptorPoolVK(m_pContext->getDevice());
+	m_pRayTracingDescriptorPool->init(descriptorCounts, 16);
+	m_pRayTracingDescriptorSet = m_pRayTracingDescriptorPool->allocDescriptorSet(m_pRayTracingDescriptorSetLayout);
+	if (m_pRayTracingDescriptorSet == nullptr)
+	{
+		return false;
+	}
+	
+	m_pRayTracingPipelineLayout = new PipelineLayoutVK(m_pContext->getDevice());
+	m_pRayTracingPipelineLayout->init(rayTracingDescriptorSetLayouts, rayTracingPushConstantRanges);
+	
 	return true;
 }
 

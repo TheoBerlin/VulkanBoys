@@ -216,7 +216,7 @@ void SwapChainVK::createSwapChain(uint32_t width, uint32_t height)
 	swapChainInfo.imageColorSpace	= m_Format.colorSpace;
 	swapChainInfo.imageExtent		= m_Extent;
 	swapChainInfo.imageArrayLayers	= 1;
-	swapChainInfo.imageUsage		= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	swapChainInfo.imageUsage		= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 	swapChainInfo.preTransform		= capabilities.currentTransform;
 	swapChainInfo.compositeAlpha	= VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	swapChainInfo.presentMode		= m_PresentationMode;
