@@ -21,6 +21,14 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
+#ifdef max
+	#undef max
+#endif
+
+#ifdef min
+	#undef min
+#endif
+
 Application* Application::s_pInstance = nullptr;
 
 Application::Application()
@@ -32,7 +40,7 @@ Application::Application()
 	m_pInputHandler(nullptr),
 	m_Camera(),
 	m_IsRunning(false),
-	m_UpdateCamera(true)
+	m_UpdateCamera(false)
 {
 	ASSERT(s_pInstance == nullptr);
 	s_pInstance = this;
@@ -86,40 +94,40 @@ void Application::init()
 		Vertex vertices[] =
 		{
 			//FRONT FACE
-			{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-			{ vec4( 0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-			{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-			{ vec4( 0.5, -0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+			{ vec3(-0.5,  0.5, -0.5), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+			{ vec3( 0.5,  0.5, -0.5), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+			{ vec3(-0.5, -0.5, -0.5), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+			{ vec3( 0.5, -0.5, -0.5), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
 
 			//BACK FACE
-			{ vec4( 0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-			{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-			{ vec4( 0.5, -0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-			{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+			{ vec3( 0.5,  0.5,  0.5), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+			{ vec3(-0.5,  0.5,  0.5), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+			{ vec3( 0.5, -0.5,  0.5), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+			{ vec3(-0.5, -0.5,  0.5), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
 
 			//RIGHT FACE
-			{ vec4(0.5,  0.5, -0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 0.0f) },
-			{ vec4(0.5,  0.5,  0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 0.0f) },
-			{ vec4(0.5, -0.5, -0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 1.0f) },
-			{ vec4(0.5, -0.5,  0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 1.0f) },
+			{ vec3(0.5,  0.5, -0.5), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 0.0f) },
+			{ vec3(0.5,  0.5,  0.5), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 0.0f) },
+			{ vec3(0.5, -0.5, -0.5), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 1.0f) },
+			{ vec3(0.5, -0.5,  0.5), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 1.0f) },
 
 			//LEFT FACE
-			{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 0.0f) },
-			{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 0.0f) },
-			{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 1.0f) },
-			{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 1.0f) },
+			{ vec3(-0.5,  0.5, -0.5), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 0.0f) },
+			{ vec3(-0.5,  0.5,  0.5), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 0.0f) },
+			{ vec3(-0.5, -0.5, -0.5), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 1.0f) },
+			{ vec3(-0.5, -0.5,  0.5), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 1.0f) },
 
 			//TOP FACE
-			{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-			{ vec4( 0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-			{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-			{ vec4( 0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+			{ vec3(-0.5,  0.5,  0.5), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+			{ vec3( 0.5,  0.5,  0.5), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+			{ vec3(-0.5,  0.5, -0.5), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+			{ vec3( 0.5,  0.5, -0.5), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
 
 			//BOTTOM FACE
-			{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-			{ vec4( 0.5, -0.5, -0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-			{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-			{ vec4( 0.5, -0.5,  0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+			{ vec3(-0.5, -0.5, -0.5), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+			{ vec3( 0.5, -0.5, -0.5), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+			{ vec3(-0.5, -0.5,  0.5), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+			{ vec3( 0.5, -0.5,  0.5), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
 		};
 
 		uint32_t indices[] =
@@ -227,7 +235,7 @@ void Application::onMouseMove(uint32_t x, uint32_t y)
 {
 	if (m_UpdateCamera)
 	{
-		glm::vec2 middlePos = glm::vec2(m_pWindow->getClientWidth() / 2.0f, m_pWindow->getClientHeight() / 2.0f);
+		glm::vec2 middlePos = middlePos = glm::vec2(m_pWindow->getClientWidth() / 2.0f, m_pWindow->getClientHeight() / 2.0f);
 
 		float xoffset = middlePos.x - x;
 		float yoffset = middlePos.y - y;
@@ -237,10 +245,10 @@ void Application::onMouseMove(uint32_t x, uint32_t y)
 		yoffset *= sensitivity;
 
 		glm::vec3 rotation = m_Camera.getRotation();
-		rotation += glm::vec3(yoffset, xoffset, 0.0f);
-		m_Camera.setRotation(rotation);
+		rotation	+= glm::vec3(yoffset, xoffset, 0.0f);
+		rotation.x	 = std::max(std::min(rotation.x, 89.0f), -89.0f);
 
-		Input::setMousePosition(m_pWindow, middlePos);
+		m_Camera.setRotation(rotation);
 	}
 }
 
@@ -334,6 +342,11 @@ void Application::update(double dt)
 	}
 
 	m_Camera.update();
+
+	if (m_UpdateCamera)
+	{
+		Input::setMousePosition(m_pWindow, glm::vec2(m_pWindow->getClientWidth() / 2.0f, m_pWindow->getClientHeight() / 2.0f));
+	}
 }
 
 static glm::vec4 g_Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);

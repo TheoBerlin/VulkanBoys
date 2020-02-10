@@ -3,6 +3,8 @@
 #include <iostream>
 #include <cassert>
 #include <cstdio>
+#include <algorithm>
+
 #include <glm/glm.hpp>
 
 #define DECL_NO_COPY(Type) \
