@@ -22,6 +22,8 @@ public:
 	//OVERRIDE
 	virtual IRenderer* createRenderer() override;
 	virtual IImgui* createImgui() override;
+    
+    virtual IMesh* createMesh() override;
 
 	virtual IShader* createShader() override;
 	

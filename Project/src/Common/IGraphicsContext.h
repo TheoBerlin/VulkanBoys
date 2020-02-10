@@ -11,6 +11,7 @@ class IRenderer;
 class IImageView;
 class ITexture2D;
 class IFrameBuffer;
+class IMesh;
 
 enum API
 {
@@ -27,6 +28,8 @@ public:
 
 	virtual IShader* createShader() = 0;
 	
+    virtual IMesh* createMesh() = 0;
+    
 	virtual IBuffer* createBuffer() = 0;
 	virtual IFrameBuffer* createFrameBuffer() = 0;
 

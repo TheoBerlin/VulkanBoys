@@ -73,6 +73,11 @@ IImgui* GraphicsContextVK::createImgui()
 	return new ImguiVK(this);
 }
 
+IMesh* GraphicsContextVK::createMesh()
+{
+    return nullptr;
+}
+
 IShader* GraphicsContextVK::createShader()
 {
 	return new ShaderVK(&m_Device);

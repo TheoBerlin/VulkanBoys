@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 
 class IImgui;
+class IMesh;
 class Camera;
 
 class IRenderer
