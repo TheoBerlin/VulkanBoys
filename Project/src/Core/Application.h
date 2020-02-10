@@ -3,11 +3,12 @@
 
 #include "Camera.h"
 
+class IMesh;
 class IImgui;
 class IWindow;
 class IRenderer;
-class IGraphicsContext;
 class IInputHandler;
+class IGraphicsContext;
 
 class Application : public IEventHandler
 {
@@ -39,7 +40,7 @@ public:
 	static Application* get();
 
 private:
-	//Deltatime should be in milliseconds
+	//Deltatime should be in seconds
 	void update(double dt);
 	void renderUI(double dt);
 	void render(double dt);
@@ -51,6 +52,10 @@ private:
 	IRenderer* m_pRenderer;
 	IImgui* m_pImgui;
 	IInputHandler* m_pInputHandler;
+
+	//TODO: Resoures should they be here?
+	IMesh* m_pMesh;
+
 	bool m_IsRunning;
 
 	static Application* s_pInstance;

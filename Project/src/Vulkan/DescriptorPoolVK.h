@@ -15,10 +15,9 @@ public:
     DescriptorPoolVK(DeviceVK* pDevice);
     ~DescriptorPoolVK();
 
+    bool init(const DescriptorCounts& descriptorCounts, uint32_t descriptorSetCount);
+
     bool hasRoomFor(const DescriptorCounts& descriptors);
-
-    void initializeDescriptorPool(const DescriptorCounts& descriptorCounts, uint32_t descriptorSetCount);
-
     DescriptorSetVK* allocDescriptorSet(const DescriptorSetLayoutVK* pDescriptorSetLayout);
     void deallocateDescriptorSet(DescriptorSetVK* pDescriptorSet);
 

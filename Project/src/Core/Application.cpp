@@ -1,4 +1,6 @@
 #include "Application.h"
+
+#include "Common/IMesh.h"
 #include "Common/IImgui.h"
 #include "Common/IWindow.h"
 #include "Common/IShader.h"
@@ -26,6 +28,9 @@ Application::Application()
 	m_pContext(nullptr),
 	m_pRenderer(nullptr),
 	m_pImgui(nullptr),
+	m_pMesh(nullptr),
+	m_pInputHandler(nullptr),
+	m_Camera(),
 	m_IsRunning(false)
 {
 	ASSERT(s_pInstance == nullptr);
@@ -71,6 +76,78 @@ void Application::init()
 	m_Camera.setPosition(glm::vec3(0.0f, 0.0f, -1.0f));
 	m_Camera.setProjection(90.0f, m_pWindow->getWidth(), m_pWindow->getHeight(), 0.1f, 100.0f);
 	m_Camera.update();
+
+	//Load mesh
+	using namespace glm;
+
+	Vertex vertices[] =
+	{
+		//FRONT FACE
+		{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+		{ vec4( 0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+		{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+		{ vec4( 0.5, -0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+
+		//BACK FACE
+		{ vec4( 0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+		{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+		{ vec4( 0.5, -0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+		{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+
+		//RIGHT FACE
+		{ vec4(0.5,  0.5, -0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 0.0f) },
+		{ vec4(0.5,  0.5,  0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 0.0f) },
+		{ vec4(0.5, -0.5, -0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 1.0f) },
+		{ vec4(0.5, -0.5,  0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 1.0f) },
+
+		//LEFT FACE
+		{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 0.0f) },
+		{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 0.0f) },
+		{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 1.0f) },
+		{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 1.0f) },
+
+		//TOP FACE
+		{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+		{ vec4( 0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+		{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+		{ vec4( 0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+
+		//BOTTOM FACE
+		{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+		{ vec4( 0.5, -0.5, -0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+		{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+		{ vec4( 0.5, -0.5,  0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+	};
+
+	uint32_t indices[] =
+	{
+		//FRONT FACE
+		2, 1, 0,
+		2, 3, 1,
+
+		//BACK FACE
+		6, 5, 4,
+		6, 7, 5,
+
+		//RIGHT FACE
+		10, 9, 8,
+		10, 11, 9,
+
+		//LEFT FACE
+		12, 13, 14,
+		13, 15, 14,
+
+		//TOP FACE
+		18, 17, 16,
+		18, 19, 17,
+
+		//BOTTOM FACE
+		22, 21, 20,
+		22, 23, 21
+	};
+
+	m_pMesh = m_pContext->createMesh();
+	m_pMesh->initFromMemory(vertices, 24, indices, 36);
 }
 
 void Application::run()
@@ -110,6 +187,8 @@ void Application::release()
 	m_pWindow->removeEventHandler(m_pImgui);
 	m_pWindow->removeEventHandler(this);
 
+	m_pContext->sync();
+	SAFEDELETE(m_pMesh);
 	SAFEDELETE(m_pRenderer);
 	SAFEDELETE(m_pImgui);
 	SAFEDELETE(m_pContext);
@@ -209,7 +288,7 @@ void Application::update(double dt)
 	m_Camera.update();
 }
 
-static glm::vec4 g_TriangleColor = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+static glm::vec4 g_Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
 
 void Application::renderUI(double dt)
 {
@@ -218,7 +297,7 @@ void Application::renderUI(double dt)
 	ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);
 	if (ImGui::Begin("Color", NULL, ImGuiWindowFlags_NoResize))
 	{
-		ImGui::ColorPicker4("##picker", glm::value_ptr(g_TriangleColor), ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview);
+		ImGui::ColorPicker4("##picker", glm::value_ptr(g_Color), ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview);
 	}
 	ImGui::End();
 
@@ -229,13 +308,9 @@ void Application::render(double dt)
 {
 	m_pRenderer->beginFrame(m_Camera);
 
-	g_Rotation = glm::rotate(g_Rotation, glm::radians(15.0f * float(dt)), glm::vec3(0.0f, 0.0f, 1.0f));
+	//g_Rotation = glm::rotate(g_Rotation, glm::radians(15.0f * float(dt)), glm::vec3(0.0f, 0.0f, 1.0f));
 
-	m_pRenderer->drawTriangle(g_TriangleColor, glm::translate(glm::mat4(1.0f), glm::vec3( 0.5f, 0.5f, 0.0f)) * g_Rotation);
-	m_pRenderer->drawTriangle(g_TriangleColor, glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, 0.5f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(0.5f)));
-	m_pRenderer->drawTriangle(g_TriangleColor, glm::translate(glm::mat4(1.0f), glm::vec3( 0.5f, -0.5f, 0.0f)) * glm::scale(glm::mat4(1.0f), glm::vec3(0.5f)));
-	m_pRenderer->drawTriangle(g_TriangleColor, glm::translate(glm::mat4(1.0f), glm::vec3(-0.5f, -0.5f, 0.0f)));
-
+	m_pRenderer->submitMesh(m_pMesh, g_Color, glm::mat4(1.0f));
 	m_pRenderer->drawImgui(m_pImgui);
 
 	m_pRenderer->endFrame();

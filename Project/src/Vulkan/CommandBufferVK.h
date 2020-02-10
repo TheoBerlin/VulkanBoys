@@ -4,7 +4,7 @@
 #include <vector>
 
 class ImageVK;
-class StaginBufferVK;
+class StagingBufferVK;
 class DeviceVK;
 class BufferVK;
 class RenderPassVK;
@@ -61,8 +61,8 @@ private:
 	std::vector<VkBuffer> m_VertexBuffers;
 	std::vector<VkDescriptorSet> m_DescriptorSets;
 	DeviceVK* m_pDevice;
-	StaginBufferVK* m_pStagingBuffer;
-	StaginBufferVK* m_pStagingTexture;
+	StagingBufferVK* m_pStagingBuffer;
+	StagingBufferVK* m_pStagingTexture;
 	VkFence m_Fence;
 	VkCommandBuffer m_CommandBuffer;
 };

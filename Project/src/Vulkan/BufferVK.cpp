@@ -32,7 +32,7 @@ BufferVK::~BufferVK()
 	m_pDevice = nullptr;
 }
 
-bool BufferVK::create(const BufferParams& params)
+bool BufferVK::init(const BufferParams& params)
 {
 	VkBufferCreateInfo bufferInfo = {};
 	bufferInfo.sType	= VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -81,4 +81,9 @@ void BufferVK::unmap()
 {
 	vkUnmapMemory(m_pDevice->getDevice(), m_Memory);
 	m_IsMapped = false;
+}
+
+uint64_t BufferVK::getSizeInBytes() const
+{
+	return m_Params.SizeInBytes;
 }

@@ -11,15 +11,15 @@ public:
     DescriptorSetVK();
     ~DescriptorSetVK();
 
-    void initialize(VkDescriptorSet descriptorSetHandle, DeviceVK* pDevice, DescriptorPoolVK* pDescriptorPool, const DescriptorCounts& descriptorCounts);
-
-    VkDescriptorSet getDescriptorSet() const { return m_DescriptorSet; }
-    const DescriptorCounts& getDescriptorCounts() const { return m_DescriptorCounts; }
+    void init(VkDescriptorSet descriptorSetHandle, DeviceVK* pDevice, DescriptorPoolVK* pDescriptorPool, const DescriptorCounts& descriptorCounts);
 
     void writeUniformBufferDescriptor(VkBuffer buffer, uint32_t binding);
     void writeStorageBufferDescriptor(VkBuffer buffer, uint32_t binding);
     void writeCombinedImageDescriptor(VkImageView imageView, VkSampler sampler, uint32_t binding);
     void writeSampledImageDescriptor(VkImageView imageView, uint32_t binding);
+    
+    VkDescriptorSet getDescriptorSet() const { return m_DescriptorSet; }
+    const DescriptorCounts& getDescriptorCounts() const { return m_DescriptorCounts; }
 
 private:
     void writeBufferDescriptor(VkBuffer buffer, uint32_t binding, VkDescriptorType bufferType);

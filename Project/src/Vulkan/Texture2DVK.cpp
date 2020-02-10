@@ -30,7 +30,7 @@ Texture2DVK::~Texture2DVK()
 	SAFEDELETE(m_pTextureImageView);
 }
 
-bool Texture2DVK::loadFromFile(const std::string& filename)
+bool Texture2DVK::initFromFile(const std::string& filename)
 {
 	int texWidth, texHeight, bpp;
 	unsigned char* pPixels = stbi_load(filename.c_str(), &texWidth, &texHeight, &bpp, STBI_rgb_alpha);
@@ -41,12 +41,12 @@ bool Texture2DVK::loadFromFile(const std::string& filename)
 		return false;
 	}
 
-	loadFromMemory(pPixels, texWidth, texHeight);
+	initFromMemory(pPixels, texWidth, texHeight);
 	stbi_image_free(pPixels);
 	return true;
 }
 
-bool Texture2DVK::loadFromMemory(const void* pData, uint32_t width, uint32_t height)
+bool Texture2DVK::initFromMemory(const void* pData, uint32_t width, uint32_t height)
 {
 	// Transfer staging buffer contents to the final texture buffer
 	ImageParams imageParams = {};
