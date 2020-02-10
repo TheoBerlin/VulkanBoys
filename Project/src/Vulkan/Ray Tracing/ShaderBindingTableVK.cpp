@@ -33,7 +33,7 @@ bool ShaderBindingTableVK::finalize(RayTracingPipelineVK* pRayTracingPipeline)
 	sbtParams.SizeInBytes = sbtSize;
 	
 	m_pSBT = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
-	m_pSBT->create(sbtParams);
+	m_pSBT->init(sbtParams);
 
 	// Get shader identifiers
 	void* mappedMemory;
