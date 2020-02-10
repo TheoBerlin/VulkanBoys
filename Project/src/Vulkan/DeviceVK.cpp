@@ -12,7 +12,8 @@ DeviceVK::DeviceVK() :
 	m_GraphicsQueue(VK_NULL_HANDLE),
 	m_ComputeQueue(VK_NULL_HANDLE),
 	m_TransferQueue(VK_NULL_HANDLE),
-	m_PresentQueue(VK_NULL_HANDLE)
+	m_PresentQueue(VK_NULL_HANDLE),
+	m_RayTracingProperties({})
 {
 }
 
@@ -287,6 +288,13 @@ void DeviceVK::registerExtensionFunctions()
 		vkGetRayTracingShaderGroupHandlesNV = reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesNV>(vkGetDeviceProcAddr(m_Device, "vkGetRayTracingShaderGroupHandlesNV"));
 		vkCmdTraceRaysNV = reinterpret_cast<PFN_vkCmdTraceRaysNV>(vkGetDeviceProcAddr(m_Device, "vkCmdTraceRaysNV"));
 		std::cout << "--- Device: Successfully intialized [ VK_NV_ray_tracing ] function pointers!" << std::endl;
+
+		//Query Ray Tracing properties
+		m_RayTracingProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_NV;
+		VkPhysicalDeviceProperties2 deviceProps2 = {};
+		deviceProps2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+		deviceProps2.pNext = &m_RayTracingProperties;
+		vkGetPhysicalDeviceProperties2(m_PhysicalDevice, &deviceProps2);
 	}
 	else
 	{

@@ -59,8 +59,14 @@ bool AccelerationTableVK::finalize()
 
 	m_pTempCommandBuffer = m_pTempCommandPool->allocateCommandBuffer();
 	
-	if (!initTLAS())
+	if (!buildAccelerationTable())
+	{
+		std::cerr << "--- AccelerationTable: Failed to build Acceleration Table!" << std::endl;
 		return false;
+	}
+
+	std::cout << "--- AccelerationTable: Successfully initialized Acceleration Table!" << std::endl;
+	return true;
 }
 
 uint32_t AccelerationTableVK::addMeshInstance(Mesh* pMesh, const glm::mat3x4& transform)
@@ -137,7 +143,7 @@ uint32_t AccelerationTableVK::addMeshInstance(Mesh* pMesh, const glm::mat3x4& tr
 	}
 
 	GeometryInstance geometryInstance = {};
-	geometryInstance.transform = glm::mat3x4();
+	geometryInstance.transform = transform;
 	geometryInstance.instanceId = 0;
 	geometryInstance.mask = 0xff;
 	geometryInstance.instanceOffset = 0;

@@ -71,7 +71,7 @@ private:
 	TopLevelAccelerationStructure m_TopLevelAccelerationStructure;
 	std::unordered_map<Mesh*, BottomLevelAccelerationStructure> m_BottomLevelAccelerationStructures;
 
-	std::vector<GeometryInstance> m_AllGeometryInstances; //Possibly Temp?
+	std::vector<GeometryInstance> m_AllGeometryInstances;
 
 	VkDeviceSize m_MaxMemReqBLAS;
 	

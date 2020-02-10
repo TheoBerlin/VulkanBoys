@@ -49,6 +49,8 @@ public:
 	VkQueue getPresentQueue() { return m_PresentQueue; }
 
 	const QueueFamilyIndices& getQueueFamilyIndices() const { return m_DeviceQueueFamilyIndices; }
+	
+	const VkPhysicalDeviceRayTracingPropertiesNV& getRayTracingProperties() const { return m_RayTracingProperties; }
 
 private:
 	bool initPhysicalDevice(InstanceVK* pInstance);
@@ -80,6 +82,9 @@ private:
 	std::vector<const char*> m_EnabledExtensions;
 	std::unordered_map<std::string, bool> m_OptionalRequestedExtensionsStatus;
 	std::vector<VkExtensionProperties> m_AvailabeExtensions;
+
+	//Extensions
+	VkPhysicalDeviceRayTracingPropertiesNV m_RayTracingProperties;
 
 public:
 	//Extension Function Pointers
