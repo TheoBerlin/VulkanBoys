@@ -57,6 +57,7 @@ private:
 	IMesh* m_pMesh;
 
 	bool m_IsRunning;
+	bool m_UpdateCamera;
 
 	static Application* s_pInstance;
 };
