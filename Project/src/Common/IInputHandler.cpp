@@ -4,5 +4,5 @@
 
 IInputHandler* IInputHandler::create()
 {
-	return new InputHandler();
+	return DBG_NEW InputHandler();
 }

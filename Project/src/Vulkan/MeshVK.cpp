@@ -28,7 +28,7 @@ bool MeshVK::initFromFile(const std::string& filepath)
 
 bool MeshVK::initFromMemory(const Vertex* pVertices, uint32_t vertexCount, const uint32_t* pIndices, uint32_t indexCount)
 {
-	CommandPoolVK* pCommandPool = new CommandPoolVK(m_pDevice, m_pDevice->getQueueFamilyIndices().transferFamily.value());
+	CommandPoolVK* pCommandPool = DBG_NEW CommandPoolVK(m_pDevice, m_pDevice->getQueueFamilyIndices().transferFamily.value());
 	pCommandPool->init();
 
 	CommandBufferVK* pCommandBuffer = pCommandPool->allocateCommandBuffer();
@@ -38,7 +38,7 @@ bool MeshVK::initFromMemory(const Vertex* pVertices, uint32_t vertexCount, const
 	vertexBufferParams.SizeInBytes = sizeof(Vertex) * vertexCount;
 	vertexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-	m_pVertexBuffer = new BufferVK(m_pDevice);
+	m_pVertexBuffer = DBG_NEW BufferVK(m_pDevice);
 	if (!m_pVertexBuffer->init(vertexBufferParams))
 	{
 		return false;
@@ -49,7 +49,7 @@ bool MeshVK::initFromMemory(const Vertex* pVertices, uint32_t vertexCount, const
 	indexBufferParams.SizeInBytes = sizeof(uint32_t) * indexCount;
 	indexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-	m_pIndexBuffer = new BufferVK(m_pDevice);
+	m_pIndexBuffer = DBG_NEW BufferVK(m_pDevice);
 	if (!m_pIndexBuffer->init(indexBufferParams))
 	{
 		return false;

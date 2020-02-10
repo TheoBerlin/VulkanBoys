@@ -7,7 +7,7 @@ IGraphicsContext* IGraphicsContext::create(IWindow* pWindow, API api)
 	{
 		case API::VULKAN:
 		{
-			GraphicsContextVK* pContext = new GraphicsContextVK(pWindow);
+			GraphicsContextVK* pContext = DBG_NEW GraphicsContextVK(pWindow);
 			pContext->init();
 			return pContext;
 		}

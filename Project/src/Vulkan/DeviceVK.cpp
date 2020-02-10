@@ -284,7 +284,7 @@ void DeviceVK::registerExtensionFunctions()
 		vkGetAccelerationStructureHandleNV = reinterpret_cast<PFN_vkGetAccelerationStructureHandleNV>(vkGetDeviceProcAddr(m_Device, "vkGetAccelerationStructureHandleNV"));
 		vkGetAccelerationStructureMemoryRequirementsNV = reinterpret_cast<PFN_vkGetAccelerationStructureMemoryRequirementsNV>(vkGetDeviceProcAddr(m_Device, "vkGetAccelerationStructureMemoryRequirementsNV"));
 		vkCmdBuildAccelerationStructureNV = reinterpret_cast<PFN_vkCmdBuildAccelerationStructureNV>(vkGetDeviceProcAddr(m_Device, "vkCmdBuildAccelerationStructureNV"));
-		vkCreateRayTracingPipelinesNV = reinterpret_cast<PFN_vkCreateRayTracingPipelinesNV>(vkGetDeviceProcAddr(m_Device, "vkCreateRayTracingPipelinesNV"));
+		vkCreateRayTracingPipelinesNV= reinterpret_cast<PFN_vkCreateRayTracingPipelinesNV>(vkGetDeviceProcAddr(m_Device, "vkCreateRayTracingPipelinesNV"));
 		vkGetRayTracingShaderGroupHandlesNV = reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesNV>(vkGetDeviceProcAddr(m_Device, "vkGetRayTracingShaderGroupHandlesNV"));
 		vkCmdTraceRaysNV = reinterpret_cast<PFN_vkCmdTraceRaysNV>(vkGetDeviceProcAddr(m_Device, "vkCmdTraceRaysNV"));
 		std::cout << "--- Device: Successfully intialized [ VK_NV_ray_tracing ] function pointers!" << std::endl;

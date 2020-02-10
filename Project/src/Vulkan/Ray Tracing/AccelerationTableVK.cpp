@@ -54,7 +54,7 @@ AccelerationTableVK::~AccelerationTableVK()
 
 bool AccelerationTableVK::finalize()
 {
-	m_pTempCommandPool = new CommandPoolVK(m_pContext->getDevice(), m_pContext->getDevice()->getQueueFamilyIndices().transferFamily.value());
+	m_pTempCommandPool = DBG_NEW CommandPoolVK(m_pContext->getDevice(), m_pContext->getDevice()->getQueueFamilyIndices().transferFamily.value());
 	m_pTempCommandPool->init();
 
 	m_pTempCommandBuffer = m_pTempCommandPool->allocateCommandBuffer();

@@ -7,6 +7,8 @@
 
 #include <glm/glm.hpp>
 
+#include "Common/Debug.h"
+
 #define DECL_NO_COPY(Type) \
 	Type(Type&&) = delete; \
 	Type(const Type&) = delete; \
@@ -32,7 +34,7 @@
 #if _DEBUG
 	#define D_LOG(...) LOG(__VA_ARGS__)
 #else
-	#define D_LOG(...) LOG(__VA_ARGS__)
+	#define D_LOG(...)
 #endif
 
 #define MB(bytes) bytes * 1024 * 1024

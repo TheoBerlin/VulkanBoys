@@ -43,13 +43,13 @@ bool CommandBufferVK::finalize()
 	D_LOG("--- CommandBuffer: Vulkan Fence created successfully");
 
 	//Create staging-buffers
-	m_pStagingBuffer = new StagingBufferVK(m_pDevice);
+	m_pStagingBuffer = DBG_NEW StagingBufferVK(m_pDevice);
 	if (!m_pStagingBuffer->init(MB(2)))
 	{
 		return false;
 	}
 
-	m_pStagingTexture = new StagingBufferVK(m_pDevice);
+	m_pStagingTexture = DBG_NEW StagingBufferVK(m_pDevice);
 	if (!m_pStagingTexture->init(MB(8)))
 	{
 		return false;

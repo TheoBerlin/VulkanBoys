@@ -257,7 +257,7 @@ bool RendererVK::createCommandPoolAndBuffers()
 	const uint32_t queueFamilyIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		m_ppCommandPools[i] = new CommandPoolVK(pDevice, queueFamilyIndex);
+		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, queueFamilyIndex);
 		
 		if (!m_ppCommandPools[i]->init())
 		{
@@ -283,7 +283,7 @@ void RendererVK::createFramebuffers()
 	ImageViewVK* pDepthStencilView = pSwapChain->getDepthStencilView();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		m_ppBackbuffers[i] = new FrameBufferVK(pDevice);
+		m_ppBackbuffers[i] = DBG_NEW FrameBufferVK(pDevice);
 		m_ppBackbuffers[i]->addColorAttachment(pSwapChain->getImageView(i));
 		m_ppBackbuffers[i]->setDepthStencilAttachment(pDepthStencilView);
 		m_ppBackbuffers[i]->finalize(m_pRenderPass, extent.width, extent.height);
@@ -301,7 +301,7 @@ void RendererVK::releaseFramebuffers()
 bool RendererVK::createRenderPass()
 {
 	//Create renderpass
-	m_pRenderPass = new RenderPassVK(m_pContext->getDevice());
+	m_pRenderPass = DBG_NEW RenderPassVK(m_pContext->getDevice());
 	VkAttachmentDescription description = {};
 	description.format = VK_FORMAT_B8G8R8A8_UNORM;
 	description.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -353,7 +353,7 @@ bool RendererVK::createPipelines()
 	}
 
 	std::vector<IShader*> shaders = { pVertexShader, pPixelShader };
-	m_pPipeline = new PipelineVK(m_pContext->getDevice());
+	m_pPipeline = DBG_NEW PipelineVK(m_pContext->getDevice());
 	m_pPipeline->addColorBlendAttachment(false, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
 	m_pPipeline->setCulling(true);
 	m_pPipeline->setDepthTest(true);
@@ -370,7 +370,7 @@ bool RendererVK::createPipelines()
 bool RendererVK::createPipelineLayouts()
 {
 	//DescriptorSetLayout
-	m_pDescriptorSetLayout = new DescriptorSetLayoutVK(m_pContext->getDevice());
+	m_pDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(m_pContext->getDevice());
 	//CameraBuffer
 	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0, 1);
 	//VertexBuffer
@@ -384,7 +384,7 @@ bool RendererVK::createPipelineLayouts()
 	descriptorCounts.m_StorageBuffers	= 128;
 	descriptorCounts.m_UniformBuffers	= 128;
 
-	m_pDescriptorPool = new DescriptorPoolVK(m_pContext->getDevice());
+	m_pDescriptorPool = DBG_NEW DescriptorPoolVK(m_pContext->getDevice());
 	m_pDescriptorPool->init(descriptorCounts, 16);
 	m_pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
 	if (m_pDescriptorSet == nullptr)
@@ -399,7 +399,7 @@ bool RendererVK::createPipelineLayouts()
 	pushConstantRange.offset = 0;
 	std::vector<VkPushConstantRange> pushConstantRanges = { pushConstantRange };
 
-	m_pPipelineLayout = new PipelineLayoutVK(m_pContext->getDevice());
+	m_pPipelineLayout = DBG_NEW PipelineLayoutVK(m_pContext->getDevice());
 	
 	//TODO: Return bool
 	m_pPipelineLayout->init(descriptorSetLayouts, pushConstantRanges);
@@ -414,6 +414,6 @@ bool RendererVK::createBuffers()
 	cameraBufferParams.SizeInBytes		= sizeof(CameraBuffer);
 	cameraBufferParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-	m_pCameraBuffer = new BufferVK(m_pContext->getDevice());
+	m_pCameraBuffer = DBG_NEW BufferVK(m_pContext->getDevice());
 	return m_pCameraBuffer->init(cameraBufferParams);
 }

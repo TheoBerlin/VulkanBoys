@@ -44,5 +44,6 @@ private:
 	bool m_IsFullscreen;
 	bool m_HasFocus;
 
+	static uint32_t s_WindowCount;
 	static bool s_HasGLFW;
 };

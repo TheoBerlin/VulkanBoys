@@ -7,6 +7,7 @@
 #define GET_WINDOW(pWindow)			((GLFWWindow*)glfwGetWindowUserPointer(pWindow))
 #define GET_EVENTHANDLERS(pWindow)	GET_WINDOW(pWindow)->m_ppEventHandlers
 
+uint32_t GLFWWindow::s_WindowCount = 0;
 bool GLFWWindow::s_HasGLFW = false;
 
 GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height)
@@ -20,13 +21,16 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 	m_OldClientHeight(0),
 	m_IsFullscreen(false)
 {
-	if (!s_HasGLFW)
+	if (s_WindowCount < 1)
 	{
 		if (glfwInit() == GLFW_TRUE)
 		{
 			s_HasGLFW = true;
 		}
 	}
+
+	//Increase windowcount
+	s_WindowCount++;
 
 	if (s_HasGLFW)
 	{
@@ -172,7 +176,21 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 
 GLFWWindow::~GLFWWindow()
 {
-	glfwDestroyWindow(m_pWindow);
+	if (s_HasGLFW)
+	{
+		if (m_pWindow)
+		{
+			glfwDestroyWindow(m_pWindow);
+			m_pWindow = nullptr;
+		}
+
+		s_WindowCount--;
+		if (s_WindowCount < 1)
+		{
+			glfwTerminate();
+			s_HasGLFW = false;
+		}
+	}
 }
 
 void GLFWWindow::addEventHandler(IEventHandler* pEventHandler)

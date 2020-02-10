@@ -22,7 +22,7 @@ bool StagingBufferVK::init(VkDeviceSize initalSizeInBytes)
 	params.MemoryProperty	= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 	params.SizeInBytes	= initalSizeInBytes;
 
-	m_pBuffer = new BufferVK(m_pDevice);
+	m_pBuffer = DBG_NEW BufferVK(m_pDevice);
 	if (m_pBuffer->init(params))
 	{
 		m_pBuffer->map((void**)&m_pHostMemory);
