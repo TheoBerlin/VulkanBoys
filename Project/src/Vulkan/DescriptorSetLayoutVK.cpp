@@ -5,7 +5,7 @@
 #include <iostream>
 
 DescriptorSetLayoutVK::DescriptorSetLayoutVK(DeviceVK* pDevice)
-    :m_pDevice(pDevice),
+    : m_pDevice(pDevice),
     m_DescriptorSetLayout(VK_NULL_HANDLE)
 {
 }
@@ -66,7 +66,7 @@ void DescriptorSetLayoutVK::addBindingCombinedImage(VkShaderStageFlags shaderSta
     m_DescriptorSetLayoutBindings.push_back(descriptorSetLayoutBinding);
 }
 
-bool DescriptorSetLayoutVK::finalizeLayout()
+bool DescriptorSetLayoutVK::finalize()
 {
 	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo = {};
     descriptorSetLayoutInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;

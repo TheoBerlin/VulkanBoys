@@ -1,12 +1,13 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-vec3 positions[3] = vec3[]
-(
-    vec3(0.0, -0.5, 0.0),
-    vec3(0.5, 0.5, 0.0),
-    vec3(-0.5, 0.5, 0.0)
-);
+struct Vertex
+{
+	vec4 Position;
+	vec3 Normal;
+	vec3 Tangent;
+	vec2 TexCoord;
+};
 
 layout (push_constant) uniform Constants
 {
@@ -20,7 +21,9 @@ layout (binding = 0) uniform PerFrameBuffer
 	mat4 View;
 } g_PerFrame;
 
+layout(binding = 1) buffer vertexBuffer { Vertex vertices[]; };
+
 void main() 
 {
-    gl_Position = g_PerFrame.Projection * g_PerFrame.View * g_Constants.Transform * vec4(positions[gl_VertexIndex], 1.0);
+    gl_Position = g_PerFrame.Projection * g_PerFrame.View * g_Constants.Transform * vec4(vertices[gl_VertexIndex].Position.xyz, 1.0);
 }

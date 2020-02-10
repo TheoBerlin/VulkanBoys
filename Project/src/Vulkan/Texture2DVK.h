@@ -18,8 +18,8 @@ public:
 	Texture2DVK(IGraphicsContext* pContext);
 	~Texture2DVK();
 
-	virtual bool loadFromFile(const std::string& filename) override;
-	virtual bool loadFromMemory(const void* pData, uint32_t width, uint32_t height) override;
+	virtual bool initFromFile(const std::string& filename) override;
+	virtual bool initFromMemory(const void* pData, uint32_t width, uint32_t height) override;
 
 	ImageVK* getImage() const { return m_pTextureImage; }
 	ImageViewVK* getImageView() const { return m_pTextureImageView; }

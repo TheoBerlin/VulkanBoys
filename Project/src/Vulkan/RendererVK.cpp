@@ -1,4 +1,5 @@
 #include "RendererVK.h"
+#include "MeshVK.h"
 #include "ImguiVK.h"
 #include "BufferVK.h"
 #include "PipelineVK.h"
@@ -233,6 +234,30 @@ void RendererVK::swapBuffers()
 	m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
+void RendererVK::submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform)
+{
+	ASSERT(pMesh != nullptr);
+
+	m_ppCommandBuffers[m_CurrentFrame]->bindGraphicsPipeline(m_pPipeline);
+
+	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(transform));
+	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec4), (const void*)glm::value_ptr(color));
+
+	static bool submit = true;
+
+	if (submit)
+	{
+		BufferVK* pVertBuffer = reinterpret_cast<BufferVK*>(pMesh->getVertexBuffer());
+		m_pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer->getBuffer(), 1);
+
+		submit = false;
+	}
+
+	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSet, 0, nullptr);
+
+	m_ppCommandBuffers[m_CurrentFrame]->drawInstanced(pMesh->getIndexCount(), 1, 0, 0);
+}
+
 void RendererVK::drawImgui(IImgui* pImgui)
 {
 	pImgui->render(m_ppCommandBuffers[m_CurrentFrame]);
@@ -354,14 +379,14 @@ bool RendererVK::createPipelines()
 {
 	//Create pipelinestate
 	IShader* pVertexShader = m_pContext->createShader();
-	pVertexShader->loadFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/vertex.spv");
+	pVertexShader->initFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/vertex.spv");
 	if (!pVertexShader->finalize())
 	{
 		return false;
 	}
 
 	IShader* pPixelShader = m_pContext->createShader();
-	pPixelShader->loadFromFile(EShader::PIXEL_SHADER, "main", "assets/shaders/fragment.spv");
+	pPixelShader->initFromFile(EShader::PIXEL_SHADER, "main", "assets/shaders/fragment.spv");
 	if (!pPixelShader->finalize())
 	{
 		return false;
@@ -384,19 +409,26 @@ bool RendererVK::createPipelineLayouts()
 {
 	//DescriptorSetLayout
 	m_pDescriptorSetLayout = new DescriptorSetLayoutVK(m_pContext->getDevice());
+	//CameraBuffer
 	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0, 1);
-	m_pDescriptorSetLayout->finalizeLayout();
+	//VertexBuffer
+	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, 1, 1);
+	m_pDescriptorSetLayout->finalize();
 	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { m_pDescriptorSetLayout };
 
 	//Descriptorpool
 	DescriptorCounts descriptorCounts = {};
-	descriptorCounts.m_SampledImages	= 32;
-	descriptorCounts.m_StorageBuffers	= 32;
-	descriptorCounts.m_UniformBuffers	= 32;
+	descriptorCounts.m_SampledImages	= 128;
+	descriptorCounts.m_StorageBuffers	= 128;
+	descriptorCounts.m_UniformBuffers	= 128;
 
 	m_pDescriptorPool = new DescriptorPoolVK(m_pContext->getDevice());
-	m_pDescriptorPool->initializeDescriptorPool(descriptorCounts, 16);
+	m_pDescriptorPool->init(descriptorCounts, 16);
 	m_pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
+	if (m_pDescriptorSet == nullptr)
+	{
+		return false;
+	}
 
 	//PushConstant - Triangle color
 	VkPushConstantRange pushConstantRange = {};
@@ -408,7 +440,7 @@ bool RendererVK::createPipelineLayouts()
 	m_pPipelineLayout = new PipelineLayoutVK(m_pContext->getDevice());
 	
 	//TODO: Return bool
-	m_pPipelineLayout->createPipelineLayout(descriptorSetLayouts, pushConstantRanges);
+	m_pPipelineLayout->init(descriptorSetLayouts, pushConstantRanges);
 
 	return true;
 }
@@ -421,5 +453,5 @@ bool RendererVK::createBuffers()
 	cameraBufferParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 	m_pCameraBuffer = new BufferVK(m_pContext->getDevice());
-	return m_pCameraBuffer->create(cameraBufferParams);
+	return m_pCameraBuffer->init(cameraBufferParams);
 }

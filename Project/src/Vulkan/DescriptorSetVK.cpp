@@ -13,7 +13,7 @@ DescriptorSetVK::~DescriptorSetVK()
 {
 }
 
-void DescriptorSetVK::initialize(VkDescriptorSet descriptorSetHandle, DeviceVK* pDevice, DescriptorPoolVK* pDescriptorPool, const DescriptorCounts& descriptorCounts)
+void DescriptorSetVK::init(VkDescriptorSet descriptorSetHandle, DeviceVK* pDevice, DescriptorPoolVK* pDescriptorPool, const DescriptorCounts& descriptorCounts)
 {
     m_DescriptorSet = descriptorSetHandle;
     m_pDevice = pDevice;

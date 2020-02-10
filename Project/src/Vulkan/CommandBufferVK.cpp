@@ -1,11 +1,11 @@
 #include "CommandBufferVK.h"
 #include "ImageVK.h"
-#include "StackVK.h"
 #include "DeviceVK.h"
 #include "BufferVK.h"
 #include "PipelineVK.h"
 #include "RenderPassVK.h"
 #include "FrameBufferVK.h"
+#include "StagingBufferVK.h"
 #include "DescriptorSetVK.h"
 #include "PipelineLayoutVK.h"
 
@@ -43,14 +43,14 @@ bool CommandBufferVK::finalize()
 	D_LOG("--- CommandBuffer: Vulkan Fence created successfully");
 
 	//Create staging-buffers
-	m_pStagingBuffer = new StaginBufferVK(m_pDevice);
-	if (!m_pStagingBuffer->create(MB(2)))
+	m_pStagingBuffer = new StagingBufferVK(m_pDevice);
+	if (!m_pStagingBuffer->init(MB(2)))
 	{
 		return false;
 	}
 
-	m_pStagingTexture = new StaginBufferVK(m_pDevice);
-	if (!m_pStagingTexture->create(MB(8)))
+	m_pStagingTexture = new StagingBufferVK(m_pDevice);
+	if (!m_pStagingTexture->init(MB(8)))
 	{
 		return false;
 	}

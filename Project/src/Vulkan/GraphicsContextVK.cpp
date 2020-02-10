@@ -1,5 +1,7 @@
 #include "GraphicsContextVK.h"
+#include "MeshVK.h"
 #include "ImguiVK.h"
+#include "BufferVK.h"
 #include "ShaderVK.h"
 #include "RendererVK.h"
 #include "SwapChainVK.h"
@@ -46,7 +48,7 @@ void GraphicsContextVK::init()
 	//m_Instance.debugPrintAvailableLayers();
 
 	//m_Instance.addValidationLayer("VK_LAYER_RENDERDOC_Capture");
-	//m_Instance.addValidationLayer("VK_LAYER_KHRONOS_validation");
+	m_Instance.addValidationLayer("VK_LAYER_KHRONOS_validation");
 	m_Instance.finalize(VALIDATION_LAYERS_ENABLED);
 
 	//Device Init
@@ -73,6 +75,11 @@ IImgui* GraphicsContextVK::createImgui()
 	return new ImguiVK(this);
 }
 
+IMesh* GraphicsContextVK::createMesh()
+{
+	return new MeshVK(&m_Device);
+}
+
 IShader* GraphicsContextVK::createShader()
 {
 	return new ShaderVK(&m_Device);
@@ -80,8 +87,7 @@ IShader* GraphicsContextVK::createShader()
 
 IBuffer* GraphicsContextVK::createBuffer()
 {
-	//Todo: Implement
-	return nullptr;
+	return new BufferVK(&m_Device);
 }
 
 IFrameBuffer* GraphicsContextVK::createFrameBuffer()
@@ -105,6 +111,11 @@ IImageView* GraphicsContextVK::createImageView()
 ITexture2D* GraphicsContextVK::createTexture2D()
 {
 	return new Texture2DVK(this);
+}
+
+void GraphicsContextVK::sync()
+{
+	m_Device.wait();
 }
 
 void GraphicsContextVK::swapBuffers(VkSemaphore renderSemaphore)

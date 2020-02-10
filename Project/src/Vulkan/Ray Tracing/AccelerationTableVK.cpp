@@ -69,7 +69,7 @@ bool AccelerationTableVK::finalize()
 	return true;
 }
 
-uint32_t AccelerationTableVK::addMeshInstance(Mesh* pMesh, const glm::mat3x4& transform)
+uint32_t AccelerationTableVK::addMeshInstance(MeshVK* pMesh, const glm::mat3x4& transform)
 {
 	BottomLevelAccelerationStructure bottomLevelAccelerationStructure = {};
 	
@@ -78,12 +78,12 @@ uint32_t AccelerationTableVK::addMeshInstance(Mesh* pMesh, const glm::mat3x4& tr
 		bottomLevelAccelerationStructure.geometry.sType = VK_STRUCTURE_TYPE_GEOMETRY_NV;
 		bottomLevelAccelerationStructure.geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_NV;
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NV;
-		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexData = pMesh->getVertexBuffer()->getBuffer();
+		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexData = ((BufferVK*)pMesh->getVertexBuffer())->getBuffer();
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexOffset = 0;
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexCount = static_cast<uint32_t>(pMesh->getVertexBuffer()->getSizeInBytes() / sizeof(Vertex));
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexStride = sizeof(Vertex);
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
-		bottomLevelAccelerationStructure.geometry.geometry.triangles.indexData = pMesh->getIndexBuffer()->getBuffer();
+		bottomLevelAccelerationStructure.geometry.geometry.triangles.indexData = ((BufferVK*)pMesh->getIndexBuffer())->getBuffer();
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.indexOffset = 0;
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.indexCount = pMesh->getIndexBuffer()->getSizeInBytes() / sizeof(uint32_t);
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.indexType = VK_INDEX_TYPE_UINT32;
@@ -210,7 +210,7 @@ bool AccelerationTableVK::buildAccelerationTable()
 	scratchBufferParams.SizeInBytes = std::max(m_MaxMemReqBLAS, memReqTLAS.memoryRequirements.size);
 
 	BufferVK* pScratchBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
-	pScratchBuffer->create(scratchBufferParams);
+	pScratchBuffer->init(scratchBufferParams);
 
 	BufferParams instanceBufferParmas = {};
 	instanceBufferParmas.Usage = VK_BUFFER_USAGE_RAY_TRACING_BIT_NV;
@@ -218,7 +218,7 @@ bool AccelerationTableVK::buildAccelerationTable()
 	instanceBufferParmas.SizeInBytes = sizeof(GeometryInstance) * m_AllGeometryInstances.size();
 
 	BufferVK* pInstanceBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
-	pInstanceBuffer->create(instanceBufferParmas);
+	pInstanceBuffer->init(instanceBufferParmas);
 
 	void* pData;
 	pInstanceBuffer->map(&pData);

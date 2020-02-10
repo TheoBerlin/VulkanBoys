@@ -24,8 +24,8 @@ class IShader
 public:
 	DECL_INTERFACE(IShader);
 
-	virtual bool loadFromFile(EShader shaderType, const std::string& entrypoint, const std::string& filepath) = 0;
-	virtual bool loadFromByteCode(EShader shaderType, const std::string& entrypoint, const std::vector<char>& byteCode) = 0;
+	virtual bool initFromFile(EShader shaderType, const std::string& entrypoint, const std::string& filepath) = 0;
+	virtual bool initFromByteCode(EShader shaderType, const std::string& entrypoint, const std::vector<char>& byteCode) = 0;
 	virtual bool finalize() = 0;
 
 	virtual EShader getShaderType() const = 0;

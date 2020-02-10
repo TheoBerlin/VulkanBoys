@@ -14,7 +14,7 @@ PipelineLayoutVK::~PipelineLayoutVK()
     }
 }
 
-void PipelineLayoutVK::createPipelineLayout(const std::vector<const DescriptorSetLayoutVK*>& descriptorSetLayouts, const std::vector<VkPushConstantRange>& pushConstantRanges)
+bool PipelineLayoutVK::init(const std::vector<const DescriptorSetLayoutVK*>& descriptorSetLayouts, const std::vector<VkPushConstantRange>& pushConstantRanges)
 {
     // Serialize the vulkan handles for the descriptor set layouts
     std::vector<VkDescriptorSetLayout> vkDescriptorSetLayouts;
@@ -32,10 +32,8 @@ void PipelineLayoutVK::createPipelineLayout(const std::vector<const DescriptorSe
 	pipelineLayoutInfo.pushConstantRangeCount	= uint32_t(pushConstantRanges.size());
 	pipelineLayoutInfo.pPushConstantRanges		= (pushConstantRanges.size() > 0) ? pushConstantRanges.data() : nullptr;
 
-	if (vkCreatePipelineLayout(m_pDevice->getDevice(), &pipelineLayoutInfo, nullptr, &m_PipelineLayout) != VK_SUCCESS) 
-	{
-		LOG("Failed to create PipelineLayout");
-	} else {
-		LOG("--- PipelineLayout: Vulkan PipelineLayout created successfully");
-	}
+	VK_CHECK_RESULT_RETURN_FALSE(vkCreatePipelineLayout(m_pDevice->getDevice(), &pipelineLayoutInfo, nullptr, &m_PipelineLayout), "Failed to create PipelineLayout");
+
+	LOG("--- PipelineLayout: Vulkan PipelineLayout created successfully");
+	return true;
 }

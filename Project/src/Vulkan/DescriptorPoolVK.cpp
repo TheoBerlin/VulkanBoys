@@ -33,7 +33,7 @@ bool DescriptorPoolVK::hasRoomFor(const DescriptorCounts& allocations)
 			m_DescriptorCounts.m_SampledImages 	+ allocations.m_SampledImages	< m_DescriptorCapacities.m_SampledImages;
 }
 
-void DescriptorPoolVK::initializeDescriptorPool(const DescriptorCounts& descriptorCounts, uint32_t descriptorSetCount)
+bool DescriptorPoolVK::init(const DescriptorCounts& descriptorCounts, uint32_t descriptorSetCount)
 {
 	m_DescriptorCapacities = descriptorCounts;
 
@@ -56,11 +56,10 @@ void DescriptorPoolVK::initializeDescriptorPool(const DescriptorCounts& descript
 	poolInfo.pPoolSizes = poolSizes.data();
 	poolInfo.maxSets = descriptorSetCount;
 
-	if (vkCreateDescriptorPool(m_pDevice->getDevice(), &poolInfo, nullptr, &m_DescriptorPool) != VK_SUCCESS) {
-		LOG("Failed to create Descriptor Pool");
-	} else {
-		D_LOG("Created descriptorpool. sets=%d, storagebuffers=%d, uniformBuffers=%d, imageSamplers=%d", descriptorSetCount, descriptorCounts.m_StorageBuffers, descriptorCounts.m_UniformBuffers, descriptorCounts.m_SampledImages);
-	}
+	VK_CHECK_RESULT_RETURN_FALSE(vkCreateDescriptorPool(m_pDevice->getDevice(), &poolInfo, nullptr, &m_DescriptorPool), "Failed to create Descriptor Pool");
+	
+	D_LOG("Created descriptorpool. sets=%d, storagebuffers=%d, uniformBuffers=%d, imageSamplers=%d", descriptorSetCount, descriptorCounts.m_StorageBuffers, descriptorCounts.m_UniformBuffers, descriptorCounts.m_SampledImages);
+	return true;
 }
 
 DescriptorSetVK* DescriptorPoolVK::allocDescriptorSet(const DescriptorSetLayoutVK* pDescriptorSetLayout)
@@ -84,7 +83,7 @@ DescriptorSetVK* DescriptorPoolVK::allocDescriptorSet(const DescriptorSetLayoutV
 	m_DescriptorCounts += allocatedDescriptorCount;
 
 	DescriptorSetVK* pDescriptorSet = new DescriptorSetVK();
-	pDescriptorSet->initialize(descriptorSetHandle, m_pDevice, this, allocatedDescriptorCount);
+	pDescriptorSet->init(descriptorSetHandle, m_pDevice, this, allocatedDescriptorCount);
 	m_AllocatedSets.push_back(pDescriptorSet);
 
 	return pDescriptorSet;

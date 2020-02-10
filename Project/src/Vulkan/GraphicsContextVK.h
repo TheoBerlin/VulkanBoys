@@ -22,6 +22,8 @@ public:
 	//OVERRIDE
 	virtual IRenderer* createRenderer() override;
 	virtual IImgui* createImgui() override;
+    
+    virtual IMesh* createMesh() override;
 
 	virtual IShader* createShader() override;
 	
@@ -32,14 +34,16 @@ public:
 	virtual IImageView* createImageView() override;
 	virtual ITexture2D* createTexture2D() override;
 
+	virtual void sync() override;
+
 	void swapBuffers(VkSemaphore renderSemaphore);
 
 	DeviceVK* getDevice() { return &m_Device; } //Const function?
 	SwapChainVK* getSwapChain() const { return m_pSwapChain; }
 
 private:
-	IWindow* m_pWindow;
-	SwapChainVK* m_pSwapChain;
 	InstanceVK m_Instance;
 	DeviceVK m_Device;
+	IWindow* m_pWindow;
+	SwapChainVK* m_pSwapChain;
 };
