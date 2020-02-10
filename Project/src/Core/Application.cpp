@@ -1,4 +1,6 @@
 #include "Application.h"
+#include "Camera.h"
+#include "Input.h"
 
 #include "Common/IMesh.h"
 #include "Common/IImgui.h"
@@ -13,12 +15,10 @@
 #include "Vulkan/GraphicsContextVK.h"
 #include "Vulkan/DescriptorSetLayoutVK.h"
 
-#include "Camera.h"
-#include "Input.h"
-
 #include <thread>
 #include <chrono>
 #include <imgui/imgui.h>
+
 #include <glm/gtc/type_ptr.hpp>
 
 Application* Application::s_pInstance = nullptr;
@@ -80,78 +80,78 @@ void Application::init()
 	m_Camera.update();
 
 	//Load mesh
-	using namespace glm;
-
-	constexpr size_t size = sizeof(Vertex);
-
-	Vertex vertices[] =
 	{
-		//FRONT FACE
-		{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-		{ vec4( 0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-		{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-		{ vec4( 0.5, -0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+		using namespace glm;
 
-		//BACK FACE
-		{ vec4( 0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-		{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-		{ vec4( 0.5, -0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-		{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+		Vertex vertices[] =
+		{
+			//FRONT FACE
+			{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+			{ vec4( 0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+			{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+			{ vec4( 0.5, -0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
 
-		//RIGHT FACE
-		{ vec4(0.5,  0.5, -0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 0.0f) },
-		{ vec4(0.5,  0.5,  0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 0.0f) },
-		{ vec4(0.5, -0.5, -0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 1.0f) },
-		{ vec4(0.5, -0.5,  0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 1.0f) },
+			//BACK FACE
+			{ vec4( 0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+			{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+			{ vec4( 0.5, -0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+			{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
 
-		//LEFT FACE
-		{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 0.0f) },
-		{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 0.0f) },
-		{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 1.0f) },
-		{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 1.0f) },
+			//RIGHT FACE
+			{ vec4(0.5,  0.5, -0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 0.0f) },
+			{ vec4(0.5,  0.5,  0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 0.0f) },
+			{ vec4(0.5, -0.5, -0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 1.0f) },
+			{ vec4(0.5, -0.5,  0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 1.0f) },
 
-		//TOP FACE
-		{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-		{ vec4( 0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-		{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-		{ vec4( 0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+			//LEFT FACE
+			{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 0.0f) },
+			{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 0.0f) },
+			{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 1.0f) },
+			{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 1.0f) },
 
-		//BOTTOM FACE
-		{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-		{ vec4( 0.5, -0.5, -0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-		{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-		{ vec4( 0.5, -0.5,  0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
-	};
+			//TOP FACE
+			{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+			{ vec4( 0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+			{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+			{ vec4( 0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
 
-	uint32_t indices[] =
-	{
-		//FRONT FACE
-		2, 1, 0,
-		2, 3, 1,
+			//BOTTOM FACE
+			{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+			{ vec4( 0.5, -0.5, -0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+			{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+			{ vec4( 0.5, -0.5,  0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+		};
 
-		//BACK FACE
-		6, 5, 4,
-		6, 7, 5,
+		uint32_t indices[] =
+		{
+			//FRONT FACE
+			2, 1, 0,
+			2, 3, 1,
 
-		//RIGHT FACE
-		10, 9, 8,
-		10, 11, 9,
+			//BACK FACE
+			6, 5, 4,
+			6, 7, 5,
 
-		//LEFT FACE
-		12, 13, 14,
-		13, 15, 14,
+			//RIGHT FACE
+			10, 9, 8,
+			10, 11, 9,
 
-		//TOP FACE
-		18, 17, 16,
-		18, 19, 17,
+			//LEFT FACE
+			12, 13, 14,
+			13, 15, 14,
 
-		//BOTTOM FACE
-		22, 21, 20,
-		22, 23, 21
-	};
+			//TOP FACE
+			18, 17, 16,
+			18, 19, 17,
 
-	m_pMesh = m_pContext->createMesh();
-	m_pMesh->initFromMemory(vertices, 24, indices, 36);
+			//BOTTOM FACE
+			22, 21, 20,
+			22, 23, 21
+		};
+
+		m_pMesh = m_pContext->createMesh();
+		m_pMesh->initFromMemory(vertices, 24, indices, 36);
+	}
 }
 
 void Application::run()
@@ -228,6 +228,7 @@ void Application::onMouseMove(uint32_t x, uint32_t y)
 	if (m_UpdateCamera)
 	{
 		glm::vec2 middlePos = glm::vec2(m_pWindow->getClientWidth() / 2.0f, m_pWindow->getClientHeight() / 2.0f);
+
 		float xoffset = middlePos.x - x;
 		float yoffset = middlePos.y - y;
 

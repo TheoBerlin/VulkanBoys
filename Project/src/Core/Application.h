@@ -22,8 +22,6 @@ public:
 	void run();
 	void release();
 
-	IWindow* getWindow() const { return m_pWindow; }
-
 	virtual void onWindowClose() override;
 	virtual void onWindowResize(uint32_t width, uint32_t height) override;
 	virtual void onWindowFocusChanged(IWindow* pWindow, bool hasFocus) override;
@@ -36,6 +34,8 @@ public:
 	virtual void onKeyTyped(uint32_t character) override;
 	virtual void onKeyPressed(EKey key) override;
 	virtual void onKeyReleased(EKey key) override;
+
+	IWindow* getWindow() const { return m_pWindow; }
 
 	static Application* get();
 
