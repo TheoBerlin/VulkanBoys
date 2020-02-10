@@ -198,12 +198,15 @@ void RendererVK::submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat
 	ASSERT(pMesh != nullptr);
 
 	m_ppCommandBuffers[m_CurrentFrame]->bindGraphicsPipeline(m_pPipeline);
+	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSet, 0, nullptr);
 
-	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(transform));
+	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,				   sizeof(glm::mat4), (const void*)glm::value_ptr(transform));
 	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec4), (const void*)glm::value_ptr(color));
 
-	static bool submit = true;
+	BufferVK* pIndexBuffer = reinterpret_cast<BufferVK*>(pMesh->getIndexBuffer());
+	m_ppCommandBuffers[m_CurrentFrame]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
+    static bool submit = true;
 	if (submit)
 	{
 		BufferVK* pVertBuffer = reinterpret_cast<BufferVK*>(pMesh->getVertexBuffer());
@@ -212,9 +215,7 @@ void RendererVK::submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat
 		submit = false;
 	}
 
-	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSet, 0, nullptr);
-
-	m_ppCommandBuffers[m_CurrentFrame]->drawInstanced(pMesh->getIndexCount(), 1, 0, 0);
+	m_ppCommandBuffers[m_CurrentFrame]->drawIndexInstanced(pMesh->getIndexCount(), 1, 0, 0, 0);
 }
 
 void RendererVK::drawImgui(IImgui* pImgui)
@@ -354,7 +355,9 @@ bool RendererVK::createPipelines()
 	std::vector<IShader*> shaders = { pVertexShader, pPixelShader };
 	m_pPipeline = new PipelineVK(m_pContext->getDevice());
 	m_pPipeline->addColorBlendAttachment(false, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
-	
+	m_pPipeline->setCulling(true);
+	m_pPipeline->setDepthTest(true);
+	m_pPipeline->setWireFrame(false);
 	//TODO: Return bool
 	m_pPipeline->create(shaders, m_pRenderPass, m_pPipelineLayout);
 

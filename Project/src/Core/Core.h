@@ -38,17 +38,8 @@
 //REMEBER ALIGNMENT OF 16 bytes
 struct Vertex
 {
-	//Todo: Padding? Yes?
-
-	glm::vec4 Position;
-	glm::vec3 Normal;
-	glm::vec3 Tangent;
+	alignas(16) glm::vec3 Position;
+	alignas(16) glm::vec3 Normal;
+	alignas(16) glm::vec3 Tangent;
 	glm::vec2 TexCoord;
-};
-
-enum class EMemoryUsage : uint32_t
-{
-	UNKNOWN	= 0,
-	CPU_GPU	= 1,
-	GPU		= 2
 };

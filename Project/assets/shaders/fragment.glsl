@@ -9,7 +9,15 @@ layout (push_constant) uniform Constants
 	vec4 Color;
 } g_Constants;
 
+layout(location = 0) in vec3 in_Normal;
+
+const vec3 dir = vec3(0.0f, -1.0f, -1.0f);
+
 void main()
 {
-    outColor = g_Constants.Color;
+	vec3 direction 	= normalize(dir);
+	vec3 normal 	= normalize(in_Normal);
+	float lightStrength = dot(direction, normal);
+	
+    outColor = g_Constants.Color * max(lightStrength, 0.3f);
 }

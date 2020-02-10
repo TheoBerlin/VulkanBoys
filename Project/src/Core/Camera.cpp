@@ -2,7 +2,8 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
-const glm::vec3 UP_VECTOR = glm::vec3(0.0f, 1.0f, 0.0f);
+const glm::vec3 UP_VECTOR		= glm::vec3(0.0f, 1.0f, 0.0f);
+const glm::vec3 FORWARD_VECTOR	= glm::vec3(0.0f, 0.0f, 1.0f);
 
 Camera::Camera()
 	: m_Projection(1.0f),
@@ -33,6 +34,17 @@ void Camera::setProjection(float fovDegrees, float width, float height, float ne
 {
 	m_Projection	= glm::perspective(glm::radians(fovDegrees), width / height, nearPlane, farPlane);
 	m_ProjectionInv = glm::inverse(m_Projection);
+}
+
+void Camera::setRotation(const glm::vec3& rotation)
+{
+	glm::vec3 direction;
+	direction.x = cos(glm::radians(rotation.y)) * cos(glm::radians(rotation.x));
+	direction.y = sin(glm::radians(rotation.z));
+	direction.z = sin(glm::radians(rotation.y)) * cos(glm::radians(rotation.x));
+
+	m_Direction = direction;
+	m_IsDirty = true;
 }
 
 void Camera::translate(const glm::vec3& translation)

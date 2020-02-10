@@ -73,12 +73,14 @@ void Application::init()
 
 	//Setup camera
 	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
-	m_Camera.setPosition(glm::vec3(0.0f, 0.0f, -1.0f));
+	m_Camera.setPosition(glm::vec3(0.0f, -1.0f, -1.0f));
 	m_Camera.setProjection(90.0f, m_pWindow->getWidth(), m_pWindow->getHeight(), 0.1f, 100.0f);
 	m_Camera.update();
 
 	//Load mesh
 	using namespace glm;
+
+	constexpr size_t size = sizeof(Vertex);
 
 	Vertex vertices[] =
 	{
@@ -267,22 +269,23 @@ static glm::mat4 g_Rotation = glm::mat4(1.0f);
 
 void Application::update(double dt)
 {
+	constexpr float speed = 0.75f;
 	if (Input::isKeyPressed(EKey::KEY_A))
 	{
-		m_Camera.translate(glm::vec3(0.2f * dt, 0.0f, 0.0f));
+		m_Camera.translate(glm::vec3(speed * dt, 0.0f, 0.0f));
 	}
 	else if (Input::isKeyPressed(EKey::KEY_D))
 	{
-		m_Camera.translate(glm::vec3(-0.2f * dt, 0.0f, 0.0f));
+		m_Camera.translate(glm::vec3(-speed * dt, 0.0f, 0.0f));
 	}
 
 	if (Input::isKeyPressed(EKey::KEY_W))
 	{
-		m_Camera.translate(glm::vec3(0.0f, 0.0f, 0.2f * dt));
+		m_Camera.translate(glm::vec3(0.0f, 0.0f, speed * dt));
 	}
 	else if (Input::isKeyPressed(EKey::KEY_S))
 	{
-		m_Camera.translate(glm::vec3(0.0f, 0.0f, -0.2f * dt));
+		m_Camera.translate(glm::vec3(0.0f, 0.0f, -speed * dt));
 	}
 
 	m_Camera.update();
@@ -308,9 +311,9 @@ void Application::render(double dt)
 {
 	m_pRenderer->beginFrame(m_Camera);
 
-	//g_Rotation = glm::rotate(g_Rotation, glm::radians(15.0f * float(dt)), glm::vec3(0.0f, 0.0f, 1.0f));
+	g_Rotation = glm::rotate(g_Rotation, glm::radians(15.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
 
-	m_pRenderer->submitMesh(m_pMesh, g_Color, glm::mat4(1.0f));
+	m_pRenderer->submitMesh(m_pMesh, g_Color, glm::mat4(1.0f) * g_Rotation);
 	m_pRenderer->drawImgui(m_pImgui);
 
 	m_pRenderer->endFrame();

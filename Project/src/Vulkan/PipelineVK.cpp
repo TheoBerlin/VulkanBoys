@@ -8,8 +8,11 @@
 PipelineVK::PipelineVK(DeviceVK* pDevice)
 	: m_pDevice(pDevice),
     m_Pipeline(VK_NULL_HANDLE),
-	m_WireFrame(false)
-{}
+	m_WireFrame(false),
+    m_Culling(true),
+    m_DepthTest(true)
+{
+}
 
 PipelineVK::~PipelineVK()
 {
@@ -93,7 +96,7 @@ void PipelineVK::create(const std::vector<IShader*>& shaders, RenderPassVK* pRen
     rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizer.polygonMode = m_WireFrame ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth    = 1.0f;
-    rasterizer.cullMode     = VK_CULL_MODE_NONE;
+    rasterizer.cullMode     = m_Culling ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE;
     rasterizer.frontFace    = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizer.depthBiasEnable  = VK_FALSE;
     rasterizer.depthClampEnable = VK_FALSE;
@@ -132,7 +135,7 @@ void PipelineVK::create(const std::vector<IShader*>& shaders, RenderPassVK* pRen
 
     VkPipelineDepthStencilStateCreateInfo depthStencil = {};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depthStencil.depthTestEnable    = VK_FALSE;
+    depthStencil.depthTestEnable    = m_DepthTest ? VK_TRUE : VK_FALSE;
     depthStencil.depthWriteEnable   = VK_FALSE;
     depthStencil.depthCompareOp     = VK_COMPARE_OP_LESS_OR_EQUAL;
     depthStencil.depthBoundsTestEnable  = VK_FALSE;
