@@ -16,6 +16,12 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
+//TEMP
+#include "Ray Tracing/ShaderBindingTableVK.h"
+#include "Ray Tracing/RayTracingPipelineVK.h"
+#include "Ray Tracing/AccelerationTableVK.h"
+#include "ShaderVK.h"
+
 RendererVK::RendererVK(GraphicsContextVK* pContext)
 	: m_pContext(pContext),
 	m_ppCommandPools(),
@@ -104,6 +110,41 @@ bool RendererVK::init()
 	//Last thing is to write to the descriptor set
 	m_pDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer->getBuffer(), 0);
 
+	//Testing
+	AccelerationTableVK* pAccelerationTable = new AccelerationTableVK(m_pContext);
+	pAccelerationTable->addMeshInstance(new Mesh());
+	pAccelerationTable->finalize();
+
+	RaygenGroupParams raygenGroupParams = {};
+	IntersectGroupParams intersectGroupParams = {};
+	MissGroupParams missGroupParams = {};
+
+	{
+		ShaderVK* pRaygenShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+		pRaygenShader->loadFromFile(EShader::RAYGEN_SHADER, "main", "assets/shaders/raygen.spv");
+		raygenGroupParams.pRaygenShader = pRaygenShader;
+
+		ShaderVK* pClosestHitShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+		pClosestHitShader->loadFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/closesthit.spv");
+		intersectGroupParams.pClosestHitShader = pClosestHitShader;
+
+		ShaderVK* pMissShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+		pMissShader->loadFromFile(EShader::MISS_SHADER, "main", "assets/shaders/miss.spv");
+		missGroupParams.pMissShader = pMissShader;
+	}
+
+	PipelineLayoutVK* pPipelineLayout = new PipelineLayoutVK(m_pContext->getDevice());
+	//pPipelineLayout->createPipelineLayout();
+		
+	RayTracingPipelineVK* pRayTracingPipeline = new RayTracingPipelineVK(m_pContext->getDevice());
+	pRayTracingPipeline->addRaygenShaderGroup(raygenGroupParams);
+	pRayTracingPipeline->addIntersectShaderGroup(intersectGroupParams);
+	pRayTracingPipeline->addMissShaderGroup(missGroupParams);
+	pRayTracingPipeline->finalize(pPipelineLayout);
+
+	ShaderBindingTableVK* pSBT = new ShaderBindingTableVK(m_pContext);
+	pSBT->init(pRayTracingPipeline);
+	
 	return true;
 }
 

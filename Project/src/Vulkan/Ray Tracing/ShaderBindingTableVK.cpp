@@ -21,7 +21,7 @@ ShaderBindingTableVK::~ShaderBindingTableVK()
 	}
 }
 
-bool ShaderBindingTableVK::finalize(RayTracingPipelineVK* pRayTracingPipeline)
+bool ShaderBindingTableVK::init(RayTracingPipelineVK* pRayTracingPipeline)
 {
 	// Create buffer for the shader binding table
 	uint32_t shaderGroupHandleSize = m_pContext->getDevice()->getRayTracingProperties().shaderGroupHandleSize;

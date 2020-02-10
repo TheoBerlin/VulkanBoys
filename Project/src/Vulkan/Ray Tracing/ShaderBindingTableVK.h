@@ -21,7 +21,7 @@ public:
 	ShaderBindingTableVK(IGraphicsContext* pContext);
 	~ShaderBindingTableVK();
 
-	bool finalize(RayTracingPipelineVK* pRayTracingPipeline);
+	bool init(RayTracingPipelineVK* pRayTracingPipeline);
 
 private:
 	GraphicsContextVK* m_pContext;
