@@ -245,8 +245,7 @@ void Application::onMouseMove(uint32_t x, uint32_t y)
 		yoffset *= sensitivity;
 
 		glm::vec3 rotation = m_Camera.getRotation();
-		rotation	+= glm::vec3(yoffset, xoffset, 0.0f);
-		rotation.x	 = std::max(std::min(rotation.x, 89.0f), -89.0f);
+		rotation += glm::vec3(yoffset, xoffset, 0.0f);
 
 		m_Camera.setRotation(rotation);
 	}
@@ -339,6 +338,25 @@ void Application::update(double dt)
 	else if (Input::isKeyPressed(EKey::KEY_D))
 	{
 		m_Camera.translate(glm::vec3(speed * dt, 0.0f, 0.0f));
+	}
+
+	constexpr float rotationSpeed = 30.0f;
+	if (Input::isKeyPressed(EKey::KEY_LEFT))
+	{
+		m_Camera.rotate(glm::vec3(0.0f, rotationSpeed * dt, 0.0f));
+	}
+	else if (Input::isKeyPressed(EKey::KEY_RIGHT))
+	{
+		m_Camera.rotate(glm::vec3(0.0f, -rotationSpeed * dt, 0.0f));
+	}
+
+	if (Input::isKeyPressed(EKey::KEY_UP))
+	{
+		m_Camera.rotate(glm::vec3(rotationSpeed * dt, 0.0f, 0.0f));
+	}
+	else if (Input::isKeyPressed(EKey::KEY_DOWN))
+	{
+		m_Camera.rotate(glm::vec3(-rotationSpeed * dt, 0.0f, 0.0f));
 	}
 
 	m_Camera.update();

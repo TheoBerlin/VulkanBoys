@@ -10,6 +10,11 @@
 uint32_t GLFWWindow::s_WindowCount = 0;
 bool GLFWWindow::s_HasGLFW = false;
 
+static void glfwErrorCallback(int32_t error, const char* pDescription)
+{
+	LOG("--- GLFW Error(=%d): %s", error, pDescription);
+}
+
 GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height)
 	: m_pWindow(nullptr),
 	m_ppEventHandlers(),
@@ -26,6 +31,7 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 		if (glfwInit() == GLFW_TRUE)
 		{
 			s_HasGLFW = true;
+			glfwSetErrorCallback(glfwErrorCallback);
 		}
 	}
 

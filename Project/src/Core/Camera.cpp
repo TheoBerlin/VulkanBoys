@@ -42,14 +42,20 @@ void Camera::setProjection(float fovDegrees, float width, float height, float ne
 
 void Camera::setRotation(const glm::vec3& rotation)
 {
-	//Create rotation matrix
-	glm::mat3 rotationMat = glm::eulerAngleYXZ(glm::radians(rotation.y), glm::radians(rotation.x), glm::radians(rotation.z));
+	m_Rotation = rotation;
+	m_Rotation.x = std::max(std::min(m_Rotation.x, 89.0f), -89.0f);
+
+	glm::mat3 rotationMat = glm::eulerAngleYXZ(glm::radians(m_Rotation.y), glm::radians(m_Rotation.x), glm::radians(m_Rotation.z));
 	m_Direction	= glm::normalize(rotationMat * FORWARD_VECTOR);
-	m_Rotation	= rotation;
 
 	calculateVectors();
 
 	m_IsDirty = true;
+}
+
+void Camera::rotate(const glm::vec3& rotation)
+{
+	setRotation(m_Rotation + rotation);
 }
 
 void Camera::translate(const glm::vec3& translation)

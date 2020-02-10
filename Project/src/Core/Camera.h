@@ -18,6 +18,7 @@ public:
 	void setRotation(const glm::vec3& rotation);
 	void setProjection(float fovDegrees, float width, float height, float nearPlane, float farPlane);
 
+	void rotate(const glm::vec3& rotation);
 	void translate(const glm::vec3& translation);
 
 	void update();
