@@ -10,7 +10,7 @@ public:
 	virtual ~Texture2D();
 
 	// returns 0 if texture was loaded.
-	virtual int loadFromFile(std::string filename) = 0;
+	virtual int initFromFile(std::string filename) = 0;
 
 	// bind texture to be used in the pipeline, binding to
 	// slot "slot" in the active fragment shader.

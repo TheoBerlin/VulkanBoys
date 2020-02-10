@@ -25,6 +25,8 @@ public:
 
 	virtual void swapBuffers() = 0;
 
+	virtual void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform) = 0;
+	
 	virtual void drawImgui(IImgui* pImgui) = 0;
 
 	//Temporary function

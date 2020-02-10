@@ -4,19 +4,20 @@
 class DeviceVK;
 class BufferVK;
 
-class StaginBufferVK
+class StagingBufferVK
 {
 public:
-	StaginBufferVK(DeviceVK* pDevice);
-	~StaginBufferVK();
+	StagingBufferVK(DeviceVK* pDevice);
+	~StagingBufferVK();
 
-	bool create(VkDeviceSize initalSizeInBytes);
+	bool init(VkDeviceSize initalSizeInBytes);
 
 	void* allocate(VkDeviceSize sizeInBytes);
 	void reset();
 
 	BufferVK* getBuffer() const { return m_pBuffer; }
 	VkDeviceSize getCurrentOffset() const { return m_BufferOffset; }
+
 private:
 	DeviceVK* m_pDevice;
 	BufferVK* m_pBuffer;

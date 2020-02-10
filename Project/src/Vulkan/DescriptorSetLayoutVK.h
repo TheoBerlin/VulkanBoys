@@ -1,7 +1,5 @@
 #pragma once
-
-#include "vulkan/vulkan.h"
-
+#include "VulkanCommon.h"
 #include "DescriptorCounts.h"
 
 #include <vector>
@@ -18,7 +16,7 @@ public:
     void addBindingUniformBuffer(VkShaderStageFlags shaderStageFlags, uint32_t bindingSlot, uint32_t descriptorCount);
     void addBindingSampledImage(VkShaderStageFlags shaderStageFlags, uint32_t bindingSlot, uint32_t descriptorCount);
     void addBindingCombinedImage(VkShaderStageFlags shaderStageFlags, const VkSampler* pImmutableSampler, uint32_t bindingSlot, uint32_t descriptorCount);
-    bool finalizeLayout();
+    bool finalize();
 
     VkDescriptorSetLayout getLayout() const { return m_DescriptorSetLayout; }
     DescriptorCounts getBindingCounts() const;

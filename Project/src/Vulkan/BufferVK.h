@@ -1,16 +1,11 @@
 #pragma once
+#include "Common/IBuffer.h"
+
 #include "VulkanCommon.h"
 
 class DeviceVK;
 
-struct BufferParams
-{
-	VkDeviceSize SizeInBytes = 0;
-	VkBufferUsageFlags Usage = 0;
-	VkMemoryPropertyFlags MemoryProperty = 0;
-};
-
-class BufferVK
+class BufferVK : public IBuffer
 {
 public:
 	BufferVK(DeviceVK* pDevice);
@@ -18,12 +13,15 @@ public:
 
 	DECL_NO_COPY(BufferVK);
 
-	bool create(const BufferParams& params);
-	void map(void** ppMappedMemory);
-	void unmap();
+	virtual bool init(const BufferParams& params) override;
+	
+	virtual void map(void** ppMappedMemory) override;
+	virtual void unmap() override;
 
+	virtual uint64_t getSizeInBytes() const override;
+	
 	VkBuffer getBuffer() const { return m_Buffer; }
-	VkDeviceSize getSizeInBytes() const { return m_Params.SizeInBytes; }
+
 private:
 	DeviceVK* m_pDevice;
 	VkBuffer m_Buffer;

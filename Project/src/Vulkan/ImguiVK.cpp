@@ -527,14 +527,14 @@ bool ImguiVK::createPipeline()
 	memcpy(vertexByteCode.data(), __glsl_shader_vert_spv, sizeof(__glsl_shader_vert_spv));
 
 	IShader* pVertexShader = m_pContext->createShader();
-	pVertexShader->loadFromByteCode(EShader::VERTEX_SHADER, "main", vertexByteCode);
+	pVertexShader->initFromByteCode(EShader::VERTEX_SHADER, "main", vertexByteCode);
 	pVertexShader->finalize();
 
 	std::vector<char> pixelByteCode(sizeof(__glsl_shader_frag_spv));
 	memcpy(pixelByteCode.data(), __glsl_shader_frag_spv, sizeof(__glsl_shader_frag_spv));
 
 	IShader* pPixelShader = m_pContext->createShader();
-	pPixelShader->loadFromByteCode(EShader::PIXEL_SHADER, "main", pixelByteCode);
+	pPixelShader->initFromByteCode(EShader::PIXEL_SHADER, "main", pixelByteCode);
 	pPixelShader->finalize();
 
 	std::vector<IShader*> shaders = { pVertexShader, pPixelShader };
@@ -565,7 +565,7 @@ bool ImguiVK::createPipelineLayout()
 	const VkSampler immutableSamplers[] = { m_pSampler->getSampler() };
 	m_pDescriptorSetLayout = new DescriptorSetLayoutVK(m_pContext->getDevice());
 	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, immutableSamplers, 0, 1);
-	m_pDescriptorSetLayout->finalizeLayout();
+	m_pDescriptorSetLayout->finalize();
 
 	VkPushConstantRange pushConstantRange = {};
 	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -575,7 +575,7 @@ bool ImguiVK::createPipelineLayout()
 
 	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { m_pDescriptorSetLayout };
 	m_pPipelineLayout = new PipelineLayoutVK(m_pContext->getDevice());
-	m_pPipelineLayout->createPipelineLayout(descriptorSetLayouts, pushConstantRanges);
+	m_pPipelineLayout->init(descriptorSetLayouts, pushConstantRanges);
 
 	DescriptorCounts counts;
 	counts.m_SampledImages	= 1;
@@ -583,7 +583,7 @@ bool ImguiVK::createPipelineLayout()
 	counts.m_UniformBuffers = 1;
 
 	m_pDescriptorPool = new DescriptorPoolVK(m_pContext->getDevice());
-	m_pDescriptorPool->initializeDescriptorPool(counts, 1);
+	m_pDescriptorPool->init(counts, 1);
 	m_pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
 
 	return true;
@@ -600,7 +600,7 @@ bool ImguiVK::createFontTexture()
 	size_t uploadSize = width * height * 4;
 
 	m_pFontTexture = m_pContext->createTexture2D();
-	return m_pFontTexture->loadFromMemory(pPixels, width, height);
+	return m_pFontTexture->initFromMemory(pPixels, width, height);
 }
 
 bool ImguiVK::createBuffers(uint32_t vertexBufferSize, uint32_t indexBufferSize)
@@ -611,7 +611,7 @@ bool ImguiVK::createBuffers(uint32_t vertexBufferSize, uint32_t indexBufferSize)
 	vertexBufferparams.SizeInBytes = vertexBufferSize;
 
 	m_pVertexBuffer = new BufferVK(m_pContext->getDevice());
-	if (!m_pVertexBuffer->create(vertexBufferparams))
+	if (!m_pVertexBuffer->init(vertexBufferparams))
 	{
 		return false;
 	}
@@ -622,7 +622,7 @@ bool ImguiVK::createBuffers(uint32_t vertexBufferSize, uint32_t indexBufferSize)
 	indexBufferparams.SizeInBytes = indexBufferSize;
 
 	m_pIndexBuffer = new BufferVK(m_pContext->getDevice());
-	if (!m_pIndexBuffer->create(indexBufferparams))
+	if (!m_pIndexBuffer->init(indexBufferparams))
 	{
 		return false;
 	}

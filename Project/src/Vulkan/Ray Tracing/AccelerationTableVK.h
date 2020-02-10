@@ -1,6 +1,8 @@
 #pragma once
-
 #include "../VulkanCommon.h"
+#include "../BufferVK.h"
+#include "../MeshVK.h"
+
 #include <vector>
 #include <unordered_map>
 
@@ -9,19 +11,8 @@ class GraphicsContextVK;
 class DeviceVK;
 
 //Todo: Remove these
-#include "../BufferVK.h"
 class CommandPoolVK;
 class CommandBufferVK;
-class Mesh
-{
-public:
-	BufferVK* getVertexBuffer() { return m_pVertexBuffer; }
-	BufferVK* getIndexBuffer() { return m_pIndexBuffer; }
-
-private:
-	BufferVK* m_pVertexBuffer;
-	BufferVK* m_pIndexBuffer;
-};
 
 class AccelerationTableVK
 {
@@ -57,7 +48,7 @@ public:
 	AccelerationTableVK(IGraphicsContext* pContext);
 	~AccelerationTableVK();
 
-	uint32_t addMeshInstance(Mesh* pMesh, const glm::mat3x4& transform = glm::mat3x4());
+	uint32_t addMeshInstance(MeshVK* pMesh, const glm::mat3x4& transform = glm::mat3x4());
 	bool finalize();
 
 private:
@@ -69,7 +60,7 @@ private:
 	DeviceVK* m_pDevice;
 
 	TopLevelAccelerationStructure m_TopLevelAccelerationStructure;
-	std::unordered_map<Mesh*, BottomLevelAccelerationStructure> m_BottomLevelAccelerationStructures;
+	std::unordered_map<MeshVK*, BottomLevelAccelerationStructure> m_BottomLevelAccelerationStructures;
 
 	std::vector<GeometryInstance> m_AllGeometryInstances; //Possibly Temp?
 

@@ -1,7 +1,7 @@
-#include "StackVK.h"
+#include "StagingBufferVK.h"
 #include "BufferVK.h"
 
-StaginBufferVK::StaginBufferVK(DeviceVK* pDevice)
+StagingBufferVK::StagingBufferVK(DeviceVK* pDevice)
 	: m_pDevice(pDevice),
 	m_pBuffer(nullptr),
 	m_pHostMemory(nullptr),
@@ -9,13 +9,13 @@ StaginBufferVK::StaginBufferVK(DeviceVK* pDevice)
 {
 }
 
-StaginBufferVK::~StaginBufferVK()
+StagingBufferVK::~StagingBufferVK()
 {
 	SAFEDELETE(m_pBuffer);
 	m_pDevice = nullptr;
 }
 
-bool StaginBufferVK::create(VkDeviceSize initalSizeInBytes)
+bool StagingBufferVK::init(VkDeviceSize initalSizeInBytes)
 {
 	BufferParams params = {};
 	params.Usage		= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
@@ -23,7 +23,7 @@ bool StaginBufferVK::create(VkDeviceSize initalSizeInBytes)
 	params.SizeInBytes	= initalSizeInBytes;
 
 	m_pBuffer = new BufferVK(m_pDevice);
-	if (m_pBuffer->create(params))
+	if (m_pBuffer->init(params))
 	{
 		m_pBuffer->map((void**)&m_pHostMemory);
 		return true;
@@ -33,7 +33,7 @@ bool StaginBufferVK::create(VkDeviceSize initalSizeInBytes)
 	return false;
 }
 
-void* StaginBufferVK::allocate(VkDeviceSize sizeInBytes)
+void* StagingBufferVK::allocate(VkDeviceSize sizeInBytes)
 {
 	VkDeviceSize oldBufferOffset = m_BufferOffset;
 	m_BufferOffset = m_BufferOffset + sizeInBytes;
@@ -54,7 +54,7 @@ void* StaginBufferVK::allocate(VkDeviceSize sizeInBytes)
 	return nullptr;
 }
 
-void StaginBufferVK::reset()
+void StagingBufferVK::reset()
 {
 	m_BufferOffset = 0;
 }
