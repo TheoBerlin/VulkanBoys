@@ -1,6 +1,7 @@
 #include "Application.h"
-#include "Camera.h"
 #include "Input.h"
+#include "Camera.h"
+#include "TaskDispatcher.h"
 
 #include "Common/IMesh.h"
 #include "Common/IImgui.h"
@@ -53,6 +54,10 @@ Application::~Application()
 
 void Application::init()
 {
+	LOG("Starting application");
+
+	TaskDispatcher::init();
+
 	//Create window
 	m_pWindow = IWindow::create("Hello Vulkan", 1440, 900);
 	if (m_pWindow)
@@ -209,6 +214,10 @@ void Application::release()
 	Input::setInputHandler(nullptr);
 
 	SAFEDELETE(m_pWindow);
+
+	TaskDispatcher::release();
+
+	LOG("Exiting Application");
 }
 
 void Application::onWindowResize(uint32_t width, uint32_t height)
