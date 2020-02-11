@@ -4,8 +4,8 @@
 struct Vertex
 {
 	vec4 Position;
-	vec3 Normal;
-	vec3 Tangent;
+	vec4 Normal;
+	vec4 Tangent;
 	vec2 TexCoord;
 };
 
@@ -21,9 +21,18 @@ layout (binding = 0) uniform PerFrameBuffer
 	mat4 View;
 } g_PerFrame;
 
-layout(binding = 1) buffer vertexBuffer { Vertex vertices[]; };
+layout(binding = 1) buffer vertexBuffer
+{ 
+	Vertex vertices[];
+};
+
+layout(location = 0) out vec3 out_Normal;
 
 void main() 
 {
-    gl_Position = g_PerFrame.Projection * g_PerFrame.View * g_Constants.Transform * vec4(vertices[gl_VertexIndex].Position.xyz, 1.0);
+	vec3 position 	= vertices[gl_VertexIndex].Position.xyz;
+    vec3 normal 	= vertices[gl_VertexIndex].Normal.xyz;
+	
+	out_Normal = normal;
+	gl_Position = g_PerFrame.Projection * g_PerFrame.View * g_Constants.Transform * vec4(position, 1.0);
 }

@@ -3,7 +3,13 @@
 #include <iostream>
 #include <cassert>
 #include <cstdio>
+#include <algorithm>
+
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
+#include <glm/gtx/hash.hpp>
+
+#include "Common/Debug.h"
 
 #define DECL_NO_COPY(Type) \
 	Type(Type&&) = delete; \
@@ -30,20 +36,22 @@
 #if _DEBUG
 	#define D_LOG(...) LOG(__VA_ARGS__)
 #else
-	#define D_LOG(...) LOG(__VA_ARGS__)
+	#define D_LOG(...)
 #endif
 
 #define MB(bytes) bytes * 1024 * 1024
 
-//REMEBER ALIGNMENT OF 16 bytes
 //struct Vertex
 //{
-//	//Todo: Padding? Yes?
-//
-//	glm::vec4 Position;
-//	glm::vec3 Normal;
-//	glm::vec3 Tangent;
+//	alignas(16) glm::vec3 Position;
+//	alignas(16) glm::vec3 Normal;
+//	alignas(16) glm::vec3 Tangent;
 //	glm::vec2 TexCoord;
+//
+//	bool operator==(const Vertex& other) const 
+//	{
+//		return Position == other.Position && Normal == other.Normal && Tangent == other.Tangent && TexCoord == other.TexCoord;
+//	}
 //};
 
 struct Vertex
@@ -51,9 +59,15 @@ struct Vertex
 	float pos[3];
 };
 
-enum class EMemoryUsage : uint32_t
+namespace std 
 {
-	UNKNOWN	= 0,
-	CPU_GPU	= 1,
-	GPU		= 2
-};
+	template<> struct hash<Vertex> 
+	{
+		size_t operator()(Vertex const& vertex) const 
+		{
+			return ((hash<glm::vec3>()(vertex.Position) ^
+				(hash<glm::vec3>()(vertex.Normal) << 1)) >> 1) ^
+				(hash<glm::vec2>()(vertex.TexCoord) << 1);
+		}
+	};
+}

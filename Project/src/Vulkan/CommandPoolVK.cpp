@@ -59,7 +59,7 @@ CommandBufferVK* CommandPoolVK::allocateCommandBuffer()
 
 	D_LOG("--- CommandPool: Vulkan CommandBuffer allocated successfully");
 	
-	CommandBufferVK* pCommandBuffer = new CommandBufferVK(m_pDevice, commandBuffer);
+	CommandBufferVK* pCommandBuffer = DBG_NEW CommandBufferVK(m_pDevice, commandBuffer);
 	pCommandBuffer->finalize();
 
 	m_ppCommandBuffers.emplace_back(pCommandBuffer);

@@ -484,7 +484,7 @@ bool ImguiVK::initImgui()
 
 bool ImguiVK::createRenderPass()
 {
-	m_pRenderPass = new RenderPassVK(m_pContext->getDevice());
+	m_pRenderPass = DBG_NEW RenderPassVK(m_pContext->getDevice());
 
 	VkAttachmentDescription description = {};
 	description.format	= VK_FORMAT_B8G8R8A8_UNORM;
@@ -538,7 +538,7 @@ bool ImguiVK::createPipeline()
 	pPixelShader->finalize();
 
 	std::vector<IShader*> shaders = { pVertexShader, pPixelShader };
-	m_pPipeline = new PipelineVK(m_pContext->getDevice());
+	m_pPipeline = DBG_NEW PipelineVK(m_pContext->getDevice());
 	m_pPipeline->addVertexAttribute(0, VK_FORMAT_R32G32_SFLOAT, 0, IM_OFFSETOF(ImDrawVert, pos));
 	m_pPipeline->addVertexAttribute(0, VK_FORMAT_R32G32_SFLOAT, 1, IM_OFFSETOF(ImDrawVert, uv));
 	m_pPipeline->addVertexAttribute(0, VK_FORMAT_R8G8B8A8_UNORM, 2, IM_OFFSETOF(ImDrawVert, col));
@@ -547,9 +547,11 @@ bool ImguiVK::createPipeline()
 	
 	m_pPipeline->addColorBlendAttachment(true, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
 	
+	m_pPipeline->setCulling(false);
 	m_pPipeline->setWireFrame(false);
+	m_pPipeline->setDepthTest(false);
 
-	m_pPipeline->create(shaders, m_pRenderPass, m_pPipelineLayout);
+	m_pPipeline->finalize(shaders, m_pRenderPass, m_pPipelineLayout);
 
 	SAFEDELETE(pVertexShader);
 	SAFEDELETE(pPixelShader);
@@ -559,11 +561,11 @@ bool ImguiVK::createPipeline()
 
 bool ImguiVK::createPipelineLayout()
 {
-	m_pSampler = new SamplerVK(m_pContext->getDevice());
+	m_pSampler = DBG_NEW SamplerVK(m_pContext->getDevice());
 	m_pSampler->init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
 	const VkSampler immutableSamplers[] = { m_pSampler->getSampler() };
-	m_pDescriptorSetLayout = new DescriptorSetLayoutVK(m_pContext->getDevice());
+	m_pDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(m_pContext->getDevice());
 	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, immutableSamplers, 0, 1);
 	m_pDescriptorSetLayout->finalize();
 
@@ -574,7 +576,7 @@ bool ImguiVK::createPipelineLayout()
 	std::vector<VkPushConstantRange> pushConstantRanges = { pushConstantRange };
 
 	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { m_pDescriptorSetLayout };
-	m_pPipelineLayout = new PipelineLayoutVK(m_pContext->getDevice());
+	m_pPipelineLayout = DBG_NEW PipelineLayoutVK(m_pContext->getDevice());
 	m_pPipelineLayout->init(descriptorSetLayouts, pushConstantRanges);
 
 	DescriptorCounts counts;
@@ -584,7 +586,7 @@ bool ImguiVK::createPipelineLayout()
 	counts.m_StorageImages = 1;
 	counts.m_AccelerationStructures = 1;
 
-	m_pDescriptorPool = new DescriptorPoolVK(m_pContext->getDevice());
+	m_pDescriptorPool = DBG_NEW DescriptorPoolVK(m_pContext->getDevice());
 	m_pDescriptorPool->init(counts, 1);
 	m_pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
 
@@ -612,7 +614,7 @@ bool ImguiVK::createBuffers(uint32_t vertexBufferSize, uint32_t indexBufferSize)
 	vertexBufferparams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 	vertexBufferparams.SizeInBytes = vertexBufferSize;
 
-	m_pVertexBuffer = new BufferVK(m_pContext->getDevice());
+	m_pVertexBuffer = DBG_NEW BufferVK(m_pContext->getDevice());
 	if (!m_pVertexBuffer->init(vertexBufferparams))
 	{
 		return false;
@@ -623,7 +625,7 @@ bool ImguiVK::createBuffers(uint32_t vertexBufferSize, uint32_t indexBufferSize)
 	indexBufferparams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 	indexBufferparams.SizeInBytes = indexBufferSize;
 
-	m_pIndexBuffer = new BufferVK(m_pContext->getDevice());
+	m_pIndexBuffer = DBG_NEW BufferVK(m_pContext->getDevice());
 	if (!m_pIndexBuffer->init(indexBufferparams))
 	{
 		return false;

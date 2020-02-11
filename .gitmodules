@@ -7,3 +7,6 @@
 [submodule "Project/Dependencies/imgui"]
 	path = Project/Dependencies/imgui
 	url = https://github.com/Mumsfilibaba/imgui
+[submodule "Project/Dependencies/tinyobjloader"]
+	path = Project/Dependencies/tinyobjloader
+	url = https://github.com/syoyo/tinyobjloader

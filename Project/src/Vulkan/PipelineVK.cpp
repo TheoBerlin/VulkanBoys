@@ -8,8 +8,11 @@
 PipelineVK::PipelineVK(DeviceVK* pDevice)
 	: m_pDevice(pDevice),
     m_Pipeline(VK_NULL_HANDLE),
-	m_WireFrame(false)
-{}
+	m_WireFrame(false),
+    m_Culling(true),
+    m_DepthTest(true)
+{
+}
 
 PipelineVK::~PipelineVK()
 {
@@ -55,7 +58,7 @@ void PipelineVK::addColorBlendAttachment(bool blendEnable, VkColorComponentFlags
     m_ColorBlendAttachments.emplace_back(colorBlendAttachment);
 }
 
-void PipelineVK::create(const std::vector<IShader*>& shaders, RenderPassVK* pRenderPass, PipelineLayoutVK* pPipelineLayout)
+bool PipelineVK::finalize(const std::vector<IShader*>& shaders, RenderPassVK* pRenderPass, PipelineLayoutVK* pPipelineLayout)
 {
     // Define shader stage create infos
     std::vector<VkPipelineShaderStageCreateInfo> shaderStagesInfos;
@@ -93,8 +96,8 @@ void PipelineVK::create(const std::vector<IShader*>& shaders, RenderPassVK* pRen
     rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizer.polygonMode = m_WireFrame ? VK_POLYGON_MODE_LINE : VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth    = 1.0f;
-    rasterizer.cullMode     = VK_CULL_MODE_NONE;
-    rasterizer.frontFace    = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rasterizer.cullMode     = m_Culling ? VK_CULL_MODE_BACK_BIT : VK_CULL_MODE_NONE;
+    rasterizer.frontFace    = VK_FRONT_FACE_CLOCKWISE;
     rasterizer.depthBiasEnable  = VK_FALSE;
     rasterizer.depthClampEnable = VK_FALSE;
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
@@ -132,8 +135,8 @@ void PipelineVK::create(const std::vector<IShader*>& shaders, RenderPassVK* pRen
 
     VkPipelineDepthStencilStateCreateInfo depthStencil = {};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depthStencil.depthTestEnable    = VK_FALSE;
-    depthStencil.depthWriteEnable   = VK_FALSE;
+    depthStencil.depthTestEnable    = m_DepthTest ? VK_TRUE : VK_FALSE;
+    depthStencil.depthWriteEnable   = VK_TRUE;
     depthStencil.depthCompareOp     = VK_COMPARE_OP_LESS_OR_EQUAL;
     depthStencil.depthBoundsTestEnable  = VK_FALSE;
     depthStencil.stencilTestEnable      = VK_FALSE;
@@ -162,15 +165,14 @@ void PipelineVK::create(const std::vector<IShader*>& shaders, RenderPassVK* pRen
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
     pipelineInfo.basePipelineIndex  = -1;
 
-    VkResult result = vkCreateGraphicsPipelines(m_pDevice->getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_Pipeline);
-    if (result != VK_SUCCESS) {
-        D_LOG("vkCreateGraphicsPipelines failed");
-    } else {
-        D_LOG("--- Pipeline: Vulkan pipeline created successfully");
+    VK_CHECK_RESULT_RETURN_FALSE(vkCreateGraphicsPipelines(m_pDevice->getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_Pipeline), "vkCreateGraphicsPipelines failed");
 
-        m_VertexAttributes.clear();
-        m_VertexBindings.clear();
-    }
+    D_LOG("--- Pipeline: Vulkan pipeline created successfully");
+
+    m_VertexAttributes.clear();
+    m_VertexBindings.clear();
+
+    return true;
 }
 
 void PipelineVK::createShaderStageInfo(VkPipelineShaderStageCreateInfo& shaderStageInfo, const IShader* shader)

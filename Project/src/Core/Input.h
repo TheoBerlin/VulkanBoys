@@ -3,6 +3,7 @@
 
 #include "Common/Keycodes.h"
 
+class IWindow;
 class IInputHandler;
 
 class Input
@@ -14,6 +15,10 @@ public:
 
 	static bool isKeyPressed(EKey keycode);
 	static bool isKeyReleased(EKey keycode);
+
+	static void setMousePosition(IWindow* pWindow, const glm::vec2& position);
+    static void captureMouse(IWindow* pWindow);
+    static void releaseMouse(IWindow* pWindow);
 
 private:
 	static IInputHandler* s_pInputHandler;

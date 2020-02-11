@@ -18,6 +18,7 @@ public:
 
 	virtual void setFullscreenState(bool enable) = 0;
 	virtual bool getFullscreenState() const = 0;
+	virtual void toggleFullscreenState() = 0;
 
 	virtual bool hasFocus() const = 0;
 

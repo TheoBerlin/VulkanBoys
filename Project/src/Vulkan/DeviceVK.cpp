@@ -6,6 +6,8 @@
 #include <map>
 #include <set>
 
+#define GET_DEVICE_PROC_ADDR(device, function_name) if ((function_name = reinterpret_cast<PFN_##function_name>(vkGetDeviceProcAddr(device, #function_name))) == nullptr) { LOG("--- Vulkan: Failed to load DeviceFunction '%s'", #function_name); }
+
 DeviceVK::DeviceVK() :
 	m_PhysicalDevice(VK_NULL_HANDLE),
 	m_Device(VK_NULL_HANDLE),
@@ -288,15 +290,16 @@ void DeviceVK::registerExtensionFunctions()
 	if (m_ExtensionsStatus["VK_NV_ray_tracing"])
 	{
 		// Get VK_NV_ray_tracing related function pointers
-		vkCreateAccelerationStructureNV = reinterpret_cast<PFN_vkCreateAccelerationStructureNV>(vkGetDeviceProcAddr(m_Device, "vkCreateAccelerationStructureNV"));
-		vkDestroyAccelerationStructureNV = reinterpret_cast<PFN_vkDestroyAccelerationStructureNV>(vkGetDeviceProcAddr(m_Device, "vkDestroyAccelerationStructureNV"));
-		vkBindAccelerationStructureMemoryNV = reinterpret_cast<PFN_vkBindAccelerationStructureMemoryNV>(vkGetDeviceProcAddr(m_Device, "vkBindAccelerationStructureMemoryNV"));
-		vkGetAccelerationStructureHandleNV = reinterpret_cast<PFN_vkGetAccelerationStructureHandleNV>(vkGetDeviceProcAddr(m_Device, "vkGetAccelerationStructureHandleNV"));
-		vkGetAccelerationStructureMemoryRequirementsNV = reinterpret_cast<PFN_vkGetAccelerationStructureMemoryRequirementsNV>(vkGetDeviceProcAddr(m_Device, "vkGetAccelerationStructureMemoryRequirementsNV"));
-		vkCmdBuildAccelerationStructureNV = reinterpret_cast<PFN_vkCmdBuildAccelerationStructureNV>(vkGetDeviceProcAddr(m_Device, "vkCmdBuildAccelerationStructureNV"));
-		vkCreateRayTracingPipelinesNV = reinterpret_cast<PFN_vkCreateRayTracingPipelinesNV>(vkGetDeviceProcAddr(m_Device, "vkCreateRayTracingPipelinesNV"));
-		vkGetRayTracingShaderGroupHandlesNV = reinterpret_cast<PFN_vkGetRayTracingShaderGroupHandlesNV>(vkGetDeviceProcAddr(m_Device, "vkGetRayTracingShaderGroupHandlesNV"));
-		vkCmdTraceRaysNV = reinterpret_cast<PFN_vkCmdTraceRaysNV>(vkGetDeviceProcAddr(m_Device, "vkCmdTraceRaysNV"));
+		GET_DEVICE_PROC_ADDR(m_Device, vkCreateAccelerationStructureNV);
+		GET_DEVICE_PROC_ADDR(m_Device, vkDestroyAccelerationStructureNV);
+		GET_DEVICE_PROC_ADDR(m_Device, vkBindAccelerationStructureMemoryNV);
+		GET_DEVICE_PROC_ADDR(m_Device, vkGetAccelerationStructureHandleNV);
+		GET_DEVICE_PROC_ADDR(m_Device, vkGetAccelerationStructureMemoryRequirementsNV);
+		GET_DEVICE_PROC_ADDR(m_Device, vkCmdBuildAccelerationStructureNV);
+		GET_DEVICE_PROC_ADDR(m_Device, vkCreateRayTracingPipelinesNV);
+		GET_DEVICE_PROC_ADDR(m_Device, vkGetRayTracingShaderGroupHandlesNV);
+		GET_DEVICE_PROC_ADDR(m_Device, vkCmdTraceRaysNV);
+
 		std::cout << "--- Device: Successfully intialized [ VK_NV_ray_tracing ] function pointers!" << std::endl;
 
 		//Query Ray Tracing properties

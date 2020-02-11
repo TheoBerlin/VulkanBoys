@@ -18,6 +18,7 @@ public:
 
 	virtual void setFullscreenState(bool enable) override;
 	virtual bool getFullscreenState() const override;
+	virtual void toggleFullscreenState() override;
 	
 	virtual bool hasFocus() const override;
 
@@ -36,8 +37,13 @@ private:
 	uint32_t m_Height;
 	uint32_t m_ClientWidth;
 	uint32_t m_ClientHeight;
+	uint32_t m_OldClientWidth;
+	uint32_t m_OldClientHeight;
+	uint32_t m_PosX;
+	uint32_t m_PosY;
 	bool m_IsFullscreen;
 	bool m_HasFocus;
 
+	static uint32_t s_WindowCount;
 	static bool s_HasGLFW;
 };

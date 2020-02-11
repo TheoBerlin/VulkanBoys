@@ -1,4 +1,6 @@
 #include "Application.h"
+#include "Camera.h"
+#include "Input.h"
 
 #include "Common/IMesh.h"
 #include "Common/IImgui.h"
@@ -13,13 +15,19 @@
 #include "Vulkan/GraphicsContextVK.h"
 #include "Vulkan/DescriptorSetLayoutVK.h"
 
-#include "Camera.h"
-#include "Input.h"
-
 #include <thread>
 #include <chrono>
 #include <imgui/imgui.h>
+
 #include <glm/gtc/type_ptr.hpp>
+
+#ifdef max
+	#undef max
+#endif
+
+#ifdef min
+	#undef min
+#endif
 
 Application* Application::s_pInstance = nullptr;
 
@@ -31,7 +39,8 @@ Application::Application()
 	m_pMesh(nullptr),
 	m_pInputHandler(nullptr),
 	m_Camera(),
-	m_IsRunning(false)
+	m_IsRunning(false),
+	m_UpdateCamera(false)
 {
 	ASSERT(s_pInstance == nullptr);
 	s_pInstance = this;
@@ -73,81 +82,85 @@ void Application::init()
 
 	//Setup camera
 	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
-	m_Camera.setPosition(glm::vec3(0.0f, 0.0f, -1.0f));
+	m_Camera.setPosition(glm::vec3(0.0f, -1.0f, -1.0f));
+	//m_Camera.setRotation(glm::vec3(0.0f, 45.0f, 0.0f));
 	m_Camera.setProjection(90.0f, m_pWindow->getWidth(), m_pWindow->getHeight(), 0.1f, 100.0f);
 	m_Camera.update();
 
 	//Load mesh
-	using namespace glm;
+	{
+		using namespace glm;
 
-	//Vertex vertices[] =
-	//{
-	//	//FRONT FACE
-	//	{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-	//	{ vec4( 0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-	//	{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-	//	{ vec4( 0.5, -0.5, -0.5, 0.0f), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+		Vertex vertices[] =
+		{
+			//FRONT FACE
+			{ vec3(-0.5,  0.5, -0.5), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+			{ vec3( 0.5,  0.5, -0.5), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+			{ vec3(-0.5, -0.5, -0.5), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+			{ vec3( 0.5, -0.5, -0.5), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
 
-	//	//BACK FACE
-	//	{ vec4( 0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-	//	{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-	//	{ vec4( 0.5, -0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-	//	{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+			//BACK FACE
+			{ vec3( 0.5,  0.5,  0.5), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+			{ vec3(-0.5,  0.5,  0.5), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+			{ vec3( 0.5, -0.5,  0.5), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+			{ vec3(-0.5, -0.5,  0.5), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
 
-	//	//RIGHT FACE
-	//	{ vec4(0.5,  0.5, -0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 0.0f) },
-	//	{ vec4(0.5,  0.5,  0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 0.0f) },
-	//	{ vec4(0.5, -0.5, -0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 1.0f) },
-	//	{ vec4(0.5, -0.5,  0.5, 0.0f), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 1.0f) },
+			//RIGHT FACE
+			{ vec3(0.5,  0.5, -0.5), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 0.0f) },
+			{ vec3(0.5,  0.5,  0.5), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 0.0f) },
+			{ vec3(0.5, -0.5, -0.5), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 1.0f) },
+			{ vec3(0.5, -0.5,  0.5), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 1.0f) },
 
-	//	//LEFT FACE
-	//	{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 0.0f) },
-	//	{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 0.0f) },
-	//	{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 1.0f) },
-	//	{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 1.0f) },
+			//LEFT FACE
+			{ vec3(-0.5,  0.5, -0.5), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 0.0f) },
+			{ vec3(-0.5,  0.5,  0.5), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 0.0f) },
+			{ vec3(-0.5, -0.5, -0.5), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 1.0f) },
+			{ vec3(-0.5, -0.5,  0.5), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 1.0f) },
 
-	//	//TOP FACE
-	//	{ vec4(-0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-	//	{ vec4( 0.5,  0.5,  0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-	//	{ vec4(-0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-	//	{ vec4( 0.5,  0.5, -0.5, 0.0f), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+			//TOP FACE
+			{ vec3(-0.5,  0.5,  0.5), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+			{ vec3( 0.5,  0.5,  0.5), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+			{ vec3(-0.5,  0.5, -0.5), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+			{ vec3( 0.5,  0.5, -0.5), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
 
-	//	//BOTTOM FACE
-	//	{ vec4(-0.5, -0.5, -0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-	//	{ vec4( 0.5, -0.5, -0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-	//	{ vec4(-0.5, -0.5,  0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-	//	{ vec4( 0.5, -0.5,  0.5, 0.0f), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
-	//};
+			//BOTTOM FACE
+			{ vec3(-0.5, -0.5, -0.5), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
+			{ vec3( 0.5, -0.5, -0.5), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
+			{ vec3(-0.5, -0.5,  0.5), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
+			{ vec3( 0.5, -0.5,  0.5), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+		};
 
-	//uint32_t indices[] =
-	//{
-	//	//FRONT FACE
-	//	2, 1, 0,
-	//	2, 3, 1,
+		uint32_t indices[] =
+		{
+			//FRONT FACE
+			2, 1, 0,
+			2, 3, 1,
 
-	//	//BACK FACE
-	//	6, 5, 4,
-	//	6, 7, 5,
+			//BACK FACE
+			6, 5, 4,
+			6, 7, 5,
 
-	//	//RIGHT FACE
-	//	10, 9, 8,
-	//	10, 11, 9,
+			//RIGHT FACE
+			10, 9, 8,
+			10, 11, 9,
 
-	//	//LEFT FACE
-	//	12, 13, 14,
-	//	13, 15, 14,
+			//LEFT FACE
+			12, 13, 14,
+			13, 15, 14,
 
-	//	//TOP FACE
-	//	18, 17, 16,
-	//	18, 19, 17,
+			//TOP FACE
+			18, 17, 16,
+			18, 19, 17,
 
-	//	//BOTTOM FACE
-	//	22, 21, 20,
-	//	22, 23, 21
-	//};
+			//BOTTOM FACE
+			22, 21, 20,
+			22, 23, 21
+		};
 
-	//m_pMesh = m_pContext->createMesh();
-	//m_pMesh->initFromMemory(vertices, 24, indices, 36);
+		m_pMesh = m_pContext->createMesh();
+		m_pMesh->initFromFile("assets/meshes/gun.obj");
+		//m_pMesh->initFromMemory(vertices, 24, indices, 36);
+	}
 }
 
 void Application::run()
@@ -221,6 +234,22 @@ void Application::onWindowFocusChanged(IWindow* pWindow, bool hasFocus)
 
 void Application::onMouseMove(uint32_t x, uint32_t y)
 {
+	if (m_UpdateCamera)
+	{
+		glm::vec2 middlePos = middlePos = glm::vec2(m_pWindow->getClientWidth() / 2.0f, m_pWindow->getClientHeight() / 2.0f);
+
+		float xoffset = middlePos.x - x;
+		float yoffset = middlePos.y - y;
+
+		constexpr float sensitivity = 0.5f;
+		xoffset *= sensitivity;
+		yoffset *= sensitivity;
+
+		glm::vec3 rotation = m_Camera.getRotation();
+		rotation += glm::vec3(yoffset, xoffset, 0.0f);
+
+		m_Camera.setRotation(rotation);
+	}
 }
 
 void Application::onMousePressed(int32_t button)
@@ -246,6 +275,22 @@ void Application::onKeyPressed(EKey key)
 	{
 		m_IsRunning = false;
 	}
+	else if (key == EKey::KEY_1)
+	{
+		m_pWindow->toggleFullscreenState();
+	}
+	else if (key == EKey::KEY_2)
+	{
+		m_UpdateCamera = !m_UpdateCamera;
+        if (m_UpdateCamera)
+        {
+            Input::captureMouse(m_pWindow);
+        }
+        else
+        {
+            Input::releaseMouse(m_pWindow);
+        }
+	}
 }
 
 void Application::onKeyReleased(EKey key)
@@ -267,25 +312,68 @@ static glm::mat4 g_Rotation = glm::mat4(1.0f);
 
 void Application::update(double dt)
 {
+	constexpr float speed = 0.75f;
 	if (Input::isKeyPressed(EKey::KEY_A))
 	{
-		m_Camera.translate(glm::vec3(0.2f * dt, 0.0f, 0.0f));
+		m_Camera.translate(glm::vec3(-speed * dt, 0.0f, 0.0f));
 	}
 	else if (Input::isKeyPressed(EKey::KEY_D))
 	{
-		m_Camera.translate(glm::vec3(-0.2f * dt, 0.0f, 0.0f));
+		m_Camera.translate(glm::vec3(speed * dt, 0.0f, 0.0f));
 	}
 
 	if (Input::isKeyPressed(EKey::KEY_W))
 	{
-		m_Camera.translate(glm::vec3(0.0f, 0.0f, 0.2f * dt));
+		m_Camera.translate(glm::vec3(0.0f, 0.0f, speed * dt));
 	}
 	else if (Input::isKeyPressed(EKey::KEY_S))
 	{
-		m_Camera.translate(glm::vec3(0.0f, 0.0f, -0.2f * dt));
+		m_Camera.translate(glm::vec3(0.0f, 0.0f, -speed * dt));
+	}
+
+	if (Input::isKeyPressed(EKey::KEY_Q))
+	{
+		m_Camera.translate(glm::vec3(0.0f, speed * dt, 0.0f));
+	}
+	else if (Input::isKeyPressed(EKey::KEY_E))
+	{
+		m_Camera.translate(glm::vec3(0.0f, -speed * dt, 0.0f));
+	}
+
+	if (Input::isKeyPressed(EKey::KEY_A))
+	{
+		m_Camera.translate(glm::vec3(-speed * dt, 0.0f, 0.0f));
+	}
+	else if (Input::isKeyPressed(EKey::KEY_D))
+	{
+		m_Camera.translate(glm::vec3(speed * dt, 0.0f, 0.0f));
+	}
+
+	constexpr float rotationSpeed = 30.0f;
+	if (Input::isKeyPressed(EKey::KEY_LEFT))
+	{
+		m_Camera.rotate(glm::vec3(0.0f, rotationSpeed * dt, 0.0f));
+	}
+	else if (Input::isKeyPressed(EKey::KEY_RIGHT))
+	{
+		m_Camera.rotate(glm::vec3(0.0f, -rotationSpeed * dt, 0.0f));
+	}
+
+	if (Input::isKeyPressed(EKey::KEY_UP))
+	{
+		m_Camera.rotate(glm::vec3(rotationSpeed * dt, 0.0f, 0.0f));
+	}
+	else if (Input::isKeyPressed(EKey::KEY_DOWN))
+	{
+		m_Camera.rotate(glm::vec3(-rotationSpeed * dt, 0.0f, 0.0f));
 	}
 
 	m_Camera.update();
+
+	if (m_UpdateCamera)
+	{
+		Input::setMousePosition(m_pWindow, glm::vec2(m_pWindow->getClientWidth() / 2.0f, m_pWindow->getClientHeight() / 2.0f));
+	}
 }
 
 static glm::vec4 g_Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
@@ -317,10 +405,10 @@ void Application::render(double dt)
 	{
 		m_pRenderer->beginFrame(m_Camera);
 
-		//g_Rotation = glm::rotate(g_Rotation, glm::radians(15.0f * float(dt)), glm::vec3(0.0f, 0.0f, 1.0f));
+	//g_Rotation = glm::rotate(g_Rotation, glm::radians(15.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
 
-		m_pRenderer->submitMesh(m_pMesh, g_Color, glm::mat4(1.0f));
-		m_pRenderer->drawImgui(m_pImgui);
+	m_pRenderer->submitMesh(m_pMesh, g_Color, glm::mat4(1.0f) * g_Rotation);
+	m_pRenderer->drawImgui(m_pImgui);
 
 		m_pRenderer->endFrame();
 	}

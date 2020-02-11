@@ -61,33 +61,33 @@ void GraphicsContextVK::init()
 	m_Device.finalize(&m_Instance);
 
 	//SwapChain init
-	m_pSwapChain = new SwapChainVK(&m_Instance, &m_Device);
+	m_pSwapChain = DBG_NEW SwapChainVK(&m_Instance, &m_Device);
 	m_pSwapChain->init(m_pWindow, VK_FORMAT_B8G8R8A8_UNORM, MAX_FRAMES_IN_FLIGHT, true);
 }
 
 IRenderer* GraphicsContextVK::createRenderer()
 {
-	return new RendererVK(this);
+	return DBG_NEW RendererVK(this);
 }
 
 IImgui* GraphicsContextVK::createImgui()
 {
-	return new ImguiVK(this);
+	return DBG_NEW ImguiVK(this);
 }
 
 IMesh* GraphicsContextVK::createMesh()
 {
-	return new MeshVK(&m_Device);
+	return DBG_NEW MeshVK(&m_Device);
 }
 
 IShader* GraphicsContextVK::createShader()
 {
-	return new ShaderVK(&m_Device);
+	return DBG_NEW ShaderVK(&m_Device);
 }
 
 IBuffer* GraphicsContextVK::createBuffer()
 {
-	return new BufferVK(&m_Device);
+	return DBG_NEW BufferVK(&m_Device);
 }
 
 IFrameBuffer* GraphicsContextVK::createFrameBuffer()
@@ -110,7 +110,7 @@ IImageView* GraphicsContextVK::createImageView()
 
 ITexture2D* GraphicsContextVK::createTexture2D()
 {
-	return new Texture2DVK(this);
+	return DBG_NEW Texture2DVK(this);
 }
 
 void GraphicsContextVK::sync()

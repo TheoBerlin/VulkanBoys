@@ -17,7 +17,7 @@ Texture2DVK::Texture2DVK(IGraphicsContext* pContext) :
 	m_pTempCommandPool(nullptr),
 	m_pTempCommandBuffer(nullptr)
 {
-	m_pTempCommandPool = new CommandPoolVK(m_pContext->getDevice(), m_pContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value());
+	m_pTempCommandPool = DBG_NEW CommandPoolVK(m_pContext->getDevice(), m_pContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value());
 	m_pTempCommandPool->init();
 
 	m_pTempCommandBuffer = m_pTempCommandPool->allocateCommandBuffer();
@@ -37,9 +37,11 @@ bool Texture2DVK::initFromFile(const std::string& filename)
 	
 	if (pPixels == nullptr)
 	{
-		std::cerr << "Error loading texture file: " << filename.c_str() << std::endl;
+		LOG("Error loading texture file: %s", filename.c_str());
 		return false;
 	}
+
+	LOG("-- LOADED TEXTURE: %s", filename.c_str());
 
 	initFromMemory(pPixels, texWidth, texHeight);
 	stbi_image_free(pPixels);
@@ -62,7 +64,7 @@ bool Texture2DVK::initFromMemory(const void* pData, uint32_t width, uint32_t hei
 	imageParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	
 	DeviceVK* pDevice = m_pContext->getDevice();
-	m_pTextureImage = new ImageVK(pDevice);
+	m_pTextureImage = DBG_NEW ImageVK(pDevice);
 	m_pTextureImage->init(imageParams);
 
 	m_pTempCommandBuffer->reset();
@@ -83,7 +85,7 @@ bool Texture2DVK::initFromMemory(const void* pData, uint32_t width, uint32_t hei
 	imageViewParams.MipLevels	= 1;
 	imageViewParams.FirstMipLevel = 0;
 	
-	m_pTextureImageView = new ImageViewVK(pDevice, m_pTextureImage);
+	m_pTextureImageView = DBG_NEW ImageViewVK(pDevice, m_pTextureImage);
 	m_pTextureImageView->init(imageViewParams);
 
 	return true;

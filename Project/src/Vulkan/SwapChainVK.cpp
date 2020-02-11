@@ -253,10 +253,10 @@ void SwapChainVK::createImageViews()
 
 	for (VkImage& image : images)
 	{
-		ImageVK* pImage = new ImageVK(image, m_Format.format);
+		ImageVK* pImage = DBG_NEW ImageVK(image, m_Format.format);
 		m_Images.emplace_back(pImage);
 
-		ImageViewVK* pImageView = new ImageViewVK(m_pDevice, pImage);
+		ImageViewVK* pImageView = DBG_NEW ImageViewVK(m_pDevice, pImage);
 		pImageView->init(imageViewParams);
 		m_ImageViews.emplace_back(pImageView);
 	}
@@ -274,7 +274,7 @@ void SwapChainVK::createDepthStencil()
 	depthStencilParams.Samples			= VK_SAMPLE_COUNT_1_BIT;
 	depthStencilParams.Usage			= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
-	m_pDepthStencilImage = new ImageVK(m_pDevice);
+	m_pDepthStencilImage = DBG_NEW ImageVK(m_pDevice);
 	m_pDepthStencilImage->init(depthStencilParams);
 
 	ImageViewParams depthStencilViewParams = {};
@@ -285,7 +285,7 @@ void SwapChainVK::createDepthStencil()
 	depthStencilViewParams.FirstMipLevel	= 0;
 	depthStencilViewParams.AspectFlags		= VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
 	
-	m_pDepthStencilImageView = new ImageViewVK(m_pDevice, m_pDepthStencilImage);
+	m_pDepthStencilImageView = DBG_NEW ImageViewVK(m_pDevice, m_pDepthStencilImage);
 	m_pDepthStencilImageView->init(depthStencilViewParams);
 }
 

@@ -93,7 +93,7 @@ DescriptorSetVK* DescriptorPoolVK::allocDescriptorSet(const DescriptorSetLayoutV
 	DescriptorCounts allocatedDescriptorCount = pDescriptorSetLayout->getBindingCounts();
 	m_DescriptorCounts += allocatedDescriptorCount;
 
-	DescriptorSetVK* pDescriptorSet = new DescriptorSetVK();
+	DescriptorSetVK* pDescriptorSet = DBG_NEW DescriptorSetVK();
 	pDescriptorSet->init(descriptorSetHandle, m_pDevice, this, allocatedDescriptorCount);
 	m_AllocatedSets.push_back(pDescriptorSet);
 

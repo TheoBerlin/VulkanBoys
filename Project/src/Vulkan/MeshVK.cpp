@@ -4,6 +4,8 @@
 #include "CommandPoolVK.h"
 #include "CommandBufferVK.h"
 
+#include <tinyobjloader/tiny_obj_loader.h>
+
 MeshVK::MeshVK(DeviceVK* pDevice)
 	: m_pDevice(pDevice),
 	m_pVertexBuffer(nullptr),
@@ -23,12 +25,68 @@ MeshVK::~MeshVK()
 
 bool MeshVK::initFromFile(const std::string& filepath)
 {
-	return false;
+	tinyobj::attrib_t attributes;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+	std::string warn, err;
+
+	if (!tinyobj::LoadObj(&attributes, &shapes, &materials, &warn, &err, filepath.c_str(), nullptr, true, false)) 
+	{
+		LOG("Failed to load mesh '%s'. Warning: %s Error: %s", filepath.c_str(), warn.c_str(), err.c_str());
+		return false;
+	}
+
+	std::vector<Vertex> vertices = {};
+	std::vector<uint32_t> indices = {};
+	std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
+
+	for (const tinyobj::shape_t& shape : shapes) 
+	{
+		for (const tinyobj::index_t& index : shape.mesh.indices) 
+		{
+			Vertex vertex = {};
+			vertex.Position = 
+			{
+				attributes.vertices[3 * index.vertex_index + 0],
+				attributes.vertices[3 * index.vertex_index + 1],
+				attributes.vertices[3 * index.vertex_index + 2]
+			};
+
+			if (index.normal_index >= 0)
+			{
+				vertex.Normal =
+				{
+					attributes.normals[3 * index.normal_index + 0],
+					attributes.normals[3 * index.normal_index + 1],
+					attributes.normals[3 * index.normal_index + 2]
+				};
+			}
+
+			vertex.TexCoord = 
+			{
+				attributes.texcoords[2 * index.texcoord_index + 0],
+				1.0f - attributes.texcoords[2 * index.texcoord_index + 1]
+			};
+
+			if (uniqueVertices.count(vertex) == 0) 
+			{
+				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+				vertices.push_back(vertex);
+			}
+			 
+			indices.push_back(uniqueVertices[vertex]);
+		}
+	}
+
+	//TODO: Calculate normals
+
+	LOG("-- LOADED MESH: %s", filepath.c_str());
+	return initFromMemory(vertices.data(), uint32_t(vertices.size()), indices.data(), uint32_t(indices.size()));
 }
 
 bool MeshVK::initFromMemory(const Vertex* pVertices, uint32_t vertexCount, const uint32_t* pIndices, uint32_t indexCount)
 {
-	CommandPoolVK* pCommandPool = new CommandPoolVK(m_pDevice, m_pDevice->getQueueFamilyIndices().transferFamily.value());
+	CommandPoolVK* pCommandPool = DBG_NEW CommandPoolVK(m_pDevice, m_pDevice->getQueueFamilyIndices().transferFamily.value());
 	pCommandPool->init();
 
 	CommandBufferVK* pCommandBuffer = pCommandPool->allocateCommandBuffer();
@@ -38,7 +96,7 @@ bool MeshVK::initFromMemory(const Vertex* pVertices, uint32_t vertexCount, const
 	vertexBufferParams.SizeInBytes = sizeof(Vertex) * vertexCount;
 	vertexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-	m_pVertexBuffer = new BufferVK(m_pDevice);
+	m_pVertexBuffer = DBG_NEW BufferVK(m_pDevice);
 	if (!m_pVertexBuffer->init(vertexBufferParams))
 	{
 		return false;
@@ -49,7 +107,7 @@ bool MeshVK::initFromMemory(const Vertex* pVertices, uint32_t vertexCount, const
 	indexBufferParams.SizeInBytes = sizeof(uint32_t) * indexCount;
 	indexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-	m_pIndexBuffer = new BufferVK(m_pDevice);
+	m_pIndexBuffer = DBG_NEW BufferVK(m_pDevice);
 	if (!m_pIndexBuffer->init(indexBufferParams))
 	{
 		return false;
