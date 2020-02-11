@@ -287,10 +287,14 @@ void CommandBufferVK::traceRays(ShaderBindingTableVK* pShaderBindingTable, uint3
 {
 	VkBuffer bufferSBT = pShaderBindingTable->getBuffer()->getBuffer();
 
+	uint32_t raygenOffset = pShaderBindingTable->getBindingOffsetRaygenShaderGroup();
+	uint32_t missOffset = pShaderBindingTable->getBindingOffsetMissShaderGroup();
+	uint32_t intersectOffset = pShaderBindingTable->getBindingOffsetIntersectShaderGroup();
+
 	m_pDevice->vkCmdTraceRaysNV(m_CommandBuffer,
-		bufferSBT, pShaderBindingTable->getBindingOffsetRaygenShaderGroup(),
-		bufferSBT, pShaderBindingTable->getBindingOffsetMissShaderGroup(), pShaderBindingTable->getBindingStride(),
-		bufferSBT, pShaderBindingTable->getBindingOffsetIntersectShaderGroup(), pShaderBindingTable->getBindingStride(),
+		bufferSBT, raygenOffset,
+		bufferSBT, missOffset, pShaderBindingTable->getBindingStride(),
+		bufferSBT, intersectOffset, pShaderBindingTable->getBindingStride(),
 		VK_NULL_HANDLE, 0, 0,
 		width, height, 1);
 }

@@ -8,6 +8,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtx/hash.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 #include "Common/Debug.h"
 
@@ -41,22 +42,17 @@
 
 #define MB(bytes) bytes * 1024 * 1024
 
-//struct Vertex
-//{
-//	alignas(16) glm::vec3 Position;
-//	alignas(16) glm::vec3 Normal;
-//	alignas(16) glm::vec3 Tangent;
-//	glm::vec2 TexCoord;
-//
-//	bool operator==(const Vertex& other) const 
-//	{
-//		return Position == other.Position && Normal == other.Normal && Tangent == other.Tangent && TexCoord == other.TexCoord;
-//	}
-//};
-
 struct Vertex
 {
-	float pos[3];
+	alignas(16) glm::vec3 Position;
+	alignas(16) glm::vec3 Normal;
+	alignas(16) glm::vec3 Tangent;
+	glm::vec2 TexCoord;
+
+	bool operator==(const Vertex& other) const 
+	{
+		return Position == other.Position && Normal == other.Normal && Tangent == other.Tangent && TexCoord == other.TexCoord;
+	}
 };
 
 namespace std 

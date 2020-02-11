@@ -117,9 +117,9 @@ bool RendererVK::init()
 	//Testing
 	Vertex vertices[] = 
 	{
-			{ { ( 1.0f,  1.0f, 0.0f) } },
-			{ { (-1.0f,  1.0f, 0.0f) } },
-			{ { ( 0.0f, -1.0f, 0.0f) } }
+		{ glm::vec3( 1.0f,  1.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 0.0f) },
+		{ glm::vec3(-1.0f,  1.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(1.0f, 0.0f) },
+		{ glm::vec3( 0.0f, -1.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 1.0f) },
 	};
 
 	// Setup indices
@@ -158,8 +158,8 @@ bool RendererVK::init()
 
 	m_pRayTracingPipeline = new RayTracingPipelineVK(m_pContext->getDevice());
 	m_pRayTracingPipeline->addRaygenShaderGroup(raygenGroupParams);
-	m_pRayTracingPipeline->addIntersectShaderGroup(intersectGroupParams);
 	m_pRayTracingPipeline->addMissShaderGroup(missGroupParams);
+	m_pRayTracingPipeline->addIntersectShaderGroup(intersectGroupParams);
 	m_pRayTracingPipeline->finalize(m_pRayTracingPipelineLayout);
 	
 	m_pSBT = new ShaderBindingTableVK(m_pContext);
@@ -217,37 +217,12 @@ bool RendererVK::init()
 	m_pContext->getDevice()->wait();
 
 	BufferParams rayTracingUniformBufferParams = {};
-	rayTracingUniformBufferParams.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	rayTracingUniformBufferParams.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	rayTracingUniformBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 	rayTracingUniformBufferParams.SizeInBytes = sizeof(TempRayTracingUniformData);
 	
 	m_pRayTracingUniformBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
 	m_pRayTracingUniformBuffer->init(rayTracingUniformBufferParams);
-
-	void* pMapped;
-	m_pRayTracingUniformBuffer->map(&pMapped);
-	static glm::mat4 perspective = glm::perspective(glm::radians(60.0f), (float)m_pContext->getSwapChain()->getExtent().width / (float)m_pContext->getSwapChain()->getExtent().height, 0.1f, 512.0f);
-
-	static glm::mat4 rotM = glm::mat4(1.0f);
-	static glm::mat4 transM;
-
-	rotM = glm::rotate(rotM, glm::radians(0.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-	rotM = glm::rotate(rotM, glm::radians(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	rotM = glm::rotate(rotM, glm::radians(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-
-	transM = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -2.5f));
-
-	static glm::mat4 viewMatrix = transM * rotM;
-
-	TempRayTracingUniformData rayTracingUniformData = {};
-	//glm::mat4 perspectiveInv(1.026400, 0.000000, -0.000000, 0.000000, 0.000000, 0.577350, 0.000000, -0.000000, -0.000000, 0.000000, -0.000000, -9.998046, 0.000000, -0.000000, -1.000000, 9.999999);
-	//glm::mat4 viewInv(1.000000, -0.000000, 0.000000, -0.000000, -0.000000, 1.000000, -0.000000, 0.000000, 0.000000, -0.000000, 1.000000, -0.000000, -0.000000, 0.000000, 2.500000, 1.000000);
-	//rayTracingUniformData.projInverse = perspectiveInv;
-	//rayTracingUniformData.viewInverse = viewInv;
-	rayTracingUniformData.projInverse = glm::inverse(perspective);
-	rayTracingUniformData.viewInverse = glm::inverse(viewMatrix);
-	memcpy(pMapped, &rayTracingUniformData, sizeof(TempRayTracingUniformData));
-	m_pRayTracingUniformBuffer->unmap();
 
 	m_pRayTracingDescriptorSet->writeAccelerationStructureDescriptor(m_pAccelerationTable->getTLAS().accelerationStructure, 0);
 	m_pRayTracingDescriptorSet->writeStorageImageDescriptor(m_pRayTracingStorageImageView->getImageView(), 1);
@@ -314,6 +289,11 @@ void RendererVK::beginRayTraceFrame(const Camera& camera)
 
 	m_ppComputeCommandBuffers[m_CurrentFrame]->begin();
 
+	CameraBuffer cameraBuffer = {};
+	cameraBuffer.Projection = glm::inverse(camera.getProjectionMat());
+	cameraBuffer.View = glm::inverse(camera.getViewMat());
+	m_ppComputeCommandBuffers[m_CurrentFrame]->updateBuffer(m_pRayTracingUniformBuffer, 0, (const void*)&cameraBuffer, sizeof(CameraBuffer));
+
 	m_ppComputeCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipelineLayout, 0, 1, &m_pRayTracingDescriptorSet, 0, nullptr);
 }
 
@@ -325,9 +305,10 @@ void RendererVK::endRayTraceFrame()
 	DeviceVK* pDevice = m_pContext->getDevice();
 	pDevice->executeCommandBuffer(pDevice->getComputeQueue(), m_ppComputeCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
 
+	m_pContext->getDevice()->wait();
+
 	//Prepare for frame
 	m_pContext->getSwapChain()->acquireNextImage(m_ImageAvailableSemaphores[m_CurrentFrame]);
-	uint32_t backBufferIndex = m_pContext->getSwapChain()->getImageIndex();
 
 	m_ppCommandBuffers[m_CurrentFrame]->reset();
 	m_ppCommandPools[m_CurrentFrame]->reset();
@@ -466,7 +447,7 @@ bool RendererVK::createCommandPoolAndBuffers()
 	const uint32_t graphicsQueueFamilyIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, queueFamilyIndex);
+		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, graphicsQueueFamilyIndex);
 		
 		if (!m_ppCommandPools[i]->init())
 		{

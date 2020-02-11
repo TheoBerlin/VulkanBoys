@@ -53,7 +53,7 @@ AccelerationTableVK::~AccelerationTableVK()
 
 bool AccelerationTableVK::finalize()
 {
-	m_pTempCommandPool = DBG_NEW CommandPoolVK(m_pContext->getDevice(), m_pContext->getDevice()->getQueueFamilyIndices().transferFamily.value());
+	m_pTempCommandPool = DBG_NEW CommandPoolVK(m_pContext->getDevice(), m_pContext->getDevice()->getQueueFamilyIndices().computeFamily.value());
 	m_pTempCommandPool->init();
 
 	m_pTempCommandBuffer = m_pTempCommandPool->allocateCommandBuffer();
@@ -70,57 +70,23 @@ bool AccelerationTableVK::finalize()
 
 uint32_t AccelerationTableVK::addMeshInstance(IMesh* pMesh, const glm::mat3x4& transform)
 {
-	//MeshVK* pVulkanMesh = reinterpret_cast<MeshVK*>(pMesh);
-	Vertex vertices[] =
-	{
-			{ { ( 1.0f,  1.0f, 0.0f) } },
-			{ { (-1.0f,  1.0f, 0.0f) } },
-			{ { ( 0.0f, -1.0f, 0.0f) } }
-	};
-
-	// Setup indices
-	uint32_t indices[] = { 0, 1, 2 };
-
-	void* pVertDst;
-	void* pIndexDst;
-
-	BufferParams vertBufferParams = {};
-	vertBufferParams.Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	vertBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	vertBufferParams.SizeInBytes = 3 * sizeof(Vertex);
-
-	BufferVK* pTempVertexBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
-	pTempVertexBuffer->init(vertBufferParams);
-	pTempVertexBuffer->map(&pVertDst);
-	memcpy(pVertDst, vertices, 3 * sizeof(Vertex));
-	pTempVertexBuffer->unmap();
-
-	BufferParams indexBufferParams = {};
-	indexBufferParams.Usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-	indexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	indexBufferParams.SizeInBytes = 3 * sizeof(uint32_t);
-	
-	BufferVK* pTempIndexBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
-	pTempIndexBuffer->init(indexBufferParams);
-	pTempIndexBuffer->map(&pIndexDst);
-	memcpy(pIndexDst, indices, 3 * sizeof(uint32_t));
-	pTempIndexBuffer->unmap();
+	MeshVK* pVulkanMesh = reinterpret_cast<MeshVK*>(pMesh);
 
 	BottomLevelAccelerationStructure bottomLevelAccelerationStructure = {};
 	
-	if (m_BottomLevelAccelerationStructures.find(reinterpret_cast<MeshVK*>(pMesh)) == m_BottomLevelAccelerationStructures.end())
+	if (m_BottomLevelAccelerationStructures.find(pVulkanMesh) == m_BottomLevelAccelerationStructures.end())
 	{
 		bottomLevelAccelerationStructure.geometry.sType = VK_STRUCTURE_TYPE_GEOMETRY_NV;
 		bottomLevelAccelerationStructure.geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_NV;
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NV;
-		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexData = pTempVertexBuffer->getBuffer();//((BufferVK*)pVulkanMesh->getVertexBuffer())->getBuffer();
+		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexData = ((BufferVK*)pVulkanMesh->getVertexBuffer())->getBuffer();
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexOffset = 0;
-		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexCount = 3;//static_cast<uint32_t>(pVulkanMesh->getVertexBuffer()->getSizeInBytes() / sizeof(Vertex));
+		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexCount = static_cast<uint32_t>(pVulkanMesh->getVertexBuffer()->getSizeInBytes() / sizeof(Vertex));
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexStride = sizeof(Vertex);
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
-		bottomLevelAccelerationStructure.geometry.geometry.triangles.indexData = pTempIndexBuffer->getBuffer();//((BufferVK*)pVulkanMesh->getIndexBuffer())->getBuffer();
+		bottomLevelAccelerationStructure.geometry.geometry.triangles.indexData = ((BufferVK*)pVulkanMesh->getIndexBuffer())->getBuffer();
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.indexOffset = 0;
-		bottomLevelAccelerationStructure.geometry.geometry.triangles.indexCount = 3;//pVulkanMesh->getIndexBuffer()->getSizeInBytes() / sizeof(uint32_t);
+		bottomLevelAccelerationStructure.geometry.geometry.triangles.indexCount = pVulkanMesh->getIndexBuffer()->getSizeInBytes() / sizeof(uint32_t);
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.indexType = VK_INDEX_TYPE_UINT32;
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.transformData = VK_NULL_HANDLE;
 		bottomLevelAccelerationStructure.geometry.geometry.triangles.transformOffset = 0;
@@ -162,11 +128,11 @@ uint32_t AccelerationTableVK::addMeshInstance(IMesh* pMesh, const glm::mat3x4& t
 
 		VK_CHECK_RESULT(m_pDevice->vkGetAccelerationStructureHandleNV(m_pDevice->getDevice(), bottomLevelAccelerationStructure.accelerationStructure, sizeof(uint64_t), &bottomLevelAccelerationStructure.handle), "--- AccelerationTable: Could not get handle for BLAS!");
 
-		m_BottomLevelAccelerationStructures[reinterpret_cast<MeshVK*>(pMesh)] = bottomLevelAccelerationStructure;
+		m_BottomLevelAccelerationStructures[pVulkanMesh] = bottomLevelAccelerationStructure;
 	}
 	else
 	{
-		bottomLevelAccelerationStructure = m_BottomLevelAccelerationStructures[reinterpret_cast<MeshVK*>(pMesh)];
+		bottomLevelAccelerationStructure = m_BottomLevelAccelerationStructures[pVulkanMesh];
 	}
 
 	GeometryInstance geometryInstance = {};
