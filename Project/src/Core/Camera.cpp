@@ -3,7 +3,8 @@
 #include <glm/gtx/euler_angles.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-const glm::vec3 UP_VECTOR		= glm::vec3(0.0f, 1.0f, 0.0f);
+//The up vector is inverted because of vulkans inverted y-axis
+const glm::vec3 UP_VECTOR		= glm::vec3(0.0f, -1.0f, 0.0f);
 const glm::vec3 FORWARD_VECTOR	= glm::vec3(0.0f, 0.0f, 1.0f);
 
 Camera::Camera()

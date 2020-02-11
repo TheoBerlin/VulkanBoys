@@ -82,8 +82,7 @@ void Application::init()
 
 	//Setup camera
 	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
-	m_Camera.setPosition(glm::vec3(0.0f, -1.0f, -1.0f));
-	//m_Camera.setRotation(glm::vec3(0.0f, 45.0f, 0.0f));
+	m_Camera.setPosition(glm::vec3(0.0f, 0.5f, -2.0f));
 	m_Camera.setProjection(90.0f, m_pWindow->getWidth(), m_pWindow->getHeight(), 0.1f, 100.0f);
 	m_Camera.update();
 
@@ -239,14 +238,14 @@ void Application::onMouseMove(uint32_t x, uint32_t y)
 		glm::vec2 middlePos = middlePos = glm::vec2(m_pWindow->getClientWidth() / 2.0f, m_pWindow->getClientHeight() / 2.0f);
 
 		float xoffset = middlePos.x - x;
-		float yoffset = middlePos.y - y;
+		float yoffset = y - middlePos.y;
 
-		constexpr float sensitivity = 0.5f;
+		constexpr float sensitivity = 0.25f;
 		xoffset *= sensitivity;
 		yoffset *= sensitivity;
 
 		glm::vec3 rotation = m_Camera.getRotation();
-		rotation += glm::vec3(yoffset, xoffset, 0.0f);
+		rotation += glm::vec3(yoffset, -xoffset, 0.0f);
 
 		m_Camera.setRotation(rotation);
 	}
@@ -352,20 +351,20 @@ void Application::update(double dt)
 	constexpr float rotationSpeed = 30.0f;
 	if (Input::isKeyPressed(EKey::KEY_LEFT))
 	{
-		m_Camera.rotate(glm::vec3(0.0f, rotationSpeed * dt, 0.0f));
+		m_Camera.rotate(glm::vec3(0.0f, -rotationSpeed * dt, 0.0f));
 	}
 	else if (Input::isKeyPressed(EKey::KEY_RIGHT))
 	{
-		m_Camera.rotate(glm::vec3(0.0f, -rotationSpeed * dt, 0.0f));
+		m_Camera.rotate(glm::vec3(0.0f, rotationSpeed * dt, 0.0f));
 	}
 
 	if (Input::isKeyPressed(EKey::KEY_UP))
 	{
-		m_Camera.rotate(glm::vec3(rotationSpeed * dt, 0.0f, 0.0f));
+		m_Camera.rotate(glm::vec3(-rotationSpeed * dt, 0.0f, 0.0f));
 	}
 	else if (Input::isKeyPressed(EKey::KEY_DOWN))
 	{
-		m_Camera.rotate(glm::vec3(-rotationSpeed * dt, 0.0f, 0.0f));
+		m_Camera.rotate(glm::vec3(rotationSpeed * dt, 0.0f, 0.0f));
 	}
 
 	m_Camera.update();
