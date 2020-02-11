@@ -240,7 +240,7 @@ void Application::onMouseMove(uint32_t x, uint32_t y)
 		float xoffset = middlePos.x - x;
 		float yoffset = y - middlePos.y;
 
-		constexpr float sensitivity = 0.5f;
+		constexpr float sensitivity = 0.25f;
 		xoffset *= sensitivity;
 		yoffset *= sensitivity;
 
