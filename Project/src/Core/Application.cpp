@@ -282,6 +282,14 @@ void Application::onKeyPressed(EKey key)
 	else if (key == EKey::KEY_2)
 	{
 		m_UpdateCamera = !m_UpdateCamera;
+        if (m_UpdateCamera)
+        {
+            Input::captureMouse(m_pWindow);
+        }
+        else
+        {
+            Input::releaseMouse(m_pWindow);
+        }
 	}
 }
 
