@@ -37,9 +37,11 @@ bool Texture2DVK::initFromFile(const std::string& filename)
 	
 	if (pPixels == nullptr)
 	{
-		std::cerr << "Error loading texture file: " << filename.c_str() << std::endl;
+		LOG("Error loading texture file: %s", filename.c_str());
 		return false;
 	}
+
+	LOG("-- LOADED TEXTURE: %s", filename.c_str());
 
 	initFromMemory(pPixels, texWidth, texHeight);
 	stbi_image_free(pPixels);

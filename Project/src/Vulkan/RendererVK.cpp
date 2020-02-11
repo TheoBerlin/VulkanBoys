@@ -359,7 +359,7 @@ bool RendererVK::createPipelines()
 	m_pPipeline->setDepthTest(true);
 	m_pPipeline->setWireFrame(false);
 	//TODO: Return bool
-	m_pPipeline->create(shaders, m_pRenderPass, m_pPipelineLayout);
+	m_pPipeline->finalize(shaders, m_pRenderPass, m_pPipelineLayout);
 
 	SAFEDELETE(pVertexShader);
 	SAFEDELETE(pPixelShader);

@@ -44,13 +44,13 @@ bool CommandBufferVK::finalize()
 
 	//Create staging-buffers
 	m_pStagingBuffer = DBG_NEW StagingBufferVK(m_pDevice);
-	if (!m_pStagingBuffer->init(MB(2)))
+	if (!m_pStagingBuffer->init(MB(16)))
 	{
 		return false;
 	}
 
 	m_pStagingTexture = DBG_NEW StagingBufferVK(m_pDevice);
-	if (!m_pStagingTexture->init(MB(8)))
+	if (!m_pStagingTexture->init(MB(32)))
 	{
 		return false;
 	}
