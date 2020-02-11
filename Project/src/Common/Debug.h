@@ -1,13 +1,18 @@
 #pragma once
-#include <crtdbg.h>
 
-#ifndef DBG_NEW
-	#if defined(_DEBUG) && defined(_WIN32)
-		#define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
-	#else
-		#define DBG_NEW 
-	#endif
-#endif // DBG_NEW
+#ifdef _WIN32
+    #include <crtdbg.h>
+    #ifndef DBG_NEW
+        #if defined(_DEBUG)
+            #define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
+        #else
+            #define DBG_NEW new
+        #endif
+    #endif // DBG_NEW
+#else
+    #define DBG_NEW new
+#endif
+
 
 // #include <crtdbg.h>
 
