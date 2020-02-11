@@ -158,7 +158,8 @@ void Application::init()
 		};
 
 		m_pMesh = m_pContext->createMesh();
-		m_pMesh->initFromMemory(vertices, 24, indices, 36);
+		m_pMesh->initFromFile("assets/meshes/gun.obj");
+		//m_pMesh->initFromMemory(vertices, 24, indices, 36);
 	}
 }
 

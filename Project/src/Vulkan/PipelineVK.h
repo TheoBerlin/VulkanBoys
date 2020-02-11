@@ -21,7 +21,7 @@ public:
 	void setCulling(bool culling) { m_Culling = culling; }
 	void setWireFrame(bool wireframe) { m_WireFrame = wireframe; }
 
-	void create(const std::vector<IShader*>& shaders, RenderPassVK* pRenderPass, PipelineLayoutVK* pPipelineLayout);
+	bool finalize(const std::vector<IShader*>& shaders, RenderPassVK* pRenderPass, PipelineLayoutVK* pPipelineLayout);
 
 	VkPipeline getPipeline() const { return m_Pipeline; }
 

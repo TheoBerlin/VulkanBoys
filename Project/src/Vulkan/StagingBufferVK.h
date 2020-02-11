@@ -21,6 +21,7 @@ public:
 private:
 	DeviceVK* m_pDevice;
 	BufferVK* m_pBuffer;
+	BufferVK* m_pOldBuffer;
 	uint8_t* m_pHostMemory;
 	VkDeviceSize m_BufferOffset;
 };

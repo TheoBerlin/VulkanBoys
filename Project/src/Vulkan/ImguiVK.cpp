@@ -551,7 +551,7 @@ bool ImguiVK::createPipeline()
 	m_pPipeline->setWireFrame(false);
 	m_pPipeline->setDepthTest(false);
 
-	m_pPipeline->create(shaders, m_pRenderPass, m_pPipelineLayout);
+	m_pPipeline->finalize(shaders, m_pRenderPass, m_pPipelineLayout);
 
 	SAFEDELETE(pVertexShader);
 	SAFEDELETE(pPixelShader);
