@@ -1,11 +1,13 @@
 #include "RayTracingSceneVK.h"
 
-#include "../GraphicsContextVK.h"
-#include "../DeviceVK.h"
-#include "../BufferVK.h"
+#include "Vulkan/GraphicsContextVK.h"
+#include "Vulkan/DeviceVK.h"
+#include "Vulkan/BufferVK.h"
+#include "Vulkan/MeshVK.h"
+#include "Vulkan/Texture2DVK.h"
 
-#include "../CommandPoolVK.h"
-#include "../CommandBufferVK.h"
+#include "Vulkan/CommandPoolVK.h"
+#include "Vulkan/CommandBufferVK.h"
 
 #include <algorithm>
 
@@ -18,7 +20,13 @@ RayTracingSceneVK::RayTracingSceneVK(IGraphicsContext* pContext) :
 	m_pScratchBuffer(nullptr),
 	m_pInstanceBuffer(nullptr),
 	m_pGarbageScratchBuffer(nullptr),
+	m_TotalNumberOfVertices(0),
+	m_TotalNumberOfIndices(0),
 	m_pGarbageInstanceBuffer(nullptr),
+	m_pCombinedVertexBuffer(nullptr),
+	m_pCombinedIndexBuffer(nullptr),
+	m_pMeshIndexBuffer(nullptr),
+	m_NumBottomLevelAccelerationStructures(0),
 	m_pTempCommandPool(nullptr),
 	m_pTempCommandBuffer(nullptr),
 	m_Finalized(false)
@@ -39,11 +47,17 @@ RayTracingSceneVK::~RayTracingSceneVK()
 	SAFEDELETE(m_pInstanceBuffer);
 	SAFEDELETE(m_pGarbageScratchBuffer);
 	SAFEDELETE(m_pGarbageInstanceBuffer);
+	SAFEDELETE(m_pCombinedVertexBuffer);
+	SAFEDELETE(m_pCombinedIndexBuffer);
+	SAFEDELETE(m_pMeshIndexBuffer);
 
-	for (auto& bottomLevelAccelerationStructure : m_BottomLevelAccelerationStructures)
+	for (auto& bottomLevelAccelerationStructurePerMesh : m_BottomLevelAccelerationStructures)
 	{
-		vkFreeMemory(m_pDevice->getDevice(), bottomLevelAccelerationStructure.second.memory, nullptr);
-		m_pDevice->vkDestroyAccelerationStructureNV(m_pDevice->getDevice(), bottomLevelAccelerationStructure.second.accelerationStructure, nullptr);
+		for (auto& bottomLevelAccelerationStructure : bottomLevelAccelerationStructurePerMesh.second)
+		{
+			vkFreeMemory(m_pDevice->getDevice(), bottomLevelAccelerationStructure.second.memory, nullptr);
+			m_pDevice->vkDestroyAccelerationStructureNV(m_pDevice->getDevice(), bottomLevelAccelerationStructure.second.accelerationStructure, nullptr);
+		}
 	}
 	m_BottomLevelAccelerationStructures.clear();
 
@@ -76,6 +90,8 @@ bool RayTracingSceneVK::finalize()
 
 	m_pTempCommandBuffer = m_pTempCommandPool->allocateCommandBuffer();
 	
+	createCombinedMeshData();
+
 	//Create TLAS
 	if (!initTLAS())
 	{
@@ -134,24 +150,43 @@ void RayTracingSceneVK::update()
 	m_pContext->getDevice()->wait();
 }
 
-uint32_t RayTracingSceneVK::addMeshInstance(IMesh* pMesh, const glm::mat3x4& transform)
+uint32_t RayTracingSceneVK::addGraphicsObjectInstance(IMesh* pMesh, ITexture2D* pTexture2D, const glm::mat3x4& transform)
 {
+	//Todo: Same mesh but different textures => different geometry instance instanceId
+
 	MeshVK* pVulkanMesh = reinterpret_cast<MeshVK*>(pMesh);
+	Texture2DVK* pVulkanTexture = reinterpret_cast<Texture2DVK*>(pTexture2D);
 	
-	if (m_BottomLevelAccelerationStructures.find(pVulkanMesh) == m_BottomLevelAccelerationStructures.end())
+	auto& blasPerMesh = m_BottomLevelAccelerationStructures.find(pVulkanMesh);
+
+	if (blasPerMesh == m_BottomLevelAccelerationStructures.end())
 	{
 		if (m_Finalized)
 		{
-			LOG("--- RayTracingScene: addMeshInstance failed, new mesh instance cannot be added to finalized RayTracingScene if the mesh has not been added before!");
+			LOG("--- RayTracingScene: addGraphicsObjectInstance failed, new mesh instance cannot be added to finalized RayTracingScene if the mesh has not been added before!");
 			return false;
 		}
 
-		initBLAS(pVulkanMesh);
-		m_AllVertexBuffers.push_back(reinterpret_cast<BufferVK*>(pVulkanMesh->getVertexBuffer())->getBuffer());
-		m_AllIndexBuffers.push_back(reinterpret_cast<BufferVK*>(pVulkanMesh->getIndexBuffer())->getBuffer());
+		initBLAS(pVulkanMesh, pVulkanTexture);
+		m_AllMeshes.push_back(pVulkanMesh);
+		m_TotalNumberOfVertices += static_cast<uint32_t>(pMesh->getVertexBuffer()->getSizeInBytes() / sizeof(Vertex));
+		m_TotalNumberOfIndices += pMesh->getIndexBuffer()->getSizeInBytes() / sizeof(uint32_t);
+	}
+	else if (blasPerMesh->second.find(pVulkanTexture) == blasPerMesh->second.end())
+	{
+		if (m_Finalized)
+		{
+			LOG("--- RayTracingScene: addGraphicsObjectInstance failed, new mesh instance cannot be added to finalized RayTracingScene if the texture has not been added before!");
+			return false;
+		}
+
+		BottomLevelAccelerationStructure blasCopy = blasPerMesh->second.begin()->second;
+		blasCopy.index = m_NumBottomLevelAccelerationStructures;
+		m_NumBottomLevelAccelerationStructures++;
+		blasPerMesh->second[pVulkanTexture] = blasCopy;
 	}
 
-	BottomLevelAccelerationStructure bottomLevelAccelerationStructure = m_BottomLevelAccelerationStructures[pVulkanMesh];
+	const BottomLevelAccelerationStructure& bottomLevelAccelerationStructure = m_BottomLevelAccelerationStructures[pVulkanMesh][pVulkanTexture];
 
 	GeometryInstance geometryInstance = {};
 	geometryInstance.transform = transform;
@@ -170,7 +205,7 @@ void RayTracingSceneVK::updateMeshInstance(uint32_t index, const glm::mat3x4& tr
 	m_AllGeometryInstances[index].transform = transform;
 }
 
-bool RayTracingSceneVK::initBLAS(MeshVK* pMesh)
+bool RayTracingSceneVK::initBLAS(MeshVK* pMesh, Texture2DVK* pTexture2D)
 {
 	BottomLevelAccelerationStructure bottomLevelAccelerationStructure = {};
 
@@ -179,12 +214,12 @@ bool RayTracingSceneVK::initBLAS(MeshVK* pMesh)
 	bottomLevelAccelerationStructure.geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NV;
 	bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexData = ((BufferVK*)pMesh->getVertexBuffer())->getBuffer();
 	bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexOffset = 0;
-	bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexCount = static_cast<uint32_t>(pMesh->getVertexBuffer()->getSizeInBytes() / sizeof(Vertex));
+	bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexCount = pMesh->getVertexCount();
 	bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexStride = sizeof(Vertex);
 	bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
 	bottomLevelAccelerationStructure.geometry.geometry.triangles.indexData = ((BufferVK*)pMesh->getIndexBuffer())->getBuffer();
 	bottomLevelAccelerationStructure.geometry.geometry.triangles.indexOffset = 0;
-	bottomLevelAccelerationStructure.geometry.geometry.triangles.indexCount = pMesh->getIndexBuffer()->getSizeInBytes() / sizeof(uint32_t);
+	bottomLevelAccelerationStructure.geometry.geometry.triangles.indexCount = pMesh->getIndexCount();
 	bottomLevelAccelerationStructure.geometry.geometry.triangles.indexType = VK_INDEX_TYPE_UINT32;
 	bottomLevelAccelerationStructure.geometry.geometry.triangles.transformData = VK_NULL_HANDLE;
 	bottomLevelAccelerationStructure.geometry.geometry.triangles.transformOffset = 0;
@@ -226,11 +261,14 @@ bool RayTracingSceneVK::initBLAS(MeshVK* pMesh)
 
 	VK_CHECK_RESULT(m_pDevice->vkGetAccelerationStructureHandleNV(m_pDevice->getDevice(), bottomLevelAccelerationStructure.accelerationStructure, sizeof(uint64_t), &bottomLevelAccelerationStructure.handle), "--- RayTracingScene: Could not get handle for BLAS!");
 
-	bottomLevelAccelerationStructure.index = m_BottomLevelAccelerationStructures.size();
+	bottomLevelAccelerationStructure.index = m_NumBottomLevelAccelerationStructures;
+	m_NumBottomLevelAccelerationStructures++;
 
-	m_BottomLevelAccelerationStructures[pMesh] = bottomLevelAccelerationStructure;
+	std::unordered_map<Texture2DVK*, BottomLevelAccelerationStructure> newBLASPerMesh;
+	newBLASPerMesh[pTexture2D] = bottomLevelAccelerationStructure;
+	m_BottomLevelAccelerationStructures[pMesh] = newBLASPerMesh;
 
-	return false;
+	return true;
 }
 
 bool RayTracingSceneVK::initTLAS()
@@ -312,30 +350,33 @@ bool RayTracingSceneVK::buildAccelerationTable()
 	m_pTempCommandBuffer->reset();
 	m_pTempCommandBuffer->begin();
 	
-	for (auto& bottomLevelAccelerationStructure : m_BottomLevelAccelerationStructures)
+	for (auto& bottomLevelAccelerationStructurePerMesh : m_BottomLevelAccelerationStructures)
 	{
-		/*
-			Build bottom level acceleration structure
-		*/
-		VkAccelerationStructureInfoNV buildInfo = {};
-		buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV;
-		buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_NV;
-		buildInfo.geometryCount = 1;
-		buildInfo.pGeometries = &bottomLevelAccelerationStructure.second.geometry;
+		for (auto& bottomLevelAccelerationStructure : bottomLevelAccelerationStructurePerMesh.second)
+		{
+			/*
+				Build bottom level acceleration structure
+			*/
+			VkAccelerationStructureInfoNV buildInfo = {};
+			buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV;
+			buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_NV;
+			buildInfo.geometryCount = 1;
+			buildInfo.pGeometries = &bottomLevelAccelerationStructure.second.geometry;
 
-		//Todo: Make this better?
-		m_pDevice->vkCmdBuildAccelerationStructureNV(
-			m_pTempCommandBuffer->getCommandBuffer(),
-			&buildInfo,
-			VK_NULL_HANDLE,
-			0,
-			VK_FALSE,
-			bottomLevelAccelerationStructure.second.accelerationStructure,
-			VK_NULL_HANDLE,
-			m_pScratchBuffer->getBuffer(),
-			0);
+			//Todo: Make this better?
+			m_pDevice->vkCmdBuildAccelerationStructureNV(
+				m_pTempCommandBuffer->getCommandBuffer(),
+				&buildInfo,
+				VK_NULL_HANDLE,
+				0,
+				VK_FALSE,
+				bottomLevelAccelerationStructure.second.accelerationStructure,
+				VK_NULL_HANDLE,
+				m_pScratchBuffer->getBuffer(),
+				0);
 
-		vkCmdPipelineBarrier(m_pTempCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, 0, 1, &memoryBarrier, 0, 0, 0, 0);
+			vkCmdPipelineBarrier(m_pTempCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, 0, 1, &memoryBarrier, 0, 0, 0, 0);
+		}
 	}
 	
 	/*
@@ -420,6 +461,66 @@ void RayTracingSceneVK::updateInstanceBuffer()
 	m_pInstanceBuffer->unmap();
 }
 
+void RayTracingSceneVK::createCombinedMeshData()
+{
+	m_pCombinedVertexBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
+	m_pCombinedIndexBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
+	m_pMeshIndexBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
+
+	BufferParams vertexBufferParams = {};
+	vertexBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	vertexBufferParams.SizeInBytes = sizeof(Vertex) * m_TotalNumberOfVertices;
+	vertexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+	BufferParams indexBufferParams = {};
+	indexBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	indexBufferParams.SizeInBytes = sizeof(uint32_t) * m_TotalNumberOfIndices;
+	indexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+	BufferParams meshIndexBufferParams = {};
+	meshIndexBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	meshIndexBufferParams.SizeInBytes = sizeof(uint32_t) * 2 * m_AllMeshes.size();
+	meshIndexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+	m_pCombinedVertexBuffer->init(vertexBufferParams);
+	m_pCombinedIndexBuffer->init(indexBufferParams);
+	m_pMeshIndexBuffer->init(meshIndexBufferParams);
+
+	m_pTempCommandBuffer->reset();
+	m_pTempCommandBuffer->begin();
+
+	uint32_t vertexBufferOffset = 0;
+	uint32_t indexBufferOffset = 0;
+	uint64_t meshIndexBufferOffset = 0;
+
+	void* pMeshIndexBufferMapped;
+	m_pMeshIndexBuffer->map(&pMeshIndexBufferMapped);
+
+	for (auto& pMesh : m_AllMeshes)
+	{
+		uint32_t numVertices = pMesh->getVertexCount();
+		uint32_t numIndices = pMesh->getIndexCount();
+
+		m_pTempCommandBuffer->copyBuffer(reinterpret_cast<BufferVK*>(pMesh->getVertexBuffer()), 0, m_pCombinedVertexBuffer, vertexBufferOffset * sizeof(Vertex), numVertices * sizeof(Vertex));
+		m_pTempCommandBuffer->copyBuffer(reinterpret_cast<BufferVK*>(pMesh->getIndexBuffer()), 0, m_pCombinedIndexBuffer, indexBufferOffset * sizeof(uint32_t), numIndices * sizeof(uint32_t));
+
+		memcpy((void*)((size_t)pMeshIndexBufferMapped +  meshIndexBufferOffset		* sizeof(uint32_t)), &vertexBufferOffset, sizeof(uint32_t));
+		memcpy((void*)((size_t)pMeshIndexBufferMapped + (meshIndexBufferOffset + 1) * sizeof(uint32_t)), &indexBufferOffset, sizeof(uint32_t));
+
+		vertexBufferOffset += numVertices;
+		indexBufferOffset += numIndices;
+		meshIndexBufferOffset += 2;
+	}
+
+	uint32_t test[4];
+	memcpy(test, pMeshIndexBufferMapped, sizeof(uint32_t) * 4);
+	m_pMeshIndexBuffer->unmap();
+
+	m_pTempCommandBuffer->end();
+	m_pDevice->executeCommandBuffer(m_pDevice->getComputeQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_pDevice->wait(); //Todo: Remove?
+}
+
 VkDeviceSize RayTracingSceneVK::findMaxMemReqBLAS()
 {
 	VkDeviceSize maxSize = 0;
@@ -428,14 +529,17 @@ VkDeviceSize RayTracingSceneVK::findMaxMemReqBLAS()
 	memoryRequirementsInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV;
 	memoryRequirementsInfo.type = VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_BUILD_SCRATCH_NV;
 	
-	for (auto& bottomLevelAccelerationStructure : m_BottomLevelAccelerationStructures)
+	for (auto& bottomLevelAccelerationStructurePerMesh : m_BottomLevelAccelerationStructures)
 	{
-		VkMemoryRequirements2 memReqBLAS;
-		memoryRequirementsInfo.accelerationStructure = bottomLevelAccelerationStructure.second.accelerationStructure;
-		m_pDevice->vkGetAccelerationStructureMemoryRequirementsNV(m_pDevice->getDevice(), &memoryRequirementsInfo, &memReqBLAS);
+		for (auto& bottomLevelAccelerationStructure : bottomLevelAccelerationStructurePerMesh.second)
+		{
+			VkMemoryRequirements2 memReqBLAS;
+			memoryRequirementsInfo.accelerationStructure = bottomLevelAccelerationStructure.second.accelerationStructure;
+			m_pDevice->vkGetAccelerationStructureMemoryRequirementsNV(m_pDevice->getDevice(), &memoryRequirementsInfo, &memReqBLAS);
 
-		if (memReqBLAS.memoryRequirements.size > maxSize)
-			maxSize = memReqBLAS.memoryRequirements.size;
+			if (memReqBLAS.memoryRequirements.size > maxSize)
+				maxSize = memReqBLAS.memoryRequirements.size;
+		}
 	}
 
 	return maxSize;

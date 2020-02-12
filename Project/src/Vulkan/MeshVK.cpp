@@ -92,7 +92,7 @@ bool MeshVK::initFromMemory(const Vertex* pVertices, uint32_t vertexCount, const
 	CommandBufferVK* pCommandBuffer = pCommandPool->allocateCommandBuffer();
 
 	BufferParams vertexBufferParams = {};
-	vertexBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	vertexBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	vertexBufferParams.SizeInBytes = sizeof(Vertex) * vertexCount;
 	vertexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
@@ -103,7 +103,7 @@ bool MeshVK::initFromMemory(const Vertex* pVertices, uint32_t vertexCount, const
 	}
 
 	BufferParams indexBufferParams = {};
-	indexBufferParams.Usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	indexBufferParams.Usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	indexBufferParams.SizeInBytes = sizeof(uint32_t) * indexCount;
 	indexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 

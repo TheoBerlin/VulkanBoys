@@ -40,23 +40,44 @@ void main()
 
 	vec3 color = vec3(0.0);
 
-	for (int i = 0; i < MAX_RECURSION; i++) {
+	for (int i = 0; i < 4; i++) {
 		traceNV(topLevelAS, rayFlags, cullMask, 0, 0, 0, origin.xyz, tmin, direction.xyz, tmax, 0);
 		vec3 hitColor = rayPayload.color;
 
-		if (rayPayload.distance < 0.0f) {
+		if (rayPayload.distance < 0.0f) 
+		{
 			color += hitColor;
 			break;
-		} else if (rayPayload.reflector == 1.0f) {
+		} 
+		else if (rayPayload.reflector == 1.0f) 
+		{
 			const vec4 hitPos = origin + direction * rayPayload.distance;
 			origin.xyz = hitPos.xyz + rayPayload.normal * 0.001f;
 			direction.xyz = reflect(direction.xyz, rayPayload.normal);
-		} else {
+		} 
+		else 
+		{
 			color += hitColor;
 			break;
 		}
 
+		// if (rayPayload.distance < 0.0f) 
+		// {
+		// 	color += hitColor;
+		// 	break;
+		// } 
+		// else if (rayPayload.reflector == 1.0f) 
+		// {
+		// 	imageStore(image, ivec2(gl_LaunchIDNV.xy), vec4(rayPayload.normal, 1.0));
+		// 	return;
+		// } 
+		// else 
+		// {
+		// 	color += hitColor;
+		// 	break;
+		// }
+
 	}
 
-	imageStore(image, ivec2(gl_LaunchIDNV.xy), vec4(color, 0.0));
+	imageStore(image, ivec2(gl_LaunchIDNV.xy), vec4(color, 1.0));
 }

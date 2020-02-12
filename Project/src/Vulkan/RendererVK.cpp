@@ -236,10 +236,10 @@ bool RendererVK::init()
 	m_Matrix3 = glm::transpose(glm::translate(m_Matrix3, glm::vec3(1.0f, 2.0f, 0.0f)));
 
 	m_pRayTracingScene = new RayTracingSceneVK(m_pContext);
-	m_InstanceIndex0 = m_pRayTracingScene->addMeshInstance(m_pMeshGun,		m_Matrix0);
-	m_InstanceIndex1 = m_pRayTracingScene->addMeshInstance(m_pMeshGun,		m_Matrix1);
-	m_InstanceIndex2 = m_pRayTracingScene->addMeshInstance(m_pMeshGun,		m_Matrix2);
-	m_InstanceIndex3 = m_pRayTracingScene->addMeshInstance(m_pMeshCube,	m_Matrix3);
+	m_InstanceIndex0 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshGun, nullptr, m_Matrix0);
+	m_InstanceIndex1 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshGun, nullptr, m_Matrix1);
+	m_InstanceIndex2 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshGun, nullptr, m_Matrix2);
+	m_InstanceIndex3 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshCube, nullptr, m_Matrix3);
 	m_pRayTracingScene->finalize();
 
 	m_TempTimer = 0;
@@ -341,8 +341,9 @@ bool RendererVK::init()
 	m_pRayTracingDescriptorSet->writeAccelerationStructureDescriptor(m_pRayTracingScene->getTLAS().accelerationStructure, 0);
 	m_pRayTracingDescriptorSet->writeStorageImageDescriptor(m_pRayTracingStorageImageView->getImageView(), 1);
 	m_pRayTracingDescriptorSet->writeUniformBufferDescriptor(m_pRayTracingUniformBuffer->getBuffer(), 2);
-	m_pRayTracingDescriptorSet->writeStorageBufferDescriptors(m_pRayTracingScene->getAllVertexBuffers().data(), m_pRayTracingScene->getAllVertexBuffers().size(), 3);
-	m_pRayTracingDescriptorSet->writeStorageBufferDescriptors(m_pRayTracingScene->getAllIndexBuffers().data(), m_pRayTracingScene->getAllIndexBuffers().size(), 4);
+	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pRayTracingScene->getCombinedVertexBuffer()->getBuffer(), 3);
+	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pRayTracingScene->getCombinedIndexBuffer()->getBuffer(), 4);
+	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pRayTracingScene->getMeshIndexBuffer()->getBuffer(), 5);
 	
 	return true;
 }
@@ -400,8 +401,11 @@ void RendererVK::endFrame()
 
 void RendererVK::beginRayTraceFrame(const Camera& camera)
 {
-	m_TempTimer += 0.01f;
+	m_TempTimer += 0.001f;
+	glm::mat4 matrix2 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f));
+	m_Matrix2 = glm::transpose(glm::rotate(matrix2, m_TempTimer, glm::vec3(0.0f, 1.0f, 0.0f)));
 	m_Matrix3 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, glm::sin(m_TempTimer), 0.0)));
+	m_pRayTracingScene->updateMeshInstance(m_InstanceIndex2, m_Matrix2);
 	m_pRayTracingScene->updateMeshInstance(m_InstanceIndex3, m_Matrix3);
 	m_pRayTracingScene->update();
 
@@ -745,6 +749,8 @@ bool RendererVK::createRayTracingPipelineLayouts()
 	m_pRayTracingDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV | VK_SHADER_STAGE_MISS_BIT_NV, 2, 1);
 	m_pRayTracingDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, 3, 1);
 	m_pRayTracingDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, 4, 1);
+	m_pRayTracingDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, 5, 1);
+	m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, nullptr, 6, MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
 	m_pRayTracingDescriptorSetLayout->finalize();
 
 	std::vector<const DescriptorSetLayoutVK*> rayTracingDescriptorSetLayouts = { m_pRayTracingDescriptorSetLayout };
@@ -752,7 +758,7 @@ bool RendererVK::createRayTracingPipelineLayouts()
 
 	//Descriptorpool
 	DescriptorCounts descriptorCounts = {};
-	descriptorCounts.m_SampledImages = 16;
+	descriptorCounts.m_SampledImages = 256;
 	descriptorCounts.m_StorageBuffers = 16;
 	descriptorCounts.m_UniformBuffers = 16;
 	descriptorCounts.m_StorageImages = 1;
