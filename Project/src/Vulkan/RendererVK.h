@@ -15,18 +15,12 @@ class GraphicsContextVK;
 class DescriptorSetLayoutVK;
 
 //Temp
-class AccelerationTableVK;
+class RayTracingSceneVK;
 class RayTracingPipelineVK;
 class ShaderBindingTableVK;
 class ImageVK;
 class ImageViewVK;
-
-struct TempRayTracingUniformData
-{
-	glm::mat4 viewInverse;
-	glm::mat4 projInverse;
-};
-
+class ShaderVK;
 
 class RendererVK : public IRenderer
 {
@@ -102,7 +96,7 @@ private:
 	uint32_t m_BackBufferIndex;
 
 	//Temp Ray Tracing Stuff
-	AccelerationTableVK* m_pAccelerationTable;
+	RayTracingSceneVK* m_pRayTracingScene;
 	RayTracingPipelineVK* m_pRayTracingPipeline;
 	PipelineLayoutVK* m_pRayTracingPipelineLayout;
 	ShaderBindingTableVK* m_pSBT;
@@ -114,5 +108,24 @@ private:
 	DescriptorSetLayoutVK* m_pRayTracingDescriptorSetLayout;
 
 	BufferVK* m_pRayTracingUniformBuffer;
+
+	IMesh* m_pMeshCube;
+	IMesh* m_pMeshGun;
+
+	glm::mat4 m_Matrix0;
+	glm::mat4 m_Matrix1;
+	glm::mat4 m_Matrix2;
+	glm::mat4 m_Matrix3;
+
+	uint32_t m_InstanceIndex0;
+	uint32_t m_InstanceIndex1;
+	uint32_t m_InstanceIndex2;
+	uint32_t m_InstanceIndex3;
+
+	ShaderVK* m_pRaygenShader;
+	ShaderVK* m_pClosestHitShader;
+	ShaderVK* m_pMissShader;
+
+	float m_TempTimer;
 };
 

@@ -14,11 +14,7 @@ ShaderBindingTableVK::ShaderBindingTableVK(IGraphicsContext* pContext) :
 
 ShaderBindingTableVK::~ShaderBindingTableVK()
 {
-	if (m_pSBT != nullptr)
-	{
-		delete m_pSBT;
-		m_pSBT = nullptr;
-	}
+	SAFEDELETE(m_pSBT);
 }
 
 bool ShaderBindingTableVK::init(RayTracingPipelineVK* pRayTracingPipeline)

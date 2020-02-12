@@ -14,7 +14,7 @@ class DeviceVK;
 class CommandPoolVK;
 class CommandBufferVK;
 
-class AccelerationTableVK
+class RayTracingSceneVK
 {
 	struct GeometryInstance
 	{
@@ -32,6 +32,7 @@ class AccelerationTableVK
 		VkAccelerationStructureNV accelerationStructure = VK_NULL_HANDLE;
 		uint64_t handle = 0;
 		VkGeometryNV geometry = {};
+		uint32_t index = 0;
 	};
 
 	struct TopLevelAccelerationStructure
@@ -43,24 +44,42 @@ class AccelerationTableVK
 
 	
 public:
-	DECL_NO_COPY(AccelerationTableVK);
+	DECL_NO_COPY(RayTracingSceneVK);
 
-	AccelerationTableVK(IGraphicsContext* pContext);
-	~AccelerationTableVK();
+	RayTracingSceneVK(IGraphicsContext* pContext);
+	~RayTracingSceneVK();
 
 	uint32_t addMeshInstance(IMesh* pMesh, const glm::mat3x4& transform = glm::mat3x4(1.0f));
+	void updateMeshInstance(uint32_t index, const glm::mat3x4& transform);
 	bool finalize();
 
+	void update();
+
+	BufferVK* getCombinedVertexBuffer() { return m_pCombinedVertexBuffer; }
+	BufferVK* getCombinedIndexBuffer() { return m_pCombinedIndexBuffer; }
 	const TopLevelAccelerationStructure& getTLAS() { return m_TopLevelAccelerationStructure; }
 	
 private:
+	bool initBLAS(MeshVK* pMesh);
 	bool initTLAS();
 	bool buildAccelerationTable();
+
+	void cleanGarbage();
+	void updateScratchBuffer();
+	void updateInstanceBuffer();
 	VkDeviceSize findMaxMemReqBLAS();
 	
 private:
 	GraphicsContextVK* m_pContext;
 	DeviceVK* m_pDevice;
+
+	BufferVK* m_pScratchBuffer;
+	BufferVK* m_pInstanceBuffer;
+	BufferVK* m_pGarbageScratchBuffer;
+	BufferVK* m_pGarbageInstanceBuffer;
+
+	BufferVK* m_pCombinedVertexBuffer;
+	BufferVK* m_pCombinedIndexBuffer;
 
 	TopLevelAccelerationStructure m_TopLevelAccelerationStructure;
 	std::unordered_map<MeshVK*, BottomLevelAccelerationStructure> m_BottomLevelAccelerationStructures;
@@ -69,4 +88,6 @@ private:
 	
 	CommandPoolVK* m_pTempCommandPool;
 	CommandBufferVK* m_pTempCommandBuffer;
+
+	bool m_Finalized;
 };

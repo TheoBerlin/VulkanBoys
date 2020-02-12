@@ -20,7 +20,7 @@
 //TEMP
 #include "Ray Tracing/ShaderBindingTableVK.h"
 #include "Ray Tracing/RayTracingPipelineVK.h"
-#include "Ray Tracing/AccelerationTableVK.h"
+#include "Ray Tracing/RayTracingSceneVK.h"
 #include "ShaderVK.h"
 #include "Scene.h"
 #include "ImageVK.h"
@@ -71,6 +71,31 @@ RendererVK::~RendererVK()
 	SAFEDELETE(m_pDescriptorSetLayout);
 	SAFEDELETE(m_pCameraBuffer);
 
+	//Ray Tracing Stuff
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		SAFEDELETE(m_ppComputeCommandPools[i]);
+	}
+
+	SAFEDELETE(m_pRayTracingScene);
+	SAFEDELETE(m_pRayTracingPipeline);
+	SAFEDELETE(m_pRayTracingPipelineLayout);
+	SAFEDELETE(m_pSBT);
+	SAFEDELETE(m_pRayTracingStorageImage);
+	SAFEDELETE(m_pRayTracingStorageImageView);
+
+	SAFEDELETE(m_pRayTracingDescriptorPool);
+	SAFEDELETE(m_pRayTracingDescriptorSetLayout);
+
+	SAFEDELETE(m_pRayTracingUniformBuffer);
+
+	SAFEDELETE(m_pMeshCube);
+	SAFEDELETE(m_pMeshGun);
+
+	SAFEDELETE(m_pRaygenShader);
+	SAFEDELETE(m_pClosestHitShader);
+	SAFEDELETE(m_pMissShader);
+
 	m_pContext = nullptr;
 }
 
@@ -115,42 +140,129 @@ bool RendererVK::init()
 	//m_pDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer->getBuffer(), 0);
 
 	//Testing
-	Vertex vertices[] = 
+	//Vertex vertices[] = 
+	//{
+	//	{ glm::vec3( 1.0f,  1.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 0.0f) },
+	//	{ glm::vec3(-1.0f,  1.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(1.0f, 0.0f) },
+	//	{ glm::vec3( 0.0f, -1.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 1.0f) },
+	//};
+
+	//// Setup indices
+	//uint32_t indices[] = { 0, 1, 2 };
+
+	//IMesh* pMesh = m_pContext->createMesh();
+	//pMesh->initFromMemory(vertices, 3, indices, 3);
+
+	Vertex vertices[] =
 	{
-		{ glm::vec3( 1.0f,  1.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 0.0f) },
-		{ glm::vec3(-1.0f,  1.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(1.0f, 0.0f) },
-		{ glm::vec3( 0.0f, -1.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 1.0f) },
+		//FRONT FACE
+		{ glm::vec3(-0.5,  0.5, -0.5), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 0.0f) },
+		{ glm::vec3(0.5,  0.5, -0.5), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(1.0f, 0.0f) },
+		{ glm::vec3(-0.5, -0.5, -0.5), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 1.0f) },
+		{ glm::vec3(0.5, -0.5, -0.5), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(1.0f, 1.0f) },
+
+		//BACK FACE
+		{ glm::vec3(0.5,  0.5,  0.5), glm::vec3(0.0f,  0.0f,  1.0f), glm::vec3(-1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 0.0f) },
+		{ glm::vec3(-0.5,  0.5,  0.5), glm::vec3(0.0f,  0.0f,  1.0f), glm::vec3(-1.0f,  0.0f, 0.0f), glm::vec2(1.0f, 0.0f) },
+		{ glm::vec3(0.5, -0.5,  0.5), glm::vec3(0.0f,  0.0f,  1.0f), glm::vec3(-1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 1.0f) },
+		{ glm::vec3(-0.5, -0.5,  0.5), glm::vec3(0.0f,  0.0f,  1.0f), glm::vec3(-1.0f,  0.0f, 0.0f), glm::vec2(1.0f, 1.0f) },
+
+		//RIGHT FACE
+		{ glm::vec3(0.5,  0.5, -0.5), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f,  0.0f, 1.0f), glm::vec2(0.0f, 0.0f) },
+		{ glm::vec3(0.5,  0.5,  0.5), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f,  0.0f, 1.0f), glm::vec2(1.0f, 0.0f) },
+		{ glm::vec3(0.5, -0.5, -0.5), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f,  0.0f, 1.0f), glm::vec2(0.0f, 1.0f) },
+		{ glm::vec3(0.5, -0.5,  0.5), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f,  0.0f, 1.0f), glm::vec2(1.0f, 1.0f) },
+
+		//LEFT FACE
+		{ glm::vec3(-0.5,  0.5, -0.5), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec2(0.0f, 0.0f) },
+		{ glm::vec3(-0.5,  0.5,  0.5), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec2(1.0f, 0.0f) },
+		{ glm::vec3(-0.5, -0.5, -0.5), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec2(0.0f, 1.0f) },
+		{ glm::vec3(-0.5, -0.5,  0.5), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec2(1.0f, 1.0f) },
+
+		//TOP FACE
+		{ glm::vec3(-0.5,  0.5,  0.5), glm::vec3(0.0f,  1.0f,  0.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 0.0f) },
+		{ glm::vec3(0.5,  0.5,  0.5), glm::vec3(0.0f,  1.0f,  0.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(1.0f, 0.0f) },
+		{ glm::vec3(-0.5,  0.5, -0.5), glm::vec3(0.0f,  1.0f,  0.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 1.0f) },
+		{ glm::vec3(0.5,  0.5, -0.5), glm::vec3(0.0f,  1.0f,  0.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(1.0f, 1.0f) },
+
+		//BOTTOM FACE
+		{ glm::vec3(-0.5, -0.5, -0.5), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(-1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 0.0f) },
+		{ glm::vec3(0.5, -0.5, -0.5), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(-1.0f,  0.0f, 0.0f), glm::vec2(1.0f, 0.0f) },
+		{ glm::vec3(-0.5, -0.5,  0.5), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(-1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 1.0f) },
+		{ glm::vec3(0.5, -0.5,  0.5), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(-1.0f,  0.0f, 0.0f), glm::vec2(1.0f, 1.0f) },
 	};
 
-	// Setup indices
-	uint32_t indices[] = { 0, 1, 2 };
+	uint32_t indices[] =
+	{
+		//FRONT FACE
+		2, 1, 0,
+		2, 3, 1,
 
-	IMesh* pMesh = m_pContext->createMesh();
-	pMesh->initFromMemory(vertices, 3, indices, 3);
+		//BACK FACE
+		6, 5, 4,
+		6, 7, 5,
+
+		//RIGHT FACE
+		10, 9, 8,
+		10, 11, 9,
+
+		//LEFT FACE
+		12, 13, 14,
+		13, 15, 14,
+
+		//TOP FACE
+		18, 17, 16,
+		18, 19, 17,
+
+		//BOTTOM FACE
+		22, 21, 20,
+		22, 23, 21
+	};
+
+	m_pMeshCube = m_pContext->createMesh();
+	m_pMeshCube->initFromMemory(vertices, 24, indices, 36);
 	
-	m_pAccelerationTable = new AccelerationTableVK(m_pContext);
-	m_pAccelerationTable->addMeshInstance(pMesh);
-	m_pAccelerationTable->finalize();
+	m_pMeshGun = m_pContext->createMesh();
+	m_pMeshGun->initFromFile("assets/meshes/gun.obj");
+	
+	m_Matrix0 = glm::mat4(1.0f);
+	m_Matrix1 = glm::mat4(1.0f);
+	m_Matrix2 = glm::mat4(1.0f);
+	m_Matrix3 = glm::mat4(1.0f);
+
+	m_Matrix0 = glm::transpose(glm::translate(m_Matrix0, glm::vec3(0.0f, 0.0f, 0.0f)));
+	m_Matrix1 = glm::transpose(glm::translate(m_Matrix1, glm::vec3(0.0f, 1.0f, 0.0f)));
+	m_Matrix2 = glm::transpose(glm::translate(m_Matrix2, glm::vec3(0.0f, 2.0f, 0.0f)));
+	m_Matrix3 = glm::transpose(glm::translate(m_Matrix3, glm::vec3(1.0f, 2.0f, 0.0f)));
+
+	m_pRayTracingScene = new RayTracingSceneVK(m_pContext);
+	m_InstanceIndex0 = m_pRayTracingScene->addMeshInstance(m_pMeshGun,		m_Matrix0);
+	m_InstanceIndex1 = m_pRayTracingScene->addMeshInstance(m_pMeshGun,		m_Matrix1);
+	m_InstanceIndex2 = m_pRayTracingScene->addMeshInstance(m_pMeshGun,		m_Matrix2);
+	m_InstanceIndex3 = m_pRayTracingScene->addMeshInstance(m_pMeshCube,	m_Matrix3);
+	m_pRayTracingScene->finalize();
+
+	m_TempTimer = 0;
 
 	RaygenGroupParams raygenGroupParams = {};
 	IntersectGroupParams intersectGroupParams = {};
 	MissGroupParams missGroupParams = {};
 
 	{
-		ShaderVK* pRaygenShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-		pRaygenShader->initFromFile(EShader::RAYGEN_SHADER, "main", "assets/shaders/raytracing/raygen.spv");
-		pRaygenShader->finalize();
-		raygenGroupParams.pRaygenShader = pRaygenShader;
+		m_pRaygenShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+		m_pRaygenShader->initFromFile(EShader::RAYGEN_SHADER, "main", "assets/shaders/raytracing/raygen.spv");
+		m_pRaygenShader->finalize();
+		raygenGroupParams.pRaygenShader = m_pRaygenShader;
 
-		ShaderVK* pClosestHitShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-		pClosestHitShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/closesthit.spv");
-		pClosestHitShader->finalize();
-		intersectGroupParams.pClosestHitShader = pClosestHitShader;
+		m_pClosestHitShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+		m_pClosestHitShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/closesthit.spv");
+		m_pClosestHitShader->finalize();
+		intersectGroupParams.pClosestHitShader = m_pClosestHitShader;
 
-		ShaderVK* pMissShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-		pMissShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/miss.spv");
-		pMissShader->finalize();
-		missGroupParams.pMissShader = pMissShader;
+		m_pMissShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+		m_pMissShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/miss.spv");
+		m_pMissShader->finalize();
+		missGroupParams.pMissShader = m_pMissShader;
 	}
 
 	std::cout << "Creating RTX Pipeline Layout" << std::endl;
@@ -216,17 +328,21 @@ bool RendererVK::init()
 	m_pContext->getDevice()->executeCommandBuffer(m_pContext->getDevice()->getGraphicsQueue(), pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 	m_pContext->getDevice()->wait();
 
+	m_ppCommandPools[0]->freeCommandBuffer(&pTempCommandBuffer);
+
 	BufferParams rayTracingUniformBufferParams = {};
 	rayTracingUniformBufferParams.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	rayTracingUniformBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	rayTracingUniformBufferParams.SizeInBytes = sizeof(TempRayTracingUniformData);
+	rayTracingUniformBufferParams.SizeInBytes = sizeof(CameraBuffer);
 	
 	m_pRayTracingUniformBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
 	m_pRayTracingUniformBuffer->init(rayTracingUniformBufferParams);
 
-	m_pRayTracingDescriptorSet->writeAccelerationStructureDescriptor(m_pAccelerationTable->getTLAS().accelerationStructure, 0);
+	m_pRayTracingDescriptorSet->writeAccelerationStructureDescriptor(m_pRayTracingScene->getTLAS().accelerationStructure, 0);
 	m_pRayTracingDescriptorSet->writeStorageImageDescriptor(m_pRayTracingStorageImageView->getImageView(), 1);
 	m_pRayTracingDescriptorSet->writeUniformBufferDescriptor(m_pRayTracingUniformBuffer->getBuffer(), 2);
+	m_pRayTracingDescriptorSet->writeStorageBufferDescriptors(m_pRayTracingScene->getAllVertexBuffers().data(), m_pRayTracingScene->getAllVertexBuffers().size(), 3);
+	m_pRayTracingDescriptorSet->writeStorageBufferDescriptors(m_pRayTracingScene->getAllIndexBuffers().data(), m_pRayTracingScene->getAllIndexBuffers().size(), 4);
 	
 	return true;
 }
@@ -284,6 +400,11 @@ void RendererVK::endFrame()
 
 void RendererVK::beginRayTraceFrame(const Camera& camera)
 {
+	m_TempTimer += 0.01f;
+	m_Matrix3 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, glm::sin(m_TempTimer), 0.0)));
+	m_pRayTracingScene->updateMeshInstance(m_InstanceIndex3, m_Matrix3);
+	m_pRayTracingScene->update();
+
 	m_ppComputeCommandBuffers[m_CurrentFrame]->reset();
 	m_ppComputeCommandPools[m_CurrentFrame]->reset();
 
@@ -619,9 +740,11 @@ bool RendererVK::createPipelineLayouts()
 bool RendererVK::createRayTracingPipelineLayouts()
 {
 	m_pRayTracingDescriptorSetLayout = new DescriptorSetLayoutVK(m_pContext->getDevice());
-	m_pRayTracingDescriptorSetLayout->addBindingAccelerationStructure(VK_SHADER_STAGE_RAYGEN_BIT_NV, 0, 1);
+	m_pRayTracingDescriptorSetLayout->addBindingAccelerationStructure(VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, 0, 1);
 	m_pRayTracingDescriptorSetLayout->addBindingStorageImage(VK_SHADER_STAGE_RAYGEN_BIT_NV, 1, 1);
-	m_pRayTracingDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_RAYGEN_BIT_NV, 2, 1);
+	m_pRayTracingDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV | VK_SHADER_STAGE_MISS_BIT_NV, 2, 1);
+	m_pRayTracingDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, 3, 1);
+	m_pRayTracingDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, 4, 1);
 	m_pRayTracingDescriptorSetLayout->finalize();
 
 	std::vector<const DescriptorSetLayoutVK*> rayTracingDescriptorSetLayouts = { m_pRayTracingDescriptorSetLayout };
