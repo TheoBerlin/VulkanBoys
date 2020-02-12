@@ -1,5 +1,6 @@
 #include "DeviceVK.h"
 #include "InstanceVK.h"
+#include "CopyHandlerVK.h"
 #include "CommandBufferVK.h"
 
 #include <iostream>
@@ -15,7 +16,8 @@ DeviceVK::DeviceVK() :
 	m_ComputeQueue(VK_NULL_HANDLE),
 	m_TransferQueue(VK_NULL_HANDLE),
 	m_PresentQueue(VK_NULL_HANDLE),
-	m_RayTracingProperties({})
+	m_RayTracingProperties({}),
+	m_pCopyHandler()
 {
 }
 
@@ -34,14 +36,21 @@ bool DeviceVK::finalize(InstanceVK* pInstance)
 
 	registerExtensionFunctions();
 
+	m_pCopyHandler = DBG_NEW CopyHandlerVK(this);
+	m_pCopyHandler->init();
+
 	std::cout << "--- Device: Vulkan Device created successfully!" << std::endl;
 	return true;
 }
 
 void DeviceVK::release()
 {
-	if (m_Device != VK_NULL_HANDLE) {
+	if (m_Device != VK_NULL_HANDLE) 
+	{
 		vkDeviceWaitIdle(m_Device);
+		
+		SAFEDELETE(m_pCopyHandler);
+	
 		vkDestroyDevice(m_Device, nullptr);
 		m_Device = VK_NULL_HANDLE;
 	}
