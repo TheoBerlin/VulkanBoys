@@ -12,6 +12,8 @@
 #include "DescriptorPoolVK.h"
 #include "PipelineLayoutVK.h"
 #include "GraphicsContextVK.h"
+#include "SamplerVK.h"
+#include "Texture2DVK.h"
 
 #include "Core/Camera.h"
 
@@ -96,6 +98,11 @@ RendererVK::~RendererVK()
 	SAFEDELETE(m_pClosestHitShader);
 	SAFEDELETE(m_pMissShader);
 
+	SAFEDELETE(m_pSampler);
+
+	SAFEDELETE(m_pGunMaterial);
+	SAFEDELETE(m_pCubeMaterial);
+
 	m_pContext = nullptr;
 }
 
@@ -156,40 +163,40 @@ bool RendererVK::init()
 	Vertex vertices[] =
 	{
 		//FRONT FACE
-		{ glm::vec3(-0.5,  0.5, -0.5), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 0.0f) },
-		{ glm::vec3(0.5,  0.5, -0.5), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(1.0f, 0.0f) },
-		{ glm::vec3(-0.5, -0.5, -0.5), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 1.0f) },
-		{ glm::vec3(0.5, -0.5, -0.5), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(1.0f, 1.0f) },
+		{ glm::vec4(-0.5,  0.5, -0.5, 1.0f), glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
+		{ glm::vec4(0.5,  0.5, -0.5, 1.0f),  glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
+		{ glm::vec4(-0.5, -0.5, -0.5, 1.0f), glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
+		{ glm::vec4(0.5, -0.5, -0.5, 1.0f),  glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
 
 		//BACK FACE
-		{ glm::vec3(0.5,  0.5,  0.5), glm::vec3(0.0f,  0.0f,  1.0f), glm::vec3(-1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 0.0f) },
-		{ glm::vec3(-0.5,  0.5,  0.5), glm::vec3(0.0f,  0.0f,  1.0f), glm::vec3(-1.0f,  0.0f, 0.0f), glm::vec2(1.0f, 0.0f) },
-		{ glm::vec3(0.5, -0.5,  0.5), glm::vec3(0.0f,  0.0f,  1.0f), glm::vec3(-1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 1.0f) },
-		{ glm::vec3(-0.5, -0.5,  0.5), glm::vec3(0.0f,  0.0f,  1.0f), glm::vec3(-1.0f,  0.0f, 0.0f), glm::vec2(1.0f, 1.0f) },
+		{ glm::vec4(0.5,  0.5,  0.5, 1.0f),  glm::vec4(0.0f,  0.0f,  1.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
+		{ glm::vec4(-0.5,  0.5,  0.5, 1.0f), glm::vec4(0.0f,  0.0f,  1.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
+		{ glm::vec4(0.5, -0.5,  0.5, 1.0f),  glm::vec4(0.0f,  0.0f,  1.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
+		{ glm::vec4(-0.5, -0.5,  0.5, 1.0f), glm::vec4(0.0f,  0.0f,  1.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
 
 		//RIGHT FACE
-		{ glm::vec3(0.5,  0.5, -0.5), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f,  0.0f, 1.0f), glm::vec2(0.0f, 0.0f) },
-		{ glm::vec3(0.5,  0.5,  0.5), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f,  0.0f, 1.0f), glm::vec2(1.0f, 0.0f) },
-		{ glm::vec3(0.5, -0.5, -0.5), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f,  0.0f, 1.0f), glm::vec2(0.0f, 1.0f) },
-		{ glm::vec3(0.5, -0.5,  0.5), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f,  0.0f, 1.0f), glm::vec2(1.0f, 1.0f) },
+		{ glm::vec4(0.5,  0.5, -0.5, 1.0f),  glm::vec4(1.0f,  0.0f,  0.0f, 0.0f), glm::vec4(0.0f,  0.0f, 1.0f,  0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
+		{ glm::vec4(0.5,  0.5,  0.5, 1.0f),  glm::vec4(1.0f,  0.0f,  0.0f, 0.0f), glm::vec4(0.0f,  0.0f, 1.0f,  0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
+		{ glm::vec4(0.5, -0.5, -0.5, 1.0f),  glm::vec4(1.0f,  0.0f,  0.0f, 0.0f), glm::vec4(0.0f,  0.0f, 1.0f,  0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
+		{ glm::vec4(0.5, -0.5,  0.5, 1.0f),  glm::vec4(1.0f,  0.0f,  0.0f, 0.0f), glm::vec4(0.0f,  0.0f, 1.0f,  0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
 
 		//LEFT FACE
-		{ glm::vec3(-0.5,  0.5, -0.5), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec2(0.0f, 0.0f) },
-		{ glm::vec3(-0.5,  0.5,  0.5), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec2(1.0f, 0.0f) },
-		{ glm::vec3(-0.5, -0.5, -0.5), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec2(0.0f, 1.0f) },
-		{ glm::vec3(-0.5, -0.5,  0.5), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec2(1.0f, 1.0f) },
+		{ glm::vec4(-0.5,  0.5, -0.5, 1.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
+		{ glm::vec4(-0.5,  0.5,  0.5, 1.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
+		{ glm::vec4(-0.5, -0.5, -0.5, 1.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
+		{ glm::vec4(-0.5, -0.5,  0.5, 1.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
 
 		//TOP FACE
-		{ glm::vec3(-0.5,  0.5,  0.5), glm::vec3(0.0f,  1.0f,  0.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 0.0f) },
-		{ glm::vec3(0.5,  0.5,  0.5), glm::vec3(0.0f,  1.0f,  0.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(1.0f, 0.0f) },
-		{ glm::vec3(-0.5,  0.5, -0.5), glm::vec3(0.0f,  1.0f,  0.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 1.0f) },
-		{ glm::vec3(0.5,  0.5, -0.5), glm::vec3(0.0f,  1.0f,  0.0f), glm::vec3(1.0f,  0.0f, 0.0f), glm::vec2(1.0f, 1.0f) },
+		{ glm::vec4(-0.5,  0.5,  0.5, 1.0f), glm::vec4(0.0f,  1.0f,  0.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
+		{ glm::vec4(0.5,  0.5,  0.5, 1.0f),  glm::vec4(0.0f,  1.0f,  0.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
+		{ glm::vec4(-0.5,  0.5, -0.5, 1.0f), glm::vec4(0.0f,  1.0f,  0.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
+		{ glm::vec4(0.5,  0.5, -0.5, 1.0f),  glm::vec4(0.0f,  1.0f,  0.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
 
 		//BOTTOM FACE
-		{ glm::vec3(-0.5, -0.5, -0.5), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(-1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 0.0f) },
-		{ glm::vec3(0.5, -0.5, -0.5), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(-1.0f,  0.0f, 0.0f), glm::vec2(1.0f, 0.0f) },
-		{ glm::vec3(-0.5, -0.5,  0.5), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(-1.0f,  0.0f, 0.0f), glm::vec2(0.0f, 1.0f) },
-		{ glm::vec3(0.5, -0.5,  0.5), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(-1.0f,  0.0f, 0.0f), glm::vec2(1.0f, 1.0f) },
+		{ glm::vec4(-0.5, -0.5, -0.5, 1.0f), glm::vec4(0.0f, -1.0f,  0.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
+		{ glm::vec4(0.5, -0.5, -0.5, 1.0f),  glm::vec4(0.0f, -1.0f,  0.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
+		{ glm::vec4(-0.5, -0.5,  0.5, 1.0f), glm::vec4(0.0f, -1.0f,  0.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
+		{ glm::vec4(0.5, -0.5,  0.5, 1.0f),  glm::vec4(0.0f, -1.0f,  0.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
 	};
 
 	uint32_t indices[] =
@@ -219,6 +226,26 @@ bool RendererVK::init()
 		22, 23, 21
 	};
 
+	m_pGunMaterial = new TempMaterial();
+	m_pGunMaterial->pAlbedo = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
+	m_pGunMaterial->pAlbedo->initFromFile("assets/textures/gunAlbedo.tga");
+
+	m_pGunMaterial->pNormalMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
+	m_pGunMaterial->pNormalMap->initFromFile("assets/textures/gunNormal.tga");
+
+	m_pGunMaterial->pMetallicMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
+	m_pGunMaterial->pMetallicMap->initFromFile("assets/textures/gunMetallic.tga");
+
+	m_pCubeMaterial = new TempMaterial();
+	m_pCubeMaterial->pAlbedo = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
+	m_pCubeMaterial->pAlbedo->initFromFile("assets/textures/cubeAlbedo.jpg");
+
+	m_pCubeMaterial->pNormalMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
+	m_pCubeMaterial->pNormalMap->initFromFile("assets/textures/cubeNormal.jpg");
+
+	m_pCubeMaterial->pMetallicMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
+	m_pCubeMaterial->pMetallicMap->initFromFile("assets/textures/cubeMetallic.jpg");
+
 	m_pMeshCube = m_pContext->createMesh();
 	m_pMeshCube->initFromMemory(vertices, 24, indices, 36);
 	
@@ -236,10 +263,10 @@ bool RendererVK::init()
 	m_Matrix3 = glm::transpose(glm::translate(m_Matrix3, glm::vec3(1.0f, 2.0f, 0.0f)));
 
 	m_pRayTracingScene = new RayTracingSceneVK(m_pContext);
-	m_InstanceIndex0 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshGun, nullptr, m_Matrix0);
-	m_InstanceIndex1 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshGun, nullptr, m_Matrix1);
-	m_InstanceIndex2 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshGun, nullptr, m_Matrix2);
-	m_InstanceIndex3 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshCube, nullptr, m_Matrix3);
+	m_InstanceIndex0 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshGun, m_pGunMaterial, m_Matrix0);
+	m_InstanceIndex1 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshGun, m_pGunMaterial, m_Matrix1);
+	m_InstanceIndex2 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshGun, m_pGunMaterial, m_Matrix2);
+	m_InstanceIndex3 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshCube, m_pCubeMaterial, m_Matrix3);
 	m_pRayTracingScene->finalize();
 
 	m_TempTimer = 0;
@@ -338,12 +365,47 @@ bool RendererVK::init()
 	m_pRayTracingUniformBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
 	m_pRayTracingUniformBuffer->init(rayTracingUniformBufferParams);
 
+	auto& allMaterials = m_pRayTracingScene->getAllMaterials();
+
+	std::vector<VkImageView> albedoImageViews;
+	albedoImageViews.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
+	std::vector<VkImageView> normalImageViews;
+	normalImageViews.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
+	std::vector<VkImageView> metallicImageViews;
+	metallicImageViews.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
+
+	m_pSampler = new SamplerVK(m_pContext->getDevice());
+	m_pSampler->init(VkFilter::VK_FILTER_LINEAR, VkFilter::VK_FILTER_LINEAR, VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT, VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT);
+	std::vector<VkSampler> samplers;
+	samplers.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
+
+	for (uint32_t i = 0; i < MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES; i++)
+	{
+		samplers.push_back(m_pSampler->getSampler());
+
+		if (i < allMaterials.size())
+		{
+			albedoImageViews.push_back(allMaterials[i]->pAlbedo->getImageView()->getImageView());
+			normalImageViews.push_back(allMaterials[i]->pNormalMap->getImageView()->getImageView());
+			metallicImageViews.push_back(allMaterials[i]->pMetallicMap->getImageView()->getImageView());
+		}
+		else
+		{
+			albedoImageViews.push_back(allMaterials[0]->pAlbedo->getImageView()->getImageView());
+			normalImageViews.push_back(allMaterials[0]->pNormalMap->getImageView()->getImageView());
+			metallicImageViews.push_back(allMaterials[0]->pMetallicMap->getImageView()->getImageView());
+		}
+	}
+
 	m_pRayTracingDescriptorSet->writeAccelerationStructureDescriptor(m_pRayTracingScene->getTLAS().accelerationStructure, 0);
 	m_pRayTracingDescriptorSet->writeStorageImageDescriptor(m_pRayTracingStorageImageView->getImageView(), 1);
 	m_pRayTracingDescriptorSet->writeUniformBufferDescriptor(m_pRayTracingUniformBuffer->getBuffer(), 2);
 	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pRayTracingScene->getCombinedVertexBuffer()->getBuffer(), 3);
 	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pRayTracingScene->getCombinedIndexBuffer()->getBuffer(), 4);
 	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pRayTracingScene->getMeshIndexBuffer()->getBuffer(), 5);
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(albedoImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 6);
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(normalImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 7);
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(metallicImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 8);
 	
 	return true;
 }
@@ -402,9 +464,12 @@ void RendererVK::endFrame()
 void RendererVK::beginRayTraceFrame(const Camera& camera)
 {
 	m_TempTimer += 0.001f;
+	glm::mat4 matrix1 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	m_Matrix1 = glm::transpose(glm::scale(matrix1, glm::vec3(glm::sin(2.0f * m_TempTimer) * 0.5f + 0.5f)));
 	glm::mat4 matrix2 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f));
 	m_Matrix2 = glm::transpose(glm::rotate(matrix2, m_TempTimer, glm::vec3(0.0f, 1.0f, 0.0f)));
-	m_Matrix3 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, glm::sin(m_TempTimer), 0.0)));
+	m_Matrix3 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f + glm::sin(m_TempTimer), 0.0)));
+	m_pRayTracingScene->updateMeshInstance(m_InstanceIndex1, m_Matrix1);
 	m_pRayTracingScene->updateMeshInstance(m_InstanceIndex2, m_Matrix2);
 	m_pRayTracingScene->updateMeshInstance(m_InstanceIndex3, m_Matrix3);
 	m_pRayTracingScene->update();
@@ -751,6 +816,8 @@ bool RendererVK::createRayTracingPipelineLayouts()
 	m_pRayTracingDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, 4, 1);
 	m_pRayTracingDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, 5, 1);
 	m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, nullptr, 6, MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
+	m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, nullptr, 7, MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
+	m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, nullptr, 8, MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
 	m_pRayTracingDescriptorSetLayout->finalize();
 
 	std::vector<const DescriptorSetLayoutVK*> rayTracingDescriptorSetLayouts = { m_pRayTracingDescriptorSetLayout };

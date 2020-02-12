@@ -21,6 +21,9 @@ class ShaderBindingTableVK;
 class ImageVK;
 class ImageViewVK;
 class ShaderVK;
+class SamplerVK;
+class Texture2DVK;
+struct TempMaterial;
 
 class RendererVK : public IRenderer
 {
@@ -125,6 +128,11 @@ private:
 	ShaderVK* m_pRaygenShader;
 	ShaderVK* m_pClosestHitShader;
 	ShaderVK* m_pMissShader;
+
+	SamplerVK* m_pSampler;
+	
+	TempMaterial* m_pCubeMaterial;
+	TempMaterial* m_pGunMaterial;
 
 	float m_TempTimer;
 };

@@ -90,7 +90,7 @@ bool RayTracingSceneVK::finalize()
 
 	m_pTempCommandBuffer = m_pTempCommandPool->allocateCommandBuffer();
 	
-	createCombinedMeshData();
+	createCombinedGraphicsObjectData();
 
 	//Create TLAS
 	if (!initTLAS())
@@ -150,12 +150,18 @@ void RayTracingSceneVK::update()
 	m_pContext->getDevice()->wait();
 }
 
-uint32_t RayTracingSceneVK::addGraphicsObjectInstance(IMesh* pMesh, ITexture2D* pTexture2D, const glm::mat3x4& transform)
+uint32_t RayTracingSceneVK::addGraphicsObjectInstance(IMesh* pMesh, TempMaterial* pMaterial, const glm::mat3x4& transform)
 {
 	//Todo: Same mesh but different textures => different geometry instance instanceId
 
 	MeshVK* pVulkanMesh = reinterpret_cast<MeshVK*>(pMesh);
-	Texture2DVK* pVulkanTexture = reinterpret_cast<Texture2DVK*>(pTexture2D);
+	//Texture2DVK* pVulkanTexture = reinterpret_cast<Texture2DVK*>(pTexture2D);
+
+	if (pVulkanMesh == nullptr || pMaterial == nullptr)
+	{
+		LOG("--- RayTracingScene: addGraphicsObjectInstance failed, Mesh or Texture2D is nullptr!");
+		return false;
+	}
 	
 	auto& blasPerMesh = m_BottomLevelAccelerationStructures.find(pVulkanMesh);
 
@@ -167,12 +173,12 @@ uint32_t RayTracingSceneVK::addGraphicsObjectInstance(IMesh* pMesh, ITexture2D* 
 			return false;
 		}
 
-		initBLAS(pVulkanMesh, pVulkanTexture);
+		initBLAS(pVulkanMesh, pMaterial);
 		m_AllMeshes.push_back(pVulkanMesh);
 		m_TotalNumberOfVertices += static_cast<uint32_t>(pMesh->getVertexBuffer()->getSizeInBytes() / sizeof(Vertex));
 		m_TotalNumberOfIndices += pMesh->getIndexBuffer()->getSizeInBytes() / sizeof(uint32_t);
 	}
-	else if (blasPerMesh->second.find(pVulkanTexture) == blasPerMesh->second.end())
+	else if (blasPerMesh->second.find(pMaterial) == blasPerMesh->second.end())
 	{
 		if (m_Finalized)
 		{
@@ -183,14 +189,16 @@ uint32_t RayTracingSceneVK::addGraphicsObjectInstance(IMesh* pMesh, ITexture2D* 
 		BottomLevelAccelerationStructure blasCopy = blasPerMesh->second.begin()->second;
 		blasCopy.index = m_NumBottomLevelAccelerationStructures;
 		m_NumBottomLevelAccelerationStructures++;
-		blasPerMesh->second[pVulkanTexture] = blasCopy;
+		blasCopy.textureIndex = m_AllMaterials.size();
+		m_AllMaterials.push_back(pMaterial);
+		blasPerMesh->second[pMaterial] = blasCopy;
 	}
 
-	const BottomLevelAccelerationStructure& bottomLevelAccelerationStructure = m_BottomLevelAccelerationStructures[pVulkanMesh][pVulkanTexture];
+	const BottomLevelAccelerationStructure& bottomLevelAccelerationStructure = m_BottomLevelAccelerationStructures[pVulkanMesh][pMaterial];
 
 	GeometryInstance geometryInstance = {};
 	geometryInstance.transform = transform;
-	geometryInstance.instanceId = bottomLevelAccelerationStructure.index;
+	geometryInstance.instanceId = bottomLevelAccelerationStructure.index; //This is not really used anymore, Todo: remove this
 	geometryInstance.mask = 0xff;
 	geometryInstance.instanceOffset = 0;
 	geometryInstance.flags = 0;// VK_GEOMETRY_INSTANCE_TRIANGLE_CULL_DISABLE_BIT_NV;
@@ -205,7 +213,7 @@ void RayTracingSceneVK::updateMeshInstance(uint32_t index, const glm::mat3x4& tr
 	m_AllGeometryInstances[index].transform = transform;
 }
 
-bool RayTracingSceneVK::initBLAS(MeshVK* pMesh, Texture2DVK* pTexture2D)
+bool RayTracingSceneVK::initBLAS(MeshVK* pMesh, TempMaterial* pMaterial)
 {
 	BottomLevelAccelerationStructure bottomLevelAccelerationStructure = {};
 
@@ -264,8 +272,11 @@ bool RayTracingSceneVK::initBLAS(MeshVK* pMesh, Texture2DVK* pTexture2D)
 	bottomLevelAccelerationStructure.index = m_NumBottomLevelAccelerationStructures;
 	m_NumBottomLevelAccelerationStructures++;
 
-	std::unordered_map<Texture2DVK*, BottomLevelAccelerationStructure> newBLASPerMesh;
-	newBLASPerMesh[pTexture2D] = bottomLevelAccelerationStructure;
+	bottomLevelAccelerationStructure.textureIndex = m_AllMaterials.size();
+	m_AllMaterials.push_back(pMaterial);
+
+	std::unordered_map<TempMaterial*, BottomLevelAccelerationStructure> newBLASPerMesh;
+	newBLASPerMesh[pMaterial] = bottomLevelAccelerationStructure;
 	m_BottomLevelAccelerationStructures[pMesh] = newBLASPerMesh;
 
 	return true;
@@ -461,7 +472,7 @@ void RayTracingSceneVK::updateInstanceBuffer()
 	m_pInstanceBuffer->unmap();
 }
 
-void RayTracingSceneVK::createCombinedMeshData()
+void RayTracingSceneVK::createCombinedGraphicsObjectData()
 {
 	m_pCombinedVertexBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
 	m_pCombinedIndexBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
@@ -479,7 +490,7 @@ void RayTracingSceneVK::createCombinedMeshData()
 
 	BufferParams meshIndexBufferParams = {};
 	meshIndexBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	meshIndexBufferParams.SizeInBytes = sizeof(uint32_t) * 2 * m_AllMeshes.size();
+	meshIndexBufferParams.SizeInBytes = sizeof(uint32_t) * 3 * m_NumBottomLevelAccelerationStructures;
 	meshIndexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
 	m_pCombinedVertexBuffer->init(vertexBufferParams);
@@ -492,6 +503,7 @@ void RayTracingSceneVK::createCombinedMeshData()
 	uint32_t vertexBufferOffset = 0;
 	uint32_t indexBufferOffset = 0;
 	uint64_t meshIndexBufferOffset = 0;
+	uint32_t currentCustomInstanceIndexNV = 0;
 
 	void* pMeshIndexBufferMapped;
 	m_pMeshIndexBuffer->map(&pMeshIndexBufferMapped);
@@ -504,16 +516,29 @@ void RayTracingSceneVK::createCombinedMeshData()
 		m_pTempCommandBuffer->copyBuffer(reinterpret_cast<BufferVK*>(pMesh->getVertexBuffer()), 0, m_pCombinedVertexBuffer, vertexBufferOffset * sizeof(Vertex), numVertices * sizeof(Vertex));
 		m_pTempCommandBuffer->copyBuffer(reinterpret_cast<BufferVK*>(pMesh->getIndexBuffer()), 0, m_pCombinedIndexBuffer, indexBufferOffset * sizeof(uint32_t), numIndices * sizeof(uint32_t));
 
-		memcpy((void*)((size_t)pMeshIndexBufferMapped +  meshIndexBufferOffset		* sizeof(uint32_t)), &vertexBufferOffset, sizeof(uint32_t));
-		memcpy((void*)((size_t)pMeshIndexBufferMapped + (meshIndexBufferOffset + 1) * sizeof(uint32_t)), &indexBufferOffset, sizeof(uint32_t));
+		for (auto& bottomLevelAccelerationStructure : m_BottomLevelAccelerationStructures[pMesh])
+		{
+			for (auto& geometryInstance : m_AllGeometryInstances)
+			{
+				if (geometryInstance.accelerationStructureHandle == bottomLevelAccelerationStructure.second.handle)
+				{
+					geometryInstance.instanceId = currentCustomInstanceIndexNV;
+				}
+			}
+
+			memcpy((void*)((size_t)pMeshIndexBufferMapped +  meshIndexBufferOffset		* sizeof(uint32_t)), &vertexBufferOffset, sizeof(uint32_t));
+			memcpy((void*)((size_t)pMeshIndexBufferMapped + (meshIndexBufferOffset + 1) * sizeof(uint32_t)), &indexBufferOffset, sizeof(uint32_t));
+			memcpy((void*)((size_t)pMeshIndexBufferMapped + (meshIndexBufferOffset + 2) * sizeof(uint32_t)), &bottomLevelAccelerationStructure.second.textureIndex, sizeof(uint32_t));
+			meshIndexBufferOffset += 3;
+			currentCustomInstanceIndexNV++;
+		}
 
 		vertexBufferOffset += numVertices;
 		indexBufferOffset += numIndices;
-		meshIndexBufferOffset += 2;
 	}
 
-	uint32_t test[4];
-	memcpy(test, pMeshIndexBufferMapped, sizeof(uint32_t) * 4);
+	uint32_t test[8];
+	memcpy(test, pMeshIndexBufferMapped, sizeof(uint32_t) * 6);
 	m_pMeshIndexBuffer->unmap();
 
 	m_pTempCommandBuffer->end();

@@ -18,6 +18,20 @@ class Texture2DVK;
 class CommandPoolVK;
 class CommandBufferVK;
 
+struct TempMaterial
+{
+	~TempMaterial()
+	{
+		SAFEDELETE(pAlbedo);
+		SAFEDELETE(pNormalMap);
+		SAFEDELETE(pMetallicMap);
+	}
+
+	Texture2DVK* pAlbedo = nullptr;
+	Texture2DVK* pNormalMap = nullptr;
+	Texture2DVK* pMetallicMap = nullptr;
+};
+
 class RayTracingSceneVK
 {
 	struct GeometryInstance
@@ -37,6 +51,7 @@ class RayTracingSceneVK
 		uint64_t handle = 0;
 		VkGeometryNV geometry = {};
 		uint32_t index = 0;
+		uint32_t textureIndex = 0;
 	};
 
 	struct TopLevelAccelerationStructure
@@ -53,7 +68,7 @@ public:
 	RayTracingSceneVK(IGraphicsContext* pContext);
 	~RayTracingSceneVK();
 
-	uint32_t addGraphicsObjectInstance(IMesh* pMesh, ITexture2D* pTexture2D, const glm::mat3x4& transform = glm::mat3x4(1.0f));
+	uint32_t addGraphicsObjectInstance(IMesh* pMesh, TempMaterial* pMaterial, const glm::mat3x4& transform = glm::mat3x4(1.0f));
 	void updateMeshInstance(uint32_t index, const glm::mat3x4& transform);
 	bool finalize();
 
@@ -62,17 +77,18 @@ public:
 	BufferVK* getCombinedVertexBuffer() { return m_pCombinedVertexBuffer; }
 	BufferVK* getCombinedIndexBuffer() { return m_pCombinedIndexBuffer; }
 	BufferVK* getMeshIndexBuffer() { return m_pMeshIndexBuffer; }
+	const std::vector<TempMaterial*>& getAllMaterials() { return m_AllMaterials; }
 	const TopLevelAccelerationStructure& getTLAS() { return m_TopLevelAccelerationStructure; }
 	
 private:
-	bool initBLAS(MeshVK* pMesh, Texture2DVK* pTexture2D);
+	bool initBLAS(MeshVK* pMesh, TempMaterial* pMaterial);
 	bool initTLAS();
 	bool buildAccelerationTable();
 
 	void cleanGarbage();
 	void updateScratchBuffer();
 	void updateInstanceBuffer();
-	void createCombinedMeshData();
+	void createCombinedGraphicsObjectData();
 	VkDeviceSize findMaxMemReqBLAS();
 	
 private:
@@ -91,9 +107,10 @@ private:
 	BufferVK* m_pCombinedVertexBuffer;
 	BufferVK* m_pCombinedIndexBuffer;
 	BufferVK* m_pMeshIndexBuffer;
+	std::vector<TempMaterial*> m_AllMaterials;
 
 	TopLevelAccelerationStructure m_TopLevelAccelerationStructure;
-	std::unordered_map<MeshVK*, std::unordered_map<Texture2DVK*, BottomLevelAccelerationStructure>> m_BottomLevelAccelerationStructures;
+	std::unordered_map<MeshVK*, std::unordered_map<TempMaterial*, BottomLevelAccelerationStructure>> m_BottomLevelAccelerationStructures;
 	uint32_t m_NumBottomLevelAccelerationStructures;
 
 	std::vector<GeometryInstance> m_AllGeometryInstances;

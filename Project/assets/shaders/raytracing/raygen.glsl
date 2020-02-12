@@ -39,6 +39,8 @@ void main()
 	float tmax = 10000.0;
 
 	vec3 color = vec3(0.0);
+	
+	float previousRecursionMetallic = 1.0f;
 
 	for (int i = 0; i < 4; i++) {
 		traceNV(topLevelAS, rayFlags, cullMask, 0, 0, 0, origin.xyz, tmin, direction.xyz, tmax, 0);
@@ -46,25 +48,27 @@ void main()
 
 		if (rayPayload.distance < 0.0f) 
 		{
-			color += hitColor;
+			color += previousRecursionMetallic * hitColor;
 			break;
 		} 
-		else if (rayPayload.reflector == 1.0f) 
+		else if (rayPayload.reflector > 0.1f) 
 		{
 			const vec4 hitPos = origin + direction * rayPayload.distance;
 			origin.xyz = hitPos.xyz + rayPayload.normal * 0.001f;
 			direction.xyz = reflect(direction.xyz, rayPayload.normal);
+			color += previousRecursionMetallic * (1.0f - rayPayload.reflector) * hitColor;
+			previousRecursionMetallic = rayPayload.reflector;
 		} 
 		else 
 		{
-			color += hitColor;
+			color += previousRecursionMetallic * hitColor;
 			break;
 		}
 
 		// if (rayPayload.distance < 0.0f) 
 		// {
-		// 	color += hitColor;
-		// 	break;
+		// 	imageStore(image, ivec2(gl_LaunchIDNV.xy), vec4(rayPayload.normal, 1.0));
+		// 	return;
 		// } 
 		// else if (rayPayload.reflector == 1.0f) 
 		// {
@@ -73,8 +77,8 @@ void main()
 		// } 
 		// else 
 		// {
-		// 	color += hitColor;
-		// 	break;
+		// 	imageStore(image, ivec2(gl_LaunchIDNV.xy), vec4(rayPayload.normal, 1.0));
+		// 	return;
 		// }
 
 	}
