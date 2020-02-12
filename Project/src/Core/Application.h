@@ -1,12 +1,14 @@
 #pragma once
-#include "Common/IEventHandler.h"
-
 #include "Camera.h"
+#include "Material.h"
+
+#include "Common/IEventHandler.h"
 
 class IMesh;
 class IImgui;
 class IWindow;
 class IRenderer;
+class ITexture2D;
 class IInputHandler;
 class IGraphicsContext;
 

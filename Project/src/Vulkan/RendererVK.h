@@ -33,7 +33,7 @@ public:
 
 	virtual void swapBuffers() override;
 
-	virtual void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform) override;
+	virtual void submitMesh(IMesh* pMesh, const Material& material, const glm::mat4& transform) override;
 
 	virtual void drawImgui(IImgui* pImgui) override;
 
