@@ -262,15 +262,7 @@ void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLa
 		LOG("Unsupported layout transition");
 	}
 
-	vkCmdPipelineBarrier(
-		m_CommandBuffer,
-		sourceStage, destinationStage,
-		0,
-		0, nullptr,
-		0, nullptr,
-		1, &barrier
-	);
-
+	vkCmdPipelineBarrier(m_CommandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 }
 
 void CommandBufferVK::drawInstanced(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)

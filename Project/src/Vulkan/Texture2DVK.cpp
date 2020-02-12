@@ -3,6 +3,7 @@
 #include "ImageViewVK.h"
 #include "DeviceVK.h"
 #include "CommandPoolVK.h"
+#include "CopyHandlerVK.h"
 #include "GraphicsContextVK.h"
 
 #include "stb_image.h"
@@ -10,22 +11,15 @@
 #include "ImageVK.h"
 #include "CommandBufferVK.h"
 
-Texture2DVK::Texture2DVK(IGraphicsContext* pContext) :
-	m_pContext(reinterpret_cast<GraphicsContextVK*>(pContext)),
+Texture2DVK::Texture2DVK(DeviceVK* pDevice)
+	: m_pDevice(pDevice),
 	m_pTextureImage(nullptr),
-	m_pTextureImageView(nullptr),
-	m_pTempCommandPool(nullptr),
-	m_pTempCommandBuffer(nullptr)
+	m_pTextureImageView(nullptr)
 {
-	m_pTempCommandPool = DBG_NEW CommandPoolVK(m_pContext->getDevice(), m_pContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value());
-	m_pTempCommandPool->init();
-
-	m_pTempCommandBuffer = m_pTempCommandPool->allocateCommandBuffer();
 }
 
 Texture2DVK::~Texture2DVK()
 {
-	SAFEDELETE(m_pTempCommandPool);
 	SAFEDELETE(m_pTextureImage);
 	SAFEDELETE(m_pTextureImageView);
 }
@@ -50,7 +44,6 @@ bool Texture2DVK::initFromFile(const std::string& filename)
 
 bool Texture2DVK::initFromMemory(const void* pData, uint32_t width, uint32_t height)
 {
-	// Transfer staging buffer contents to the final texture buffer
 	ImageParams imageParams = {};
 	imageParams.Extent.depth = 1;
 	imageParams.Extent.width = width;
@@ -63,19 +56,11 @@ bool Texture2DVK::initFromMemory(const void* pData, uint32_t width, uint32_t hei
 	imageParams.ArrayLayers = 1;
 	imageParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	
-	DeviceVK* pDevice = m_pContext->getDevice();
-	m_pTextureImage = DBG_NEW ImageVK(pDevice);
+	m_pTextureImage = DBG_NEW ImageVK(m_pDevice);
 	m_pTextureImage->init(imageParams);
 
-	m_pTempCommandBuffer->reset();
-	m_pTempCommandBuffer->begin();
-	m_pTempCommandBuffer->transitionImageLayout(m_pTextureImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	m_pTempCommandBuffer->updateImage(pData, m_pTextureImage, width, height);
-	m_pTempCommandBuffer->transitionImageLayout(m_pTextureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	m_pTempCommandBuffer->end();
-	
-	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
-	pDevice->wait();
+	CopyHandlerVK* pCopyHandler = m_pDevice->getCopyHandler();
+	pCopyHandler->updateImage(pData, m_pTextureImage, width, height, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	ImageViewParams imageViewParams = {};
 	imageViewParams.Type = VK_IMAGE_VIEW_TYPE_2D;
@@ -85,7 +70,7 @@ bool Texture2DVK::initFromMemory(const void* pData, uint32_t width, uint32_t hei
 	imageViewParams.MipLevels	= 1;
 	imageViewParams.FirstMipLevel = 0;
 	
-	m_pTextureImageView = DBG_NEW ImageViewVK(pDevice, m_pTextureImage);
+	m_pTextureImageView = DBG_NEW ImageViewVK(m_pDevice, m_pTextureImage);
 	m_pTextureImageView->init(imageViewParams);
 
 	return true;

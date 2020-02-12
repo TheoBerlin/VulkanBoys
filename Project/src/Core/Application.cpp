@@ -1,14 +1,16 @@
 #include "Application.h"
-#include "Camera.h"
 #include "Input.h"
+#include "Camera.h"
+#include "TaskDispatcher.h"
 
 #include "Common/IMesh.h"
 #include "Common/IImgui.h"
 #include "Common/IWindow.h"
 #include "Common/IShader.h"
 #include "Common/IRenderer.h"
-#include "Common/IGraphicsContext.h"
+#include "Common/ITexture2D.h"
 #include "Common/IInputHandler.h"
+#include "Common/IGraphicsContext.h"
 
 #include "Vulkan/RenderPassVK.h"
 #include "Vulkan/CommandPoolVK.h"
@@ -37,6 +39,7 @@ Application::Application()
 	m_pRenderer(nullptr),
 	m_pImgui(nullptr),
 	m_pMesh(nullptr),
+	m_pAlbedo(nullptr),
 	m_pInputHandler(nullptr),
 	m_Camera(),
 	m_IsRunning(false),
@@ -53,6 +56,10 @@ Application::~Application()
 
 void Application::init()
 {
+	LOG("Starting application");
+
+	TaskDispatcher::init();
+
 	//Create window
 	m_pWindow = IWindow::create("Hello Vulkan", 1440, 900);
 	if (m_pWindow)
@@ -157,7 +164,19 @@ void Application::init()
 		};
 
 		m_pMesh = m_pContext->createMesh();
-		m_pMesh->initFromFile("assets/meshes/gun.obj");
+		TaskDispatcher::execute([this] 
+			{ 
+				m_pMesh->initFromFile("assets/meshes/gun.obj"); 
+			});
+
+		m_pAlbedo = m_pContext->createTexture2D();
+		TaskDispatcher::execute([this]
+			{
+				m_pAlbedo->initFromFile("assets/textures/albedo.tga");
+			});
+
+		TaskDispatcher::waitForTasks();
+		
 		//m_pMesh->initFromMemory(vertices, 24, indices, 36);
 	}
 }
@@ -200,6 +219,8 @@ void Application::release()
 	m_pWindow->removeEventHandler(this);
 
 	m_pContext->sync();
+
+	SAFEDELETE(m_pAlbedo);
 	SAFEDELETE(m_pMesh);
 	SAFEDELETE(m_pRenderer);
 	SAFEDELETE(m_pImgui);
@@ -209,6 +230,10 @@ void Application::release()
 	Input::setInputHandler(nullptr);
 
 	SAFEDELETE(m_pWindow);
+
+	TaskDispatcher::release();
+
+	LOG("Exiting Application");
 }
 
 void Application::onWindowResize(uint32_t width, uint32_t height)
@@ -404,8 +429,7 @@ void Application::render(double dt)
 	{
 		m_pRenderer->beginFrame(m_Camera);
 
-	//g_Rotation = glm::rotate(g_Rotation, glm::radians(15.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
-
+	g_Rotation = glm::rotate(g_Rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
 	m_pRenderer->submitMesh(m_pMesh, g_Color, glm::mat4(1.0f) * g_Rotation);
 	m_pRenderer->drawImgui(m_pImgui);
 
