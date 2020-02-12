@@ -110,7 +110,7 @@ IImageView* GraphicsContextVK::createImageView()
 
 ITexture2D* GraphicsContextVK::createTexture2D()
 {
-	return DBG_NEW Texture2DVK(this);
+	return DBG_NEW Texture2DVK(&m_Device);
 }
 
 void GraphicsContextVK::sync()

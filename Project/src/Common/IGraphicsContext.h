@@ -12,6 +12,7 @@ class IImageView;
 class ITexture2D;
 class IFrameBuffer;
 class IMesh;
+class IResourceLoader;
 
 enum API
 {
