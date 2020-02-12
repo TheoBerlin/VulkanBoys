@@ -20,7 +20,8 @@ public:
 	void init();
 
 	//OVERRIDE
-	virtual IRenderer* createRenderer() override;
+	virtual IRenderingHandler* createRenderingHandler() override;
+	virtual IRenderer* createRenderer(IRenderingHandler* pRenderingHandler) override;
 	virtual IImgui* createImgui() override;
     
     virtual IMesh* createMesh() override;

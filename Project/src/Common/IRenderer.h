@@ -14,8 +14,6 @@ public:
 
 	virtual bool init() = 0;
 
-	virtual void onWindowResize(uint32_t width, uint32_t height) = 0;
-
 	virtual void beginFrame(const Camera& camera) = 0;
 	virtual void endFrame() = 0;
 
@@ -23,10 +21,8 @@ public:
 	virtual void setClearColor(const glm::vec3& color) = 0;
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) = 0;
 
-	virtual void swapBuffers() = 0;
-
 	virtual void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform) = 0;
-	
+
 	virtual void drawImgui(IImgui* pImgui) = 0;
 
 	//Temporary function
