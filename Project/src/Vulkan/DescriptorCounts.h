@@ -3,13 +3,15 @@
 class DescriptorCounts
 {
 public:
-    unsigned int m_UniformBuffers, m_StorageBuffers, m_SampledImages;
+    unsigned int m_UniformBuffers, m_StorageBuffers, m_SampledImages, m_StorageImages, m_AccelerationStructures;
 
     void enlarge(unsigned int factor)
     {
         m_UniformBuffers *= factor;
         m_StorageBuffers *= factor;
         m_SampledImages *= factor;
+		m_StorageImages *= factor;
+    	m_AccelerationStructures *= factor;
     }
 
     void operator+=(const DescriptorCounts& other)
@@ -17,6 +19,8 @@ public:
         m_UniformBuffers += other.m_UniformBuffers;
         m_StorageBuffers += other.m_StorageBuffers;
         m_SampledImages += other.m_SampledImages;
+		m_StorageImages += other.m_StorageImages;
+		m_AccelerationStructures += other.m_AccelerationStructures;
     }
 
     void operator-=(const DescriptorCounts& other)
@@ -24,5 +28,7 @@ public:
         m_UniformBuffers -= other.m_UniformBuffers;
         m_StorageBuffers -= other.m_StorageBuffers;
         m_SampledImages -= other.m_SampledImages;
+		m_StorageImages -= other.m_StorageImages;
+		m_AccelerationStructures -= other.m_AccelerationStructures;
     }
 };

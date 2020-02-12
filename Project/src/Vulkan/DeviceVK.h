@@ -83,7 +83,7 @@ private:
 	std::vector<const char*> m_RequestedRequiredExtensions;
 	std::vector<const char*> m_RequestedOptionalExtensions;
 	std::vector<const char*> m_EnabledExtensions;
-	std::unordered_map<std::string, bool> m_OptionalRequestedExtensionsStatus;
+	std::unordered_map<std::string, bool> m_ExtensionsStatus;
 	std::vector<VkExtensionProperties> m_AvailabeExtensions;
 
 	CopyHandlerVK* m_pCopyHandler;

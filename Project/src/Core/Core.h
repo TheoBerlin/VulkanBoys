@@ -10,6 +10,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtx/hash.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 #include "Common/Debug.h"
 
@@ -51,13 +52,12 @@
 
 #define MB(bytes) bytes * 1024 * 1024
 
-//REMEBER ALIGNMENT OF 16 bytes
 struct Vertex
 {
-	alignas(16) glm::vec3 Position;
-	alignas(16) glm::vec3 Normal;
-	alignas(16) glm::vec3 Tangent;
-	glm::vec2 TexCoord;
+	glm::vec4 Position;
+	glm::vec4 Normal;
+	glm::vec4 Tangent;
+	glm::vec4 TexCoord;
 
 	bool operator==(const Vertex& other) const 
 	{
@@ -71,9 +71,9 @@ namespace std
 	{
 		size_t operator()(Vertex const& vertex) const 
 		{
-			return ((hash<glm::vec3>()(vertex.Position) ^
-				(hash<glm::vec3>()(vertex.Normal) << 1)) >> 1) ^
-				(hash<glm::vec2>()(vertex.TexCoord) << 1);
+			return ((hash<glm::vec4>()(vertex.Position) ^
+				(hash<glm::vec4>()(vertex.Normal) << 1)) >> 1) ^
+				(hash<glm::vec4>()(vertex.TexCoord) << 1);
 		}
 	};
 }

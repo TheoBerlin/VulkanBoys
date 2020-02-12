@@ -55,7 +55,7 @@ void GraphicsContextVK::init()
 	m_Device.addRequiredExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
 	m_Device.addOptionalExtension(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
-	m_Device.addOptionalExtension(VK_KHR_MAINTENANCE3_EXTENSION_NAME);
+	//m_Device.addOptionalExtension(VK_KHR_MAINTENANCE3_EXTENSION_NAME);
 	m_Device.addOptionalExtension(VK_NV_RAY_TRACING_EXTENSION_NAME);
 	
 	m_Device.finalize(&m_Instance);
