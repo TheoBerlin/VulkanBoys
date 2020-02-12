@@ -4,6 +4,8 @@
 #include "BufferVK.h"
 #include "PipelineVK.h"
 #include "SwapChainVK.h"
+#include "Texture2DVK.h"
+#include "ImageViewVK.h"
 #include "RenderPassVK.h"
 #include "CommandPoolVK.h"
 #include "FrameBufferVK.h"
@@ -12,6 +14,7 @@
 #include "DescriptorPoolVK.h"
 #include "PipelineLayoutVK.h"
 #include "GraphicsContextVK.h"
+#include "SamplerVK.h"
 
 #include "Core/Camera.h"
 #include "Core/Material.h"
@@ -214,6 +217,10 @@ void RendererVK::submitMesh(IMesh* pMesh, const Material& material, const glm::m
 		BufferVK* pVertBuffer = reinterpret_cast<BufferVK*>(pMesh->getVertexBuffer());
 		m_pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer->getBuffer(), 1);
 
+		Texture2DVK* pAlbedo = reinterpret_cast<Texture2DVK*>(material.getAlbedoMap());
+		SamplerVK* pSampler = reinterpret_cast<SamplerVK*>(material.getSampler());
+		m_pDescriptorSet->writeCombinedImageDescriptor(pAlbedo->getImageView()->getImageView(), pSampler->getSampler(), 2);
+
 		submit = false;
 	}
 
@@ -379,6 +386,8 @@ bool RendererVK::createPipelineLayouts()
 	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0, 1);
 	//VertexBuffer
 	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, 1, 1);
+	//Albedo map
+	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, 2, 1);
 	m_pDescriptorSetLayout->finalize();
 	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { m_pDescriptorSetLayout };
 

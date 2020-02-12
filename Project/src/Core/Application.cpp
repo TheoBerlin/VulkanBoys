@@ -7,6 +7,7 @@
 #include "Common/IImgui.h"
 #include "Common/IWindow.h"
 #include "Common/IShader.h"
+#include "Common/ISampler.h"
 #include "Common/IRenderer.h"
 #include "Common/ITexture2D.h"
 #include "Common/IInputHandler.h"
@@ -175,6 +176,16 @@ void Application::init()
 				m_pAlbedo->initFromFile("assets/textures/albedo.tga");
 			});
 
+		//We can set the pointer to the material even if loading happens on another thread
+		m_GunMaterial.setAlbedoMap(m_pAlbedo);
+
+		SamplerParams samplerParams = {};
+		samplerParams.MinFilter = VK_FILTER_LINEAR;
+		samplerParams.MagFilter = VK_FILTER_LINEAR;
+		samplerParams.WrapModeS = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerParams.WrapModeT = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		m_GunMaterial.createSampler(m_pContext, samplerParams);
+
 		TaskDispatcher::waitForTasks();
 		
 		//m_pMesh->initFromMemory(vertices, 24, indices, 36);
@@ -219,6 +230,8 @@ void Application::release()
 	m_pWindow->removeEventHandler(this);
 
 	m_pContext->sync();
+
+	m_GunMaterial.release();
 
 	SAFEDELETE(m_pAlbedo);
 	SAFEDELETE(m_pMesh);
@@ -421,7 +434,7 @@ void Application::render(double dt)
 	m_pRenderer->beginFrame(m_Camera);
 
 	g_Rotation = glm::rotate(g_Rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
-	m_pRenderer->submitMesh(m_pMesh, g_Color, glm::mat4(1.0f) * g_Rotation);
+	m_pRenderer->submitMesh(m_pMesh, m_GunMaterial, glm::mat4(1.0f) * g_Rotation);
 	m_pRenderer->drawImgui(m_pImgui);
 
 	m_pRenderer->endFrame();

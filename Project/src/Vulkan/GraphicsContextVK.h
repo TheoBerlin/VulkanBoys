@@ -33,6 +33,7 @@ public:
 	virtual IImage* createImage() override;
 	virtual IImageView* createImageView() override;
 	virtual ITexture2D* createTexture2D() override;
+	virtual ISampler* createSampler() override;
 
 	virtual void sync() override;
 

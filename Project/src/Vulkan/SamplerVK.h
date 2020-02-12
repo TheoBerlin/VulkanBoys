@@ -1,23 +1,21 @@
 #pragma once
+#include "Common/ISampler.h"
 
 #include "VulkanCommon.h"
 
 class DeviceVK;
 
-class SamplerVK
+class SamplerVK : public ISampler
 {
 public:
-	DECL_NO_COPY(SamplerVK);
-	
 	SamplerVK(DeviceVK* pDevice);
 	~SamplerVK();
 
-	bool init(VkFilter magFilter, VkFilter minFilter, VkSamplerAddressMode wrapModeS, VkSamplerAddressMode wrapModeT);
+	virtual bool init(const SamplerParams& params) override;
 
 	VkSampler getSampler() { return m_Sampler; }
 
 private:
 	DeviceVK* m_pDevice;
-	
 	VkSampler m_Sampler;
 };

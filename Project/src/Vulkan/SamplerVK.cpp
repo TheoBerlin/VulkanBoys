@@ -1,5 +1,4 @@
 #include "SamplerVK.h"
-
 #include "DeviceVK.h"
 
 SamplerVK::SamplerVK(DeviceVK* pDevice) :
@@ -17,16 +16,16 @@ SamplerVK::~SamplerVK()
 	}
 }
 
-bool SamplerVK::init(VkFilter magFilter, VkFilter minFilter, VkSamplerAddressMode wrapModeS, VkSamplerAddressMode wrapModeT)
+bool SamplerVK::init(const SamplerParams& params)
 {
 	VkSamplerCreateInfo samplerInfo = {};
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 	samplerInfo.pNext = nullptr;
 	samplerInfo.flags = 0;
-	samplerInfo.magFilter = magFilter;
-	samplerInfo.minFilter = minFilter;
-	samplerInfo.addressModeU = wrapModeS;
-	samplerInfo.addressModeV = wrapModeT;
+	samplerInfo.magFilter = params.MagFilter;
+	samplerInfo.minFilter = params.MinFilter;
+	samplerInfo.addressModeU = params.WrapModeS;
+	samplerInfo.addressModeV = params.WrapModeT;
 	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerInfo.anisotropyEnable = VK_FALSE;
 	samplerInfo.maxAnisotropy = 16;

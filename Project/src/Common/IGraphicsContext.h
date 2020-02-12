@@ -11,6 +11,7 @@ class IRenderer;
 class IImageView;
 class ITexture2D;
 class IFrameBuffer;
+class ISampler;
 class IMesh;
 class IResourceLoader;
 
@@ -37,6 +38,7 @@ public:
 	virtual IImage* createImage() = 0;
 	virtual IImageView* createImageView() = 0;
 	virtual ITexture2D* createTexture2D() = 0;
+	virtual ISampler* createSampler() = 0;
 
 	virtual void sync() = 0;
 	

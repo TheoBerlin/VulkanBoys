@@ -561,8 +561,14 @@ bool ImguiVK::createPipeline()
 
 bool ImguiVK::createPipelineLayout()
 {
+	SamplerParams samplerParams = {};
+	samplerParams.MinFilter = VK_FILTER_LINEAR;
+	samplerParams.MagFilter = VK_FILTER_LINEAR;
+	samplerParams.WrapModeS = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerParams.WrapModeT = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
 	m_pSampler = DBG_NEW SamplerVK(m_pContext->getDevice());
-	m_pSampler->init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+	m_pSampler->init(samplerParams);
 
 	const VkSampler immutableSamplers[] = { m_pSampler->getSampler() };
 	m_pDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(m_pContext->getDevice());

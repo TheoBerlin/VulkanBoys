@@ -57,7 +57,7 @@ struct Vertex
 	alignas(16) glm::vec3 Position;
 	alignas(16) glm::vec3 Normal;
 	alignas(16) glm::vec3 Tangent;
-	glm::vec2 TexCoord;
+	alignas(16) glm::vec2 TexCoord;
 
 	bool operator==(const Vertex& other) const 
 	{

@@ -4,6 +4,7 @@
 #include "BufferVK.h"
 #include "ShaderVK.h"
 #include "RendererVK.h"
+#include "SamplerVK.h"
 #include "SwapChainVK.h"
 #include "Texture2DVK.h"
 
@@ -47,7 +48,7 @@ void GraphicsContextVK::init()
 	//m_Instance.debugPrintAvailableExtensions();
 	//m_Instance.debugPrintAvailableLayers();
 
-	//m_Instance.addValidationLayer("VK_LAYER_RENDERDOC_Capture");
+	m_Instance.addValidationLayer("VK_LAYER_RENDERDOC_Capture");
 	m_Instance.addValidationLayer("VK_LAYER_KHRONOS_validation");
 	m_Instance.finalize(VALIDATION_LAYERS_ENABLED);
 
@@ -111,6 +112,11 @@ IImageView* GraphicsContextVK::createImageView()
 ITexture2D* GraphicsContextVK::createTexture2D()
 {
 	return DBG_NEW Texture2DVK(&m_Device);
+}
+
+ISampler* GraphicsContextVK::createSampler()
+{
+	return new SamplerVK(&m_Device);
 }
 
 void GraphicsContextVK::sync()
