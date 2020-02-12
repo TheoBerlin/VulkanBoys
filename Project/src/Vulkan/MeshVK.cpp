@@ -1,6 +1,7 @@
 #include "MeshVK.h"
 #include "BufferVK.h"
 #include "DeviceVK.h"
+#include "CopyHandlerVK.h"
 #include "CommandPoolVK.h"
 #include "CommandBufferVK.h"
 
@@ -86,11 +87,6 @@ bool MeshVK::initFromFile(const std::string& filepath)
 
 bool MeshVK::initFromMemory(const Vertex* pVertices, uint32_t vertexCount, const uint32_t* pIndices, uint32_t indexCount)
 {
-	CommandPoolVK* pCommandPool = DBG_NEW CommandPoolVK(m_pDevice, m_pDevice->getQueueFamilyIndices().transferFamily.value());
-	pCommandPool->init();
-
-	CommandBufferVK* pCommandBuffer = pCommandPool->allocateCommandBuffer();
-
 	BufferParams vertexBufferParams = {};
 	vertexBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	vertexBufferParams.SizeInBytes = sizeof(Vertex) * vertexCount;
@@ -113,18 +109,9 @@ bool MeshVK::initFromMemory(const Vertex* pVertices, uint32_t vertexCount, const
 		return false;
 	}
 
-	pCommandBuffer->reset();
-	pCommandBuffer->begin();
-
-	pCommandBuffer->updateBuffer(m_pVertexBuffer, 0, pVertices, vertexBufferParams.SizeInBytes);
-	pCommandBuffer->updateBuffer(m_pIndexBuffer, 0, pIndices, indexBufferParams.SizeInBytes);
-
-	pCommandBuffer->end();
-
-	m_pDevice->executeCommandBuffer(m_pDevice->getTransferQueue(), pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
-	m_pDevice->wait();
-
-	SAFEDELETE(pCommandPool);
+	CopyHandlerVK* pCopyHandler = m_pDevice->getCopyHandler();
+	pCopyHandler->updateBuffer(m_pVertexBuffer, 0, pVertices, vertexBufferParams.SizeInBytes);
+	pCopyHandler->updateBuffer(m_pIndexBuffer, 0, pIndices, indexBufferParams.SizeInBytes);
 
 	m_VertexCount	= vertexCount;
 	m_IndexCount	= indexCount;

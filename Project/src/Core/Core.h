@@ -1,4 +1,6 @@
 #pragma once
+#include "Log.h"
+
 #include <cstdint>
 #include <iostream>
 #include <cassert>
@@ -31,7 +33,15 @@
 
 #define ASSERT(condition) assert(condition)
 
-#define LOG(...) printf(__VA_ARGS__); printf("\n")
+#define LOG(...) logPrintf(__VA_ARGS__); logPrintf("\n")
+
+#ifdef _WIN32
+	//TODO: Maybe should check for visual studio and not only windows since __forceinline is MSVC specific
+	#define FORCEINLINE __forceinline
+#else
+	//TODO: Make sure this is actually a forceinline
+	#define FORCEINLINE inline
+#endif
 
 #if _DEBUG
 	#define D_LOG(...) LOG(__VA_ARGS__)

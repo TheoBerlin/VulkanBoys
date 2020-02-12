@@ -57,6 +57,7 @@ private:
 
 	//TODO: Resoures should they be here?
 	IMesh* m_pMesh;
+	ITexture2D* m_pAlbedo;
 
 	bool m_IsRunning;
 	bool m_UpdateCamera;
