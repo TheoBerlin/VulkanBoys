@@ -25,9 +25,8 @@ public:
 
 	virtual void beginFrame(const Camera& camera) override;
 	virtual void endFrame() override;
+	virtual void execute() override;
 
-	virtual void setClearColor(float r, float g, float b) override;
-	virtual void setClearColor(const glm::vec3& color) override;
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
 
 	virtual void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform) override;
@@ -36,6 +35,8 @@ public:
 
 	// Temporary function
 	virtual void drawTriangle(const glm::vec4& color, const glm::mat4& transform) override;
+
+	CommandBufferVK* getCommandBuffer(uint32_t frameIndex) { return m_ppCommandBuffers[frameIndex]; }
 
 private:
 	bool createSemaphores();
@@ -61,10 +62,7 @@ private:
 	DescriptorSetVK* m_pDescriptorSet;
 	DescriptorPoolVK* m_pDescriptorPool;
 	DescriptorSetLayoutVK* m_pDescriptorSetLayout;
-	BufferVK* m_pCameraBuffer;
 
-	VkClearValue m_ClearColor;
-	VkClearValue m_ClearDepth;
 	VkViewport m_Viewport;
 	VkRect2D m_ScissorRect;
 

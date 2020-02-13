@@ -30,16 +30,11 @@ MeshRendererVK::MeshRendererVK(GraphicsContextVK* pContext, RenderingHandlerVK* 
 	m_pDescriptorSet(nullptr),
 	m_pDescriptorPool(nullptr),
 	m_pDescriptorSetLayout(nullptr),
-	m_ClearColor(),
-	m_ClearDepth(),
 	m_Viewport(),
 	m_ScissorRect(),
 	m_CurrentFrame(0),
 	m_BackBufferIndex(0)
-{
-	m_ClearDepth.depthStencil.depth = 1.0f;
-	m_ClearDepth.depthStencil.stencil = 0;
-}
+{}
 
 MeshRendererVK::~MeshRendererVK()
 {
@@ -58,7 +53,6 @@ MeshRendererVK::~MeshRendererVK()
 	SAFEDELETE(m_pPipeline);
 	SAFEDELETE(m_pDescriptorPool);
 	SAFEDELETE(m_pDescriptorSetLayout);
-	SAFEDELETE(m_pCameraBuffer);
 
 	m_pContext = nullptr;
 }
@@ -89,12 +83,9 @@ bool MeshRendererVK::init()
 		return false;
 	}
 
-	if (!createBuffers()) {
-		return false;
-	}
-
-	// Last thing is to write to the descriptor set
-	m_pDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer->getBuffer(), 0);
+	// Last thing is to write the camera buffer to the descriptor set
+	BufferVK* pCameraBuffer = m_pRenderingHandler->getCameraBuffer();
+	m_pDescriptorSet->writeUniformBufferDescriptor(pCameraBuffer->getBuffer(), 0);
 
 	return true;
 }
@@ -102,24 +93,20 @@ bool MeshRendererVK::init()
 void MeshRendererVK::beginFrame(const Camera& camera)
 {
 	//Prepare for frame
-	m_pContext->getSwapChain()->acquireNextImage(m_ImageAvailableSemaphores[m_CurrentFrame]);
 	uint32_t backBufferIndex = m_pContext->getSwapChain()->getImageIndex();
 
-	m_ppCommandBuffers[m_CurrentFrame]->reset();
+	m_ppCommandBuffers[m_CurrentFrame]->reset(false);
 	m_ppCommandPools[m_CurrentFrame]->reset();
 
-	m_ppCommandBuffers[m_CurrentFrame]->begin();
+	// Needed to begin a secondary buffer
+	VkCommandBufferInheritanceInfo inheritanceInfo = {};
+	inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+	inheritanceInfo.pNext = nullptr;
+	inheritanceInfo.renderPass = m_pRenderPass->getRenderPass();
+	inheritanceInfo.subpass = 0; // TODO: Don't hardcode this :(
+	inheritanceInfo.framebuffer = m_ppBackbuffers[backBufferIndex]->getFrameBuffer();
 
-	//Update camera
-	CameraBuffer cameraBuffer = {};
-	cameraBuffer.Projection = camera.getProjectionMat();
-	cameraBuffer.View = camera.getViewMat();
-	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraBuffer, 0, (const void*)&cameraBuffer, sizeof(CameraBuffer));
-
-	//Start renderpass
-	VkClearValue clearValues[] = { m_ClearColor, m_ClearDepth };
-	m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pRenderPass, m_ppBackbuffers[backBufferIndex], m_Viewport.width, m_Viewport.height, clearValues, 2);
-
+	m_ppCommandBuffers[m_CurrentFrame]->begin(&inheritanceInfo);
 	m_ppCommandBuffers[m_CurrentFrame]->setViewports(&m_Viewport, 1);
 	m_ppCommandBuffers[m_CurrentFrame]->setScissorRects(&m_ScissorRect, 1);
 
@@ -128,29 +115,17 @@ void MeshRendererVK::beginFrame(const Camera& camera)
 
 void MeshRendererVK::endFrame()
 {
-	m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
+	//m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
 	m_ppCommandBuffers[m_CurrentFrame]->end();
 
-	//Execute commandbuffer
-	VkSemaphore waitSemaphores[] = { m_ImageAvailableSemaphores[m_CurrentFrame] };
-	VkSemaphore signalSemaphores[] = { m_RenderFinishedSemaphores[m_CurrentFrame] };
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	//DeviceVK* pDevice = m_pContext->getDevice();
+	//pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCommandBuffer(m_CurrentFrame), m_ppCommandBuffers[m_CurrentFrame]);
+}
 
+void MeshRendererVK::execute()
+{
 	DeviceVK* pDevice = m_pContext->getDevice();
-	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppCommandBuffers[m_CurrentFrame], waitSemaphores, waitStages, 1, signalSemaphores, 1);
-}
-
-void MeshRendererVK::setClearColor(float r, float g, float b)
-{
-	setClearColor(glm::vec3(r, g, b));
-}
-
-void MeshRendererVK::setClearColor(const glm::vec3& color)
-{
-	m_ClearColor.color.float32[0] = color.r;
-	m_ClearColor.color.float32[1] = color.g;
-	m_ClearColor.color.float32[2] = color.b;
-	m_ClearColor.color.float32[3] = 1.0f;
+	pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCommandBuffer(m_CurrentFrame), m_ppCommandBuffers[m_CurrentFrame]);
 }
 
 void MeshRendererVK::setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY)
@@ -237,7 +212,7 @@ bool MeshRendererVK::createCommandPoolAndBuffers()
 			return false;
 		}
 
-		m_ppCommandBuffers[i] = m_ppCommandPools[i]->allocateCommandBuffer();
+		m_ppCommandBuffers[i] = m_ppCommandPools[i]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_SECONDARY);
 		if (m_ppCommandBuffers[i] == nullptr) {
 			return false;
 		}
@@ -316,15 +291,4 @@ bool MeshRendererVK::createPipelineLayouts()
 	m_pPipelineLayout->init(descriptorSetLayouts, pushConstantRanges);
 
 	return true;
-}
-
-bool MeshRendererVK::createBuffers()
-{
-	BufferParams cameraBufferParams = {};
-	cameraBufferParams.Usage			= VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-	cameraBufferParams.SizeInBytes		= sizeof(CameraBuffer);
-	cameraBufferParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-	m_pCameraBuffer = DBG_NEW BufferVK(m_pContext->getDevice());
-	return m_pCameraBuffer->init(cameraBufferParams);
 }

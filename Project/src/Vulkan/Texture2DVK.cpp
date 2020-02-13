@@ -74,7 +74,7 @@ bool Texture2DVK::initFromMemory(const void* pData, uint32_t width, uint32_t hei
 	m_pTempCommandBuffer->transitionImageLayout(m_pTextureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	m_pTempCommandBuffer->end();
 	
-	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	pDevice->executePrimaryCommandBuffer(pDevice->getGraphicsQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 	pDevice->wait();
 
 	ImageViewParams imageViewParams = {};

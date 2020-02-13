@@ -15,7 +15,7 @@ public:
 
 	//Add attachments in order. They will be referenced with the index 0, 1, .. and so on. Order matters.
 	void addAttachment(const VkAttachmentDescription& attachmentDesc);
-	//Add cubpasses in order. They will be referenced with the index 0, 1, .. and so on. Order matters.
+	//Add subpasses in order. They will be referenced with the index 0, 1, .. and so on. Order matters.
 	void addSubpass(const VkAttachmentReference* const pColorAttachments, uint32_t colorAttachmentCount, const VkAttachmentReference* const pDepthStencilAttachment);
 	void addSubpassDependency(uint32_t srcSubpass, uint32_t dstSubpass, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage, VkAccessFlags srcAccess, VkAccessFlags dstAccess);
 	bool finalize();

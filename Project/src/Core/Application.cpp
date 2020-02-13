@@ -79,15 +79,15 @@ void Application::init()
 	// Setup rendering handler
 	m_pRenderingHandler = m_pContext->createRenderingHandler();
 	m_pRenderingHandler->initialize();
+	m_pRenderingHandler->setClearColor(0.0f, 0.0f, 0.0f);
 
 	// Setup mesh renderer
 	m_pMeshRenderer = m_pContext->createRenderer(m_pRenderingHandler);
 	m_pMeshRenderer->init();
-	m_pMeshRenderer->setClearColor(0.0f, 0.0f, 0.0f);
-	m_pMeshRenderer->setViewport(m_pWindow->getWidth(), m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
 
 	// TODO: Should the renderer itself call this instead?
 	m_pRenderingHandler->setMeshRenderer(m_pMeshRenderer);
+	m_pRenderingHandler->setViewport(m_pWindow->getWidth(), m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
 
 	//Setup camera
 	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
@@ -228,11 +228,8 @@ void Application::onWindowResize(uint32_t width, uint32_t height)
 
 	if (width != 0 && height != 0)
 	{
-		if (m_pMeshRenderer) {
-			m_pMeshRenderer->setViewport(width, height, 0.0f, 1.0f, 0.0f, 0.0f);
-		}
-
 		if (m_pRenderingHandler) {
+			m_pRenderingHandler->setViewport(width, height, 0.0f, 1.0f, 0.0f, 0.0f);
 			m_pRenderingHandler->onWindowResize(width, height);
 		}
 
@@ -241,8 +238,7 @@ void Application::onWindowResize(uint32_t width, uint32_t height)
 }
 
 void Application::onWindowFocusChanged(IWindow* pWindow, bool hasFocus)
-{
-}
+{}
 
 void Application::onMouseMove(uint32_t x, uint32_t y)
 {

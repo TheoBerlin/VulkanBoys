@@ -24,6 +24,10 @@ public:
 
     virtual void drawImgui(IImgui* pImgui) = 0;
 
+    virtual void setClearColor(float r, float g, float b) = 0;
+	virtual void setClearColor(const glm::vec3& color) = 0;
+    virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) = 0;
+
     // Setting a renderer to nullptr will disable it
     virtual void setMeshRenderer(IRenderer* pMeshRenderer) = 0;
     virtual void setRaytracer(IRenderer* pRaytracer) = 0;

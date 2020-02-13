@@ -121,7 +121,7 @@ bool MeshVK::initFromMemory(const Vertex* pVertices, uint32_t vertexCount, const
 
 	pCommandBuffer->end();
 
-	m_pDevice->executeCommandBuffer(m_pDevice->getTransferQueue(), pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_pDevice->executePrimaryCommandBuffer(m_pDevice->getTransferQueue(), pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 	m_pDevice->wait();
 
 	SAFEDELETE(pCommandPool);

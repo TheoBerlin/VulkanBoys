@@ -6,6 +6,7 @@
 
 #include <thread>
 
+class BufferVK;
 class CommandBufferVK;
 class CommandPoolVK;
 class FrameBufferVK;
@@ -31,12 +32,17 @@ public:
 
     void drawImgui(IImgui* pImgui);
 
+    void setClearColor(float r, float g, float b);
+    void setClearColor(const glm::vec3& color);
+    void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY);
+
     void setMeshRenderer(IRenderer* pMeshRenderer);
     void setRaytracer(IRenderer* pRaytracer);
     void setParticleRenderer(IRenderer* pParticleRenderer);
 
     FrameBufferVK** getBackBuffers() { return m_ppBackbuffers; }
     RenderPassVK* getRenderPass() { return m_pRenderPass; }
+    BufferVK* getCameraBuffer() { return m_pCameraBuffer; }
 
     // Used by renderers to execute their secondary command buffers
     CommandBufferVK* getCommandBuffer(uint32_t frameIndex) { return m_ppCommandBuffers[frameIndex]; }
@@ -46,8 +52,11 @@ private:
     bool createCommandPoolAndBuffers();
     bool createRenderPass();
     bool createSemaphores();
+    bool createBuffers();
 
     void releaseBackBuffers();
+
+    void startRenderPass();
 
 private:
     GraphicsContextVK* m_pGraphicsContext;
@@ -60,8 +69,19 @@ private:
     CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
 
+    CommandPoolVK* m_ppCommandPoolsSecondary[MAX_FRAMES_IN_FLIGHT];
+	CommandBufferVK* m_ppCommandBuffersSecondary[MAX_FRAMES_IN_FLIGHT];
+
     RenderPassVK* m_pRenderPass;
     PipelineVK* m_pPipeline;
 
-    size_t m_CurrentFrame;
+    uint32_t m_CurrentFrame, m_BackBufferIndex;
+
+    VkClearValue m_ClearColor;
+	VkClearValue m_ClearDepth;
+
+    VkViewport m_Viewport;
+	VkRect2D m_ScissorRect;
+
+    BufferVK* m_pCameraBuffer;
 };
