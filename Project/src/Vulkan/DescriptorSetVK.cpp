@@ -1,7 +1,9 @@
 #include "DescriptorSetVK.h"
-
 #include "DescriptorPoolVK.h"
 #include "DeviceVK.h"
+#include "BufferVK.h"
+#include "SamplerVK.h"
+#include "ImageViewVK.h"
 
 DescriptorSetVK::DescriptorSetVK()
     :m_pDescriptorPool(nullptr),
@@ -21,30 +23,33 @@ void DescriptorSetVK::init(VkDescriptorSet descriptorSetHandle, DeviceVK* pDevic
     m_DescriptorCounts = descriptorCounts;
 }
 
-void DescriptorSetVK::writeUniformBufferDescriptor(VkBuffer buffer, uint32_t binding)
+void DescriptorSetVK::writeUniformBufferDescriptor(BufferVK* pBuffer, uint32_t binding)
 {
-    writeBufferDescriptor(buffer, binding, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    writeBufferDescriptor(pBuffer, binding, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 }
 
-void DescriptorSetVK::writeStorageBufferDescriptor(VkBuffer buffer, uint32_t binding)
+void DescriptorSetVK::writeStorageBufferDescriptor(BufferVK* pBuffer, uint32_t binding)
 {
-    writeBufferDescriptor(buffer, binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+    writeBufferDescriptor(pBuffer, binding, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
 }
 
-void DescriptorSetVK::writeCombinedImageDescriptor(VkImageView imageView, VkSampler sampler, uint32_t binding)
+void DescriptorSetVK::writeCombinedImageDescriptor(ImageViewVK* pImageView, SamplerVK* pSampler, uint32_t binding)
 {
-    writeImageDescriptor(imageView, sampler, binding, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    ASSERT(pSampler != nullptr);
+    writeImageDescriptor(pImageView, pSampler, binding, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 }
 
-void DescriptorSetVK::writeSampledImageDescriptor(VkImageView imageView, uint32_t binding)
+void DescriptorSetVK::writeSampledImageDescriptor(ImageViewVK* pImageView, uint32_t binding)
 {
-    writeImageDescriptor(imageView, VK_NULL_HANDLE, binding, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+    writeImageDescriptor(pImageView, nullptr, binding, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 }
 
-void DescriptorSetVK::writeBufferDescriptor(VkBuffer buffer, uint32_t binding, VkDescriptorType bufferType)
+void DescriptorSetVK::writeBufferDescriptor(BufferVK* pBuffer, uint32_t binding, VkDescriptorType bufferType)
 {
+    ASSERT(pBuffer != nullptr);
+
     VkDescriptorBufferInfo bufferInfo = {};
-    bufferInfo.buffer	= buffer;
+    bufferInfo.buffer	= pBuffer->getBuffer();
     bufferInfo.offset	= 0;
     bufferInfo.range	= VK_WHOLE_SIZE;
 
@@ -62,11 +67,11 @@ void DescriptorSetVK::writeBufferDescriptor(VkBuffer buffer, uint32_t binding, V
     vkUpdateDescriptorSets(m_pDevice->getDevice(), 1, &descriptorBufferWrite, 0, nullptr);
 }
 
-void DescriptorSetVK::writeImageDescriptor(VkImageView imageView, VkSampler sampler, uint32_t binding, VkImageLayout layout, VkDescriptorType descriptorType)
+void DescriptorSetVK::writeImageDescriptor(ImageViewVK* pImageView, SamplerVK* pSampler, uint32_t binding, VkImageLayout layout, VkDescriptorType descriptorType)
 {
     VkDescriptorImageInfo imageInfo = {};
-    imageInfo.imageView     = imageView;
-    imageInfo.sampler       = sampler;
+    imageInfo.imageView     = (pImageView != nullptr) ? pImageView->getImageView() : VK_NULL_HANDLE;
+    imageInfo.sampler       = (pSampler != nullptr) ? pSampler->getSampler() : VK_NULL_HANDLE;
     imageInfo.imageLayout   = layout;
 
     VkWriteDescriptorSet descriptorImageWrite = {};

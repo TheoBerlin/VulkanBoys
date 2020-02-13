@@ -7,6 +7,9 @@ class IImgui;
 class IMesh;
 class Camera;
 class Material;
+class LightSetup;
+
+#define MAX_POINTLIGHTS 4
 
 class IRenderer
 {
@@ -17,7 +20,7 @@ public:
 
 	virtual void onWindowResize(uint32_t width, uint32_t height) = 0;
 
-	virtual void beginFrame(const Camera& camera) = 0;
+	virtual void beginFrame(const Camera& camera, const LightSetup& lightSetup) = 0;
 	virtual void endFrame() = 0;
 
 	virtual void setClearColor(float r, float g, float b) = 0;

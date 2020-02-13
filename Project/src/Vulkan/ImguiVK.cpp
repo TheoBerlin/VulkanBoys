@@ -208,7 +208,7 @@ bool ImguiVK::init()
 
 	//Write to descriptor sets
 	Texture2DVK* pTexture = reinterpret_cast<Texture2DVK*>(m_pFontTexture);
-	m_pDescriptorSet->writeCombinedImageDescriptor(pTexture->getImageView()->getImageView(), m_pSampler->getSampler(), 0);
+	m_pDescriptorSet->writeCombinedImageDescriptor(pTexture->getImageView(), m_pSampler, 0);
 
 	D_LOG("ImGui initialized successfully");
 	return true;

@@ -20,6 +20,9 @@ public:
 	virtual uint32_t getVertexCount() const override;
 
 private:
+	glm::vec3 MeshVK::calculateTangent(const Vertex& v0, const Vertex& v1, const Vertex& v2);
+
+private:
 	DeviceVK* m_pDevice;
 	BufferVK* m_pVertexBuffer;
 	BufferVK* m_pIndexBuffer;

@@ -90,8 +90,8 @@ void Application::init()
 
 	//Setup camera
 	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
-	m_Camera.setPosition(glm::vec3(0.0f, 0.5f, -2.0f));
-	m_Camera.setProjection(90.0f, m_pWindow->getWidth(), m_pWindow->getHeight(), 0.1f, 100.0f);
+	m_Camera.setPosition(glm::vec3(0.0f, 1.0f, 0.0f));
+	m_Camera.setProjection(90.0f, m_pWindow->getWidth(), m_pWindow->getHeight(), 0.01f, 100.0f);
 	m_Camera.update();
 
 	//Load mesh
@@ -165,9 +165,10 @@ void Application::init()
 		};
 
 		m_pMesh = m_pContext->createMesh();
-		TaskDispatcher::execute([this] 
+		TaskDispatcher::execute([&, this] 
 			{ 
-				m_pMesh->initFromFile("assets/meshes/gun.obj"); 
+				m_pMesh->initFromFile("assets/meshes/gun.obj");
+				//m_pMesh->initFromMemory(vertices, 24, indices, 36);
 			});
 
 		m_pAlbedo = m_pContext->createTexture2D();
@@ -176,8 +177,15 @@ void Application::init()
 				m_pAlbedo->initFromFile("assets/textures/albedo.tga");
 			});
 
+		m_pNormal = m_pContext->createTexture2D();
+		TaskDispatcher::execute([this]
+			{
+				m_pNormal->initFromFile("assets/textures/normal.tga");
+			});
+
 		//We can set the pointer to the material even if loading happens on another thread
 		m_GunMaterial.setAlbedoMap(m_pAlbedo);
+		m_GunMaterial.setNormalMap(m_pNormal);
 
 		SamplerParams samplerParams = {};
 		samplerParams.MinFilter = VK_FILTER_LINEAR;
@@ -186,9 +194,13 @@ void Application::init()
 		samplerParams.WrapModeT = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 		m_GunMaterial.createSampler(m_pContext, samplerParams);
 
+		//Setup lights
+		m_LightSetup.addPointLight(PointLight(glm::vec3( 0.5f,  0.5f, -1.5f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3(-0.5f,  0.5f, -1.5f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3( 0.5f, -0.5f, -1.5f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3(-0.5f, -0.5f, -1.5f)));
+
 		TaskDispatcher::waitForTasks();
-		
-		//m_pMesh->initFromMemory(vertices, 24, indices, 36);
 	}
 }
 
@@ -233,6 +245,7 @@ void Application::release()
 
 	m_GunMaterial.release();
 
+	SAFEDELETE(m_pNormal);
 	SAFEDELETE(m_pAlbedo);
 	SAFEDELETE(m_pMesh);
 	SAFEDELETE(m_pRenderer);
@@ -431,10 +444,12 @@ void Application::renderUI(double dt)
 
 void Application::render(double dt)
 {
-	m_pRenderer->beginFrame(m_Camera);
+	m_pRenderer->beginFrame(m_Camera, m_LightSetup);
 
 	g_Rotation = glm::rotate(g_Rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
 	m_pRenderer->submitMesh(m_pMesh, m_GunMaterial, glm::mat4(1.0f) * g_Rotation);
+	m_pRenderer->submitMesh(m_pMesh, m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f)));
+	m_pRenderer->submitMesh(m_pMesh, m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 0.0f)));
 	m_pRenderer->drawImgui(m_pImgui);
 
 	m_pRenderer->endFrame();

@@ -1,6 +1,7 @@
 #pragma once
 #include "Camera.h"
 #include "Material.h"
+#include "LightSetup.h"
 
 #include "Common/IEventHandler.h"
 
@@ -49,6 +50,7 @@ private:
 
 private:
 	Camera m_Camera;
+	LightSetup m_LightSetup;
 	IWindow* m_pWindow;
 	IGraphicsContext* m_pContext;
 	IRenderer* m_pRenderer;
@@ -58,6 +60,7 @@ private:
 	//TODO: Resoures should they be here?
 	IMesh* m_pMesh;
 	ITexture2D* m_pAlbedo;
+	ITexture2D* m_pNormal;
 	Material m_GunMaterial;
 
 	bool m_IsRunning;

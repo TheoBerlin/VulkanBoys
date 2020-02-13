@@ -1,5 +1,6 @@
 #pragma once
 #include "Common/IRenderer.h"
+
 #include "VulkanCommon.h"
 
 class BufferVK;
@@ -14,6 +15,12 @@ class PipelineLayoutVK;
 class GraphicsContextVK;
 class DescriptorSetLayoutVK;
 
+#define CAMERA_BUFFER_BINDING 0
+#define VERTEX_BUFFER_BINDING 1
+#define LIGHT_BUFFER_BINDING 2
+#define ALBEDO_MAP_BINDING 3
+#define NORMAL_MAP_BINDING 4
+
 class RendererVK : public IRenderer
 {
 public:
@@ -24,7 +31,7 @@ public:
 
 	virtual void onWindowResize(uint32_t width, uint32_t height) override;
 
-	virtual void beginFrame(const Camera& camera) override;
+	virtual void beginFrame(const Camera& camera, const LightSetup& lightSetup) override;
 	virtual void endFrame() override;
 
 	virtual void setClearColor(float r, float g, float b) override;
@@ -68,6 +75,7 @@ private:
 	DescriptorPoolVK* m_pDescriptorPool;
 	DescriptorSetLayoutVK* m_pDescriptorSetLayout;
 	BufferVK* m_pCameraBuffer;
+	BufferVK* m_pLightBuffer;
 
 	VkClearValue m_ClearColor;
 	VkClearValue m_ClearDepth;

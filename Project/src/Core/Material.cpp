@@ -27,6 +27,11 @@ void Material::setAlbedoMap(ITexture2D* pAlbedo)
 	m_pAlbedo = pAlbedo;
 }
 
+void Material::setNormalMap(ITexture2D* pNormal)
+{
+	m_pNormal = pNormal;
+}
+
 void Material::release()
 {
 	SAFEDELETE(m_pSampler);

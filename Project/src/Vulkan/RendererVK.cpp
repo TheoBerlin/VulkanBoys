@@ -18,6 +18,7 @@
 
 #include "Core/Camera.h"
 #include "Core/Material.h"
+#include "Core/LightSetup.h"
 
 #include <glm/gtc/type_ptr.hpp>
 
@@ -31,6 +32,8 @@ RendererVK::RendererVK(GraphicsContextVK* pContext)
 	m_pDescriptorSet(nullptr),
 	m_pDescriptorPool(nullptr),
 	m_pDescriptorSetLayout(nullptr),
+	m_pCameraBuffer(nullptr),
+	m_pLightBuffer(nullptr),
 	m_ClearColor(),
 	m_ClearDepth(),
 	m_Viewport(),
@@ -65,6 +68,7 @@ RendererVK::~RendererVK()
 	SAFEDELETE(m_pDescriptorPool);
 	SAFEDELETE(m_pDescriptorSetLayout);
 	SAFEDELETE(m_pCameraBuffer);
+	SAFEDELETE(m_pLightBuffer);
 
 	m_pContext = nullptr;
 }
@@ -106,8 +110,9 @@ bool RendererVK::init()
 		return false;
 	}
 
-	//Last thing is to write to the descriptor set
-	m_pDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer->getBuffer(), 0);
+	//Last thing is to write to the descriptor set (Camera and LightBuffer)
+	m_pDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer, CAMERA_BUFFER_BINDING);
+	m_pDescriptorSet->writeUniformBufferDescriptor(m_pLightBuffer, LIGHT_BUFFER_BINDING);
 
 	return true;
 }
@@ -122,7 +127,7 @@ void RendererVK::onWindowResize(uint32_t width, uint32_t height)
 	createFramebuffers();
 }
 
-void RendererVK::beginFrame(const Camera& camera)
+void RendererVK::beginFrame(const Camera& camera, const LightSetup& lightSetup)
 {
 	//Prepare for frame
 	m_pContext->getSwapChain()->acquireNextImage(m_ImageAvailableSemaphores[m_CurrentFrame]);
@@ -138,6 +143,9 @@ void RendererVK::beginFrame(const Camera& camera)
 	cameraBuffer.Projection = camera.getProjectionMat();
 	cameraBuffer.View = camera.getViewMat();
 	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraBuffer, 0, (const void*)&cameraBuffer, sizeof(CameraBuffer));
+	//Update lights
+	const uint32_t numPointLights = lightSetup.getPointLightCount();
+	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pLightBuffer, 0, (const void*)lightSetup.getPointLights(), sizeof(PointLight) * numPointLights);
 
 	//Start renderpass
 	VkClearValue clearValues[] = { m_ClearColor, m_ClearDepth };
@@ -202,7 +210,6 @@ void RendererVK::submitMesh(IMesh* pMesh, const Material& material, const glm::m
 	ASSERT(pMesh != nullptr);
 
 	m_ppCommandBuffers[m_CurrentFrame]->bindGraphicsPipeline(m_pPipeline);
-
 	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(transform));
 
 	glm::vec4 color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -215,17 +222,19 @@ void RendererVK::submitMesh(IMesh* pMesh, const Material& material, const glm::m
 	if (submit)
 	{
 		BufferVK* pVertBuffer = reinterpret_cast<BufferVK*>(pMesh->getVertexBuffer());
-		m_pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer->getBuffer(), 1);
+		m_pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer, VERTEX_BUFFER_BINDING);
 
-		Texture2DVK* pAlbedo = reinterpret_cast<Texture2DVK*>(material.getAlbedoMap());
 		SamplerVK* pSampler = reinterpret_cast<SamplerVK*>(material.getSampler());
-		m_pDescriptorSet->writeCombinedImageDescriptor(pAlbedo->getImageView()->getImageView(), pSampler->getSampler(), 2);
+		Texture2DVK* pAlbedo = reinterpret_cast<Texture2DVK*>(material.getAlbedoMap());
+		m_pDescriptorSet->writeCombinedImageDescriptor(pAlbedo->getImageView(), pSampler, ALBEDO_MAP_BINDING);
+
+		Texture2DVK* pNormal = reinterpret_cast<Texture2DVK*>(material.getNormalMap());
+		m_pDescriptorSet->writeCombinedImageDescriptor(pNormal->getImageView(), pSampler, NORMAL_MAP_BINDING);
 
 		submit = false;
 	}
 
 	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSet, 0, nullptr);
-
 	m_ppCommandBuffers[m_CurrentFrame]->drawIndexInstanced(pMesh->getIndexCount(), 1, 0, 0, 0);
 }
 
@@ -383,11 +392,15 @@ bool RendererVK::createPipelineLayouts()
 	//DescriptorSetLayout
 	m_pDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(m_pContext->getDevice());
 	//CameraBuffer
-	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0, 1);
+	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, CAMERA_BUFFER_BINDING, 1);
 	//VertexBuffer
-	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, 1, 1);
-	//Albedo map
-	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, 2, 1);
+	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, VERTEX_BUFFER_BINDING, 1);
+	//LightBuffer
+	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, LIGHT_BUFFER_BINDING, 1);
+	//AlbedoMap
+	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ALBEDO_MAP_BINDING, 1);
+	//NormalMap
+	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, NORMAL_MAP_BINDING, 1);
 	m_pDescriptorSetLayout->finalize();
 	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { m_pDescriptorSetLayout };
 
@@ -428,5 +441,16 @@ bool RendererVK::createBuffers()
 	cameraBufferParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 	m_pCameraBuffer = DBG_NEW BufferVK(m_pContext->getDevice());
-	return m_pCameraBuffer->init(cameraBufferParams);
+	if (!m_pCameraBuffer->init(cameraBufferParams))
+	{
+		return false;
+	}
+
+	BufferParams lightBufferParams = {};
+	lightBufferParams.Usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	lightBufferParams.SizeInBytes = sizeof(PointLight) * MAX_POINTLIGHTS;
+	lightBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+	m_pLightBuffer = DBG_NEW BufferVK(m_pContext->getDevice());
+	return m_pLightBuffer->init(lightBufferParams);
 }

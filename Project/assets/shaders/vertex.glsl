@@ -13,6 +13,7 @@ layout(location = 0) out vec3 out_Normal;
 layout(location = 1) out vec3 out_Tangent;
 layout(location = 2) out vec3 out_Bitangent;
 layout(location = 3) out vec2 out_TexCoord;
+layout(location = 4) out vec3 out_WorldPosition;
 
 layout (push_constant) uniform Constants
 {
@@ -36,6 +37,7 @@ void main()
 	vec3 position 	= vertices[gl_VertexIndex].Position.xyz;
     vec3 normal 	= vertices[gl_VertexIndex].Normal.xyz;
 	vec3 tangent 	= vertices[gl_VertexIndex].Tangent.xyz;
+	vec4 worldPosition = g_Constants.Transform * vec4(position, 1.0);
 	
 	normal 	= normalize((g_Constants.Transform * vec4(normal, 0.0)).xyz);
 	tangent = normalize((g_Constants.Transform * vec4(tangent, 0.0)).xyz);
@@ -47,5 +49,6 @@ void main()
 	out_Tangent 	= tangent;
 	out_Bitangent 	= bitangent;
 	out_TexCoord 	= texCoord;
-	gl_Position = g_PerFrame.Projection * g_PerFrame.View * g_Constants.Transform * vec4(position, 1.0);
+	out_WorldPosition = worldPosition.xyz;
+	gl_Position = g_PerFrame.Projection * g_PerFrame.View * worldPosition;
 }
