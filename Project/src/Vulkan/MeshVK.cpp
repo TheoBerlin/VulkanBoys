@@ -7,12 +7,15 @@
 
 #include <tinyobjloader/tiny_obj_loader.h>
 
+uint32_t MeshVK::s_ID = 0;
+
 MeshVK::MeshVK(DeviceVK* pDevice)
 	: m_pDevice(pDevice),
 	m_pVertexBuffer(nullptr),
 	m_pIndexBuffer(nullptr),
 	m_IndexCount(0),
-	m_VertexCount(0)
+	m_VertexCount(0),
+	m_ID(s_ID++)
 {
 }
 
@@ -172,4 +175,9 @@ uint32_t MeshVK::getIndexCount() const
 uint32_t MeshVK::getVertexCount() const
 {
 	return m_VertexCount;
+}
+
+uint32_t MeshVK::getMeshID() const
+{
+	return m_ID;
 }

@@ -168,7 +168,12 @@ void Application::init()
 		TaskDispatcher::execute([&, this] 
 			{ 
 				m_pMesh->initFromFile("assets/meshes/gun.obj");
-				//m_pMesh->initFromMemory(vertices, 24, indices, 36);
+			});
+
+		m_pSphere = m_pContext->createMesh();
+		TaskDispatcher::execute([&, this]
+			{
+				m_pSphere->initFromFile("assets/meshes/sphere.obj");
 			});
 
 		m_pAlbedo = m_pContext->createTexture2D();
@@ -245,6 +250,7 @@ void Application::release()
 
 	m_GunMaterial.release();
 
+	SAFEDELETE(m_pSphere)
 	SAFEDELETE(m_pNormal);
 	SAFEDELETE(m_pAlbedo);
 	SAFEDELETE(m_pMesh);
@@ -447,9 +453,22 @@ void Application::render(double dt)
 	m_pRenderer->beginFrame(m_Camera, m_LightSetup);
 
 	g_Rotation = glm::rotate(g_Rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
+
 	m_pRenderer->submitMesh(m_pMesh, m_GunMaterial, glm::mat4(1.0f) * g_Rotation);
 	m_pRenderer->submitMesh(m_pMesh, m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f)));
 	m_pRenderer->submitMesh(m_pMesh, m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 0.0f)));
+
+	constexpr uint32_t sphereCount = 8;
+	for (uint32_t y = 0; y < sphereCount; y++)
+	{
+		float yCoord = ((float(sphereCount) * 0.5f) / -2.0f) + float(y * 0.5);
+		for (uint32_t x = 0; x < sphereCount; x++)
+		{
+			float xCoord = ((float(sphereCount) * 0.5f) / -2.0f) + float(x * 0.5);
+			m_pRenderer->submitMesh(m_pSphere, m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)));
+		}
+	}
+
 	m_pRenderer->drawImgui(m_pImgui);
 
 	m_pRenderer->endFrame();

@@ -3,9 +3,13 @@
 #include "Common/IGraphicsContext.h"
 #include "Common/ISampler.h"
 
+uint32_t Material::s_ID = 0;
+
 Material::Material()
-	: m_pAlbedo(nullptr),
-	m_pSampler(nullptr)
+	: m_pAlbedoMap(nullptr),
+	m_pNormalMap(nullptr),
+	m_pSampler(nullptr),
+	m_ID(s_ID++)
 {
 }
 
@@ -24,16 +28,15 @@ bool Material::createSampler(IGraphicsContext* pContext, const SamplerParams& pa
 
 void Material::setAlbedoMap(ITexture2D* pAlbedo)
 {
-	m_pAlbedo = pAlbedo;
+	m_pAlbedoMap = pAlbedo;
 }
 
 void Material::setNormalMap(ITexture2D* pNormal)
 {
-	m_pNormal = pNormal;
+	m_pNormalMap = pNormal;
 }
 
 void Material::release()
 {
 	SAFEDELETE(m_pSampler);
 }
-

@@ -17,7 +17,6 @@
 #include "SamplerVK.h"
 
 #include "Core/Camera.h"
-#include "Core/Material.h"
 #include "Core/LightSetup.h"
 
 #include <glm/gtc/type_ptr.hpp>
@@ -29,7 +28,6 @@ RendererVK::RendererVK(GraphicsContextVK* pContext)
 	m_pRenderPass(nullptr),
 	m_ppBackbuffers(),
 	m_pPipeline(nullptr),
-	m_pDescriptorSet(nullptr),
 	m_pDescriptorPool(nullptr),
 	m_pDescriptorSetLayout(nullptr),
 	m_pCameraBuffer(nullptr),
@@ -110,10 +108,6 @@ bool RendererVK::init()
 		return false;
 	}
 
-	//Last thing is to write to the descriptor set (Camera and LightBuffer)
-	m_pDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer, CAMERA_BUFFER_BINDING);
-	m_pDescriptorSet->writeUniformBufferDescriptor(m_pLightBuffer, LIGHT_BUFFER_BINDING);
-
 	return true;
 }
 
@@ -153,8 +147,6 @@ void RendererVK::beginFrame(const Camera& camera, const LightSetup& lightSetup)
 
 	m_ppCommandBuffers[m_CurrentFrame]->setViewports(&m_Viewport, 1);
 	m_ppCommandBuffers[m_CurrentFrame]->setScissorRects(&m_ScissorRect, 1);
-
-	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSet, 0, nullptr);
 }
 
 void RendererVK::endFrame()
@@ -218,23 +210,9 @@ void RendererVK::submitMesh(IMesh* pMesh, const Material& material, const glm::m
 	BufferVK* pIndexBuffer = reinterpret_cast<BufferVK*>(pMesh->getIndexBuffer());
 	m_ppCommandBuffers[m_CurrentFrame]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-    static bool submit = true;
-	if (submit)
-	{
-		BufferVK* pVertBuffer = reinterpret_cast<BufferVK*>(pMesh->getVertexBuffer());
-		m_pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer, VERTEX_BUFFER_BINDING);
+	DescriptorSetVK* pDescriptorSet = getDescriptorSetFromMeshAndMaterial(pMesh, &material);
+	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
 
-		SamplerVK* pSampler = reinterpret_cast<SamplerVK*>(material.getSampler());
-		Texture2DVK* pAlbedo = reinterpret_cast<Texture2DVK*>(material.getAlbedoMap());
-		m_pDescriptorSet->writeCombinedImageDescriptor(pAlbedo->getImageView(), pSampler, ALBEDO_MAP_BINDING);
-
-		Texture2DVK* pNormal = reinterpret_cast<Texture2DVK*>(material.getNormalMap());
-		m_pDescriptorSet->writeCombinedImageDescriptor(pNormal->getImageView(), pSampler, NORMAL_MAP_BINDING);
-
-		submit = false;
-	}
-
-	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSet, 0, nullptr);
 	m_ppCommandBuffers[m_CurrentFrame]->drawIndexInstanced(pMesh->getIndexCount(), 1, 0, 0, 0);
 }
 
@@ -411,9 +389,7 @@ bool RendererVK::createPipelineLayouts()
 	descriptorCounts.m_UniformBuffers	= 128;
 
 	m_pDescriptorPool = DBG_NEW DescriptorPoolVK(m_pContext->getDevice());
-	m_pDescriptorPool->init(descriptorCounts, 16);
-	m_pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
-	if (m_pDescriptorSet == nullptr)
+	if (!m_pDescriptorPool->init(descriptorCounts, 16))
 	{
 		return false;
 	}
@@ -453,4 +429,37 @@ bool RendererVK::createBuffers()
 
 	m_pLightBuffer = DBG_NEW BufferVK(m_pContext->getDevice());
 	return m_pLightBuffer->init(lightBufferParams);
+}
+
+DescriptorSetVK* RendererVK::getDescriptorSetFromMeshAndMaterial(const IMesh* pMesh, const Material* pMaterial)
+{
+	MeshFilter filter = {};
+	filter.pMesh = pMesh;
+	filter.pMaterial = pMaterial;
+
+	if (m_MeshTable.count(filter) == 0)
+	{
+		DescriptorSetVK* pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
+		pDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer, CAMERA_BUFFER_BINDING);
+		pDescriptorSet->writeUniformBufferDescriptor(m_pLightBuffer, LIGHT_BUFFER_BINDING);
+
+		BufferVK* pVertBuffer = reinterpret_cast<BufferVK*>(pMesh->getVertexBuffer());
+		pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer, VERTEX_BUFFER_BINDING);
+
+		SamplerVK* pSampler = reinterpret_cast<SamplerVK*>(pMaterial->getSampler());
+		Texture2DVK* pAlbedo = reinterpret_cast<Texture2DVK*>(pMaterial->getAlbedoMap());
+		pDescriptorSet->writeCombinedImageDescriptor(pAlbedo->getImageView(), pSampler, ALBEDO_MAP_BINDING);
+
+		Texture2DVK* pNormal = reinterpret_cast<Texture2DVK*>(pMaterial->getNormalMap());
+		pDescriptorSet->writeCombinedImageDescriptor(pNormal->getImageView(), pSampler, NORMAL_MAP_BINDING);
+
+		MeshPipeline meshPipeline = {};
+		meshPipeline.pDescriptorSets = pDescriptorSet;
+
+		m_MeshTable.insert(std::make_pair(filter, meshPipeline));
+		return pDescriptorSet;
+	}
+
+	MeshPipeline meshPipeline = m_MeshTable[filter];
+	return meshPipeline.pDescriptorSets;
 }

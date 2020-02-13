@@ -19,6 +19,8 @@ public:
 	virtual uint32_t getIndexCount() const override;
 	virtual uint32_t getVertexCount() const override;
 
+	virtual uint32_t getMeshID() const override;
+
 private:
 	glm::vec3 MeshVK::calculateTangent(const Vertex& v0, const Vertex& v1, const Vertex& v2);
 
@@ -28,4 +30,7 @@ private:
 	BufferVK* m_pIndexBuffer;
 	uint32_t m_VertexCount;
 	uint32_t m_IndexCount;
+	const uint32_t m_ID;
+
+	static uint32_t s_ID;
 };

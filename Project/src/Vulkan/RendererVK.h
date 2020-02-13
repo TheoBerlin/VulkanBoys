@@ -3,6 +3,11 @@
 
 #include "VulkanCommon.h"
 
+#include "Common/IMesh.h"
+#include "Core/Material.h"
+
+#include <unordered_map>
+
 class BufferVK;
 class PipelineVK;
 class RenderPassVK;
@@ -20,6 +25,42 @@ class DescriptorSetLayoutVK;
 #define LIGHT_BUFFER_BINDING 2
 #define ALBEDO_MAP_BINDING 3
 #define NORMAL_MAP_BINDING 4
+
+//Stealing name from Unity
+struct MeshFilter
+{
+	const IMesh* pMesh			= nullptr;
+	const Material* pMaterial	= nullptr;
+
+	FORCEINLINE bool operator==(const MeshFilter& other) const
+	{
+		ASSERT(pMesh		&& other.pMesh);
+		ASSERT(pMaterial	&& other.pMaterial);
+
+		return (pMesh->getMeshID() == other.pMesh->getMeshID()) && (pMaterial->getMaterialID() == other.pMaterial->getMaterialID());
+	}
+};
+
+namespace std
+{
+	template<> struct hash<MeshFilter>
+	{
+		size_t operator()(const MeshFilter& filter) const
+		{
+			ASSERT(filter.pMesh);
+			ASSERT(filter.pMaterial);
+
+			return ((hash<uint32_t>()(filter.pMesh->getMeshID()) ^
+				(hash<uint32_t>()(filter.pMaterial->getMaterialID()) << 1)) >> 1);
+		}
+	};
+}
+
+//Meshfilter is key, returns a meshpipeline -> gets descriptorset with correct vertexbuffer, textures, etc.
+struct MeshPipeline
+{
+	DescriptorSetVK* pDescriptorSets;
+};
 
 class RendererVK : public IRenderer
 {
@@ -58,7 +99,11 @@ private:
 	bool createPipelineLayouts();
 	bool createBuffers();
 
+	DescriptorSetVK* getDescriptorSetFromMeshAndMaterial(const IMesh* pMesh, const Material* pMaterial);
+
 private:
+	std::unordered_map<MeshFilter, MeshPipeline> m_MeshTable;
+
 	GraphicsContextVK* m_pContext;
 	CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
@@ -68,14 +113,15 @@ private:
 	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_RenderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
 
+	DescriptorPoolVK* m_pDescriptorPool;
+	
+	BufferVK* m_pCameraBuffer;
+	BufferVK* m_pLightBuffer;
+	
 	//TEMPORARY MOVE TO MATERIAL or SOMETHING
 	PipelineVK* m_pPipeline;
 	PipelineLayoutVK* m_pPipelineLayout;
-	DescriptorSetVK* m_pDescriptorSet;
-	DescriptorPoolVK* m_pDescriptorPool;
 	DescriptorSetLayoutVK* m_pDescriptorSetLayout;
-	BufferVK* m_pCameraBuffer;
-	BufferVK* m_pLightBuffer;
 
 	VkClearValue m_ClearColor;
 	VkClearValue m_ClearDepth;

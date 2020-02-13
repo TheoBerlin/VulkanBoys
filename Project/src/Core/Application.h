@@ -59,6 +59,7 @@ private:
 
 	//TODO: Resoures should they be here?
 	IMesh* m_pMesh;
+	IMesh* m_pSphere;
 	ITexture2D* m_pAlbedo;
 	ITexture2D* m_pNormal;
 	Material m_GunMaterial;
