@@ -40,6 +40,8 @@ public:
     void setRaytracer(IRenderer* pRaytracer);
     void setParticleRenderer(IRenderer* pParticleRenderer);
 
+    void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform);
+
     FrameBufferVK** getBackBuffers() { return m_ppBackbuffers; }
     RenderPassVK* getRenderPass() { return m_pRenderPass; }
     BufferVK* getCameraBuffer() { return m_pCameraBuffer; }

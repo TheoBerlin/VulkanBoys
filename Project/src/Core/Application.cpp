@@ -406,7 +406,7 @@ void Application::render(double dt)
 
 	//g_Rotation = glm::rotate(g_Rotation, glm::radians(15.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
 
-	m_pMeshRenderer->submitMesh(m_pMesh, g_Color, glm::mat4(1.0f) * g_Rotation);
+	m_pRenderingHandler->submitMesh(m_pMesh, g_Color, glm::mat4(1.0f) * g_Rotation);
 
 	m_pRenderingHandler->drawImgui(m_pImgui);
 	m_pRenderingHandler->endFrame();

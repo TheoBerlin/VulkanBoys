@@ -97,7 +97,7 @@ void MeshRendererVK::beginFrame(const Camera& camera)
 
 	m_ppCommandBuffers[m_CurrentFrame]->reset(false);
 	m_ppCommandPools[m_CurrentFrame]->reset();
-
+	
 	// Needed to begin a secondary buffer
 	VkCommandBufferInheritanceInfo inheritanceInfo = {};
 	inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
@@ -118,8 +118,10 @@ void MeshRendererVK::endFrame()
 	//m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
 	m_ppCommandBuffers[m_CurrentFrame]->end();
 
-	//DeviceVK* pDevice = m_pContext->getDevice();
-	//pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCommandBuffer(m_CurrentFrame), m_ppCommandBuffers[m_CurrentFrame]);
+	DeviceVK* pDevice = m_pContext->getDevice();
+	pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCommandBuffer(m_CurrentFrame), m_ppCommandBuffers[m_CurrentFrame]);
+	
+	m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 void MeshRendererVK::execute()
@@ -148,7 +150,6 @@ void MeshRendererVK::submitMesh(IMesh* pMesh, const glm::vec4& color, const glm:
 	ASSERT(pMesh != nullptr);
 
 	m_ppCommandBuffers[m_CurrentFrame]->bindGraphicsPipeline(m_pPipeline);
-	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSet, 0, nullptr);
 
 	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,				   sizeof(glm::mat4), (const void*)glm::value_ptr(transform));
 	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec4), (const void*)glm::value_ptr(color));
@@ -164,6 +165,7 @@ void MeshRendererVK::submitMesh(IMesh* pMesh, const glm::vec4& color, const glm:
 
 		submit = false;
 	}
+	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSet, 0, nullptr);
 
 	m_ppCommandBuffers[m_CurrentFrame]->drawIndexInstanced(pMesh->getIndexCount(), 1, 0, 0, 0);
 }
@@ -171,16 +173,6 @@ void MeshRendererVK::submitMesh(IMesh* pMesh, const glm::vec4& color, const glm:
 void MeshRendererVK::drawImgui(IImgui* pImgui)
 {
 	pImgui->render(m_ppCommandBuffers[m_CurrentFrame]);
-}
-
-void MeshRendererVK::drawTriangle(const glm::vec4& color, const glm::mat4& transform)
-{
-	m_ppCommandBuffers[m_CurrentFrame]->bindGraphicsPipeline(m_pPipeline);
-
-	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,					sizeof(glm::mat4), (const void*)glm::value_ptr(transform));
-	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4),	sizeof(glm::vec4), (const void*)glm::value_ptr(color));
-
-	m_ppCommandBuffers[m_CurrentFrame]->drawInstanced(3, 1, 0, 0);
 }
 
 bool MeshRendererVK::createSemaphores()

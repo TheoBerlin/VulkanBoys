@@ -33,17 +33,11 @@ public:
 
 	virtual void drawImgui(IImgui* pImgui) override;
 
-	// Temporary function
-	virtual void drawTriangle(const glm::vec4& color, const glm::mat4& transform) override;
-
-	CommandBufferVK* getCommandBuffer(uint32_t frameIndex) { return m_ppCommandBuffers[frameIndex]; }
-
 private:
 	bool createSemaphores();
 	bool createCommandPoolAndBuffers();
 	bool createPipelines();
 	bool createPipelineLayouts();
-	bool createBuffers();
 
 private:
 	GraphicsContextVK* m_pContext;

@@ -102,7 +102,7 @@ void RenderingHandlerVK::beginFrame(const Camera& camera)
 	m_ppCommandPools[m_CurrentFrame]->reset();
 	m_ppCommandBuffers[m_CurrentFrame]->begin(nullptr);
 
-	m_ppCommandBuffersSecondary[m_CurrentFrame]->reset();
+	m_ppCommandBuffersSecondary[m_CurrentFrame]->reset(false);
 	m_ppCommandPoolsSecondary[m_CurrentFrame]->reset();
 
 	// Needed to begin a secondary buffer
@@ -120,25 +120,29 @@ void RenderingHandlerVK::beginFrame(const Camera& camera)
 	cameraBuffer.View = camera.getViewMat();
 	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraBuffer, 0, (const void*)&cameraBuffer, sizeof(CameraBuffer));
 
-	std::vector<std::thread> recordingThreads;
 
-    if (m_pMeshRenderer != nullptr) {
-        recordingThreads.push_back(std::thread(&IRenderer::beginFrame, m_pMeshRenderer, camera));
-    }
+	//std::vector<std::thread> recordingThreads;
 
-    if (m_pRaytracer != nullptr) {
-        recordingThreads.push_back(std::thread(&IRenderer::beginFrame, m_pRaytracer, camera));
-    }
+    //if (m_pMeshRenderer != nullptr) {
+    //    recordingThreads.push_back(std::thread(&IRenderer::beginFrame, m_pMeshRenderer, camera));
+    //}
 
-    if (m_pParticleRenderer != nullptr) {
-        recordingThreads.push_back(std::thread(&IRenderer::beginFrame, m_pParticleRenderer, camera));
-    }
+    //if (m_pRaytracer != nullptr) {
+    //    recordingThreads.push_back(std::thread(&IRenderer::beginFrame, m_pRaytracer, camera));
+    //}
 
-    for (std::thread& thread : recordingThreads) {
-        thread.join();
-    }
+    //if (m_pParticleRenderer != nullptr) {
+    //    recordingThreads.push_back(std::thread(&IRenderer::beginFrame, m_pParticleRenderer, camera));
+    //}
 
+    //for (std::thread& thread : recordingThreads) {
+    //    thread.join();
+    //}
+
+	m_pMeshRenderer->beginFrame(camera);
+	
 	startRenderPass();
+
 }
 
 void RenderingHandlerVK::endFrame()
@@ -148,20 +152,20 @@ void RenderingHandlerVK::endFrame()
         m_pMeshRenderer->endFrame();
     }
 
-    if (m_pRaytracer != nullptr) {
-        m_pRaytracer->endFrame();
-    }
+    //if (m_pRaytracer != nullptr) {
+    //    m_pRaytracer->endFrame();
+    //}
 
-    if (m_pParticleRenderer != nullptr) {
-        m_pParticleRenderer->endFrame();
-    }
+    //if (m_pParticleRenderer != nullptr) {
+    //    m_pParticleRenderer->endFrame();
+    //}
 
 	// Execute renderers' secondary command buffers
 	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
 	m_ppCommandBuffersSecondary[m_CurrentFrame]->end();
 	pDevice->executeSecondaryCommandBuffer(m_ppCommandBuffers[m_CurrentFrame], m_ppCommandBuffersSecondary[m_CurrentFrame]);
 
-	m_pMeshRenderer->execute();
+	//m_pMeshRenderer->execute();
 
     // Submit the rendering handler's command buffer
     m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
@@ -230,6 +234,11 @@ void RenderingHandlerVK::setRaytracer(IRenderer* pRaytracer)
 void RenderingHandlerVK::setParticleRenderer(IRenderer* pParticleRenderer)
 {
 	m_pParticleRenderer = pParticleRenderer;
+}
+
+void RenderingHandlerVK::submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform)
+{
+	m_pMeshRenderer->submitMesh(pMesh, color, transform);
 }
 
 bool RenderingHandlerVK::createBackBuffers()
