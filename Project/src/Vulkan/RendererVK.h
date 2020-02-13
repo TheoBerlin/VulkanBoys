@@ -10,6 +10,7 @@
 
 class BufferVK;
 class PipelineVK;
+class Texture2DVK;
 class RenderPassVK;
 class FrameBufferVK;
 class CommandPoolVK;
@@ -97,7 +98,7 @@ private:
 	bool createRenderPass();
 	bool createPipelines();
 	bool createPipelineLayouts();
-	bool createBuffers();
+	bool createBuffersAndTextures();
 
 	DescriptorSetVK* getDescriptorSetFromMeshAndMaterial(const IMesh* pMesh, const Material* pMaterial);
 
@@ -115,6 +116,7 @@ private:
 
 	DescriptorPoolVK* m_pDescriptorPool;
 	
+	Texture2DVK* m_pDefaultTexture;
 	BufferVK* m_pCameraBuffer;
 	BufferVK* m_pLightBuffer;
 	

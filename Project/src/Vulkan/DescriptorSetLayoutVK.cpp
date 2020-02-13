@@ -21,10 +21,10 @@ DescriptorSetLayoutVK::~DescriptorSetLayoutVK()
 void DescriptorSetLayoutVK::addBindingStorageBuffer(VkShaderStageFlags shaderStageFlags, uint32_t bindingSlot, uint32_t descriptorCount)
 {
     VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = {};
-    descriptorSetLayoutBinding.binding = bindingSlot;
-    descriptorSetLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    descriptorSetLayoutBinding.descriptorCount = descriptorCount;
-    descriptorSetLayoutBinding.stageFlags = shaderStageFlags;
+    descriptorSetLayoutBinding.binding          = bindingSlot;
+    descriptorSetLayoutBinding.descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptorSetLayoutBinding.descriptorCount  = descriptorCount;
+    descriptorSetLayoutBinding.stageFlags       = shaderStageFlags;
     descriptorSetLayoutBinding.pImmutableSamplers = nullptr;
 
     m_DescriptorSetLayoutBindings.push_back(descriptorSetLayoutBinding);
@@ -57,10 +57,10 @@ void DescriptorSetLayoutVK::addBindingSampledImage(VkShaderStageFlags shaderStag
 void DescriptorSetLayoutVK::addBindingCombinedImage(VkShaderStageFlags shaderStageFlags, const VkSampler* pImmutableSampler, uint32_t bindingSlot, uint32_t descriptorCount)
 {
     VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = {};
-    descriptorSetLayoutBinding.binding = bindingSlot;
-    descriptorSetLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    descriptorSetLayoutBinding.descriptorCount = descriptorCount;
-    descriptorSetLayoutBinding.stageFlags = shaderStageFlags;
+    descriptorSetLayoutBinding.binding          = bindingSlot;
+    descriptorSetLayoutBinding.descriptorType   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorSetLayoutBinding.descriptorCount  = descriptorCount;
+    descriptorSetLayoutBinding.stageFlags       = shaderStageFlags;
     descriptorSetLayoutBinding.pImmutableSamplers = pImmutableSampler;
 
     m_DescriptorSetLayoutBindings.push_back(descriptorSetLayoutBinding);

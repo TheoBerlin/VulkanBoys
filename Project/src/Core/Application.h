@@ -63,6 +63,7 @@ private:
 	ITexture2D* m_pAlbedo;
 	ITexture2D* m_pNormal;
 	Material m_GunMaterial;
+	Material m_RedMaterial;
 
 	bool m_IsRunning;
 	bool m_UpdateCamera;

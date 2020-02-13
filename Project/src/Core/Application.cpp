@@ -198,6 +198,7 @@ void Application::init()
 		samplerParams.WrapModeS = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 		samplerParams.WrapModeT = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 		m_GunMaterial.createSampler(m_pContext, samplerParams);
+		m_RedMaterial.createSampler(m_pContext, samplerParams);
 
 		//Setup lights
 		m_LightSetup.addPointLight(PointLight(glm::vec3( 0.5f,  0.5f, -1.5f)));
@@ -249,6 +250,7 @@ void Application::release()
 	m_pContext->sync();
 
 	m_GunMaterial.release();
+	m_RedMaterial.release();
 
 	SAFEDELETE(m_pSphere)
 	SAFEDELETE(m_pNormal);
@@ -458,6 +460,9 @@ void Application::render(double dt)
 	m_pRenderer->submitMesh(m_pMesh, m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f)));
 	m_pRenderer->submitMesh(m_pMesh, m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 0.0f)));
 
+	//Set sphere color
+	m_RedMaterial.setAlbedo(g_Color);
+
 	constexpr uint32_t sphereCount = 8;
 	for (uint32_t y = 0; y < sphereCount; y++)
 	{
@@ -465,7 +470,7 @@ void Application::render(double dt)
 		for (uint32_t x = 0; x < sphereCount; x++)
 		{
 			float xCoord = ((float(sphereCount) * 0.5f) / -2.0f) + float(x * 0.5);
-			m_pRenderer->submitMesh(m_pSphere, m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)));
+			m_pRenderer->submitMesh(m_pSphere, m_RedMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)));
 		}
 	}
 

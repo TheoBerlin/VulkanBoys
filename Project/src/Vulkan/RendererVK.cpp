@@ -103,7 +103,7 @@ bool RendererVK::init()
 		return false;
 	}
 
-	if (!createBuffers())
+	if (!createBuffersAndTextures())
 	{
 		return false;
 	}
@@ -202,10 +202,9 @@ void RendererVK::submitMesh(IMesh* pMesh, const Material& material, const glm::m
 	ASSERT(pMesh != nullptr);
 
 	m_ppCommandBuffers[m_CurrentFrame]->bindGraphicsPipeline(m_pPipeline);
-	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(transform));
 
-	glm::vec4 color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec4), (const void*)glm::value_ptr(color));
+	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(transform));
+	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec4), (const void*)glm::value_ptr(material.getAlbedo()));
 
 	BufferVK* pIndexBuffer = reinterpret_cast<BufferVK*>(pMesh->getIndexBuffer());
 	m_ppCommandBuffers[m_CurrentFrame]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
@@ -409,7 +408,7 @@ bool RendererVK::createPipelineLayouts()
 	return true;
 }
 
-bool RendererVK::createBuffers()
+bool RendererVK::createBuffersAndTextures()
 {
 	BufferParams cameraBufferParams = {};
 	cameraBufferParams.Usage			= VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
@@ -428,7 +427,14 @@ bool RendererVK::createBuffers()
 	lightBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 	m_pLightBuffer = DBG_NEW BufferVK(m_pContext->getDevice());
-	return m_pLightBuffer->init(lightBufferParams);
+	if (!m_pLightBuffer->init(lightBufferParams))
+	{
+		return false;
+	}
+
+	uint8_t pixels[] = { 255, 255, 255, 255 };
+	m_pDefaultTexture = DBG_NEW Texture2DVK(m_pContext->getDevice());
+	return m_pDefaultTexture->initFromMemory(pixels, 1, 1);
 }
 
 DescriptorSetVK* RendererVK::getDescriptorSetFromMeshAndMaterial(const IMesh* pMesh, const Material* pMaterial)
@@ -447,10 +453,27 @@ DescriptorSetVK* RendererVK::getDescriptorSetFromMeshAndMaterial(const IMesh* pM
 		pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer, VERTEX_BUFFER_BINDING);
 
 		SamplerVK* pSampler = reinterpret_cast<SamplerVK*>(pMaterial->getSampler());
-		Texture2DVK* pAlbedo = reinterpret_cast<Texture2DVK*>(pMaterial->getAlbedoMap());
+
+		Texture2DVK* pAlbedo = nullptr;
+		if (pMaterial->hasAlbedoMap())
+		{
+			pAlbedo = reinterpret_cast<Texture2DVK*>(pMaterial->getAlbedoMap());
+		}
+		else
+		{
+			pAlbedo = m_pDefaultTexture;
+		}
 		pDescriptorSet->writeCombinedImageDescriptor(pAlbedo->getImageView(), pSampler, ALBEDO_MAP_BINDING);
 
-		Texture2DVK* pNormal = reinterpret_cast<Texture2DVK*>(pMaterial->getNormalMap());
+		Texture2DVK* pNormal = nullptr;
+		if (pMaterial->hasNormalMap())
+		{
+			pNormal = reinterpret_cast<Texture2DVK*>(pMaterial->getNormalMap());
+		}
+		else
+		{
+			pNormal = m_pDefaultTexture;
+		}
 		pDescriptorSet->writeCombinedImageDescriptor(pNormal->getImageView(), pSampler, NORMAL_MAP_BINDING);
 
 		MeshPipeline meshPipeline = {};
