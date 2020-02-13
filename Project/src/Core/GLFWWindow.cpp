@@ -24,7 +24,8 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 	m_ClientHeight(0),
 	m_OldClientWidth(0),
 	m_OldClientHeight(0),
-	m_IsFullscreen(false)
+	m_IsFullscreen(false),
+	m_HasFocus(false)
 {
 	if (s_WindowCount < 1)
 	{
@@ -40,7 +41,9 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 
 	if (s_HasGLFW)
 	{
-		glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
+		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+		glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_TRUE);
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
 		m_pWindow = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);

@@ -207,6 +207,8 @@ void Application::init()
 		m_LightSetup.addPointLight(PointLight(glm::vec3(-0.5f, -0.5f, -1.5f)));
 
 		TaskDispatcher::waitForTasks();
+
+		m_pWindow->show();
 	}
 }
 
