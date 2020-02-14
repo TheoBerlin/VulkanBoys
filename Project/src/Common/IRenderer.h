@@ -32,7 +32,4 @@ public:
 	virtual void submitMesh(IMesh* pMesh, const Material& material, const glm::mat4& transform) = 0;
 	
 	virtual void drawImgui(IImgui* pImgui) = 0;
-
-	//Temporary function
-	virtual void drawTriangle(const glm::vec4& color, const glm::mat4& transform) = 0;
 };

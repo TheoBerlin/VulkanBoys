@@ -37,17 +37,8 @@ void RenderPassVK::addSubpass(const VkAttachmentReference* pColorAttachments, ui
 	m_Subpasses.emplace_back(subpass);
 }
 
-void RenderPassVK::addSubpassDependency(uint32_t srcSubpass, uint32_t dstSubpass, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage, VkAccessFlags srcAccess, VkAccessFlags dstAccess)
+void RenderPassVK::addSubpassDependency(const VkSubpassDependency& dependency)
 {
-	VkSubpassDependency dependency = {};
-	dependency.srcSubpass		= srcSubpass;
-	dependency.srcStageMask		= srcStage;
-	dependency.srcAccessMask	= srcAccess;
-
-	dependency.dstSubpass		= dstSubpass;
-	dependency.dstStageMask		= dstStage;
-	dependency.dstAccessMask	= dstAccess;
-
 	m_SubpassDependencies.emplace_back(dependency);
 }
 

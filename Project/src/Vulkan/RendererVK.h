@@ -9,6 +9,7 @@
 #include <unordered_map>
 
 class BufferVK;
+class GBufferVK;
 class PipelineVK;
 class Texture2DVK;
 class RenderPassVK;
@@ -21,11 +22,17 @@ class PipelineLayoutVK;
 class GraphicsContextVK;
 class DescriptorSetLayoutVK;
 
+//Geometry pass
 #define CAMERA_BUFFER_BINDING 0
 #define VERTEX_BUFFER_BINDING 1
-#define LIGHT_BUFFER_BINDING 2
-#define ALBEDO_MAP_BINDING 3
-#define NORMAL_MAP_BINDING 4
+#define ALBEDO_MAP_BINDING 2
+#define NORMAL_MAP_BINDING 3
+
+//Light pass
+#define GBUFFER_ALBEDO_BINDING		0
+#define GBUFFER_NORMAL_BINDING		1
+#define GBUFFER_POSITION_BINDING	2
+#define LIGHT_BUFFER_BINDING 3
 
 //Stealing name from Unity
 struct MeshFilter
@@ -86,13 +93,11 @@ public:
 
 	virtual void drawImgui(IImgui* pImgui) override;
 
-	//Temporary function
-	virtual void drawTriangle(const glm::vec4& color, const glm::mat4& transform) override;
-
 private:
 	void createFramebuffers();
 	void releaseFramebuffers();
 
+	bool createGBuffer();
 	bool createSemaphores();
 	bool createCommandPoolAndBuffers();
 	bool createRenderPass();
@@ -109,6 +114,7 @@ private:
 	CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
 
+	GBufferVK* m_GBuffer;
 	RenderPassVK* m_pRenderPass;
 	FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
@@ -122,7 +128,12 @@ private:
 	
 	//TEMPORARY MOVE TO MATERIAL or SOMETHING
 	PipelineVK* m_pPipeline;
+	PipelineVK* m_pLightPipeline;
+	PipelineVK* m_pGeometryPipeline;
 	PipelineLayoutVK* m_pPipelineLayout;
+	PipelineLayoutVK* m_pLightPipelineLayout;
+	PipelineLayoutVK* m_pGeometryPipelineLayout;
+	DescriptorSetLayoutVK* m_pGeometryDescriptorSetLayout;
 	DescriptorSetLayoutVK* m_pDescriptorSetLayout;
 
 	VkClearValue m_ClearColor;

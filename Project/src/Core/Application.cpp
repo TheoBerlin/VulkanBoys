@@ -476,7 +476,7 @@ void Application::render(double dt)
 		}
 	}
 
-	m_pRenderer->drawImgui(m_pImgui);
+	//m_pRenderer->drawImgui(m_pImgui);
 
 	m_pRenderer->endFrame();
 
