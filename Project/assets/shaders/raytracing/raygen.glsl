@@ -7,9 +7,21 @@ layout(binding = 2, set = 0) uniform CameraProperties
 {
 	mat4 viewInverse;
 	mat4 projInverse;
+	vec4 lightPos;
 } cam;
 
-layout(location = 0) rayPayloadNV vec3 hitValue;
+
+struct RayPayload {
+	vec3 color;
+	float distance;
+	vec3 normal;
+	float reflector;
+};
+
+layout(location = 0) rayPayloadNV RayPayload rayPayload;
+
+// Max. number of recursion is passed via a specialization constant
+layout (constant_id = 0) const int MAX_RECURSION = 0;
 
 void main() 
 {
@@ -19,14 +31,57 @@ void main()
 
 	vec4 origin = cam.viewInverse * vec4(0,0,0,1);
 	vec4 target = cam.projInverse * vec4(d.x, d.y, 1, 1) ;
-	vec4 direction = cam.viewInverse*vec4(normalize(target.xyz / target.w), 0) ;
+	vec4 direction = cam.viewInverse*vec4(normalize(target.xyz / target.w), 0);
 
 	uint rayFlags = gl_RayFlagsOpaqueNV;
 	uint cullMask = 0xff;
 	float tmin = 0.001;
 	float tmax = 10000.0;
 
-	traceNV(topLevelAS, rayFlags, cullMask, 0, 0, 0, origin.xyz, tmin, direction.xyz, tmax, 0);
+	vec3 color = vec3(0.0);
+	
+	float previousRecursionMetallic = 1.0f;
 
-	imageStore(image, ivec2(gl_LaunchIDNV.xy), vec4(hitValue, 0.0));
+	for (int i = 0; i < 4; i++) {
+		traceNV(topLevelAS, rayFlags, cullMask, 0, 0, 0, origin.xyz, tmin, direction.xyz, tmax, 0);
+		vec3 hitColor = rayPayload.color;
+
+		if (rayPayload.distance < 0.0f) 
+		{
+			color += previousRecursionMetallic * hitColor;
+			break;
+		} 
+		else if (rayPayload.reflector > 0.1f) 
+		{
+			const vec4 hitPos = origin + direction * rayPayload.distance;
+			origin.xyz = hitPos.xyz + rayPayload.normal * 0.001f;
+			direction.xyz = reflect(direction.xyz, rayPayload.normal);
+			color += previousRecursionMetallic * (1.0f - rayPayload.reflector) * hitColor;
+			previousRecursionMetallic = rayPayload.reflector;
+		} 
+		else 
+		{
+			color += previousRecursionMetallic * hitColor;
+			break;
+		}
+
+		// if (rayPayload.distance < 0.0f) 
+		// {
+		// 	imageStore(image, ivec2(gl_LaunchIDNV.xy), vec4(rayPayload.normal, 1.0));
+		// 	return;
+		// } 
+		// else if (rayPayload.reflector == 1.0f) 
+		// {
+		// 	imageStore(image, ivec2(gl_LaunchIDNV.xy), vec4(rayPayload.normal, 1.0));
+		// 	return;
+		// } 
+		// else 
+		// {
+		// 	imageStore(image, ivec2(gl_LaunchIDNV.xy), vec4(rayPayload.normal, 1.0));
+		// 	return;
+		// }
+
+	}
+
+	imageStore(image, ivec2(gl_LaunchIDNV.xy), vec4(color, 1.0));
 }

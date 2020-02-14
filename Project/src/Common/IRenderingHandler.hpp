@@ -32,11 +32,11 @@ public:
     virtual void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform) = 0;
 
     // Setting a renderer to nullptr will disable it
-    virtual void setMeshRenderer(IRenderer* pMeshRenderer) = 0;
-    virtual void setRaytracer(IRenderer* pRaytracer) = 0;
-    virtual void setParticleRenderer(IRenderer* pParticleRenderer) = 0;
+    void setMeshRenderer(IRenderer* pMeshRenderer) { m_pMeshRenderer = pMeshRenderer; }
+    void setRayTracer(IRenderer* pRayTracer) { m_pRayTracer = pRayTracer; }
+    void setParticleRenderer(IRenderer* pParticleRenderer) { m_pParticleRenderer = pParticleRenderer; }
 
 protected:
     IGraphicsContext* m_pGraphicsContext;
-    IRenderer* m_pMeshRenderer, *m_pRaytracer, *m_pParticleRenderer;
+    IRenderer* m_pMeshRenderer, *m_pRayTracer, *m_pParticleRenderer;
 };

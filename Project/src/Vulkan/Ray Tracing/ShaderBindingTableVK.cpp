@@ -14,14 +14,10 @@ ShaderBindingTableVK::ShaderBindingTableVK(IGraphicsContext* pContext) :
 
 ShaderBindingTableVK::~ShaderBindingTableVK()
 {
-	if (m_pSBT != nullptr)
-	{
-		delete m_pSBT;
-		m_pSBT = nullptr;
-	}
+	SAFEDELETE(m_pSBT);
 }
 
-bool ShaderBindingTableVK::finalize(RayTracingPipelineVK* pRayTracingPipeline)
+bool ShaderBindingTableVK::init(RayTracingPipelineVK* pRayTracingPipeline)
 {
 	// Create buffer for the shader binding table
 	uint32_t shaderGroupHandleSize = m_pContext->getDevice()->getRayTracingProperties().shaderGroupHandleSize;
@@ -45,7 +41,13 @@ bool ShaderBindingTableVK::finalize(RayTracingPipelineVK* pRayTracingPipeline)
 		m_pSBT->unmap();
 		return false;
 	}
-	
 	m_pSBT->unmap();
+
+	m_BindingOffsetRaygenShaderGroup = 0;
+	m_BindingOffsetMissShaderGroup = pRayTracingPipeline->getNumRaygenShaderGroups() * shaderGroupHandleSize;
+	m_BindingOffsetIntersectShaderGroup = m_BindingOffsetMissShaderGroup + pRayTracingPipeline->getNumMissShaderGroups() * shaderGroupHandleSize;
+	m_BindingStride = shaderGroupHandleSize; //Todo: Is this even correct?
+	
+	LOG("--- ShaderBindingTable: Successfully created ShaderBindingTable!");
 	return true;
 }

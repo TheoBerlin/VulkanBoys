@@ -36,10 +36,6 @@ public:
     void setClearColor(const glm::vec3& color);
     void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY);
 
-    void setMeshRenderer(IRenderer* pMeshRenderer);
-    void setRaytracer(IRenderer* pRaytracer);
-    void setParticleRenderer(IRenderer* pParticleRenderer);
-
     void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform);
 
     FrameBufferVK** getBackBuffers() { return m_ppBackbuffers; }
@@ -62,7 +58,6 @@ private:
 
 private:
     GraphicsContextVK* m_pGraphicsContext;
-    IRenderer* m_pMeshRenderer, *m_pRaytracer, *m_pParticleRenderer;
 
     FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
@@ -86,4 +81,6 @@ private:
 	VkRect2D m_ScissorRect;
 
     BufferVK* m_pCameraBuffer;
+
+    bool m_EnableRayTracing;
 };

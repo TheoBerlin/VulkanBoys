@@ -278,7 +278,7 @@ VkBool32 InstanceVK::DebugCallback(
 	VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
 	void* pUserData)
 {
-	std::cerr << "---Validation Layer: ";
+	std::cerr << "--- Validation Layer: ";
 
 	if ((messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) >= 1)
 	{

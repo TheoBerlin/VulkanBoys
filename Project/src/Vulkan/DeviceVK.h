@@ -7,6 +7,7 @@
 
 class InstanceVK;
 class CommandBufferVK;
+class CopyHandlerVK;
 
 struct QueueFamilyIndices
 {
@@ -49,9 +50,13 @@ public:
 	VkQueue getTransferQueue() { return m_TransferQueue; }
 	VkQueue getPresentQueue() { return m_PresentQueue; }
 
+	CopyHandlerVK* getCopyHandler() const { return m_pCopyHandler; }
+
 	const QueueFamilyIndices& getQueueFamilyIndices() const { return m_DeviceQueueFamilyIndices; }
+	bool hasUniqueQueueFamilyIndices() const;
 	
 	const VkPhysicalDeviceRayTracingPropertiesNV& getRayTracingProperties() const { return m_RayTracingProperties; }
+	bool supportsRayTracing() const { return m_ExtensionsStatus.at(VK_NV_RAY_TRACING_EXTENSION_NAME); }
 
 private:
 	bool initPhysicalDevice(InstanceVK* pInstance);
@@ -81,8 +86,10 @@ private:
 	std::vector<const char*> m_RequestedRequiredExtensions;
 	std::vector<const char*> m_RequestedOptionalExtensions;
 	std::vector<const char*> m_EnabledExtensions;
-	std::unordered_map<std::string, bool> m_OptionalRequestedExtensionsStatus;
+	std::unordered_map<std::string, bool> m_ExtensionsStatus;
 	std::vector<VkExtensionProperties> m_AvailabeExtensions;
+
+	CopyHandlerVK* m_pCopyHandler;
 
 	//Extensions
 	VkPhysicalDeviceRayTracingPropertiesNV m_RayTracingProperties;

@@ -15,9 +15,6 @@
 
 RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
     :m_pGraphicsContext(pGraphicsContext),
-	m_pMeshRenderer(nullptr),
-	m_pRaytracer(nullptr),
-	m_pParticleRenderer(nullptr),
     m_pRenderPass(nullptr),
     m_CurrentFrame(0),
 	m_BackBufferIndex(0),
@@ -33,6 +30,8 @@ RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
         m_ppCommandPools[i] = VK_NULL_HANDLE;
         m_ppCommandBuffers[i] = VK_NULL_HANDLE;
     }
+
+	m_EnableRayTracing = m_pGraphicsContext->supportsRayTracing();
 }
 
 RenderingHandlerVK::~RenderingHandlerVK()
@@ -93,9 +92,11 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 
 void RenderingHandlerVK::beginFrame(const Camera& camera)
 {
+
 	SwapChainVK* pSwapChain = m_pGraphicsContext->getSwapChain();
 	pSwapChain->acquireNextImage(m_ImageAvailableSemaphores[m_CurrentFrame]);
 	m_BackBufferIndex = pSwapChain->getImageIndex();
+
 
 	// Prepare for frame
 	m_ppCommandBuffers[m_CurrentFrame]->reset();
@@ -104,6 +105,12 @@ void RenderingHandlerVK::beginFrame(const Camera& camera)
 
 	m_ppCommandBuffersSecondary[m_CurrentFrame]->reset(false);
 	m_ppCommandPoolsSecondary[m_CurrentFrame]->reset();
+
+	// Update camera
+	CameraBuffer cameraBuffer = {};
+	cameraBuffer.Projection = camera.getProjectionMat();
+	cameraBuffer.View = camera.getViewMat();
+	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraBuffer, 0, (const void*)&cameraBuffer, sizeof(CameraBuffer));
 
 	// Needed to begin a secondary buffer
 	VkCommandBufferInheritanceInfo inheritanceInfo = {};
@@ -114,43 +121,45 @@ void RenderingHandlerVK::beginFrame(const Camera& camera)
 	inheritanceInfo.framebuffer = m_ppBackbuffers[m_BackBufferIndex]->getFrameBuffer();
 	m_ppCommandBuffersSecondary[m_CurrentFrame]->begin(&inheritanceInfo);
 
-	// Update camera
-	CameraBuffer cameraBuffer = {};
-	cameraBuffer.Projection = camera.getProjectionMat();
-	cameraBuffer.View = camera.getViewMat();
-	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraBuffer, 0, (const void*)&cameraBuffer, sizeof(CameraBuffer));
+	if (m_pRayTracer != nullptr) {
+		m_pRayTracer->beginRayTraceFrame(camera);
+		m_pRayTracer->traceRays();
+	} else if (m_pMeshRenderer != nullptr) {
+		//std::vector<std::thread> recordingThreads;
 
+		//if (m_pMeshRenderer != nullptr) {
+		//    recordingThreads.push_back(std::thread(&IRenderer::beginFrame, m_pMeshRenderer, camera));
+		//}
 
-	//std::vector<std::thread> recordingThreads;
+		//if (m_pRaytracer != nullptr) {
+		//    recordingThreads.push_back(std::thread(&IRenderer::beginFrame, m_pRaytracer, camera));
+		//}
 
-    //if (m_pMeshRenderer != nullptr) {
-    //    recordingThreads.push_back(std::thread(&IRenderer::beginFrame, m_pMeshRenderer, camera));
-    //}
+		//if (m_pParticleRenderer != nullptr) {
+		//    recordingThreads.push_back(std::thread(&IRenderer::beginFrame, m_pParticleRenderer, camera));
+		//}
 
-    //if (m_pRaytracer != nullptr) {
-    //    recordingThreads.push_back(std::thread(&IRenderer::beginFrame, m_pRaytracer, camera));
-    //}
+		//for (std::thread& thread : recordingThreads) {
+		//    thread.join();
+		//}
 
-    //if (m_pParticleRenderer != nullptr) {
-    //    recordingThreads.push_back(std::thread(&IRenderer::beginFrame, m_pParticleRenderer, camera));
-    //}
+		m_pMeshRenderer->beginFrame(camera);
 
-    //for (std::thread& thread : recordingThreads) {
-    //    thread.join();
-    //}
-
-	m_pMeshRenderer->beginFrame(camera);
-	
-	startRenderPass();
-
+		startRenderPass();
+	}
 }
 
 void RenderingHandlerVK::endFrame()
 {
+	if (m_pRayTracer != nullptr) {
+		m_pRayTracer->endRayTraceFrame();
+	} else if (m_pMeshRenderer != nullptr) {
+		m_pMeshRenderer->endFrame();
+	}
 
-    if (m_pMeshRenderer != nullptr) {
-        m_pMeshRenderer->endFrame();
-    }
+    // if (m_pMeshRenderer != nullptr) {
+    //     m_pMeshRenderer->endFrame();
+    // }
 
     //if (m_pRaytracer != nullptr) {
     //    m_pRaytracer->endFrame();
@@ -165,10 +174,11 @@ void RenderingHandlerVK::endFrame()
 	m_ppCommandBuffersSecondary[m_CurrentFrame]->end();
 	pDevice->executeSecondaryCommandBuffer(m_ppCommandBuffers[m_CurrentFrame], m_ppCommandBuffersSecondary[m_CurrentFrame]);
 
-	//m_pMeshRenderer->execute();
-
     // Submit the rendering handler's command buffer
-    m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
+	if (m_pRayTracer == nullptr) {
+    	m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
+	}
+
 	m_ppCommandBuffers[m_CurrentFrame]->end();
 
 	// Execute commandbuffer
@@ -187,7 +197,6 @@ void RenderingHandlerVK::swapBuffers()
 
 void RenderingHandlerVK::drawImgui(IImgui* pImgui)
 {
-	//m_pMeshRenderer->drawImgui(pImgui);
     pImgui->render(m_ppCommandBuffersSecondary[m_CurrentFrame]); // TODO: Get this running
 }
 
@@ -219,21 +228,6 @@ void RenderingHandlerVK::setViewport(float width, float height, float minDepth, 
 	m_ScissorRect.offset.y = 0;
 
 	m_pMeshRenderer->setViewport(width, height, minDepth, maxDepth, topX, topY);
-}
-
-void RenderingHandlerVK::setMeshRenderer(IRenderer* pMeshRenderer)
-{
-	m_pMeshRenderer = pMeshRenderer;
-}
-
-void RenderingHandlerVK::setRaytracer(IRenderer* pRaytracer)
-{
-	m_pRaytracer = pRaytracer;
-}
-
-void RenderingHandlerVK::setParticleRenderer(IRenderer* pParticleRenderer)
-{
-	m_pParticleRenderer = pParticleRenderer;
 }
 
 void RenderingHandlerVK::submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform)
@@ -352,21 +346,10 @@ void RenderingHandlerVK::releaseBackBuffers()
 
 void RenderingHandlerVK::startRenderPass()
 {
-	/*SwapChainVK* pSwapChain = m_pGraphicsContext->getSwapChain();
-
-	m_ppCommandBuffers[m_CurrentFrame]->reset();
-	m_ppCommandPools[m_CurrentFrame]->reset();
-	m_ppCommandBuffers[m_CurrentFrame]->begin(nullptr);
-
-	// Prepare for frame
-	pSwapChain->acquireNextImage(m_ImageAvailableSemaphores[m_CurrentFrame]);
-	uint32_t backBufferIndex = pSwapChain->getImageIndex();*/
 
 	// Start renderpass
 	VkClearValue clearValues[] = { m_ClearColor, m_ClearDepth };
 	m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pRenderPass, m_ppBackbuffers[m_BackBufferIndex], m_Viewport.width, m_Viewport.height, clearValues, 2);
-	// m_ppCommandBuffersSecondary[m_CurrentFrame]->setViewports(&m_Viewport, 1);
-	// m_ppCommandBuffersSecondary[m_CurrentFrame]->setScissorRects(&m_ScissorRect, 1);
 }
 
 bool RenderingHandlerVK::createBuffers()

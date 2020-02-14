@@ -9,6 +9,7 @@ class IInputHandler;
 class IMesh;
 class IRenderer;
 class IRenderingHandler;
+class ITexture2D;
 class IWindow;
 
 class Application : public IEventHandler
@@ -57,9 +58,11 @@ private:
 
 	//TODO: Resoures should they be here?
 	IMesh* m_pMesh;
+	ITexture2D* m_pAlbedo;
 
 	bool m_IsRunning;
 	bool m_UpdateCamera;
+	bool m_EnableRayTracing;
 
 	static Application* s_pInstance;
 };

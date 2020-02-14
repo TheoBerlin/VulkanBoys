@@ -11,7 +11,7 @@ layout (push_constant) uniform Constants
 
 layout(location = 0) in vec3 in_Normal;
 
-const vec3 dir = vec3(0.0f, -1.0f, -1.0f);
+const vec3 dir = vec3(0.0f, 1.0f, -1.0f);
 
 void main()
 {

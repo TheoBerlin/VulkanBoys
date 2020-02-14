@@ -40,12 +40,23 @@ bool BufferVK::init(const BufferParams& params)
 	bufferInfo.flags	= 0;
 	bufferInfo.size		= params.SizeInBytes;
 	bufferInfo.usage	= params.Usage;
-	bufferInfo.queueFamilyIndexCount	= 0;
-	bufferInfo.pQueueFamilyIndices		= nullptr;
-	bufferInfo.sharingMode				= VK_SHARING_MODE_EXCLUSIVE;
+
+	if (params.IsExclusive || !m_pDevice->hasUniqueQueueFamilyIndices())
+	{
+		bufferInfo.queueFamilyIndexCount = 0;
+		bufferInfo.pQueueFamilyIndices = nullptr;
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	}
+	else
+	{
+		uint32_t queueFamilies[3] = { m_pDevice->getQueueFamilyIndices().graphicsFamily.value(), m_pDevice->getQueueFamilyIndices().computeFamily.value(), m_pDevice->getQueueFamilyIndices().transferFamily.value() };
+		bufferInfo.queueFamilyIndexCount = 3;
+		bufferInfo.pQueueFamilyIndices = queueFamilies;
+		bufferInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+	}
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateBuffer(m_pDevice->getDevice(), &bufferInfo, nullptr, &m_Buffer), "Failed to create buffer");
-	
+
 	m_Params = params;
 	D_LOG("--- Buffer: Vulkan Buffer created successfully. SizeInBytes=%d", m_Params.SizeInBytes);
 
