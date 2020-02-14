@@ -84,7 +84,7 @@ bool MeshVK::initFromFile(const std::string& filepath)
 
 	for (uint32_t index = 0; index < indices.size(); index += 3)
 	{
-		Vertex& v0 = vertices[indices[index    ]];
+		Vertex& v0 = vertices[indices[index + 0]];
 		Vertex& v1 = vertices[indices[index + 1]];
 		Vertex& v2 = vertices[indices[index + 2]];
 
@@ -161,12 +161,11 @@ glm::vec4 MeshVK::calculateTangent(const Vertex& v0, const Vertex& v1, const Ver
 
 	float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
 
-	glm::vec4 tangent;
+	glm::vec3 tangent;
 	tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
 	tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
 	tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
 	tangent = glm::normalize(tangent);
-	tangent.w = 0.0f;
 
-	return tangent;
+	return glm::vec4(tangent, 0.0f);
 }

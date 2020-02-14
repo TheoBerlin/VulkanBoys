@@ -275,13 +275,12 @@ void CommandBufferVK::drawIndexInstanced(uint32_t indexCount, uint32_t instanceC
 	vkCmdDrawIndexed(m_CommandBuffer, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
 }
 
-void CommandBufferVK::traceRays(ShaderBindingTableVK* pShaderBindingTable, uint32_t width, uint32_t height)
+void CommandBufferVK::traceRays(ShaderBindingTableVK* pShaderBindingTable, uint32_t width, uint32_t height, uint32_t raygenOffset)
 {
 	VkBuffer bufferSBT = pShaderBindingTable->getBuffer()->getBuffer();
 
-	uint32_t raygenOffset = pShaderBindingTable->getBindingOffsetRaygenShaderGroup();
 	uint32_t missOffset = pShaderBindingTable->getBindingOffsetMissShaderGroup();
-	uint32_t intersectOffset = pShaderBindingTable->getBindingOffsetIntersectShaderGroup();
+	uint32_t intersectOffset = pShaderBindingTable->getBindingOffsetHitShaderGroup();
 
 	m_pDevice->vkCmdTraceRaysNV(m_CommandBuffer,
 		bufferSBT, raygenOffset,

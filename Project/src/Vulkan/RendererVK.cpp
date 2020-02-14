@@ -93,6 +93,8 @@ RendererVK::~RendererVK()
 
 	SAFEDELETE(m_pMeshCube);
 	SAFEDELETE(m_pMeshGun);
+	SAFEDELETE(m_pMeshSphere);
+	SAFEDELETE(m_pMeshPlane);
 
 	SAFEDELETE(m_pRaygenShader);
 	SAFEDELETE(m_pClosestHitShader);
@@ -102,6 +104,8 @@ RendererVK::~RendererVK()
 
 	SAFEDELETE(m_pGunMaterial);
 	SAFEDELETE(m_pCubeMaterial);
+	SAFEDELETE(m_pSphereMaterial);
+	SAFEDELETE(m_pPlaneMaterial);
 
 	m_pContext = nullptr;
 }
@@ -160,7 +164,7 @@ bool RendererVK::init()
 	//IMesh* pMesh = m_pContext->createMesh();
 	//pMesh->initFromMemory(vertices, 3, indices, 3);
 
-	Vertex vertices[] =
+	Vertex cubeVertices[] =
 	{
 		//FRONT FACE
 		{ glm::vec4(-0.5,  0.5, -0.5, 1.0f), glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
@@ -199,7 +203,7 @@ bool RendererVK::init()
 		{ glm::vec4(0.5, -0.5,  0.5, 1.0f),  glm::vec4(0.0f, -1.0f,  0.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
 	};
 
-	uint32_t indices[] =
+	uint32_t cubeIndices[] =
 	{
 		//FRONT FACE
 		2, 1, 0,
@@ -226,6 +230,22 @@ bool RendererVK::init()
 		22, 23, 21
 	};
 
+	Vertex planeVertices[] =
+	{
+		//TOP FACE
+		{ glm::vec4(-0.5, 0.5, 0.5, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
+		{ glm::vec4(0.5,  0.5,  0.5, 1.0f),  glm::vec4(0.0f,  1.0f,  0.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
+		{ glm::vec4(-0.5,  0.5, -0.5, 1.0f), glm::vec4(0.0f,  1.0f,  0.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
+		{ glm::vec4(0.5,  0.5, -0.5, 1.0f),  glm::vec4(0.0f,  1.0f,  0.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
+	};
+
+	uint32_t planeIndices[] =
+	{
+		//TOP FACE
+		2, 1, 0,
+		2, 3, 1,
+	};
+
 	m_pGunMaterial = new TempMaterial();
 	m_pGunMaterial->pAlbedo = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
 	m_pGunMaterial->pAlbedo->initFromFile("assets/textures/gunAlbedo.tga");
@@ -233,8 +253,8 @@ bool RendererVK::init()
 	m_pGunMaterial->pNormalMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
 	m_pGunMaterial->pNormalMap->initFromFile("assets/textures/gunNormal.tga");
 
-	m_pGunMaterial->pMetallicMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
-	m_pGunMaterial->pMetallicMap->initFromFile("assets/textures/gunMetallic.tga");
+	m_pGunMaterial->pRoughnessMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
+	m_pGunMaterial->pRoughnessMap->initFromFile("assets/textures/gunRoughness.tga");
 
 	m_pCubeMaterial = new TempMaterial();
 	m_pCubeMaterial->pAlbedo = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
@@ -243,36 +263,62 @@ bool RendererVK::init()
 	m_pCubeMaterial->pNormalMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
 	m_pCubeMaterial->pNormalMap->initFromFile("assets/textures/cubeNormal.jpg");
 
-	m_pCubeMaterial->pMetallicMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
-	m_pCubeMaterial->pMetallicMap->initFromFile("assets/textures/cubeMetallic.jpg");
+	m_pCubeMaterial->pRoughnessMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
+	m_pCubeMaterial->pRoughnessMap->initFromFile("assets/textures/cubeRoughness.jpg");
+
+	m_pSphereMaterial = new TempMaterial();
+	m_pSphereMaterial->pAlbedo = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
+	m_pSphereMaterial->pAlbedo->initFromFile("assets/textures/whiteTransparent.png");
+
+	m_pSphereMaterial->pNormalMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
+	m_pSphereMaterial->pNormalMap->initFromFile("assets/textures/cubeNormal.jpg");
+
+	m_pSphereMaterial->pRoughnessMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
+	m_pSphereMaterial->pRoughnessMap->initFromFile("assets/textures/whiteOpaque.png");
+
+	m_pPlaneMaterial = new TempMaterial();
+	m_pPlaneMaterial->pAlbedo = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
+	m_pPlaneMaterial->pAlbedo->initFromFile("assets/textures/woodAlbedo.png");
+
+	m_pPlaneMaterial->pNormalMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
+	m_pPlaneMaterial->pNormalMap->initFromFile("assets/textures/woodNormal.png");
+
+	m_pPlaneMaterial->pRoughnessMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
+	m_pPlaneMaterial->pRoughnessMap->initFromFile("assets/textures/woodRoughness.png");
 
 	m_pMeshCube = m_pContext->createMesh();
-	m_pMeshCube->initFromMemory(vertices, 24, indices, 36);
+	m_pMeshCube->initFromMemory(cubeVertices, 24, cubeIndices, 36);
 	
 	m_pMeshGun = m_pContext->createMesh();
 	m_pMeshGun->initFromFile("assets/meshes/gun.obj");
-	
-	m_Matrix0 = glm::mat4(1.0f);
-	m_Matrix1 = glm::mat4(1.0f);
-	m_Matrix2 = glm::mat4(1.0f);
-	m_Matrix3 = glm::mat4(1.0f);
 
-	m_Matrix0 = glm::transpose(glm::translate(m_Matrix0, glm::vec3(0.0f, 0.0f, 0.0f)));
-	m_Matrix1 = glm::transpose(glm::translate(m_Matrix1, glm::vec3(0.0f, 1.0f, 0.0f)));
-	m_Matrix2 = glm::transpose(glm::translate(m_Matrix2, glm::vec3(0.0f, 2.0f, 0.0f)));
-	m_Matrix3 = glm::transpose(glm::translate(m_Matrix3, glm::vec3(1.0f, 2.0f, 0.0f)));
+	m_pMeshSphere = m_pContext->createMesh();
+	m_pMeshSphere->initFromFile("assets/meshes/sphere.obj");
+
+	m_pMeshPlane = m_pContext->createMesh();
+	m_pMeshPlane->initFromMemory(planeVertices, 4, planeIndices, 6);
+
+	m_Matrix0 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f)));
+	m_Matrix1 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
+	m_Matrix2 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f)));
+	m_Matrix3 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 2.0f, 0.0f)));
+	m_Matrix4 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 0.0f)));
+	m_Matrix5 = glm::transpose(glm::scale(glm::mat4(1.0f), glm::vec3(20.0f, 1.0f, 20.0f)));
+	m_Matrix5 = glm::transpose(glm::translate(m_Matrix5, glm::vec3(0.0f, -1.0f, 0.0f)));
 
 	m_pRayTracingScene = new RayTracingSceneVK(m_pContext);
 	m_InstanceIndex0 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshGun, m_pGunMaterial, m_Matrix0);
 	m_InstanceIndex1 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshGun, m_pGunMaterial, m_Matrix1);
 	m_InstanceIndex2 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshGun, m_pGunMaterial, m_Matrix2);
 	m_InstanceIndex3 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshCube, m_pCubeMaterial, m_Matrix3);
+	m_InstanceIndex4 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshSphere, m_pSphereMaterial, m_Matrix4);
+	m_InstanceIndex5 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshPlane, m_pPlaneMaterial, m_Matrix5);
 	m_pRayTracingScene->finalize();
 
 	m_TempTimer = 0;
 
 	RaygenGroupParams raygenGroupParams = {};
-	IntersectGroupParams intersectGroupParams = {};
+	HitGroupParams hitGroupParams = {};
 	MissGroupParams missGroupParams = {};
 
 	{
@@ -284,7 +330,8 @@ bool RendererVK::init()
 		m_pClosestHitShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
 		m_pClosestHitShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/closesthit.spv");
 		m_pClosestHitShader->finalize();
-		intersectGroupParams.pClosestHitShader = m_pClosestHitShader;
+		m_pClosestHitShader->setSpecializationConstant<uint32_t>(0, 3);
+		hitGroupParams.pClosestHitShader = m_pClosestHitShader;
 
 		m_pMissShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
 		m_pMissShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/miss.spv");
@@ -298,7 +345,7 @@ bool RendererVK::init()
 	m_pRayTracingPipeline = new RayTracingPipelineVK(m_pContext->getDevice());
 	m_pRayTracingPipeline->addRaygenShaderGroup(raygenGroupParams);
 	m_pRayTracingPipeline->addMissShaderGroup(missGroupParams);
-	m_pRayTracingPipeline->addIntersectShaderGroup(intersectGroupParams);
+	m_pRayTracingPipeline->addHitShaderGroup(hitGroupParams);
 	m_pRayTracingPipeline->finalize(m_pRayTracingPipelineLayout);
 	
 	m_pSBT = new ShaderBindingTableVK(m_pContext);
@@ -371,8 +418,8 @@ bool RendererVK::init()
 	albedoImageViews.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
 	std::vector<VkImageView> normalImageViews;
 	normalImageViews.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
-	std::vector<VkImageView> metallicImageViews;
-	metallicImageViews.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
+	std::vector<VkImageView> roughnessImageViews;
+	roughnessImageViews.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
 
 	m_pSampler = new SamplerVK(m_pContext->getDevice());
 	m_pSampler->init(VkFilter::VK_FILTER_LINEAR, VkFilter::VK_FILTER_LINEAR, VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT, VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT);
@@ -387,13 +434,13 @@ bool RendererVK::init()
 		{
 			albedoImageViews.push_back(allMaterials[i]->pAlbedo->getImageView()->getImageView());
 			normalImageViews.push_back(allMaterials[i]->pNormalMap->getImageView()->getImageView());
-			metallicImageViews.push_back(allMaterials[i]->pMetallicMap->getImageView()->getImageView());
+			roughnessImageViews.push_back(allMaterials[i]->pRoughnessMap->getImageView()->getImageView());
 		}
 		else
 		{
 			albedoImageViews.push_back(allMaterials[0]->pAlbedo->getImageView()->getImageView());
 			normalImageViews.push_back(allMaterials[0]->pNormalMap->getImageView()->getImageView());
-			metallicImageViews.push_back(allMaterials[0]->pMetallicMap->getImageView()->getImageView());
+			roughnessImageViews.push_back(allMaterials[0]->pRoughnessMap->getImageView()->getImageView());
 		}
 	}
 
@@ -405,7 +452,7 @@ bool RendererVK::init()
 	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pRayTracingScene->getMeshIndexBuffer()->getBuffer(), 5);
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(albedoImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 6);
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(normalImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 7);
-	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(metallicImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 8);
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(roughnessImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 8);
 	
 	return true;
 }
@@ -469,9 +516,12 @@ void RendererVK::beginRayTraceFrame(const Camera& camera)
 	glm::mat4 matrix2 = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f));
 	m_Matrix2 = glm::transpose(glm::rotate(matrix2, m_TempTimer, glm::vec3(0.0f, 1.0f, 0.0f)));
 	m_Matrix3 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f + glm::sin(m_TempTimer), 0.0)));
+	glm::mat4 matrix4 = glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 0.0f));
+	m_Matrix4 = glm::transpose(glm::rotate(matrix4, m_TempTimer, glm::vec3(0.0f, 1.0f, 0.0f)));
 	m_pRayTracingScene->updateMeshInstance(m_InstanceIndex1, m_Matrix1);
 	m_pRayTracingScene->updateMeshInstance(m_InstanceIndex2, m_Matrix2);
 	m_pRayTracingScene->updateMeshInstance(m_InstanceIndex3, m_Matrix3);
+	m_pRayTracingScene->updateMeshInstance(m_InstanceIndex4, m_Matrix4);
 	m_pRayTracingScene->update();
 
 	m_ppComputeCommandBuffers[m_CurrentFrame]->reset();
@@ -596,7 +646,7 @@ void RendererVK::traceRays()
 
 	m_ppComputeCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipelineLayout, 0, 1, &m_pRayTracingDescriptorSet, 0, nullptr);
 
-	m_ppComputeCommandBuffers[m_CurrentFrame]->traceRays(m_pSBT, m_pContext->getSwapChain()->getExtent().width, m_pContext->getSwapChain()->getExtent().height);
+	m_ppComputeCommandBuffers[m_CurrentFrame]->traceRays(m_pSBT, m_pContext->getSwapChain()->getExtent().width, m_pContext->getSwapChain()->getExtent().height, 0);
 }
 
 void RendererVK::drawImgui(IImgui* pImgui)

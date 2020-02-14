@@ -11,7 +11,7 @@ struct RaygenGroupParams
 	ShaderVK* pRaygenShader = nullptr;
 };
 
-struct IntersectGroupParams
+struct HitGroupParams
 {
 	ShaderVK* pIntersectShader = nullptr;
 	ShaderVK* pAnyHitShader = nullptr;
@@ -33,7 +33,7 @@ public:
 
 	void addRaygenShaderGroup(const RaygenGroupParams& params);
 	void addMissShaderGroup(const MissGroupParams& params);
-	void addIntersectShaderGroup(const IntersectGroupParams& params);
+	void addHitShaderGroup(const HitGroupParams& params);
 
 	bool finalize(PipelineLayoutVK* pPipelineLayout);
 	
@@ -42,7 +42,7 @@ public:
 	VkPipeline getPipeline() { return m_Pipeline; }
 	uint32_t getNumRaygenShaderGroups() { return m_RaygenShaderGroups.size(); }
 	uint32_t getNumMissShaderGroups() { return m_MissShaderGroups.size(); }
-	uint32_t getNumIntersectShaderGroups() { return m_IntersectShaderGroups.size(); }
+	uint32_t getNumIntersectShaderGroups() { return m_HitShaderGroups.size(); }
 	uint32_t getNumTotalShaderGroups() { return m_AllShaderGroups.size(); }
 	
 	uint32_t getNumShaders() { return m_Shaders.size(); }
@@ -55,7 +55,7 @@ private:
 	
 	std::vector<VkRayTracingShaderGroupCreateInfoNV> m_RaygenShaderGroups;
 	std::vector<VkRayTracingShaderGroupCreateInfoNV> m_MissShaderGroups;
-	std::vector<VkRayTracingShaderGroupCreateInfoNV> m_IntersectShaderGroups;
+	std::vector<VkRayTracingShaderGroupCreateInfoNV> m_HitShaderGroups;
 	std::vector<VkRayTracingShaderGroupCreateInfoNV> m_AllShaderGroups; //Redundant
 
 	std::vector<VkPipelineShaderStageCreateInfo> m_ShaderStagesInfos;

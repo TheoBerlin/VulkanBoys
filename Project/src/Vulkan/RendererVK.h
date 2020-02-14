@@ -114,16 +114,22 @@ private:
 
 	IMesh* m_pMeshCube;
 	IMesh* m_pMeshGun;
+	IMesh* m_pMeshSphere;
+	IMesh* m_pMeshPlane;
 
 	glm::mat4 m_Matrix0;
 	glm::mat4 m_Matrix1;
 	glm::mat4 m_Matrix2;
 	glm::mat4 m_Matrix3;
+	glm::mat4 m_Matrix4;
+	glm::mat4 m_Matrix5;
 
 	uint32_t m_InstanceIndex0;
 	uint32_t m_InstanceIndex1;
 	uint32_t m_InstanceIndex2;
 	uint32_t m_InstanceIndex3;
+	uint32_t m_InstanceIndex4;
+	uint32_t m_InstanceIndex5;
 
 	ShaderVK* m_pRaygenShader;
 	ShaderVK* m_pClosestHitShader;
@@ -133,6 +139,8 @@ private:
 	
 	TempMaterial* m_pCubeMaterial;
 	TempMaterial* m_pGunMaterial;
+	TempMaterial* m_pSphereMaterial;
+	TempMaterial* m_pPlaneMaterial;
 
 	float m_TempTimer;
 };

@@ -24,12 +24,12 @@ struct TempMaterial
 	{
 		SAFEDELETE(pAlbedo);
 		SAFEDELETE(pNormalMap);
-		SAFEDELETE(pMetallicMap);
+		SAFEDELETE(pRoughnessMap);
 	}
 
 	Texture2DVK* pAlbedo = nullptr;
 	Texture2DVK* pNormalMap = nullptr;
-	Texture2DVK* pMetallicMap = nullptr;
+	Texture2DVK* pRoughnessMap = nullptr;
 };
 
 class RayTracingSceneVK

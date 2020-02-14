@@ -7,7 +7,8 @@ ShaderVK::ShaderVK(DeviceVK* pDevice)
 	: m_pDevice(pDevice),
 	m_ShaderModule(VK_NULL_HANDLE),
 	m_EntryPoint(),
-	m_ShaderType(EShader::NONE)
+	m_ShaderType(EShader::NONE),
+	m_SpecializationInfo({})
 {
 }
 
@@ -75,6 +76,24 @@ bool ShaderVK::finalize()
 const std::string& ShaderVK::getEntryPoint() const
 {
 	return m_EntryPoint;
+}
+
+void ShaderVK::setSpecializationConstant(uint32_t index, void* pData, uint32_t sizeInBytes)
+{
+	uint32_t specializationDataOffset = m_SpecializationData.size();
+	m_SpecializationData.resize(specializationDataOffset + sizeInBytes);
+	memcpy(m_SpecializationData.data(), pData, sizeInBytes);
+
+	VkSpecializationMapEntry specializationEntry = {};
+	specializationEntry.constantID = index;
+	specializationEntry.offset = 0;
+	specializationEntry.size = sizeInBytes;
+	m_SpecializationEntries.push_back(specializationEntry);
+
+	m_SpecializationInfo.mapEntryCount = m_SpecializationEntries.size();
+	m_SpecializationInfo.pMapEntries = m_SpecializationEntries.data();
+	m_SpecializationInfo.dataSize = m_SpecializationData.size();
+	m_SpecializationInfo.pData = m_SpecializationData.data();
 }
 
 EShader ShaderVK::getShaderType() const
