@@ -66,6 +66,7 @@ private:
 	bool createPipelines();
 	bool createPipelineLayouts();
 	bool createBuffers();
+	void initRayTracing();
 
 	bool createRayTracingPipelineLayouts();
 	

@@ -122,3 +122,8 @@ void GraphicsContextVK::swapBuffers(VkSemaphore renderSemaphore)
 {
 	m_pSwapChain->present(renderSemaphore);
 }
+
+bool GraphicsContextVK::supportsRayTracing() const
+{
+	m_Device.supportsRayTracing();
+}

@@ -60,6 +60,7 @@ private:
 
 	bool m_IsRunning;
 	bool m_UpdateCamera;
+	bool m_EnableRayTracing;
 
 	static Application* s_pInstance;
 };

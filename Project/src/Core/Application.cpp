@@ -75,6 +75,7 @@ void Application::init()
 
 	//Create context
 	m_pContext = IGraphicsContext::create(m_pWindow, API::VULKAN);
+	m_EnableRayTracing = m_pContext->supportsRayTracing();
 	
 	//Setup Imgui
 	m_pImgui = m_pContext->createImgui();
@@ -418,8 +419,7 @@ void Application::renderUI(double dt)
 
 void Application::render(double dt)
 {
-	static bool enableRayTracing = true;
-	if (enableRayTracing)
+	if (m_EnableRayTracing)
 	{
 		m_pRenderer->beginRayTraceFrame(m_Camera);
 		m_pRenderer->traceRays();
@@ -429,9 +429,9 @@ void Application::render(double dt)
 	{
 		m_pRenderer->beginFrame(m_Camera);
 
-	g_Rotation = glm::rotate(g_Rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
-	m_pRenderer->submitMesh(m_pMesh, g_Color, glm::mat4(1.0f) * g_Rotation);
-	m_pRenderer->drawImgui(m_pImgui);
+		g_Rotation = glm::rotate(g_Rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
+		m_pRenderer->submitMesh(m_pMesh, g_Color, glm::mat4(1.0f) * g_Rotation);
+		m_pRenderer->drawImgui(m_pImgui);
 
 		m_pRenderer->endFrame();
 	}

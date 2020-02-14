@@ -96,6 +96,18 @@ void DeviceVK::wait()
 	}
 }
 
+bool DeviceVK::hasUniqueQueueFamilyIndices() const
+{
+	std::set<uint32_t> familyIndices = {
+		m_DeviceQueueFamilyIndices.computeFamily.value(),
+		m_DeviceQueueFamilyIndices.graphicsFamily.value(),
+		m_DeviceQueueFamilyIndices.presentFamily.value(),
+		m_DeviceQueueFamilyIndices.transferFamily.value()
+	};
+
+	return familyIndices.size() == 4;
+}
+
 bool DeviceVK::initPhysicalDevice(InstanceVK* pInstance)
 {
 	uint32_t deviceCount = 0;
