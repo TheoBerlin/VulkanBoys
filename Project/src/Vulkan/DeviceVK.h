@@ -52,8 +52,10 @@ public:
 	CopyHandlerVK* getCopyHandler() const { return m_pCopyHandler; }
 
 	const QueueFamilyIndices& getQueueFamilyIndices() const { return m_DeviceQueueFamilyIndices; }
+	bool hasUniqueQueueFamilyIndices() const;
 	
 	const VkPhysicalDeviceRayTracingPropertiesNV& getRayTracingProperties() const { return m_RayTracingProperties; }
+	bool supportsRayTracing() const { return m_ExtensionsStatus.at(VK_NV_RAY_TRACING_EXTENSION_NAME); }
 
 private:
 	bool initPhysicalDevice(InstanceVK* pInstance);

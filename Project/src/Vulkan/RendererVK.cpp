@@ -43,7 +43,20 @@ RendererVK::RendererVK(GraphicsContextVK* pContext)
 	m_Viewport(),
 	m_ScissorRect(),
 	m_CurrentFrame(0),
-	m_BackBufferIndex(0)
+	m_BackBufferIndex(0),
+	m_pRayTracingScene(nullptr),
+	m_pRayTracingPipeline(nullptr),
+	m_pRayTracingPipelineLayout(nullptr),
+	m_pSBT(nullptr),
+	m_pRayTracingStorageImage(nullptr),
+	m_pRayTracingStorageImageView(nullptr),
+	m_pRayTracingDescriptorPool(nullptr),
+	m_pRayTracingDescriptorSetLayout(nullptr),
+	m_pRayTracingUniformBuffer(nullptr),
+	m_pRaygenShader(nullptr),
+	m_pClosestHitShader(nullptr),
+	m_pMissShader(nullptr),
+	m_pSampler(nullptr)
 {
 	m_ClearDepth.depthStencil.depth = 1.0f;
 	m_ClearDepth.depthStencil.stencil = 0;
@@ -144,7 +157,7 @@ bool RendererVK::init()
 	}
 
 	//Last thing is to write to the descriptor set
-	//m_pDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer->getBuffer(), 0);
+	m_pDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer->getBuffer(), 0);
 
 	//Testing
 	//Vertex vertices[] = 
@@ -262,151 +275,10 @@ bool RendererVK::init()
 	m_Matrix2 = glm::transpose(glm::translate(m_Matrix2, glm::vec3(0.0f, 2.0f, 0.0f)));
 	m_Matrix3 = glm::transpose(glm::translate(m_Matrix3, glm::vec3(1.0f, 2.0f, 0.0f)));
 
-	m_pRayTracingScene = new RayTracingSceneVK(m_pContext);
-	m_InstanceIndex0 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshGun, m_pGunMaterial, m_Matrix0);
-	m_InstanceIndex1 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshGun, m_pGunMaterial, m_Matrix1);
-	m_InstanceIndex2 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshGun, m_pGunMaterial, m_Matrix2);
-	m_InstanceIndex3 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshCube, m_pCubeMaterial, m_Matrix3);
-	m_pRayTracingScene->finalize();
-
-	m_TempTimer = 0;
-
-	RaygenGroupParams raygenGroupParams = {};
-	IntersectGroupParams intersectGroupParams = {};
-	MissGroupParams missGroupParams = {};
-
-	{
-		m_pRaygenShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-		m_pRaygenShader->initFromFile(EShader::RAYGEN_SHADER, "main", "assets/shaders/raytracing/raygen.spv");
-		m_pRaygenShader->finalize();
-		raygenGroupParams.pRaygenShader = m_pRaygenShader;
-
-		m_pClosestHitShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-		m_pClosestHitShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/closesthit.spv");
-		m_pClosestHitShader->finalize();
-		intersectGroupParams.pClosestHitShader = m_pClosestHitShader;
-
-		m_pMissShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-		m_pMissShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/miss.spv");
-		m_pMissShader->finalize();
-		missGroupParams.pMissShader = m_pMissShader;
+	if (m_pContext->getDevice()->supportsRayTracing()) {
+		initRayTracing();
 	}
 
-	std::cout << "Creating RTX Pipeline Layout" << std::endl;
-	createRayTracingPipelineLayouts();
-
-	m_pRayTracingPipeline = new RayTracingPipelineVK(m_pContext->getDevice());
-	m_pRayTracingPipeline->addRaygenShaderGroup(raygenGroupParams);
-	m_pRayTracingPipeline->addMissShaderGroup(missGroupParams);
-	m_pRayTracingPipeline->addIntersectShaderGroup(intersectGroupParams);
-	m_pRayTracingPipeline->finalize(m_pRayTracingPipelineLayout);
-	
-	m_pSBT = new ShaderBindingTableVK(m_pContext);
-	m_pSBT->init(m_pRayTracingPipeline);
-
-	ImageParams imageParams = {};
-	imageParams.Type = VK_IMAGE_TYPE_2D;
-	imageParams.Format = m_pContext->getSwapChain()->getFormat();
-	imageParams.Extent.width = m_pContext->getSwapChain()->getExtent().width;
-	imageParams.Extent.height = m_pContext->getSwapChain()->getExtent().height;
-	imageParams.Extent.depth = 1;
-	imageParams.MipLevels = 1;
-	imageParams.ArrayLayers = 1;
-	imageParams.Samples = VK_SAMPLE_COUNT_1_BIT;
-	imageParams.Usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
-	imageParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	
-	m_pRayTracingStorageImage = new ImageVK(m_pContext->getDevice());
-	m_pRayTracingStorageImage->init(imageParams);
-
-	ImageViewParams imageViewParams = {};
-	imageViewParams.Type = VK_IMAGE_VIEW_TYPE_2D;
-	imageViewParams.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
-	imageViewParams.FirstMipLevel = 0;
-	imageViewParams.MipLevels = 1;
-	imageViewParams.FirstLayer = 0;
-	imageViewParams.LayerCount = 1;
-	
-	m_pRayTracingStorageImageView = new ImageViewVK(m_pContext->getDevice(), m_pRayTracingStorageImage);
-	m_pRayTracingStorageImageView->init(imageViewParams);
-
-	CommandBufferVK* pTempCommandBuffer = m_ppCommandPools[0]->allocateCommandBuffer();
-	pTempCommandBuffer->reset();
-	pTempCommandBuffer->begin();
-	
-	VkImageMemoryBarrier imageMemoryBarrier = {};
-	imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-	imageMemoryBarrier.image = m_pRayTracingStorageImage->getImage();
-	imageMemoryBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-	imageMemoryBarrier.srcAccessMask = 0;
-
-	vkCmdPipelineBarrier(
-		pTempCommandBuffer->getCommandBuffer(),
-		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-		0,
-		0, nullptr,
-		0, nullptr,
-		1, &imageMemoryBarrier);
-	pTempCommandBuffer->end();
-	
-	m_pContext->getDevice()->executeCommandBuffer(m_pContext->getDevice()->getGraphicsQueue(), pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
-	m_pContext->getDevice()->wait();
-
-	m_ppCommandPools[0]->freeCommandBuffer(&pTempCommandBuffer);
-
-	BufferParams rayTracingUniformBufferParams = {};
-	rayTracingUniformBufferParams.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	rayTracingUniformBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	rayTracingUniformBufferParams.SizeInBytes = sizeof(CameraBuffer);
-	
-	m_pRayTracingUniformBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
-	m_pRayTracingUniformBuffer->init(rayTracingUniformBufferParams);
-
-	auto& allMaterials = m_pRayTracingScene->getAllMaterials();
-
-	std::vector<VkImageView> albedoImageViews;
-	albedoImageViews.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
-	std::vector<VkImageView> normalImageViews;
-	normalImageViews.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
-	std::vector<VkImageView> metallicImageViews;
-	metallicImageViews.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
-
-	m_pSampler = new SamplerVK(m_pContext->getDevice());
-	m_pSampler->init(VkFilter::VK_FILTER_LINEAR, VkFilter::VK_FILTER_LINEAR, VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT, VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT);
-	std::vector<VkSampler> samplers;
-	samplers.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
-
-	for (uint32_t i = 0; i < MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES; i++)
-	{
-		samplers.push_back(m_pSampler->getSampler());
-
-		if (i < allMaterials.size())
-		{
-			albedoImageViews.push_back(allMaterials[i]->pAlbedo->getImageView()->getImageView());
-			normalImageViews.push_back(allMaterials[i]->pNormalMap->getImageView()->getImageView());
-			metallicImageViews.push_back(allMaterials[i]->pMetallicMap->getImageView()->getImageView());
-		}
-		else
-		{
-			albedoImageViews.push_back(allMaterials[0]->pAlbedo->getImageView()->getImageView());
-			normalImageViews.push_back(allMaterials[0]->pNormalMap->getImageView()->getImageView());
-			metallicImageViews.push_back(allMaterials[0]->pMetallicMap->getImageView()->getImageView());
-		}
-	}
-
-	m_pRayTracingDescriptorSet->writeAccelerationStructureDescriptor(m_pRayTracingScene->getTLAS().accelerationStructure, 0);
-	m_pRayTracingDescriptorSet->writeStorageImageDescriptor(m_pRayTracingStorageImageView->getImageView(), 1);
-	m_pRayTracingDescriptorSet->writeUniformBufferDescriptor(m_pRayTracingUniformBuffer->getBuffer(), 2);
-	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pRayTracingScene->getCombinedVertexBuffer()->getBuffer(), 3);
-	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pRayTracingScene->getCombinedIndexBuffer()->getBuffer(), 4);
-	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pRayTracingScene->getMeshIndexBuffer()->getBuffer(), 5);
-	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(albedoImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 6);
-	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(normalImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 7);
-	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(metallicImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 8);
-	
 	return true;
 }
 
@@ -855,4 +727,152 @@ bool RendererVK::createBuffers()
 
 	m_pCameraBuffer = DBG_NEW BufferVK(m_pContext->getDevice());
 	return m_pCameraBuffer->init(cameraBufferParams);
+}
+
+void RendererVK::initRayTracing()
+{
+	m_pRayTracingScene = new RayTracingSceneVK(m_pContext);
+	m_InstanceIndex0 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshGun, m_pGunMaterial, m_Matrix0);
+	m_InstanceIndex1 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshGun, m_pGunMaterial, m_Matrix1);
+	m_InstanceIndex2 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshGun, m_pGunMaterial, m_Matrix2);
+	m_InstanceIndex3 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshCube, m_pCubeMaterial, m_Matrix3);
+	m_pRayTracingScene->finalize();
+
+	m_TempTimer = 0;
+
+	RaygenGroupParams raygenGroupParams = {};
+	IntersectGroupParams intersectGroupParams = {};
+	MissGroupParams missGroupParams = {};
+
+	{
+		m_pRaygenShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+		m_pRaygenShader->initFromFile(EShader::RAYGEN_SHADER, "main", "assets/shaders/raytracing/raygen.spv");
+		m_pRaygenShader->finalize();
+		raygenGroupParams.pRaygenShader = m_pRaygenShader;
+
+		m_pClosestHitShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+		m_pClosestHitShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/closesthit.spv");
+		m_pClosestHitShader->finalize();
+		intersectGroupParams.pClosestHitShader = m_pClosestHitShader;
+
+		m_pMissShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+		m_pMissShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/miss.spv");
+		m_pMissShader->finalize();
+		missGroupParams.pMissShader = m_pMissShader;
+	}
+
+	std::cout << "Creating RTX Pipeline Layout" << std::endl;
+	createRayTracingPipelineLayouts();
+
+	m_pRayTracingPipeline = new RayTracingPipelineVK(m_pContext->getDevice());
+	m_pRayTracingPipeline->addRaygenShaderGroup(raygenGroupParams);
+	m_pRayTracingPipeline->addMissShaderGroup(missGroupParams);
+	m_pRayTracingPipeline->addIntersectShaderGroup(intersectGroupParams);
+	m_pRayTracingPipeline->finalize(m_pRayTracingPipelineLayout);
+
+	m_pSBT = new ShaderBindingTableVK(m_pContext);
+	m_pSBT->init(m_pRayTracingPipeline);
+
+	ImageParams imageParams = {};
+	imageParams.Type = VK_IMAGE_TYPE_2D;
+	imageParams.Format = m_pContext->getSwapChain()->getFormat();
+	imageParams.Extent.width = m_pContext->getSwapChain()->getExtent().width;
+	imageParams.Extent.height = m_pContext->getSwapChain()->getExtent().height;
+	imageParams.Extent.depth = 1;
+	imageParams.MipLevels = 1;
+	imageParams.ArrayLayers = 1;
+	imageParams.Samples = VK_SAMPLE_COUNT_1_BIT;
+	imageParams.Usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
+	imageParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+	m_pRayTracingStorageImage = new ImageVK(m_pContext->getDevice());
+	m_pRayTracingStorageImage->init(imageParams);
+
+	ImageViewParams imageViewParams = {};
+	imageViewParams.Type = VK_IMAGE_VIEW_TYPE_2D;
+	imageViewParams.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+	imageViewParams.FirstMipLevel = 0;
+	imageViewParams.MipLevels = 1;
+	imageViewParams.FirstLayer = 0;
+	imageViewParams.LayerCount = 1;
+
+	m_pRayTracingStorageImageView = new ImageViewVK(m_pContext->getDevice(), m_pRayTracingStorageImage);
+	m_pRayTracingStorageImageView->init(imageViewParams);
+
+	CommandBufferVK* pTempCommandBuffer = m_ppCommandPools[0]->allocateCommandBuffer();
+	pTempCommandBuffer->reset();
+	pTempCommandBuffer->begin();
+
+	VkImageMemoryBarrier imageMemoryBarrier = {};
+	imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	imageMemoryBarrier.image = m_pRayTracingStorageImage->getImage();
+	imageMemoryBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+	imageMemoryBarrier.srcAccessMask = 0;
+
+	vkCmdPipelineBarrier(
+		pTempCommandBuffer->getCommandBuffer(),
+		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+		0,
+		0, nullptr,
+		0, nullptr,
+		1, &imageMemoryBarrier);
+	pTempCommandBuffer->end();
+
+	m_pContext->getDevice()->executeCommandBuffer(m_pContext->getDevice()->getGraphicsQueue(), pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_pContext->getDevice()->wait();
+
+	m_ppCommandPools[0]->freeCommandBuffer(&pTempCommandBuffer);
+
+	BufferParams rayTracingUniformBufferParams = {};
+	rayTracingUniformBufferParams.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	rayTracingUniformBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	rayTracingUniformBufferParams.SizeInBytes = sizeof(CameraBuffer);
+
+	m_pRayTracingUniformBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
+	m_pRayTracingUniformBuffer->init(rayTracingUniformBufferParams);
+
+	auto& allMaterials = m_pRayTracingScene->getAllMaterials();
+
+	std::vector<VkImageView> albedoImageViews;
+	albedoImageViews.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
+	std::vector<VkImageView> normalImageViews;
+	normalImageViews.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
+	std::vector<VkImageView> metallicImageViews;
+	metallicImageViews.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
+
+	m_pSampler = new SamplerVK(m_pContext->getDevice());
+	m_pSampler->init(VkFilter::VK_FILTER_LINEAR, VkFilter::VK_FILTER_LINEAR, VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT, VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT);
+	std::vector<VkSampler> samplers;
+	samplers.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
+
+	for (uint32_t i = 0; i < MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES; i++)
+	{
+		samplers.push_back(m_pSampler->getSampler());
+
+		if (i < allMaterials.size())
+		{
+			albedoImageViews.push_back(allMaterials[i]->pAlbedo->getImageView()->getImageView());
+			normalImageViews.push_back(allMaterials[i]->pNormalMap->getImageView()->getImageView());
+			metallicImageViews.push_back(allMaterials[i]->pMetallicMap->getImageView()->getImageView());
+		}
+		else
+		{
+			albedoImageViews.push_back(allMaterials[0]->pAlbedo->getImageView()->getImageView());
+			normalImageViews.push_back(allMaterials[0]->pNormalMap->getImageView()->getImageView());
+			metallicImageViews.push_back(allMaterials[0]->pMetallicMap->getImageView()->getImageView());
+		}
+	}
+
+	m_pRayTracingDescriptorSet->writeAccelerationStructureDescriptor(m_pRayTracingScene->getTLAS().accelerationStructure, 0);
+	m_pRayTracingDescriptorSet->writeStorageImageDescriptor(m_pRayTracingStorageImageView->getImageView(), 1);
+	m_pRayTracingDescriptorSet->writeUniformBufferDescriptor(m_pRayTracingUniformBuffer->getBuffer(), 2);
+	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pRayTracingScene->getCombinedVertexBuffer()->getBuffer(), 3);
+	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pRayTracingScene->getCombinedIndexBuffer()->getBuffer(), 4);
+	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pRayTracingScene->getMeshIndexBuffer()->getBuffer(), 5);
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(albedoImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 6);
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(normalImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 7);
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(metallicImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 8);
 }
