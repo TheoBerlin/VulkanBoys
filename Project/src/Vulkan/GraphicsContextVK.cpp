@@ -1,9 +1,11 @@
 #include "GraphicsContextVK.h"
-#include "MeshVK.h"
-#include "ImguiVK.h"
+
 #include "BufferVK.h"
+#include "ImguiVK.h"
+#include "MeshVK.h"
+#include "MeshRendererVK.h"
+#include "RenderingHandlerVK.hpp"
 #include "ShaderVK.h"
-#include "RendererVK.h"
 #include "SwapChainVK.h"
 #include "Texture2DVK.h"
 
@@ -14,8 +16,7 @@ GraphicsContextVK::GraphicsContextVK(IWindow* pWindow)
 	m_pSwapChain(nullptr),
 	m_Device(),
 	m_Instance()
-{
-}
+{}
 
 GraphicsContextVK::~GraphicsContextVK()
 {
@@ -65,9 +66,15 @@ void GraphicsContextVK::init()
 	m_pSwapChain->init(m_pWindow, VK_FORMAT_B8G8R8A8_UNORM, MAX_FRAMES_IN_FLIGHT, true);
 }
 
-IRenderer* GraphicsContextVK::createRenderer()
+
+IRenderingHandler* GraphicsContextVK::createRenderingHandler()
 {
-	return DBG_NEW RendererVK(this);
+	return DBG_NEW RenderingHandlerVK(this);
+}
+
+IRenderer* GraphicsContextVK::createRenderer(IRenderingHandler* pRenderingHandler)
+{
+	return DBG_NEW MeshRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler));
 }
 
 IImgui* GraphicsContextVK::createImgui()

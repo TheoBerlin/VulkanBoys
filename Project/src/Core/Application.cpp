@@ -8,6 +8,8 @@
 #include "Common/IWindow.h"
 #include "Common/IShader.h"
 #include "Common/IRenderer.h"
+#include "Common/IRenderingHandler.hpp"
+#include "Common/IGraphicsContext.h"
 #include "Common/ITexture2D.h"
 #include "Common/IInputHandler.h"
 #include "Common/IGraphicsContext.h"
@@ -36,7 +38,8 @@ Application* Application::s_pInstance = nullptr;
 Application::Application()
 	: m_pWindow(nullptr),
 	m_pContext(nullptr),
-	m_pRenderer(nullptr),
+	m_pRenderingHandler(nullptr),
+	m_pMeshRenderer(nullptr),
 	m_pImgui(nullptr),
 	m_pMesh(nullptr),
 	m_pAlbedo(nullptr),
@@ -82,11 +85,23 @@ void Application::init()
 	m_pImgui->init();
 	m_pWindow->addEventHandler(m_pImgui);
 
-	//Setup renderer
-	m_pRenderer = m_pContext->createRenderer();
-	m_pRenderer->init();
-	m_pRenderer->setClearColor(0.0f, 0.0f, 0.0f);
-	m_pRenderer->setViewport(m_pWindow->getWidth(), m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
+	// Setup rendering handler
+	m_pRenderingHandler = m_pContext->createRenderingHandler();
+	m_pRenderingHandler->initialize();
+	m_pRenderingHandler->setClearColor(0.0f, 0.0f, 0.0f);
+
+	// Setup mesh renderer
+	m_pMeshRenderer = m_pContext->createRenderer(m_pRenderingHandler);
+	m_pMeshRenderer->init();
+
+	// TODO: Should the renderer itself call this instead?
+	m_pRenderingHandler->setMeshRenderer(m_pMeshRenderer);
+	// TODO: Create separate ray tracer renderer class
+	if (m_pContext->supportsRayTracing()) {
+		m_pRenderingHandler->setRayTracer(m_pMeshRenderer);
+	}
+
+	m_pRenderingHandler->setViewport(m_pWindow->getWidth(), m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
 
 	//Setup camera
 	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
@@ -223,7 +238,8 @@ void Application::release()
 
 	SAFEDELETE(m_pAlbedo);
 	SAFEDELETE(m_pMesh);
-	SAFEDELETE(m_pRenderer);
+	SAFEDELETE(m_pRenderingHandler);
+	SAFEDELETE(m_pMeshRenderer);
 	SAFEDELETE(m_pImgui);
 	SAFEDELETE(m_pContext);
 
@@ -243,10 +259,9 @@ void Application::onWindowResize(uint32_t width, uint32_t height)
 
 	if (width != 0 && height != 0)
 	{
-		if (m_pRenderer)
-		{
-			m_pRenderer->setViewport(width, height, 0.0f, 1.0f, 0.0f, 0.0f);
-			m_pRenderer->onWindowResize(width, height);
+		if (m_pRenderingHandler) {
+			m_pRenderingHandler->setViewport(width, height, 0.0f, 1.0f, 0.0f, 0.0f);
+			m_pRenderingHandler->onWindowResize(width, height);
 		}
 
 		m_Camera.setProjection(90.0f, float(width), float(height), 0.1f, 100.0f);
@@ -254,8 +269,7 @@ void Application::onWindowResize(uint32_t width, uint32_t height)
 }
 
 void Application::onWindowFocusChanged(IWindow* pWindow, bool hasFocus)
-{
-}
+{}
 
 void Application::onMouseMove(uint32_t x, uint32_t y)
 {
@@ -419,22 +433,15 @@ void Application::renderUI(double dt)
 
 void Application::render(double dt)
 {
-	if (m_EnableRayTracing)
-	{
-		m_pRenderer->beginRayTraceFrame(m_Camera);
-		m_pRenderer->traceRays();
-		m_pRenderer->endRayTraceFrame();
-	}
-	else
-	{
-		m_pRenderer->beginFrame(m_Camera);
+	m_pRenderingHandler->beginFrame(m_Camera);
 
+	if (!m_EnableRayTracing)
+	{
 		g_Rotation = glm::rotate(g_Rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
-		m_pRenderer->submitMesh(m_pMesh, g_Color, glm::mat4(1.0f) * g_Rotation);
-		m_pRenderer->drawImgui(m_pImgui);
-
-		m_pRenderer->endFrame();
+		m_pRenderingHandler->submitMesh(m_pMesh, g_Color, glm::mat4(1.0f) * g_Rotation);
 	}
 
-	m_pRenderer->swapBuffers();
+	m_pRenderingHandler->drawImgui(m_pImgui);
+	m_pRenderingHandler->endFrame();
+	m_pRenderingHandler->swapBuffers();
 }
