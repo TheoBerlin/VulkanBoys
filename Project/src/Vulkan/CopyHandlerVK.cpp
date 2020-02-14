@@ -148,12 +148,12 @@ void CopyHandlerVK::submitTransferBuffer(CommandBufferVK* pCommandBuffer)
 {
 	//Need to lock this since commandbuffer submition is not meant to be done from multiple threads? Different sources say different things
 	std::scoped_lock<Spinlock> lock(m_TransferQueueLock);
-	m_pDevice->executeCommandBuffer(m_TransferQueue, pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_pDevice->executePrimaryCommandBuffer(m_TransferQueue, pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 }
 
 void CopyHandlerVK::submitGraphicsBuffer(CommandBufferVK* pCommandBuffer)
 {
 	//Need to lock this since commandbuffer submition is not meant to be done from multiple threads? Different sources say different things
 	std::scoped_lock<Spinlock> lock(m_GraphicsQueueLock);
-	m_pDevice->executeCommandBuffer(m_GraphicsQueue, pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_pDevice->executePrimaryCommandBuffer(m_GraphicsQueue, pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 }

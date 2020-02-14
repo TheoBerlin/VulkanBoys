@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef _WIN32
+#if defined(_WIN32) && defined(_MSC_VER)
     #include <crtdbg.h>
     #ifndef DBG_NEW
         #if defined(_DEBUG)
@@ -12,13 +12,3 @@
 #else
     #define DBG_NEW new
 #endif
-
-
-// #include <crtdbg.h>
-
-// //Memleak debugging
-// #if defined(_DEBUG)
-//     #define _CRTDBG_MAP_ALLOC
-// 	#define DBG_NEW new(_NORMAL_BLOCK, __FILE__, __LINE__);
-//     #define new DBG_NEW
-// #endif

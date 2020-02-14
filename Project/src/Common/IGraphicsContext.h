@@ -2,16 +2,17 @@
 
 #include "Core/Core.h"
 
+class IBuffer;
+class IFrameBuffer;
 class IImgui;
 class IImage;
-class IWindow;
-class IShader;
-class IBuffer;
-class IRenderer;
 class IImageView;
-class ITexture2D;
-class IFrameBuffer;
 class IMesh;
+class IRenderer;
+class IRenderingHandler;
+class IShader;
+class ITexture2D;
+class IWindow;
 class IResourceLoader;
 
 enum API
@@ -24,7 +25,8 @@ class IGraphicsContext
 public:
 	DECL_INTERFACE(IGraphicsContext);
 
-	virtual IRenderer* createRenderer() = 0;
+	virtual IRenderingHandler* createRenderingHandler() = 0;
+	virtual IRenderer* createRenderer(IRenderingHandler* pRenderingHandler) = 0;
 	virtual IImgui* createImgui() = 0;
 
 	virtual IShader* createShader() = 0;

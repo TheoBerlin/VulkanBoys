@@ -40,12 +40,12 @@ bool CommandPoolVK::init()
 	return true;
 }
 
-CommandBufferVK* CommandPoolVK::allocateCommandBuffer()
+CommandBufferVK* CommandPoolVK::allocateCommandBuffer(VkCommandBufferLevel bufferLevel)
 {
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocInfo.pNext = nullptr;
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.level = bufferLevel;
 	allocInfo.commandPool = m_CommandPool;
 	allocInfo.commandBufferCount = 1;
 

@@ -3,13 +3,14 @@
 
 #include "Camera.h"
 
-class IMesh;
-class IImgui;
-class IWindow;
-class IRenderer;
-class ITexture2D;
-class IInputHandler;
 class IGraphicsContext;
+class IImgui;
+class IInputHandler;
+class IMesh;
+class IRenderer;
+class IRenderingHandler;
+class ITexture2D;
+class IWindow;
 
 class Application : public IEventHandler
 {
@@ -50,7 +51,8 @@ private:
 	Camera m_Camera;
 	IWindow* m_pWindow;
 	IGraphicsContext* m_pContext;
-	IRenderer* m_pRenderer;
+	IRenderingHandler* m_pRenderingHandler;
+	IRenderer* m_pMeshRenderer;
 	IImgui* m_pImgui;
 	IInputHandler* m_pInputHandler;
 

@@ -60,23 +60,27 @@ bool CommandBufferVK::finalize()
 	return true;
 }
 
-void CommandBufferVK::reset()
+void CommandBufferVK::reset(bool waitForFence)
 {
-	//Wait for GPU to finish with this commandbuffer and then reset it
-	vkWaitForFences(m_pDevice->getDevice(), 1, &m_Fence, VK_TRUE, UINT64_MAX);
-	vkResetFences(m_pDevice->getDevice(), 1, &m_Fence);
+	// Only primary buffers need to wait for their fences
+	if (waitForFence) {
+		// Wait for GPU to finish with this commandbuffer and then reset it
+		vkWaitForFences(m_pDevice->getDevice(), 1, &m_Fence, VK_TRUE, UINT64_MAX);
+		vkResetFences(m_pDevice->getDevice(), 1, &m_Fence);
+	}
 
 	m_pStagingBuffer->reset();
 	m_pStagingTexture->reset();
 }
 
-void CommandBufferVK::begin()
+void CommandBufferVK::begin(VkCommandBufferInheritanceInfo* pInheritaneInfo)
 {
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.pNext = nullptr;
-	beginInfo.flags = 0;
-	beginInfo.pInheritanceInfo = nullptr;
+	// If inheritance info is not nullptr, this is a secondary command buffer
+	beginInfo.flags = pInheritaneInfo == nullptr ? 0 : VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+	beginInfo.pInheritanceInfo = pInheritaneInfo;
 
 	VK_CHECK_RESULT(vkBeginCommandBuffer(m_CommandBuffer, &beginInfo), "Begin CommandBuffer Failed");
 }
@@ -85,7 +89,6 @@ void CommandBufferVK::end()
 {
 	VK_CHECK_RESULT(vkEndCommandBuffer(m_CommandBuffer), "End CommandBuffer Failed");
 }
-
 void CommandBufferVK::beginRenderPass(RenderPassVK* pRenderPass, FrameBufferVK* pFrameBuffer, uint32_t width, uint32_t height, VkClearValue* pClearVales, uint32_t clearValueCount)
 {
 	VkRenderPassBeginInfo renderPassInfo = {};
@@ -98,7 +101,7 @@ void CommandBufferVK::beginRenderPass(RenderPassVK* pRenderPass, FrameBufferVK* 
 	renderPassInfo.pClearValues			= pClearVales;
 	renderPassInfo.clearValueCount		= clearValueCount;
 
-	vkCmdBeginRenderPass(m_CommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(m_CommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 }
 
 void CommandBufferVK::endRenderPass()
