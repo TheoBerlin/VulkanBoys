@@ -13,6 +13,8 @@ class DescriptorSetVK;
 class PipelineVK;
 class PipelineLayoutVK;
 
+class ShaderBindingTableVK;
+
 class CommandBufferVK
 {
 	friend class CommandPoolVK;
@@ -48,6 +50,10 @@ public:
 	void drawInstanced(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance);
 	void drawIndexInstanced(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset, uint32_t firstInstance);
 
+	//Ray Tracing
+	void traceRays(ShaderBindingTableVK* pShaderBindingTable, uint32_t width, uint32_t height);
+
+	//GETTERS
 	VkFence getFence() const { return m_Fence; }
 	VkCommandBuffer getCommandBuffer() const { return m_CommandBuffer; }
 

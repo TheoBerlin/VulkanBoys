@@ -12,6 +12,7 @@ class IImageView;
 class ITexture2D;
 class IFrameBuffer;
 class IMesh;
+class IResourceLoader;
 
 enum API
 {
@@ -38,6 +39,8 @@ public:
 	virtual ITexture2D* createTexture2D() = 0;
 
 	virtual void sync() = 0;
+
+	virtual bool supportsRayTracing() const = 0;
 	
 public:
 	static IGraphicsContext* create(IWindow* pWindow, API api);

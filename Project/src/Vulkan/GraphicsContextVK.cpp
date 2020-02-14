@@ -55,7 +55,7 @@ void GraphicsContextVK::init()
 	m_Device.addRequiredExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
 	m_Device.addOptionalExtension(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
-	m_Device.addOptionalExtension(VK_KHR_MAINTENANCE3_EXTENSION_NAME);
+	//m_Device.addOptionalExtension(VK_KHR_MAINTENANCE3_EXTENSION_NAME);
 	m_Device.addOptionalExtension(VK_NV_RAY_TRACING_EXTENSION_NAME);
 	
 	m_Device.finalize(&m_Instance);
@@ -110,7 +110,7 @@ IImageView* GraphicsContextVK::createImageView()
 
 ITexture2D* GraphicsContextVK::createTexture2D()
 {
-	return DBG_NEW Texture2DVK(this);
+	return DBG_NEW Texture2DVK(&m_Device);
 }
 
 void GraphicsContextVK::sync()
@@ -121,4 +121,9 @@ void GraphicsContextVK::sync()
 void GraphicsContextVK::swapBuffers(VkSemaphore renderSemaphore)
 {
 	m_pSwapChain->present(renderSemaphore);
+}
+
+bool GraphicsContextVK::supportsRayTracing() const
+{
+	return m_Device.supportsRayTracing();
 }

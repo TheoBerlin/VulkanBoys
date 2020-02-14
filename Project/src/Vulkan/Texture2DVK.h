@@ -6,7 +6,6 @@ class IGraphicsContext;
 class ImageVK;
 class ImageViewVK;
 class DeviceVK;
-class GraphicsContextVK;
 class CommandPoolVK;
 class CommandBufferVK;
 
@@ -15,7 +14,7 @@ class Texture2DVK : public ITexture2D
 public:
 	DECL_NO_COPY(Texture2DVK);
 	
-	Texture2DVK(IGraphicsContext* pContext);
+	Texture2DVK(DeviceVK* pDevice);
 	~Texture2DVK();
 
 	virtual bool initFromFile(const std::string& filename) override;
@@ -25,11 +24,7 @@ public:
 	ImageViewVK* getImageView() const { return m_pTextureImageView; }
 	
 private:
-	GraphicsContextVK* m_pContext;
-
+	DeviceVK* m_pDevice;
 	ImageVK* m_pTextureImage;
 	ImageViewVK* m_pTextureImageView;
-
-	CommandPoolVK* m_pTempCommandPool;
-	CommandBufferVK* m_pTempCommandBuffer;
 };

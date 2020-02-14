@@ -8,6 +8,7 @@ struct BufferParams
 	VkDeviceSize SizeInBytes = 0;
 	VkBufferUsageFlags Usage = 0;
 	VkMemoryPropertyFlags MemoryProperty = 0;
+	bool IsExclusive = false;
 };
 
 class IBuffer

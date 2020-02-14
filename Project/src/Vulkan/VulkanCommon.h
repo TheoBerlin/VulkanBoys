@@ -28,12 +28,17 @@ inline VkShaderStageFlagBits convertShaderType(EShader shader)
 {
     switch (shader)
     {
-    case EShader::VERTEX_SHADER:    return VK_SHADER_STAGE_VERTEX_BIT;
-    case EShader::GEOMETRY_SHADER:  return VK_SHADER_STAGE_GEOMETRY_BIT;
-    case EShader::HULL_SHADER:      return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-    case EShader::DOMAIN_SHADER:    return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-    case EShader::PIXEL_SHADER:     return VK_SHADER_STAGE_FRAGMENT_BIT;
-    case EShader::COMPUTE_SHADER:   return VK_SHADER_STAGE_COMPUTE_BIT;
+    case EShader::VERTEX_SHADER:		return VK_SHADER_STAGE_VERTEX_BIT;
+    case EShader::GEOMETRY_SHADER:		return VK_SHADER_STAGE_GEOMETRY_BIT;
+    case EShader::HULL_SHADER:			return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+    case EShader::DOMAIN_SHADER:		return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+    case EShader::PIXEL_SHADER:			return VK_SHADER_STAGE_FRAGMENT_BIT;
+    case EShader::COMPUTE_SHADER:		return VK_SHADER_STAGE_COMPUTE_BIT;
+	case EShader::RAYGEN_SHADER:		return VK_SHADER_STAGE_RAYGEN_BIT_NV;
+	case EShader::INTERSECT_SHADER:		return VK_SHADER_STAGE_INTERSECTION_BIT_NV;
+	case EShader::ANY_HIT_SHADER:		return VK_SHADER_STAGE_ANY_HIT_BIT_NV;
+	case EShader::CLOSEST_HIT_SHADER:	return VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV;
+	case EShader::MISS_SHADER:			return VK_SHADER_STAGE_MISS_BIT_NV;
     }
 
     return VK_SHADER_STAGE_ALL;
@@ -338,3 +343,4 @@ inline const char* formatAsString(VkFormat format)
 #define VK_CHECK_RESULT_RETURN_FALSE(_func_call_, _err_msg_)    if (_func_call_ != VK_SUCCESS) { LOG(_err_msg_); return false; }
 
 constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 3;
+constexpr uint32_t MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES = 16;
