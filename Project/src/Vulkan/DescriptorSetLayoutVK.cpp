@@ -75,12 +75,14 @@ bool DescriptorSetLayoutVK::finalize()
     descriptorSetLayoutInfo.bindingCount  = m_DescriptorSetLayoutBindings.size();
     descriptorSetLayoutInfo.pBindings     = m_DescriptorSetLayoutBindings.data();
 
-	if (vkCreateDescriptorSetLayout(m_pDevice->getDevice(), &descriptorSetLayoutInfo, nullptr, &m_DescriptorSetLayout) != VK_SUCCESS) {
+	if (vkCreateDescriptorSetLayout(m_pDevice->getDevice(), &descriptorSetLayoutInfo, nullptr, &m_DescriptorSetLayout) != VK_SUCCESS) 
+    {
 		LOG("Failed to create descriptor set layout");
-        return true;
-	} else {
-		D_LOG("--- DescriptorSetLayout: Vulkan DescriptorSetLayout created successfully");
         return false;
+	} else 
+    {
+		D_LOG("--- DescriptorSetLayout: Vulkan DescriptorSetLayout created successfully");
+        return true;
 	}
 }
 

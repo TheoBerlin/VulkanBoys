@@ -201,10 +201,10 @@ void Application::init()
 		m_RedMaterial.createSampler(m_pContext, samplerParams);
 
 		//Setup lights
-		m_LightSetup.addPointLight(PointLight(glm::vec3( 0.5f,  0.5f, -1.5f)));
-		m_LightSetup.addPointLight(PointLight(glm::vec3(-0.5f,  0.5f, -1.5f)));
-		m_LightSetup.addPointLight(PointLight(glm::vec3( 0.5f, -0.5f, -1.5f)));
-		m_LightSetup.addPointLight(PointLight(glm::vec3(-0.5f, -0.5f, -1.5f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3( 1.5f,  1.5f, -1.5f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3(-1.5f,  1.5f, -1.5f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3( 1.5f, -1.5f, -1.5f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3(-1.5f, -1.5f, -1.5f)));
 
 		TaskDispatcher::waitForTasks();
 

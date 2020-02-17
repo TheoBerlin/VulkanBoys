@@ -10,6 +10,7 @@
 
 class BufferVK;
 class GBufferVK;
+class SamplerVK;
 class PipelineVK;
 class Texture2DVK;
 class RenderPassVK;
@@ -29,10 +30,10 @@ class DescriptorSetLayoutVK;
 #define NORMAL_MAP_BINDING 3
 
 //Light pass
-#define GBUFFER_ALBEDO_BINDING		0
-#define GBUFFER_NORMAL_BINDING		1
-#define GBUFFER_POSITION_BINDING	2
-#define LIGHT_BUFFER_BINDING 3
+#define GBUFFER_ALBEDO_BINDING		1
+#define GBUFFER_NORMAL_BINDING		2
+#define GBUFFER_POSITION_BINDING	3
+#define LIGHT_BUFFER_BINDING 4
 
 //Stealing name from Unity
 struct MeshFilter
@@ -114,27 +115,32 @@ private:
 	CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
 
-	GBufferVK* m_GBuffer;
+	GBufferVK* m_pGBuffer;
 	RenderPassVK* m_pRenderPass;
+	RenderPassVK* m_pBackBufferRenderPass;
 	FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_RenderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
 
 	DescriptorPoolVK* m_pDescriptorPool;
 	
+	SamplerVK* m_pGBufferSampler;
 	Texture2DVK* m_pDefaultTexture;
+	Texture2DVK* m_pDefaultNormal;
 	BufferVK* m_pCameraBuffer;
 	BufferVK* m_pLightBuffer;
+
+	PipelineVK* m_pLightPipeline;
+	PipelineLayoutVK* m_pLightPipelineLayout;
+	DescriptorSetVK* m_pLightDescriptorSet;
+	DescriptorSetLayoutVK* m_pLightDescriptorSetLayout;
 	
 	//TEMPORARY MOVE TO MATERIAL or SOMETHING
 	PipelineVK* m_pPipeline;
-	PipelineVK* m_pLightPipeline;
 	PipelineVK* m_pGeometryPipeline;
 	PipelineLayoutVK* m_pPipelineLayout;
-	PipelineLayoutVK* m_pLightPipelineLayout;
 	PipelineLayoutVK* m_pGeometryPipelineLayout;
 	DescriptorSetLayoutVK* m_pGeometryDescriptorSetLayout;
-	DescriptorSetLayoutVK* m_pDescriptorSetLayout;
 
 	VkClearValue m_ClearColor;
 	VkClearValue m_ClearDepth;
@@ -142,6 +148,5 @@ private:
 	VkRect2D m_ScissorRect;
 
 	uint64_t m_CurrentFrame;
-	uint32_t m_BackBufferIndex;
 };
 

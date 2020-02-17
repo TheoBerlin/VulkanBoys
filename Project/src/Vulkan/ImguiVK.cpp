@@ -554,11 +554,23 @@ bool ImguiVK::createPipeline()
 
 	m_pPipeline->addVertexBinding(0, VK_VERTEX_INPUT_RATE_VERTEX, sizeof(ImDrawVert));
 	
-	m_pPipeline->addColorBlendAttachment(true, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
+	VkPipelineColorBlendAttachmentState blendAttachment = {};
+	blendAttachment.blendEnable = VK_TRUE;
+	blendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	m_pPipeline->addColorBlendAttachment(blendAttachment);
 	
-	m_pPipeline->setCulling(false);
-	m_pPipeline->setWireFrame(false);
-	m_pPipeline->setDepthTest(false);
+	VkPipelineRasterizationStateCreateInfo rasterizerState = {};
+	rasterizerState.cullMode = VK_CULL_MODE_NONE;
+	rasterizerState.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterizerState.polygonMode = VK_POLYGON_MODE_FILL;
+	rasterizerState.lineWidth = 1.0f;
+	m_pPipeline->setRasterizerState(rasterizerState);
+
+	VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
+	depthStencilState.depthTestEnable = VK_FALSE;
+	depthStencilState.depthWriteEnable = VK_FALSE;
+	depthStencilState.stencilTestEnable = VK_FALSE;
+	m_pPipeline->setDepthStencilState(depthStencilState);
 
 	m_pPipeline->finalize(shaders, m_pRenderPass, m_pPipelineLayout);
 

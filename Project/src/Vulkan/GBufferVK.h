@@ -21,6 +21,8 @@ public:
 	void setDepthAttachmentFormat(VkFormat format);
 	bool finalize(RenderPassVK* pRenderPass, uint32_t width, uint32_t height);
 
+	FORCEINLINE ImageViewVK* getDepthAttachment() const { return m_pDepthImageView; }
+	FORCEINLINE ImageViewVK* getColorAttachment(uint32_t index) const { return m_ColorImageViews[index]; }
 	FORCEINLINE FrameBufferVK* getFrameBuffer() const { return m_pFrameBuffer; }
 	FORCEINLINE VkExtent2D getExtent() const { return m_Extent; }
 

@@ -15,11 +15,12 @@ public:
 
 	void addVertexBinding(uint32_t binding, VkVertexInputRate inputRate, uint32_t stride);
 	void addVertexAttribute(uint32_t binding, VkFormat format, uint32_t location, uint32_t offset);
-	void addColorBlendAttachment(bool blendEnable, VkColorComponentFlags colorWriteMask);
+	void addColorBlendAttachment(VkPipelineColorBlendAttachmentState colorBlendAttachment);
 
-	void setDepthTest(bool depthTest) { m_DepthTest = depthTest; }
-	void setCulling(bool culling) { m_Culling = culling; }
-	void setWireFrame(bool wireframe) { m_WireFrame = wireframe; }
+	void setInputAssembly(VkPrimitiveTopology topology, bool primitiveRestartEnable);
+	void setRasterizerState(VkPipelineRasterizationStateCreateInfo rasterizerState);
+	void setDepthStencilState(VkPipelineDepthStencilStateCreateInfo depthStencilState);
+	void setBlendState(VkLogicOp logicOp, bool logicOpEnable, float blendConstants[4]);
 
 	bool finalize(const std::vector<IShader*>& shaders, RenderPassVK* pRenderPass, PipelineLayoutVK* pPipelineLayout);
 
@@ -32,9 +33,11 @@ private:
 	std::vector<VkVertexInputBindingDescription> m_VertexBindings;
 	std::vector<VkVertexInputAttributeDescription> m_VertexAttributes;
 	std::vector< VkPipelineColorBlendAttachmentState> m_ColorBlendAttachments;
+	VkPipelineInputAssemblyStateCreateInfo m_InputAssembly;
+	VkPipelineRasterizationStateCreateInfo m_RasterizerState;
+	VkPipelineMultisampleStateCreateInfo m_MultisamplingState;
+	VkPipelineColorBlendStateCreateInfo m_BlendState;
+	VkPipelineDepthStencilStateCreateInfo m_DepthStencilState;
 	DeviceVK* m_pDevice;
 	VkPipeline m_Pipeline;
-	bool m_WireFrame;
-	bool m_Culling;
-	bool m_DepthTest;
 };

@@ -29,17 +29,19 @@ RendererVK::RendererVK(GraphicsContextVK* pContext)
 	m_pRenderPass(nullptr),
 	m_ppBackbuffers(),
 	m_pPipeline(nullptr),
-	m_GBuffer(nullptr),
+	m_pLightDescriptorSet(nullptr),
+	m_pGBufferSampler(nullptr),
+	m_pPipelineLayout(nullptr),
+	m_pGBuffer(nullptr),
 	m_pDescriptorPool(nullptr),
-	m_pDescriptorSetLayout(nullptr),
+	m_pLightDescriptorSetLayout(nullptr),
 	m_pCameraBuffer(nullptr),
 	m_pLightBuffer(nullptr),
 	m_ClearColor(),
 	m_ClearDepth(),
 	m_Viewport(),
 	m_ScissorRect(),
-	m_CurrentFrame(0),
-	m_BackBufferIndex(0)
+	m_CurrentFrame(0)
 {
 	m_ClearDepth.depthStencil.depth = 1.0f;
 	m_ClearDepth.depthStencil.stencil = 0;
@@ -62,13 +64,23 @@ RendererVK::~RendererVK()
 		}
 	}
 
+	SAFEDELETE(m_pGBuffer);
+	SAFEDELETE(m_pGBufferSampler);
 	SAFEDELETE(m_pRenderPass);
+	SAFEDELETE(m_pBackBufferRenderPass);
 	SAFEDELETE(m_pPipelineLayout);
 	SAFEDELETE(m_pPipeline);
+	SAFEDELETE(m_pGeometryPipeline);
+	SAFEDELETE(m_pGeometryPipelineLayout);
+	SAFEDELETE(m_pGeometryDescriptorSetLayout);
+	SAFEDELETE(m_pLightPipeline);
+	SAFEDELETE(m_pLightPipelineLayout);
 	SAFEDELETE(m_pDescriptorPool);
-	SAFEDELETE(m_pDescriptorSetLayout);
+	SAFEDELETE(m_pLightDescriptorSetLayout);
 	SAFEDELETE(m_pCameraBuffer);
 	SAFEDELETE(m_pLightBuffer);
+	SAFEDELETE(m_pDefaultTexture);
+	SAFEDELETE(m_pDefaultNormal);
 
 	m_pContext = nullptr;
 }
@@ -77,6 +89,17 @@ bool RendererVK::init()
 {
 	DeviceVK* pDevice = m_pContext->getDevice();
 	SwapChainVK* pSwapChain = m_pContext->getSwapChain();
+
+	m_pGBufferSampler = DBG_NEW SamplerVK(m_pContext->getDevice());
+	SamplerParams params = {};
+	params.MagFilter = VK_FILTER_NEAREST;
+	params.MinFilter = VK_FILTER_NEAREST;
+	params.WrapModeS = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	params.WrapModeT = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	if (!m_pGBufferSampler->init(params))
+	{
+		return false;
+	}
 
 	if (!createRenderPass())
 	{
@@ -88,7 +111,7 @@ bool RendererVK::init()
 		return false;
 	}
 
-	//createFramebuffers();
+	createFramebuffers();
 
 	if (!createCommandPoolAndBuffers())
 	{
@@ -115,6 +138,12 @@ bool RendererVK::init()
 		return false;
 	}
 
+	m_pLightDescriptorSet->writeCombinedImageDescriptor(m_pGBuffer->getColorAttachment(0), m_pGBufferSampler, GBUFFER_ALBEDO_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptor(m_pGBuffer->getColorAttachment(1), m_pGBufferSampler, GBUFFER_NORMAL_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptor(m_pGBuffer->getColorAttachment(2), m_pGBufferSampler, GBUFFER_POSITION_BINDING);
+	m_pLightDescriptorSet->writeUniformBufferDescriptor(m_pLightBuffer, LIGHT_BUFFER_BINDING);
+	m_pLightDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer, CAMERA_BUFFER_BINDING);
+
 	return true;
 }
 
@@ -125,16 +154,18 @@ void RendererVK::onWindowResize(uint32_t width, uint32_t height)
 	
 	m_pContext->getSwapChain()->resize(width, height);
 
-	m_GBuffer->resize(width, height);
+	m_pGBuffer->resize(width, height);
+	m_pLightDescriptorSet->writeCombinedImageDescriptor(m_pGBuffer->getColorAttachment(0), m_pGBufferSampler, GBUFFER_ALBEDO_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptor(m_pGBuffer->getColorAttachment(1), m_pGBufferSampler, GBUFFER_NORMAL_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptor(m_pGBuffer->getColorAttachment(2), m_pGBufferSampler, GBUFFER_POSITION_BINDING);
 
-	//createFramebuffers();
+	createFramebuffers();
 }
 
 void RendererVK::beginFrame(const Camera& camera, const LightSetup& lightSetup)
 {
 	//Prepare for frame
 	m_pContext->getSwapChain()->acquireNextImage(m_ImageAvailableSemaphores[m_CurrentFrame]);
-	uint32_t backBufferIndex = m_pContext->getSwapChain()->getImageIndex();
 
 	m_ppCommandBuffers[m_CurrentFrame]->reset();
 	m_ppCommandPools[m_CurrentFrame]->reset();
@@ -144,15 +175,16 @@ void RendererVK::beginFrame(const Camera& camera, const LightSetup& lightSetup)
 	//Update camera
 	CameraBuffer cameraBuffer = {};
 	cameraBuffer.Projection = camera.getProjectionMat();
-	cameraBuffer.View = camera.getViewMat();
+	cameraBuffer.View		= camera.getViewMat();
+	cameraBuffer.Position	= glm::vec4(camera.getPosition(), 1.0f);
 	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraBuffer, 0, (const void*)&cameraBuffer, sizeof(CameraBuffer));
 	//Update lights
 	const uint32_t numPointLights = lightSetup.getPointLightCount();
 	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pLightBuffer, 0, (const void*)lightSetup.getPointLights(), sizeof(PointLight) * numPointLights);
 
-	//Start renderpass
+	//Begin geometrypass
 	VkClearValue clearValues[] = { m_ClearColor, m_ClearColor, m_ClearColor, m_ClearDepth };
-	m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pRenderPass, m_GBuffer->getFrameBuffer(), m_Viewport.width, m_Viewport.height, clearValues, 4);
+	m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pRenderPass, m_pGBuffer->getFrameBuffer(), m_Viewport.width, m_Viewport.height, clearValues, 4);
 
 	m_ppCommandBuffers[m_CurrentFrame]->setViewports(&m_Viewport, 1);
 	m_ppCommandBuffers[m_CurrentFrame]->setScissorRects(&m_ScissorRect, 1);
@@ -161,12 +193,28 @@ void RendererVK::beginFrame(const Camera& camera, const LightSetup& lightSetup)
 void RendererVK::endFrame()
 {
 	m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
+
+	//Begin lightpass
+	VkClearValue clearValues[] = { m_ClearColor, m_ClearDepth };
+	uint32_t backBufferIndex = m_pContext->getSwapChain()->getImageIndex();
+	m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pBackBufferRenderPass, m_ppBackbuffers[backBufferIndex], m_Viewport.width, m_Viewport.height, clearValues, 2);
+	
+	m_ppCommandBuffers[m_CurrentFrame]->bindGraphicsPipeline(m_pLightPipeline);
+	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pLightPipelineLayout, 0, 1, &m_pLightDescriptorSet, 0, nullptr);
+
+	m_ppCommandBuffers[m_CurrentFrame]->setViewports(&m_Viewport, 1);
+	m_ppCommandBuffers[m_CurrentFrame]->setScissorRects(&m_ScissorRect, 1);
+
+	m_ppCommandBuffers[m_CurrentFrame]->drawInstanced(3, 1, 0, 0);
+
+	m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
+
 	m_ppCommandBuffers[m_CurrentFrame]->end();
 
 	//Execute commandbuffer
-	VkSemaphore waitSemaphores[] = { m_ImageAvailableSemaphores[m_CurrentFrame] };
-	VkSemaphore signalSemaphores[] = { m_RenderFinishedSemaphores[m_CurrentFrame] };
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	VkSemaphore waitSemaphores[]		= { m_ImageAvailableSemaphores[m_CurrentFrame] };
+	VkSemaphore signalSemaphores[]		= { m_RenderFinishedSemaphores[m_CurrentFrame] };
+	VkPipelineStageFlags waitStages[]	= { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 	DeviceVK* pDevice = m_pContext->getDevice();
 	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppCommandBuffers[m_CurrentFrame], waitSemaphores, waitStages, 1, signalSemaphores, 1);
@@ -233,12 +281,12 @@ bool RendererVK::createGBuffer()
 {
 	VkExtent2D extent = m_pContext->getSwapChain()->getExtent();
 
-	m_GBuffer = DBG_NEW GBufferVK(m_pContext->getDevice());
-	m_GBuffer->addColorAttachmentFormat(VK_FORMAT_R8G8B8A8_UNORM);
-	m_GBuffer->addColorAttachmentFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
-	m_GBuffer->addColorAttachmentFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
-	m_GBuffer->setDepthAttachmentFormat(VK_FORMAT_D24_UNORM_S8_UINT);
-	return m_GBuffer->finalize(m_pRenderPass, extent.width, extent.height);
+	m_pGBuffer = DBG_NEW GBufferVK(m_pContext->getDevice());
+	m_pGBuffer->addColorAttachmentFormat(VK_FORMAT_R8G8B8A8_UNORM);
+	m_pGBuffer->addColorAttachmentFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
+	m_pGBuffer->addColorAttachmentFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
+	m_pGBuffer->setDepthAttachmentFormat(VK_FORMAT_D24_UNORM_S8_UINT);
+	return m_pGBuffer->finalize(m_pRenderPass, extent.width, extent.height);
 }
 
 bool RendererVK::createSemaphores()
@@ -294,7 +342,7 @@ void RendererVK::createFramebuffers()
 		m_ppBackbuffers[i] = DBG_NEW FrameBufferVK(pDevice);
 		m_ppBackbuffers[i]->addColorAttachment(pSwapChain->getImageView(i));
 		m_ppBackbuffers[i]->setDepthStencilAttachment(pDepthStencilView);
-		m_ppBackbuffers[i]->finalize(m_pRenderPass, extent.width, extent.height);
+		m_ppBackbuffers[i]->finalize(m_pBackBufferRenderPass, extent.width, extent.height);
 	}
 }
 
@@ -308,45 +356,58 @@ void RendererVK::releaseFramebuffers()
 
 bool RendererVK::createRenderPass()
 {
-	////Create renderpass
-	//m_pRenderPass = DBG_NEW RenderPassVK(m_pContext->getDevice());
-	//VkAttachmentDescription description = {};
-	//description.format = VK_FORMAT_B8G8R8A8_UNORM;
-	//description.samples = VK_SAMPLE_COUNT_1_BIT;
-	//description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;				//Clear Before Rendering
-	//description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;				//Store After Rendering
-	//description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;	//Dont care about stencil before
-	//description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;	//Still dont care about stencil
-	//description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;			//Dont care about what the initial layout of the image is (We do not need to save this memory)
-	//description.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;		//The image will be used for presenting
-	//m_pRenderPass->addAttachment(description);
+	//Create renderpass
+	m_pBackBufferRenderPass = DBG_NEW RenderPassVK(m_pContext->getDevice());
+	VkAttachmentDescription description = {};
+	description.format = VK_FORMAT_B8G8R8A8_UNORM;
+	description.samples = VK_SAMPLE_COUNT_1_BIT;
+	description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	description.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	m_pBackBufferRenderPass->addAttachment(description);
 
-	//description.format = VK_FORMAT_D24_UNORM_S8_UINT;
-	//description.samples = VK_SAMPLE_COUNT_1_BIT;
-	//description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;				//Clear Before Rendering
-	//description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;				//Store After Rendering
-	//description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;	//Dont care about stencil before (If we need the stencil this needs to change)
-	//description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;	//Still dont care about stencil	 (If we need the stencil this needs to change)
-	//description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;							//Dont care about what the initial layout of the image is (We do not need to save this memory)
-	//description.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;		//The image will be used as depthstencil
-	//m_pRenderPass->addAttachment(description);
+	description.format = VK_FORMAT_D24_UNORM_S8_UINT;
+	description.samples = VK_SAMPLE_COUNT_1_BIT;
+	description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	description.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	description.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	m_pBackBufferRenderPass->addAttachment(description);
 
-	//VkAttachmentReference colorAttachmentRef = {};
-	//colorAttachmentRef.attachment = 0;
-	//colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	VkAttachmentReference colorAttachmentRef = {};
+	colorAttachmentRef.attachment = 0;
+	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-	//VkAttachmentReference depthStencilAttachmentRef = {};
-	//depthStencilAttachmentRef.attachment = 1;
-	//depthStencilAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	//m_pRenderPass->addSubpass(&colorAttachmentRef, 1, &depthStencilAttachmentRef);
-	//m_pRenderPass->addSubpassDependency(VK_SUBPASS_EXTERNAL, 0, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
-	//return m_pRenderPass->finalize();
+	VkAttachmentReference depthStencilAttachmentRef = {};
+	depthStencilAttachmentRef.attachment = 1;
+	depthStencilAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	m_pBackBufferRenderPass->addSubpass(&colorAttachmentRef, 1, &depthStencilAttachmentRef);
+
+	VkSubpassDependency dependency = {};
+	dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass = 0;
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.srcAccessMask = 0;
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+	m_pBackBufferRenderPass->addSubpassDependency(dependency);
+	if (!m_pBackBufferRenderPass->finalize())
+	{
+		return false;
+	}
 
 	//Create renderpass
 	m_pRenderPass = DBG_NEW RenderPassVK(m_pContext->getDevice());
 
 	//Albedo
-	VkAttachmentDescription description = {};
+	description = {};
 	description.format	= VK_FORMAT_R8G8B8A8_UNORM;
 	description.samples = VK_SAMPLE_COUNT_1_BIT;
 	description.loadOp	= VK_ATTACHMENT_LOAD_OP_CLEAR;				
@@ -403,13 +464,13 @@ bool RendererVK::createRenderPass()
 	colorAttachmentRefs[2].attachment = 2;
 	colorAttachmentRefs[2].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-	VkAttachmentReference depthStencilAttachmentRef = {};
+	depthStencilAttachmentRef = {};
 	depthStencilAttachmentRef.attachment = 3;
 	depthStencilAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	m_pRenderPass->addSubpass(colorAttachmentRefs, 3, &depthStencilAttachmentRef);
 
-	VkSubpassDependency dependency = {};
+	dependency = {};
 	dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 	dependency.dstSubpass = 0;
@@ -447,14 +508,30 @@ bool RendererVK::createPipelines()
 		return false;
 	}
 
-	std::vector<IShader*> shaders = { pVertexShader, pPixelShader };
 	m_pGeometryPipeline = DBG_NEW PipelineVK(m_pContext->getDevice());
-	m_pGeometryPipeline->addColorBlendAttachment(false, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
-	m_pGeometryPipeline->addColorBlendAttachment(false, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
-	m_pGeometryPipeline->addColorBlendAttachment(false, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
-	m_pGeometryPipeline->setCulling(true);
-	m_pGeometryPipeline->setDepthTest(true);
-	m_pGeometryPipeline->setWireFrame(false);
+	
+	VkPipelineColorBlendAttachmentState blendAttachment = {};
+	blendAttachment.blendEnable = VK_FALSE;
+	blendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	m_pGeometryPipeline->addColorBlendAttachment(blendAttachment);
+	m_pGeometryPipeline->addColorBlendAttachment(blendAttachment);
+	m_pGeometryPipeline->addColorBlendAttachment(blendAttachment);
+
+	VkPipelineRasterizationStateCreateInfo rasterizerState = {};
+	rasterizerState.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizerState.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterizerState.polygonMode = VK_POLYGON_MODE_FILL;
+	rasterizerState.lineWidth = 1.0f;
+	m_pGeometryPipeline->setRasterizerState(rasterizerState);
+
+	VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
+	depthStencilState.depthTestEnable = VK_TRUE;
+	depthStencilState.depthWriteEnable = VK_TRUE;
+	depthStencilState.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+	depthStencilState.stencilTestEnable = VK_FALSE;
+	m_pGeometryPipeline->setDepthStencilState(depthStencilState);
+
+	std::vector<IShader*> shaders = { pVertexShader, pPixelShader };
 	if (!m_pGeometryPipeline->finalize(shaders, m_pRenderPass, m_pGeometryPipelineLayout))
 	{
 		return false;
@@ -480,13 +557,10 @@ bool RendererVK::createPipelines()
 
 	shaders = { pVertexShader, pPixelShader };
 	m_pLightPipeline = DBG_NEW PipelineVK(m_pContext->getDevice());
-	m_pLightPipeline->addColorBlendAttachment(false, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
-	m_pLightPipeline->addColorBlendAttachment(false, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
-	m_pLightPipeline->addColorBlendAttachment(false, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
-	m_pLightPipeline->setCulling(true);
-	m_pLightPipeline->setDepthTest(true);
-	m_pLightPipeline->setWireFrame(false);
-	if (!m_pLightPipeline->finalize(shaders, m_pRenderPass, m_pLightPipelineLayout))
+	m_pLightPipeline->addColorBlendAttachment(blendAttachment);
+	m_pLightPipeline->setRasterizerState(rasterizerState);
+	m_pLightPipeline->setDepthStencilState(depthStencilState);
+	if (!m_pLightPipeline->finalize(shaders, m_pBackBufferRenderPass, m_pLightPipelineLayout))
 	{
 		return false;
 	}
@@ -505,7 +579,12 @@ bool RendererVK::createPipelineLayouts()
 	m_pGeometryDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, VERTEX_BUFFER_BINDING, 1);
 	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ALBEDO_MAP_BINDING, 1);
 	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, NORMAL_MAP_BINDING, 1);
-	m_pGeometryDescriptorSetLayout->finalize();
+	
+	if (!m_pGeometryDescriptorSetLayout->finalize())
+	{
+		return false;
+	}	
+	
 	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { m_pGeometryDescriptorSetLayout };
 
 	//Descriptorpool
@@ -534,18 +613,35 @@ bool RendererVK::createPipelineLayouts()
 	}
 
 	//Lightpass
-	m_pDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(m_pContext->getDevice());
-	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, LIGHT_BUFFER_BINDING, 1);
-	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_ALBEDO_BINDING, 1);
-	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_NORMAL_BINDING, 1);
-	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_POSITION_BINDING, 1);
-	m_pDescriptorSetLayout->finalize();
+	m_pLightDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(m_pContext->getDevice());
+	m_pLightDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, LIGHT_BUFFER_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, CAMERA_BUFFER_BINDING, 1);
 
-	descriptorSetLayouts = { m_pDescriptorSetLayout };
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_ALBEDO_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_NORMAL_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_POSITION_BINDING, 1);
+	
+	if (!m_pLightDescriptorSetLayout->finalize())
+	{
+		return false;
+	}
+
+	descriptorSetLayouts = { m_pLightDescriptorSetLayout };
 	pushConstantRanges = { };
 
 	m_pLightPipelineLayout = DBG_NEW PipelineLayoutVK(m_pContext->getDevice());
-	return m_pLightPipelineLayout->init(descriptorSetLayouts, pushConstantRanges);
+	if (!m_pLightPipelineLayout->init(descriptorSetLayouts, pushConstantRanges))
+	{
+		return false;
+	}
+
+	m_pLightDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pLightDescriptorSetLayout);
+	if (!m_pLightDescriptorSet)
+	{
+		return false;
+	}
+
+	return true;
 }
 
 bool RendererVK::createBuffersAndTextures()
@@ -572,9 +668,16 @@ bool RendererVK::createBuffersAndTextures()
 		return false;
 	}
 
-	uint8_t pixels[] = { 255, 255, 255, 255 };
+	uint8_t whitePixels[] = { 255, 255, 255, 255 };
 	m_pDefaultTexture = DBG_NEW Texture2DVK(m_pContext->getDevice());
-	return m_pDefaultTexture->initFromMemory(pixels, 1, 1);
+	if (!m_pDefaultTexture->initFromMemory(whitePixels, 1, 1))
+	{
+		return false;
+	}
+
+	uint8_t pixels[] = { 127, 127, 255, 255 };
+	m_pDefaultNormal = DBG_NEW Texture2DVK(m_pContext->getDevice());
+	return m_pDefaultNormal->initFromMemory(pixels, 1, 1);
 }
 
 DescriptorSetVK* RendererVK::getDescriptorSetFromMeshAndMaterial(const IMesh* pMesh, const Material* pMaterial)
@@ -611,7 +714,7 @@ DescriptorSetVK* RendererVK::getDescriptorSetFromMeshAndMaterial(const IMesh* pM
 		}
 		else
 		{
-			pNormal = m_pDefaultTexture;
+			pNormal = m_pDefaultNormal;
 		}
 		pDescriptorSet->writeCombinedImageDescriptor(pNormal->getImageView(), pSampler, NORMAL_MAP_BINDING);
 

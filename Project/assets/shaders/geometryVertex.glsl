@@ -25,6 +25,7 @@ layout (binding = 0) uniform PerFrameBuffer
 {
 	mat4 Projection;
 	mat4 View;
+	vec4 Position;
 } g_PerFrame;
 
 layout(binding = 1) buffer vertexBuffer

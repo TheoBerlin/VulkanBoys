@@ -26,8 +26,11 @@ void GBufferVK::resize(uint32_t width, uint32_t height)
 	m_pDevice->wait();
 	releaseBuffers();
 
+	m_Extent = { width, height };
+
 	createImages();
 	createImageViews();
+
 	createFrameBuffer(m_pRenderPass);
 }
 
