@@ -23,8 +23,4 @@ public:
 	virtual void traceRays() = 0;
 
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) = 0;
-
-	virtual void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform) = 0;
-
-	virtual void drawImgui(IImgui* pImgui) = 0;
 };

@@ -13,7 +13,10 @@ class FrameBufferVK;
 class GraphicsContextVK;
 class IGraphicsContext;
 class IRenderer;
+class MeshRendererVK;
+class ParticleRendererVK;
 class PipelineVK;
+class RayTracerVK;
 class RenderPassVK;
 
 class RenderingHandlerVK : public IRenderingHandler
@@ -23,6 +26,10 @@ public:
     ~RenderingHandlerVK();
 
     bool initialize();
+
+    void setMeshRenderer(IRenderer* pMeshRenderer) { m_pMeshRenderer = reinterpret_cast<MeshRendererVK*>(pMeshRenderer); }
+    void setRayTracer(IRenderer* pRayTracer) { m_pRayTracer = pRayTracer; }
+    void setParticleRenderer(IRenderer* pParticleRenderer) { m_pParticleRenderer = reinterpret_cast<ParticleRendererVK*>(pParticleRenderer); }
 
     void onWindowResize(uint32_t width, uint32_t height);
 
@@ -40,10 +47,14 @@ public:
 
     FrameBufferVK** getBackBuffers() { return m_ppBackbuffers; }
     RenderPassVK* getRenderPass() { return m_pRenderPass; }
-    BufferVK* getCameraBuffer() { return m_pCameraBuffer; }
+    BufferVK* getCameraMatricesBuffer() { return m_pCameraMatricesBuffer; }
+    BufferVK* getCameraDirectionsBuffer() { return m_pCameraDirectionsBuffer; }
 
     // Used by renderers to execute their secondary command buffers
     CommandBufferVK* getCommandBuffer(uint32_t frameIndex) { return m_ppCommandBuffers[frameIndex]; }
+
+    uint32_t getCurrentFrameIndex() const { return m_CurrentFrame; }
+    FrameBufferVK* getCurrentBackBuffer() const { return m_ppBackbuffers[m_BackBufferIndex]; }
 
 private:
     bool createBackBuffers();
@@ -54,10 +65,17 @@ private:
 
     void releaseBackBuffers();
 
+    void updateBuffers(const Camera& camera);
+
     void startRenderPass();
+    void submitParticles();
 
 private:
     GraphicsContextVK* m_pGraphicsContext;
+
+    MeshRendererVK* m_pMeshRenderer;
+    ParticleRendererVK* m_pParticleRenderer;
+    IRenderer* m_pRayTracer;
 
     FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
@@ -80,7 +98,7 @@ private:
     VkViewport m_Viewport;
 	VkRect2D m_ScissorRect;
 
-    BufferVK* m_pCameraBuffer;
+    BufferVK* m_pCameraMatricesBuffer, *m_pCameraDirectionsBuffer;
 
     bool m_EnableRayTracing;
 };

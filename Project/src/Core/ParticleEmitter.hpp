@@ -13,6 +13,7 @@
 
 class IGraphicsContext;
 class IMesh;
+class ITexture2D;
 
 class ParticleEmitter
 {
@@ -33,7 +34,8 @@ public:
     void initialize(IGraphicsContext* pGraphicsContext);
 
     void update(float dt);
-    void render() const;
+
+    const ParticleStorage& getParticleStorage() const { return m_ParticleStorage; }
 
 private:
     // Spawns particles before the emitter has created its maximum amount of particles
@@ -45,6 +47,8 @@ private:
     float m_ParticleDuration, m_InitialSpeed, m_ParticlesPerSecond;
 
     ParticleStorage m_ParticleStorage;
+    ITexture2D* m_pTexture;
+
     // The amount of time since the emitter started emitting particles. Used for spawning particles.
     float m_EmitterAge;
 };

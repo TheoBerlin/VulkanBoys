@@ -65,11 +65,6 @@ void ParticleEmitter::update(float dt)
     }
 }
 
-void ParticleEmitter::render() const
-{
-
-}
-
 void ParticleEmitter::spawnParticles()
 {
     size_t particleCount = m_ParticleStorage.positions.size();

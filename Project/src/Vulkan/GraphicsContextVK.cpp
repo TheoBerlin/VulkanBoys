@@ -4,6 +4,7 @@
 #include "ImguiVK.h"
 #include "MeshVK.h"
 #include "MeshRendererVK.h"
+#include "Particles/ParticleRendererVK.hpp"
 #include "RenderingHandlerVK.hpp"
 #include "ShaderVK.h"
 #include "SwapChainVK.h"
@@ -33,7 +34,7 @@ void GraphicsContextVK::init()
 #if VALIDATION_LAYERS_ENABLED
 	m_Instance.addRequiredExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif
-	
+
 	GLFWwindow* pNativeWindow = reinterpret_cast<GLFWwindow*>(m_pWindow->getNativeHandle());
 
 	uint32_t count = 0;
@@ -44,7 +45,7 @@ void GraphicsContextVK::init()
 	}
 
 	m_Instance.addOptionalExtension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-	
+
 	//m_Instance.debugPrintAvailableExtensions();
 	//m_Instance.debugPrintAvailableLayers();
 
@@ -58,7 +59,7 @@ void GraphicsContextVK::init()
 	m_Device.addOptionalExtension(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
 	//m_Device.addOptionalExtension(VK_KHR_MAINTENANCE3_EXTENSION_NAME);
 	m_Device.addOptionalExtension(VK_NV_RAY_TRACING_EXTENSION_NAME);
-	
+
 	m_Device.finalize(&m_Instance);
 
 	//SwapChain init
@@ -66,15 +67,19 @@ void GraphicsContextVK::init()
 	m_pSwapChain->init(m_pWindow, VK_FORMAT_B8G8R8A8_UNORM, MAX_FRAMES_IN_FLIGHT, true);
 }
 
-
 IRenderingHandler* GraphicsContextVK::createRenderingHandler()
 {
 	return DBG_NEW RenderingHandlerVK(this);
 }
 
-IRenderer* GraphicsContextVK::createRenderer(IRenderingHandler* pRenderingHandler)
+IRenderer* GraphicsContextVK::createMeshRenderer(IRenderingHandler* pRenderingHandler)
 {
 	return DBG_NEW MeshRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler));
+}
+
+IRenderer* GraphicsContextVK::createParticleRenderer(IRenderingHandler* pRenderingHandler)
+{
+	return DBG_NEW ParticleRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler));
 }
 
 IImgui* GraphicsContextVK::createImgui()

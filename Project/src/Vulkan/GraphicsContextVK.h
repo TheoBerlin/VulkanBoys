@@ -21,7 +21,8 @@ public:
 
 	//OVERRIDE
 	virtual IRenderingHandler* createRenderingHandler() override;
-	virtual IRenderer* createRenderer(IRenderingHandler* pRenderingHandler) override;
+	virtual IRenderer* createMeshRenderer(IRenderingHandler* pRenderingHandler) override;
+	virtual IRenderer* createParticleRenderer(IRenderingHandler* pRenderingHandler) override;
 	virtual IImgui* createImgui() override;
 
     virtual IMesh* createMesh() override;

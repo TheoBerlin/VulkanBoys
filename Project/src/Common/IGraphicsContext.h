@@ -26,7 +26,8 @@ public:
 	DECL_INTERFACE(IGraphicsContext);
 
 	virtual IRenderingHandler* createRenderingHandler() = 0;
-	virtual IRenderer* createRenderer(IRenderingHandler* pRenderingHandler) = 0;
+	virtual IRenderer* createMeshRenderer(IRenderingHandler* pRenderingHandler) = 0;
+	virtual IRenderer* createParticleRenderer(IRenderingHandler* pRenderingHandler) = 0;
 	virtual IImgui* createImgui() = 0;
 
 	virtual IShader* createShader() = 0;

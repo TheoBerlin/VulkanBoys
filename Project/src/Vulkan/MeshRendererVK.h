@@ -43,9 +43,7 @@ public:
 	
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
 
-	virtual void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform) override;
-
-	virtual void drawImgui(IImgui* pImgui) override;
+	void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform);
 
 private:
 	bool createSemaphores();

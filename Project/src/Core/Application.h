@@ -2,6 +2,7 @@
 #include "Common/IEventHandler.h"
 
 #include "Camera.h"
+#include "ParticleEmitterHandler.hpp"
 
 class IGraphicsContext;
 class IImgui;
@@ -52,13 +53,16 @@ private:
 	IWindow* m_pWindow;
 	IGraphicsContext* m_pContext;
 	IRenderingHandler* m_pRenderingHandler;
-	IRenderer* m_pMeshRenderer;
+	IRenderer* m_pMeshRenderer, *m_pParticleRenderer;
 	IImgui* m_pImgui;
 	IInputHandler* m_pInputHandler;
 
 	//TODO: Resoures should they be here?
 	IMesh* m_pMesh;
 	ITexture2D* m_pAlbedo;
+
+	ParticleEmitterHandler m_ParticleEmitterHandler;
+	ITexture2D* m_pParticleTexture;
 
 	bool m_IsRunning;
 	bool m_UpdateCamera;
