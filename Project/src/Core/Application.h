@@ -1,8 +1,8 @@
 #pragma once
 #include "Common/IEventHandler.h"
+#include "Common/IParticleEmitterHandler.h"
 
 #include "Camera.h"
-#include "ParticleEmitterHandler.hpp"
 
 class IGraphicsContext;
 class IImgui;
@@ -61,7 +61,7 @@ private:
 	IMesh* m_pMesh;
 	ITexture2D* m_pAlbedo;
 
-	ParticleEmitterHandler m_ParticleEmitterHandler;
+	IParticleEmitterHandler* m_pParticleEmitterHandler;
 	ITexture2D* m_pParticleTexture;
 
 	bool m_IsRunning;

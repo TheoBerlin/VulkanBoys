@@ -15,6 +15,7 @@ class PipelineLayoutVK;
 class PipelineVK;
 class RenderingHandlerVK;
 class RenderPassVK;
+class SamplerVK;
 
 class ParticleRendererVK : public IRenderer
 {
@@ -26,24 +27,21 @@ public:
     ParticleRendererVK(GraphicsContextVK* pGraphicsContext, RenderingHandlerVK* pRenderingHandler);
     ~ParticleRendererVK();
 
-    bool init();
+    virtual bool init() override;
 
-	void beginFrame(const Camera& camera);
-	void endFrame();
+	virtual void beginFrame(const Camera& camera) override;
+	virtual void endFrame() override;
 
-	void beginRayTraceFrame(const Camera& camera);
-	void endRayTraceFrame();
-	void traceRays();
+	void submitParticles(ParticleEmitter* pParticleEmitter);
 
 	void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY);
-
-	void submitParticles(const ParticleEmitter* pParticleEmitter);
 
 private:
 	bool createCommandPoolAndBuffers();
 	bool createPipelineLayout();
 	bool createPipeline();
 	bool createQuadMesh();
+	void writeBufferDescriptors();
 
 private:
 	GraphicsContextVK* m_pGraphicsContext;
@@ -56,9 +54,12 @@ private:
 	DescriptorPoolVK* m_pDescriptorPool;
 	DescriptorSetVK* m_pDescriptorSet;
 
-	RenderPassVK* m_pRenderPass;
 	PipelineLayoutVK* m_pPipelineLayout;
 	PipelineVK* m_pPipeline;
 
+	VkViewport m_Viewport;
+	VkRect2D m_ScissorRect;
+
 	MeshVK* m_pQuadMesh;
+	SamplerVK* m_pSampler;
 };

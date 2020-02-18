@@ -47,7 +47,8 @@ Application::Application()
 	m_Camera(),
 	m_IsRunning(false),
 	m_UpdateCamera(false),
-	m_pParticleTexture(nullptr)
+	m_pParticleTexture(nullptr),
+	m_pParticleEmitterHandler(nullptr)
 {
 	ASSERT(s_pInstance == nullptr);
 	s_pInstance = this;
@@ -79,7 +80,7 @@ void Application::init()
 
 	//Create context
 	m_pContext = IGraphicsContext::create(m_pWindow, API::VULKAN);
-	m_EnableRayTracing = m_pContext->supportsRayTracing();
+	m_EnableRayTracing = false;//m_pContext->supportsRayTracing();
 	
 	//Setup Imgui
 	m_pImgui = m_pContext->createImgui();
@@ -87,6 +88,9 @@ void Application::init()
 	m_pWindow->addEventHandler(m_pImgui);
 
 	// Setup particles
+	m_pParticleEmitterHandler = m_pContext->createParticleEmitterHandler();
+	m_pParticleEmitterHandler->initialize(m_pContext);
+
 	m_pParticleTexture = m_pContext->createTexture2D();
 	if (!m_pParticleTexture->initFromFile("assets/textures/flare.png")) {
 		LOG("Failed to create particle texture");
@@ -96,17 +100,18 @@ void Application::init()
 	ParticleEmitterInfo emitterInfo = {};
 	emitterInfo.position = glm::vec3(0.0f, 0.0f, 0.0f);
 	emitterInfo.direction = glm::vec3(0.0f, 1.0f, 0.0f);
+	emitterInfo.particleSize = glm::vec2(0.2f, 0.2f);
 	emitterInfo.initialSpeed = 5.0f;
 	emitterInfo.particleDuration = 4.0f;
 	emitterInfo.particlesPerSecond = 10.0f;
 	emitterInfo.pTexture = m_pParticleTexture;
-	m_ParticleEmitterHandler.createEmitter(emitterInfo);
+	m_pParticleEmitterHandler->createEmitter(emitterInfo);
 
 	// Setup rendering handler
 	m_pRenderingHandler = m_pContext->createRenderingHandler();
 	m_pRenderingHandler->initialize();
 	m_pRenderingHandler->setClearColor(0.0f, 0.0f, 0.0f);
-	m_pRenderingHandler->setParticleEmitterHandler(&m_ParticleEmitterHandler);
+	m_pRenderingHandler->setParticleEmitterHandler(m_pParticleEmitterHandler);
 
 	// Setup renderers
 	m_pMeshRenderer = m_pContext->createMeshRenderer(m_pRenderingHandler);
@@ -118,7 +123,7 @@ void Application::init()
 	m_pRenderingHandler->setMeshRenderer(m_pMeshRenderer);
 	m_pRenderingHandler->setParticleRenderer(m_pParticleRenderer);
 	// TODO: Create separate ray tracer renderer class
-	if (m_pContext->supportsRayTracing()) {
+	if (m_EnableRayTracing) {
 		m_pRenderingHandler->setRayTracer(m_pMeshRenderer);
 	}
 
@@ -263,6 +268,7 @@ void Application::release()
 	SAFEDELETE(m_pMeshRenderer);
 	SAFEDELETE(m_pParticleRenderer);
 	SAFEDELETE(m_pParticleTexture);
+	SAFEDELETE(m_pParticleEmitterHandler);
 	SAFEDELETE(m_pImgui);
 	SAFEDELETE(m_pContext);
 
@@ -436,6 +442,8 @@ void Application::update(double dt)
 	{
 		Input::setMousePosition(m_pWindow, glm::vec2(m_pWindow->getClientWidth() / 2.0f, m_pWindow->getClientHeight() / 2.0f));
 	}
+
+	m_pParticleEmitterHandler->update(dt);
 }
 
 static glm::vec4 g_Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);

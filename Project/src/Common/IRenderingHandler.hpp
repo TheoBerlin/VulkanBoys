@@ -8,7 +8,7 @@ class IGraphicsContext;
 class IImgui;
 class IRenderer;
 class IMesh;
-class ParticleEmitterHandler;
+class IParticleEmitterHandler;
 
 class IRenderingHandler
 {
@@ -37,10 +37,10 @@ public:
     virtual void setRayTracer(IRenderer* pRayTracer) = 0;
     virtual void setParticleRenderer(IRenderer* pParticleRenderer) = 0;
 
-    void setParticleEmitterHandler(ParticleEmitterHandler* pParticleEmitterHandler) { m_pParticleEmitterHandler = pParticleEmitterHandler; }
+    void setParticleEmitterHandler(IParticleEmitterHandler* pParticleEmitterHandler) { m_pParticleEmitterHandler = pParticleEmitterHandler; }
 
 protected:
     IGraphicsContext* m_pGraphicsContext;
 
-    ParticleEmitterHandler* m_pParticleEmitterHandler;
+    IParticleEmitterHandler* m_pParticleEmitterHandler;
 };

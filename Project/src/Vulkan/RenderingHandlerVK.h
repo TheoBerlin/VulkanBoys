@@ -51,7 +51,7 @@ public:
     BufferVK* getCameraDirectionsBuffer() { return m_pCameraDirectionsBuffer; }
 
     // Used by renderers to execute their secondary command buffers
-    CommandBufferVK* getCommandBuffer(uint32_t frameIndex) { return m_ppCommandBuffers[frameIndex]; }
+    CommandBufferVK* getCurrentCommandBuffer() { return m_ppCommandBuffers[m_CurrentFrame]; }
 
     uint32_t getCurrentFrameIndex() const { return m_CurrentFrame; }
     FrameBufferVK* getCurrentBackBuffer() const { return m_ppBackbuffers[m_BackBufferIndex]; }
@@ -75,6 +75,7 @@ private:
 
     MeshRendererVK* m_pMeshRenderer;
     ParticleRendererVK* m_pParticleRenderer;
+    // TODO: Implement renderer class for ray tracing
     IRenderer* m_pRayTracer;
 
     FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];

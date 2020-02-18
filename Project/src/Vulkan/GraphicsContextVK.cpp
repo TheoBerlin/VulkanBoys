@@ -1,11 +1,13 @@
 #include "GraphicsContextVK.h"
 
 #include "BufferVK.h"
+#include "CopyHandlerVK.h"
 #include "ImguiVK.h"
 #include "MeshVK.h"
 #include "MeshRendererVK.h"
-#include "Particles/ParticleRendererVK.hpp"
-#include "RenderingHandlerVK.hpp"
+#include "Particles/ParticleEmitterHandlerVK.h"
+#include "Particles/ParticleRendererVK.h"
+#include "RenderingHandlerVK.h"
 #include "ShaderVK.h"
 #include "SwapChainVK.h"
 #include "Texture2DVK.h"
@@ -82,6 +84,11 @@ IRenderer* GraphicsContextVK::createParticleRenderer(IRenderingHandler* pRenderi
 	return DBG_NEW ParticleRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler));
 }
 
+IParticleEmitterHandler* GraphicsContextVK::createParticleEmitterHandler()
+{
+	return DBG_NEW ParticleEmitterHandlerVK();
+}
+
 IImgui* GraphicsContextVK::createImgui()
 {
 	return DBG_NEW ImguiVK(this);
@@ -100,6 +107,12 @@ IShader* GraphicsContextVK::createShader()
 IBuffer* GraphicsContextVK::createBuffer()
 {
 	return DBG_NEW BufferVK(&m_Device);
+}
+
+void GraphicsContextVK::updateBuffer(IBuffer* pDestination, uint64_t destinationOffset, const void* pSource, uint64_t sizeInBytes)
+{
+	BufferVK* pDestBuffer = reinterpret_cast<BufferVK*>(pDestination);
+	m_Device.getCopyHandler()->updateBuffer(pDestBuffer, destinationOffset, pSource, sizeInBytes);
 }
 
 IFrameBuffer* GraphicsContextVK::createFrameBuffer()

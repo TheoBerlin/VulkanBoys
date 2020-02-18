@@ -11,7 +11,7 @@
 #include "MeshVK.h"
 #include "PipelineLayoutVK.h"
 #include "PipelineVK.h"
-#include "RenderingHandlerVK.hpp"
+#include "RenderingHandlerVK.h"
 #include "RenderPassVK.h"
 #include "SamplerVK.h"
 #include "SwapChainVK.h"
@@ -171,12 +171,11 @@ void MeshRendererVK::beginFrame(const Camera& camera)
 
 void MeshRendererVK::endFrame()
 {
-	//m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
 	m_ppCommandBuffers[m_CurrentFrame]->end();
 
 	DeviceVK* pDevice = m_pContext->getDevice();
-	pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCommandBuffer(m_CurrentFrame), m_ppCommandBuffers[m_CurrentFrame]);
-	
+	pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCurrentCommandBuffer(), m_ppCommandBuffers[m_CurrentFrame]);
+
 	m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
