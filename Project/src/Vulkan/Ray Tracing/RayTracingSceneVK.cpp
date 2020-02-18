@@ -208,7 +208,7 @@ uint32_t RayTracingSceneVK::addGraphicsObjectInstance(IMesh* pMesh, TempMaterial
 	return m_AllGeometryInstances.size() - 1;
 }
 
-void RayTracingSceneVK::updateMeshInstance(uint32_t index, const glm::mat3x4& transform)
+void RayTracingSceneVK::updateGraphicsObject(uint32_t index, const glm::mat3x4& transform)
 {
 	m_AllGeometryInstances[index].transform = transform;
 }

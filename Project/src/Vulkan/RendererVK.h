@@ -133,7 +133,9 @@ private:
 
 	ShaderVK* m_pRaygenShader;
 	ShaderVK* m_pClosestHitShader;
+	ShaderVK* m_pClosestHitShadowShader;
 	ShaderVK* m_pMissShader;
+	ShaderVK* m_pMissShadowShader;
 
 	SamplerVK* m_pSampler;
 	

@@ -5,11 +5,6 @@ struct RayPayload
 {
 	vec3 color;
 	uint recursion;
-	float occluderFactor;
-	// float distance;
-	// vec3 normal;
-	// float reflector;
-	// float refractor;
 };
 
 layout(location = 0) rayPayloadInNV RayPayload rayPayload;
@@ -23,10 +18,4 @@ void main()
 	float t = 0.5f * (unitDir.y + 1.0f);
 	rayPayload.color = (1.0f-t) * gradientStart + t * gradientEnd;
 	rayPayload.recursion = rayPayload.recursion + 1;
-	rayPayload.occluderFactor = 0.0f;
-
-	// rayPayload.distance = -1.0f;
-	// rayPayload.normal = vec3(0.0f);
-	// rayPayload.reflector = 0.0f;
-	// rayPayload.refractor = 0.0f;
 }

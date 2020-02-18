@@ -6,7 +6,7 @@
 
 RayTracingPipelineVK::RayTracingPipelineVK(DeviceVK* pDevice) :
 	m_pDevice(pDevice),
-	m_MaxRecursionDepth(1),
+	m_MaxRecursionDepth(pDevice->getRayTracingProperties().maxRecursionDepth),
 	m_Pipeline(VK_NULL_HANDLE)
 {
 }

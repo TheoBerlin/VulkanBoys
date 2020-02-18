@@ -69,7 +69,7 @@ public:
 	~RayTracingSceneVK();
 
 	uint32_t addGraphicsObjectInstance(IMesh* pMesh, TempMaterial* pMaterial, const glm::mat3x4& transform = glm::mat3x4(1.0f));
-	void updateMeshInstance(uint32_t index, const glm::mat3x4& transform);
+	void updateGraphicsObject(uint32_t index, const glm::mat3x4& transform);
 	bool finalize();
 
 	void update();
@@ -90,7 +90,7 @@ private:
 	void updateInstanceBuffer();
 	void createCombinedGraphicsObjectData();
 	VkDeviceSize findMaxMemReqBLAS();
-	
+
 private:
 	GraphicsContextVK* m_pContext;
 	DeviceVK* m_pDevice;

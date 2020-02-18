@@ -98,7 +98,9 @@ RendererVK::~RendererVK()
 
 	SAFEDELETE(m_pRaygenShader);
 	SAFEDELETE(m_pClosestHitShader);
+	SAFEDELETE(m_pClosestHitShadowShader);
 	SAFEDELETE(m_pMissShader);
+	SAFEDELETE(m_pMissShadowShader);
 
 	SAFEDELETE(m_pSampler);
 
@@ -319,7 +321,9 @@ bool RendererVK::init()
 
 	RaygenGroupParams raygenGroupParams = {};
 	HitGroupParams hitGroupParams = {};
+	HitGroupParams hitGroupShadowParams = {};
 	MissGroupParams missGroupParams = {};
+	MissGroupParams missGroupShadowParams = {};
 
 	{
 		m_pRaygenShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
@@ -333,10 +337,21 @@ bool RendererVK::init()
 		m_pClosestHitShader->setSpecializationConstant<uint32_t>(0, 3);
 		hitGroupParams.pClosestHitShader = m_pClosestHitShader;
 
+		m_pClosestHitShadowShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+		m_pClosestHitShadowShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/closesthitShadow.spv");
+		m_pClosestHitShadowShader->finalize();
+		m_pClosestHitShadowShader->setSpecializationConstant<uint32_t>(0, 3);
+		hitGroupShadowParams.pClosestHitShader = m_pClosestHitShadowShader;
+
 		m_pMissShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
 		m_pMissShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/miss.spv");
 		m_pMissShader->finalize();
 		missGroupParams.pMissShader = m_pMissShader;
+
+		m_pMissShadowShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+		m_pMissShadowShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/missShadow.spv");
+		m_pMissShadowShader->finalize();
+		missGroupShadowParams.pMissShader = m_pMissShadowShader;
 	}
 
 	std::cout << "Creating RTX Pipeline Layout" << std::endl;
@@ -345,7 +360,9 @@ bool RendererVK::init()
 	m_pRayTracingPipeline = new RayTracingPipelineVK(m_pContext->getDevice());
 	m_pRayTracingPipeline->addRaygenShaderGroup(raygenGroupParams);
 	m_pRayTracingPipeline->addMissShaderGroup(missGroupParams);
+	m_pRayTracingPipeline->addMissShaderGroup(missGroupShadowParams);
 	m_pRayTracingPipeline->addHitShaderGroup(hitGroupParams);
+	m_pRayTracingPipeline->addHitShaderGroup(hitGroupShadowParams);
 	m_pRayTracingPipeline->finalize(m_pRayTracingPipelineLayout);
 	
 	m_pSBT = new ShaderBindingTableVK(m_pContext);
@@ -518,10 +535,10 @@ void RendererVK::beginRayTraceFrame(const Camera& camera)
 	m_Matrix3 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f + glm::sin(m_TempTimer), 0.0)));
 	glm::mat4 matrix4 = glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 0.0f));
 	m_Matrix4 = glm::transpose(glm::rotate(matrix4, m_TempTimer, glm::vec3(0.0f, 1.0f, 0.0f)));
-	m_pRayTracingScene->updateMeshInstance(m_InstanceIndex1, m_Matrix1);
-	m_pRayTracingScene->updateMeshInstance(m_InstanceIndex2, m_Matrix2);
-	m_pRayTracingScene->updateMeshInstance(m_InstanceIndex3, m_Matrix3);
-	m_pRayTracingScene->updateMeshInstance(m_InstanceIndex4, m_Matrix4);
+	m_pRayTracingScene->updateGraphicsObject(m_InstanceIndex1, m_Matrix1);
+	m_pRayTracingScene->updateGraphicsObject(m_InstanceIndex2, m_Matrix2);
+	m_pRayTracingScene->updateGraphicsObject(m_InstanceIndex3, m_Matrix3);
+	m_pRayTracingScene->updateGraphicsObject(m_InstanceIndex4, m_Matrix4);
 	m_pRayTracingScene->update();
 
 	m_ppComputeCommandBuffers[m_CurrentFrame]->reset();
