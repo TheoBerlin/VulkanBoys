@@ -676,14 +676,14 @@ bool RendererVK::createBuffersAndTextures()
 
 	uint8_t whitePixels[] = { 255, 255, 255, 255 };
 	m_pDefaultTexture = DBG_NEW Texture2DVK(m_pContext->getDevice());
-	if (!m_pDefaultTexture->initFromMemory(whitePixels, 1, 1))
+	if (!m_pDefaultTexture->initFromMemory(whitePixels, 1, 1, false))
 	{
 		return false;
 	}
 
 	uint8_t pixels[] = { 127, 127, 255, 255 };
 	m_pDefaultNormal = DBG_NEW Texture2DVK(m_pContext->getDevice());
-	return m_pDefaultNormal->initFromMemory(pixels, 1, 1);
+	return m_pDefaultNormal->initFromMemory(pixels, 1, 1, false);
 }
 
 DescriptorSetVK* RendererVK::getDescriptorSetFromMeshAndMaterial(const IMesh* pMesh, const Material* pMaterial)

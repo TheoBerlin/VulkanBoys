@@ -170,7 +170,26 @@ void CommandBufferVK::copyBuffer(BufferVK* pSource, uint64_t sourceOffset, Buffe
 	vkCmdCopyBuffer(m_CommandBuffer, pSource->getBuffer(), pDestination->getBuffer(), 1, &bufferCopy);
 }
 
-void CommandBufferVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height)
+void CommandBufferVK::blitImage2D(ImageVK* pSource, uint32_t sourceMip, VkExtent2D sourceExtent, ImageVK* pDestination, uint32_t destinationMip, VkExtent2D destinationExtent)
+{
+	VkImageBlit blit = {};
+	blit.srcOffsets[0]					= { 0, 0, 0 };
+	blit.srcOffsets[1]					= { int32_t(sourceExtent.width), int32_t(sourceExtent.height), int32_t(1) };
+	blit.srcSubresource.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
+	blit.srcSubresource.mipLevel		= sourceMip;
+	blit.srcSubresource.baseArrayLayer	= 0;
+	blit.srcSubresource.layerCount		= 1;
+	blit.dstOffsets[0]					= { 0, 0, 0 };
+	blit.dstOffsets[1]					= { int32_t(destinationExtent.width), int32_t(destinationExtent.height), int32_t(1) };
+	blit.dstSubresource.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
+	blit.dstSubresource.mipLevel		= destinationMip;
+	blit.dstSubresource.baseArrayLayer	= 0;
+	blit.dstSubresource.layerCount		= 1;
+
+	vkCmdBlitImage(m_CommandBuffer, pSource->getImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pDestination->getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
+}
+
+void CommandBufferVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height, uint32_t miplevel)
 {
 	uint32_t sizeInBytes = width * height * 4;
 	
@@ -178,28 +197,28 @@ void CommandBufferVK::updateImage(const void* pPixelData, ImageVK* pImage, uint3
 	void* pHostMemory = m_pStagingTexture->allocate(sizeInBytes);
 	memcpy(pHostMemory, pPixelData, sizeInBytes);
 	
-	copyBufferToImage(m_pStagingTexture->getBuffer(), offset, pImage, width, height);
+	copyBufferToImage(m_pStagingTexture->getBuffer(), offset, pImage, width, height, miplevel);
 }
 
-void CommandBufferVK::copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffset, ImageVK* pImage, uint32_t width, uint32_t height)
+void CommandBufferVK::copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffset, ImageVK* pImage, uint32_t width, uint32_t height, uint32_t miplevel)
 {
 	VkBufferImageCopy region = {};
-	region.bufferImageHeight = 0;
-	region.bufferOffset		= sourceOffset;
-	region.bufferRowLength	= 0;
-	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	region.imageSubresource.baseArrayLayer = 0;
-	region.imageSubresource.mipLevel	= 0;
-	region.imageSubresource.layerCount	= 1;
-	region.imageExtent.depth	= 1;
-	region.imageExtent.height	= height;
-	region.imageExtent.width	= width;
+	region.bufferImageHeight				= 0;
+	region.bufferOffset						= sourceOffset;
+	region.bufferRowLength					= 0;
+	region.imageSubresource.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
+	region.imageSubresource.baseArrayLayer	= 0;
+	region.imageSubresource.mipLevel		= miplevel;
+	region.imageSubresource.layerCount		= 1;
+	region.imageExtent.depth				= 1;
+	region.imageExtent.height				= height;
+	region.imageExtent.width				= width;
 
 	vkCmdCopyBufferToImage(m_CommandBuffer, pSource->getBuffer(), pImage->getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 }
 
 
-void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLayout, VkImageLayout newLayout)
+void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t baseMiplevel, uint32_t miplevels)
 {
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -209,11 +228,11 @@ void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLa
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
 	barrier.image = pImage->getImage();
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
+	barrier.subresourceRange.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel	= baseMiplevel;
+	barrier.subresourceRange.levelCount		= miplevels;
+	barrier.subresourceRange.baseArrayLayer	= 0;
+	barrier.subresourceRange.layerCount		= 1;
 
 	VkPipelineStageFlags sourceStage;
 	VkPipelineStageFlags destinationStage;
@@ -223,16 +242,40 @@ void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLa
 		barrier.srcAccessMask = 0;
 		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
-		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-		destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		sourceStage			= VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		destinationStage	= VK_PIPELINE_STAGE_TRANSFER_BIT;
 	}
 	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) 
 	{
 		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-		sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-		destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		sourceStage			= VK_PIPELINE_STAGE_TRANSFER_BIT;
+		destinationStage	= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+	{
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+		sourceStage			= VK_PIPELINE_STAGE_TRANSFER_BIT;
+		destinationStage	= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+	{
+		barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+		sourceStage			= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		destinationStage	= VK_PIPELINE_STAGE_TRANSFER_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+	{
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+		sourceStage			= VK_PIPELINE_STAGE_TRANSFER_BIT;
+		destinationStage	= VK_PIPELINE_STAGE_TRANSFER_BIT;
 	}
 	else 
 	{

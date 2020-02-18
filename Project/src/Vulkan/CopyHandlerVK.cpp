@@ -3,8 +3,14 @@
 #include "CommandPoolVK.h"
 #include "CommandBufferVK.h"
 #include "GraphicsContextVK.h"
+#include "ImageVK.h"
 
 #include <mutex>
+#include <algorithm>
+
+#ifdef max
+	#undef max
+#endif
 
 CopyHandlerVK::CopyHandlerVK(DeviceVK* pDevice)
 	: m_pDevice(pDevice),
@@ -87,7 +93,7 @@ void CopyHandlerVK::copyBuffer(BufferVK* pSource, uint64_t sourceOffset, BufferV
 	submitTransferBuffer(pCommandBuffer);
 }
 
-void CopyHandlerVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height, VkImageLayout initalLayout, VkImageLayout finalLayout)
+void CopyHandlerVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height, VkImageLayout initalLayout, VkImageLayout finalLayout, uint32_t miplevel)
 {
 	CommandBufferVK* pCommandBuffer = getNextGraphicsBuffer();
 	pCommandBuffer->reset();
@@ -96,15 +102,15 @@ void CopyHandlerVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_
 	//Insert barrier if we need to
 	if (initalLayout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
 	{
-		pCommandBuffer->transitionImageLayout(pImage, initalLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+		pCommandBuffer->transitionImageLayout(pImage, initalLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, pImage->getMiplevelCount());
 	}
 
-	pCommandBuffer->updateImage(pPixelData, pImage, width, height);
+	pCommandBuffer->updateImage(pPixelData, pImage, width, height, miplevel);
 
 	//Insert barrier if we need to
 	if (finalLayout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
 	{
-		pCommandBuffer->transitionImageLayout(pImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, finalLayout);
+		pCommandBuffer->transitionImageLayout(pImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, finalLayout, 0, pImage->getMiplevelCount());
 	}
 
 	pCommandBuffer->end();
@@ -112,12 +118,38 @@ void CopyHandlerVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_
 	submitGraphicsBuffer(pCommandBuffer);
 }
 
-void CopyHandlerVK::copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffset, ImageVK* pImage, uint32_t width, uint32_t height)
+void CopyHandlerVK::copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffset, ImageVK* pImage, uint32_t width, uint32_t height, uint32_t miplevel)
 {
 	CommandBufferVK* pCommandBuffer = getNextGraphicsBuffer();
 	pCommandBuffer->reset();
 	pCommandBuffer->begin();
-	pCommandBuffer->copyBufferToImage(pSource, sourceOffset, pImage, width, height);
+	pCommandBuffer->copyBufferToImage(pSource, sourceOffset, pImage, width, height, miplevel);
+	pCommandBuffer->end();
+
+	submitGraphicsBuffer(pCommandBuffer);
+}
+
+void CopyHandlerVK::generateMips(ImageVK* pImage)
+{
+	CommandBufferVK* pCommandBuffer = getNextGraphicsBuffer();
+	pCommandBuffer->reset();
+	pCommandBuffer->begin();
+
+	const uint32_t miplevelCount = pImage->getMiplevelCount();
+	pCommandBuffer->transitionImageLayout(pImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, miplevelCount);
+	
+	VkExtent2D destinationExtent = {};
+	VkExtent2D sourceExtent = { pImage->getExtent().width, pImage->getExtent().height };
+	for (uint32_t i = 1; i < miplevelCount; i++)
+	{
+		destinationExtent = { std::max(sourceExtent.width / 2U, 1u), std::max(sourceExtent.height / 2U, 1U) };
+		pCommandBuffer->transitionImageLayout(pImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, i - 1, 1);
+		pCommandBuffer->blitImage2D(pImage, i - 1, sourceExtent, pImage, i, destinationExtent);
+		sourceExtent = destinationExtent;
+	}
+
+	pCommandBuffer->transitionImageLayout(pImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, miplevelCount - 1, 1);
+	pCommandBuffer->transitionImageLayout(pImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, miplevelCount);
 	pCommandBuffer->end();
 
 	submitGraphicsBuffer(pCommandBuffer);
@@ -134,6 +166,7 @@ CommandBufferVK* CopyHandlerVK::getNextTransferBuffer()
 {
 	CommandBufferVK* pCommandBuffer = m_pTransferBuffers[m_CurrentTransferBuffer];
 	m_CurrentTransferBuffer = (m_CurrentTransferBuffer+1) % MAX_COMMAND_BUFFERS;
+
 	return pCommandBuffer;
 }
 

@@ -28,6 +28,8 @@ public:
 
 	VkImage getImage() const { return m_Image; }
 	VkFormat getFormat() const { return m_Params.Format; }
+	VkExtent3D getExtent() const { return m_Params.Extent; }
+	uint32_t getMiplevelCount() const { return m_Params.MipLevels; }
 
 private:
 	DeviceVK* m_pDevice;
