@@ -189,9 +189,9 @@ void CommandBufferVK::blitImage2D(ImageVK* pSource, uint32_t sourceMip, VkExtent
 	vkCmdBlitImage(m_CommandBuffer, pSource->getImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pDestination->getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
 }
 
-void CommandBufferVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height, uint32_t miplevel)
+void CommandBufferVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height, uint32_t pixelStride, uint32_t miplevel)
 {
-	uint32_t sizeInBytes = width * height * 4;
+	uint32_t sizeInBytes = width * height * pixelStride;
 	
 	VkDeviceSize offset = m_pStagingTexture->getCurrentOffset();
 	void* pHostMemory = m_pStagingTexture->allocate(sizeInBytes);

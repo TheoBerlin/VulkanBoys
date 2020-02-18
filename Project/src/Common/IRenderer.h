@@ -9,7 +9,7 @@ class Camera;
 class Material;
 class LightSetup;
 
-#define MAX_POINTLIGHTS 4
+#define MAX_POINTLIGHTS 13
 
 class IRenderer
 {

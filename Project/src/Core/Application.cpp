@@ -164,14 +164,20 @@ void Application::init()
 			22, 23, 21
 		};
 
+		ITexture2D* pPanorama = m_pContext->createTexture2D();
+		TaskDispatcher::execute([&]
+			{
+				pPanorama->initFromFile("assets/textures/arches.hdr", ETextureFormat::FORMAT_R32G32B32A32_FLOAT, false);
+			});
+
 		m_pMesh = m_pContext->createMesh();
-		TaskDispatcher::execute([&, this] 
+		TaskDispatcher::execute([&] 
 			{ 
 				m_pMesh->initFromFile("assets/meshes/gun.obj");
 			});
 
 		m_pSphere = m_pContext->createMesh();
-		TaskDispatcher::execute([&, this]
+		TaskDispatcher::execute([&]
 			{
 				m_pSphere->initFromFile("assets/meshes/sphere.obj");
 			});
@@ -179,25 +185,25 @@ void Application::init()
 		m_pAlbedo = m_pContext->createTexture2D();
 		TaskDispatcher::execute([this]
 			{
-				m_pAlbedo->initFromFile("assets/textures/albedo.tga");
+				m_pAlbedo->initFromFile("assets/textures/albedo.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
 			});
 
 		m_pNormal = m_pContext->createTexture2D();
 		TaskDispatcher::execute([this]
 			{
-				m_pNormal->initFromFile("assets/textures/normal.tga");
+				m_pNormal->initFromFile("assets/textures/normal.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
 			});
 
 		m_pMetallic = m_pContext->createTexture2D();
 		TaskDispatcher::execute([this]
 			{
-				m_pMetallic->initFromFile("assets/textures/metallic.tga");
+				m_pMetallic->initFromFile("assets/textures/metallic.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
 			});
 
 		m_pRoughness = m_pContext->createTexture2D();
 		TaskDispatcher::execute([this]
 			{
-				m_pRoughness->initFromFile("assets/textures/roughness.tga");
+				m_pRoughness->initFromFile("assets/textures/roughness.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
 			});
 
 		//We can set the pointer to the material even if loading happens on another thread
@@ -221,12 +227,26 @@ void Application::init()
 		m_RedMaterial.createSampler(m_pContext, samplerParams);
 
 		//Setup lights
-		m_LightSetup.addPointLight(PointLight(glm::vec3( 10.0f,  10.0f, -10.0f), glm::vec4(300.0f)));
-		m_LightSetup.addPointLight(PointLight(glm::vec3(-10.0f,  10.0f, -10.0f), glm::vec4(300.0f)));
-		m_LightSetup.addPointLight(PointLight(glm::vec3( 10.0f, -10.0f, -10.0f), glm::vec4(300.0f)));
-		m_LightSetup.addPointLight(PointLight(glm::vec3(-10.0f, -10.0f, -10.0f), glm::vec4(300.0f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3( 5.0f,  5.0f, -10.0f), glm::vec4(300.0f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3(-5.0f,  5.0f, -10.0f), glm::vec4(300.0f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3( 5.0f, -5.0f, -10.0f), glm::vec4(300.0f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3(-5.0f, -5.0f, -10.0f), glm::vec4(300.0f)));
+		
+		m_LightSetup.addPointLight(PointLight(glm::vec3( 15.0f,  15.0f, -10.0f), glm::vec4(300.0f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3(  0.0f,  15.0f, -10.0f), glm::vec4(300.0f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3(-15.0f,  15.0f, -10.0f), glm::vec4(300.0f)));
+
+		m_LightSetup.addPointLight(PointLight(glm::vec3( 15.0f, 0.0f, -10.0f), glm::vec4(300.0f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3(  0.0f, 0.0f, -10.0f), glm::vec4(300.0f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3(-15.0f, 0.0f, -10.0f), glm::vec4(300.0f)));
+
+		m_LightSetup.addPointLight(PointLight(glm::vec3( 15.0f, -15.0f, -10.0f), glm::vec4(300.0f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3(  0.0f, -15.0f, -10.0f), glm::vec4(300.0f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3(-15.0f, -15.0f, -10.0f), glm::vec4(300.0f)));
 
 		TaskDispatcher::waitForTasks();
+
+		SAFEDELETE(pPanorama);
 
 		m_pWindow->show();
 	}

@@ -93,7 +93,7 @@ void CopyHandlerVK::copyBuffer(BufferVK* pSource, uint64_t sourceOffset, BufferV
 	submitTransferBuffer(pCommandBuffer);
 }
 
-void CopyHandlerVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height, VkImageLayout initalLayout, VkImageLayout finalLayout, uint32_t miplevel)
+void CopyHandlerVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height, uint32_t pixelStride, VkImageLayout initalLayout, VkImageLayout finalLayout, uint32_t miplevel)
 {
 	CommandBufferVK* pCommandBuffer = getNextGraphicsBuffer();
 	pCommandBuffer->reset();
@@ -105,7 +105,7 @@ void CopyHandlerVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_
 		pCommandBuffer->transitionImageLayout(pImage, initalLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, pImage->getMiplevelCount());
 	}
 
-	pCommandBuffer->updateImage(pPixelData, pImage, width, height, miplevel);
+	pCommandBuffer->updateImage(pPixelData, pImage, width, height, pixelStride, miplevel);
 
 	//Insert barrier if we need to
 	if (finalLayout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)

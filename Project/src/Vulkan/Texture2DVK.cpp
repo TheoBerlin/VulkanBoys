@@ -28,10 +28,21 @@ Texture2DVK::~Texture2DVK()
 	SAFEDELETE(m_pTextureImageView);
 }
 
-bool Texture2DVK::initFromFile(const std::string& filename, bool generateMips)
+bool Texture2DVK::initFromFile(const std::string& filename, ETextureFormat format, bool generateMips)
 {
-	int texWidth, texHeight, bpp;
-	unsigned char* pPixels = stbi_load(filename.c_str(), &texWidth, &texHeight, &bpp, STBI_rgb_alpha);
+	int texWidth = 0; 
+	int texHeight = 0;
+	int bpp = 0;
+
+	void* pPixels = nullptr;
+	if (format == ETextureFormat::FORMAT_R8G8B8A8_UNORM)
+	{
+		pPixels = (void*)stbi_load(filename.c_str(), &texWidth, &texHeight, &bpp, STBI_rgb_alpha);
+	}
+	else if (format == ETextureFormat::FORMAT_R32G32B32A32_FLOAT)
+	{
+		pPixels = (void*)stbi_loadf(filename.c_str(), &texWidth, &texHeight, &bpp, STBI_rgb_alpha);
+	}
 	
 	if (pPixels == nullptr)
 	{
@@ -41,13 +52,13 @@ bool Texture2DVK::initFromFile(const std::string& filename, bool generateMips)
 
 	LOG("-- LOADED TEXTURE: %s", filename.c_str());
 
-	bool result = initFromMemory(pPixels, texWidth, texHeight, generateMips);
+	bool result = initFromMemory(pPixels, texWidth, texHeight, format, generateMips);
 	stbi_image_free(pPixels);
 	
 	return result;
 }
 
-bool Texture2DVK::initFromMemory(const void* pData, uint32_t width, uint32_t height, bool generateMips)
+bool Texture2DVK::initFromMemory(const void* pData, uint32_t width, uint32_t height, ETextureFormat format, bool generateMips)
 {
 	uint32_t miplevels = 1U;
 	if (generateMips)
@@ -57,7 +68,6 @@ bool Texture2DVK::initFromMemory(const void* pData, uint32_t width, uint32_t hei
 
 	ImageParams imageParams = {};
 	imageParams.Type			= VK_IMAGE_TYPE_2D;
-	imageParams.Format			= VK_FORMAT_R8G8B8A8_UNORM;
 	imageParams.Extent.depth	= 1;
 	imageParams.Extent.width	= width;
 	imageParams.Extent.height	= height;
@@ -66,6 +76,18 @@ bool Texture2DVK::initFromMemory(const void* pData, uint32_t width, uint32_t hei
 	imageParams.ArrayLayers		= 1;
 	imageParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	imageParams.Usage			= VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	
+	uint32_t pixelStride = 0;
+	if (format == ETextureFormat::FORMAT_R8G8B8A8_UNORM)
+	{
+		imageParams.Format = VK_FORMAT_R8G8B8A8_UNORM;
+		pixelStride = 4;
+	}
+	else if (format == ETextureFormat::FORMAT_R32G32B32A32_FLOAT)
+	{
+		imageParams.Format = VK_FORMAT_R32G32B32A32_SFLOAT;
+		pixelStride = 16;
+	}
 	
 	if (generateMips)
 	{
@@ -79,7 +101,7 @@ bool Texture2DVK::initFromMemory(const void* pData, uint32_t width, uint32_t hei
 	}
 
 	CopyHandlerVK* pCopyHandler = m_pDevice->getCopyHandler();
-	pCopyHandler->updateImage(pData, m_pTextureImage, width, height, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0);
+	pCopyHandler->updateImage(pData, m_pTextureImage, width, height, pixelStride, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0);
 
 	if (generateMips)
 	{

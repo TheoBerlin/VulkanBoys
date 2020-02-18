@@ -629,15 +629,15 @@ bool ImguiVK::createFontTexture()
 	size_t uploadSize = width * height * 4;
 
 	m_pFontTexture = m_pContext->createTexture2D();
-	return m_pFontTexture->initFromMemory(pPixels, width, height);
+	return m_pFontTexture->initFromMemory(pPixels, width, height, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
 }
 
 bool ImguiVK::createBuffers(uint32_t vertexBufferSize, uint32_t indexBufferSize)
 {
 	BufferParams vertexBufferparams = {};
-	vertexBufferparams.Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	vertexBufferparams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	vertexBufferparams.SizeInBytes = vertexBufferSize;
+	vertexBufferparams.Usage			= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	vertexBufferparams.MemoryProperty	= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	vertexBufferparams.SizeInBytes		= vertexBufferSize;
 
 	m_pVertexBuffer = DBG_NEW BufferVK(m_pContext->getDevice());
 	if (!m_pVertexBuffer->init(vertexBufferparams))
@@ -646,9 +646,9 @@ bool ImguiVK::createBuffers(uint32_t vertexBufferSize, uint32_t indexBufferSize)
 	}
 
 	BufferParams indexBufferparams = {};
-	indexBufferparams.Usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-	indexBufferparams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	indexBufferparams.SizeInBytes = indexBufferSize;
+	indexBufferparams.Usage				= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+	indexBufferparams.MemoryProperty	= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	indexBufferparams.SizeInBytes		= indexBufferSize;
 
 	m_pIndexBuffer = DBG_NEW BufferVK(m_pContext->getDevice());
 	if (!m_pIndexBuffer->init(indexBufferparams))

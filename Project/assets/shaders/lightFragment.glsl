@@ -1,7 +1,7 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-#define MAX_POINT_LIGHTS 4
+#define MAX_POINT_LIGHTS 13
 
 layout(location = 0) in vec2	in_TexCoord;
 layout(location = 0) out vec4	out_Color;
