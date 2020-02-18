@@ -188,9 +188,29 @@ void Application::init()
 				m_pNormal->initFromFile("assets/textures/normal.tga");
 			});
 
+		m_pMetallic = m_pContext->createTexture2D();
+		TaskDispatcher::execute([this]
+			{
+				m_pMetallic->initFromFile("assets/textures/metallic.tga");
+			});
+
+		m_pRoughness = m_pContext->createTexture2D();
+		TaskDispatcher::execute([this]
+			{
+				m_pRoughness->initFromFile("assets/textures/roughness.tga");
+			});
+
 		//We can set the pointer to the material even if loading happens on another thread
+		m_GunMaterial.setAlbedo(glm::vec4(1.0f));
+		m_GunMaterial.setAmbientOcclusion(1.0f);
+		m_GunMaterial.setMetallic(1.0f);
+		m_GunMaterial.setRoughness(1.0f);
 		m_GunMaterial.setAlbedoMap(m_pAlbedo);
 		m_GunMaterial.setNormalMap(m_pNormal);
+		m_GunMaterial.setMetallicMap(m_pMetallic);
+		m_GunMaterial.setRoughnessMap(m_pRoughness);
+
+		m_RedMaterial.setAmbientOcclusion(1.0f);
 
 		SamplerParams samplerParams = {};
 		samplerParams.MinFilter = VK_FILTER_LINEAR;
@@ -201,10 +221,10 @@ void Application::init()
 		m_RedMaterial.createSampler(m_pContext, samplerParams);
 
 		//Setup lights
-		m_LightSetup.addPointLight(PointLight(glm::vec3( 1.5f,  1.5f, -1.5f)));
-		m_LightSetup.addPointLight(PointLight(glm::vec3(-1.5f,  1.5f, -1.5f)));
-		m_LightSetup.addPointLight(PointLight(glm::vec3( 1.5f, -1.5f, -1.5f)));
-		m_LightSetup.addPointLight(PointLight(glm::vec3(-1.5f, -1.5f, -1.5f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3( 10.0f,  10.0f, -10.0f), glm::vec4(300.0f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3(-10.0f,  10.0f, -10.0f), glm::vec4(300.0f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3( 10.0f, -10.0f, -10.0f), glm::vec4(300.0f)));
+		m_LightSetup.addPointLight(PointLight(glm::vec3(-10.0f, -10.0f, -10.0f), glm::vec4(300.0f)));
 
 		TaskDispatcher::waitForTasks();
 
@@ -254,7 +274,9 @@ void Application::release()
 	m_GunMaterial.release();
 	m_RedMaterial.release();
 
-	SAFEDELETE(m_pSphere)
+	SAFEDELETE(m_pSphere);
+	SAFEDELETE(m_pRoughness);
+	SAFEDELETE(m_pMetallic);
 	SAFEDELETE(m_pNormal);
 	SAFEDELETE(m_pAlbedo);
 	SAFEDELETE(m_pMesh);
@@ -436,7 +458,7 @@ void Application::update(double dt)
 	}
 }
 
-static glm::vec4 g_Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+static glm::vec4 g_Color = glm::vec4(0.5f, 0.0f, 0.0f, 1.0f);
 
 void Application::renderUI(double dt)
 {
@@ -465,13 +487,17 @@ void Application::render(double dt)
 	//Set sphere color
 	m_RedMaterial.setAlbedo(g_Color);
 
-	constexpr uint32_t sphereCount = 8;
+	constexpr uint32_t sphereCount = 7;
 	for (uint32_t y = 0; y < sphereCount; y++)
 	{
 		float yCoord = ((float(sphereCount) * 0.5f) / -2.0f) + float(y * 0.5);
+		m_RedMaterial.setMetallic(float(y) / float(sphereCount));
+
 		for (uint32_t x = 0; x < sphereCount; x++)
 		{
 			float xCoord = ((float(sphereCount) * 0.5f) / -2.0f) + float(x * 0.5);
+			m_RedMaterial.setRoughness(glm::clamp((float(x) / float(sphereCount)), 0.05f, 1.0f));
+
 			m_pRenderer->submitMesh(m_pSphere, m_RedMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)));
 		}
 	}

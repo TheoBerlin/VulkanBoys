@@ -24,10 +24,13 @@ class GraphicsContextVK;
 class DescriptorSetLayoutVK;
 
 //Geometry pass
-#define CAMERA_BUFFER_BINDING 0
-#define VERTEX_BUFFER_BINDING 1
-#define ALBEDO_MAP_BINDING 2
-#define NORMAL_MAP_BINDING 3
+#define CAMERA_BUFFER_BINDING	0
+#define VERTEX_BUFFER_BINDING	1
+#define ALBEDO_MAP_BINDING		2
+#define NORMAL_MAP_BINDING		3
+#define AO_MAP_BINDING			4
+#define METALLIC_MAP_BINDING	5
+#define ROUGHNESS_MAP_BINDING	6
 
 //Light pass
 #define GBUFFER_ALBEDO_BINDING		1

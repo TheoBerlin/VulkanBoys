@@ -19,7 +19,10 @@ layout (push_constant) uniform Constants
 {
 	mat4 Transform;
 	vec4 Color;
-} g_Constants;
+	float Ambient;
+	float Metallic;
+	float Roughness;
+} constants;
 
 layout (binding = 0) uniform PerFrameBuffer
 {
@@ -35,21 +38,21 @@ layout(binding = 1) buffer vertexBuffer
 
 void main() 
 {
-	vec3 position 	= vertices[gl_VertexIndex].Position.xyz;
-    vec3 normal 	= vertices[gl_VertexIndex].Normal.xyz;
-	vec3 tangent 	= vertices[gl_VertexIndex].Tangent.xyz;
-	vec4 worldPosition = g_Constants.Transform * vec4(position, 1.0);
+	vec3 position 		= vertices[gl_VertexIndex].Position.xyz;
+    vec3 normal 		= vertices[gl_VertexIndex].Normal.xyz;
+	vec3 tangent 		= vertices[gl_VertexIndex].Tangent.xyz;
+	vec4 worldPosition 	= constants.Transform * vec4(position, 1.0);
 	
-	normal 	= normalize((g_Constants.Transform * vec4(normal, 0.0)).xyz);
-	tangent = normalize((g_Constants.Transform * vec4(tangent, 0.0)).xyz);
+	normal 	= normalize((constants.Transform * vec4(normal, 0.0)).xyz);
+	tangent = normalize((constants.Transform * vec4(tangent, 0.0)).xyz);
 	
 	vec3 bitangent 	= normalize(cross(normal, tangent));
 	vec2 texCoord 	= vertices[gl_VertexIndex].TexCoord.xy;
 	
-	out_Normal 		= normal;
-	out_Tangent 	= tangent;
-	out_Bitangent 	= bitangent;
-	out_TexCoord 	= texCoord;
-	out_WorldPosition = worldPosition.xyz;
+	out_Normal 			= normal;
+	out_Tangent 		= tangent;
+	out_Bitangent 		= bitangent;
+	out_TexCoord 		= texCoord;
+	out_WorldPosition 	= worldPosition.xyz;
 	gl_Position = g_PerFrame.Projection * g_PerFrame.View * worldPosition;
 }

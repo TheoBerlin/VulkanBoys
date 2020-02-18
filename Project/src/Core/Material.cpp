@@ -9,6 +9,9 @@ Material::Material()
 	: m_pAlbedoMap(nullptr),
 	m_pNormalMap(nullptr),
 	m_pSampler(nullptr),
+	m_pAmbientOcclusionMap(nullptr),
+	m_pMetallicMap(nullptr),
+	m_pRoughnessMap(nullptr),
 	m_Albedo(1.0f),
 	m_ID(s_ID++)
 {
@@ -41,6 +44,36 @@ bool Material::hasNormalMap() const
 	return (m_pNormalMap != nullptr);
 }
 
+bool Material::hasAmbientOcclusionMap() const
+{
+	return (m_pAmbientOcclusionMap != nullptr);
+}
+
+bool Material::hasRoughnessMap() const
+{
+	return (m_pRoughnessMap != nullptr);
+}
+
+bool Material::hasMetallicMap() const
+{
+	return (m_pMetallicMap != nullptr);
+}
+
+void Material::setMetallic(float metallic)
+{
+	m_Metallic = metallic;
+}
+
+void Material::setRoughness(float roughness)
+{
+	m_Roughness = roughness;
+}
+
+void Material::setAmbientOcclusion(float ao)
+{
+	m_Ambient = ao;
+}
+
 void Material::setAlbedo(const glm::vec4& albedo)
 {
 	m_Albedo = albedo;
@@ -54,6 +87,21 @@ void Material::setAlbedoMap(ITexture2D* pAlbedo)
 void Material::setNormalMap(ITexture2D* pNormal)
 {
 	m_pNormalMap = pNormal;
+}
+
+void Material::setAmbientOcclusionMap(ITexture2D* pAO)
+{
+	m_pAmbientOcclusionMap = pAO;
+}
+
+void Material::setMetallicMap(ITexture2D* pMetallic)
+{
+	m_pMetallicMap = pMetallic;
+}
+
+void Material::setRoughnessMap(ITexture2D* pRoughness)
+{
+	m_pRoughnessMap = pRoughness;
 }
 
 void Material::release()

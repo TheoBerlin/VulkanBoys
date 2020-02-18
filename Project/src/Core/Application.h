@@ -62,6 +62,8 @@ private:
 	IMesh* m_pSphere;
 	ITexture2D* m_pAlbedo;
 	ITexture2D* m_pNormal;
+	ITexture2D* m_pMetallic;
+	ITexture2D* m_pRoughness;
 	Material m_GunMaterial;
 	Material m_RedMaterial;
 

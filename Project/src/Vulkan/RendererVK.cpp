@@ -263,6 +263,9 @@ void RendererVK::submitMesh(IMesh* pMesh, const Material& material, const glm::m
 	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(transform));
 	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec4), (const void*)glm::value_ptr(material.getAlbedo()));
 
+	glm::vec3 materialProperties(material.getAmbientOcclusion(), material.getMetallic(), material.getRoughness());
+	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4) + sizeof(glm::vec4), sizeof(glm::vec3), (const void*)glm::value_ptr(materialProperties));
+
 	BufferVK* pIndexBuffer = reinterpret_cast<BufferVK*>(pMesh->getIndexBuffer());
 	m_ppCommandBuffers[m_CurrentFrame]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
@@ -579,6 +582,9 @@ bool RendererVK::createPipelineLayouts()
 	m_pGeometryDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, VERTEX_BUFFER_BINDING, 1);
 	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ALBEDO_MAP_BINDING, 1);
 	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, NORMAL_MAP_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, AO_MAP_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, METALLIC_MAP_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ROUGHNESS_MAP_BINDING, 1);
 	
 	if (!m_pGeometryDescriptorSetLayout->finalize())
 	{
@@ -601,7 +607,7 @@ bool RendererVK::createPipelineLayouts()
 
 	//Transform and Color
 	VkPushConstantRange pushConstantRange = {};
-	pushConstantRange.size = sizeof(glm::mat4) + sizeof(glm::vec4);
+	pushConstantRange.size = sizeof(glm::mat4) + sizeof(glm::vec4) + sizeof(glm::vec3);
 	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 	pushConstantRange.offset = 0;
 	std::vector<VkPushConstantRange> pushConstantRanges = { pushConstantRange };
@@ -717,6 +723,39 @@ DescriptorSetVK* RendererVK::getDescriptorSetFromMeshAndMaterial(const IMesh* pM
 			pNormal = m_pDefaultNormal;
 		}
 		pDescriptorSet->writeCombinedImageDescriptor(pNormal->getImageView(), pSampler, NORMAL_MAP_BINDING);
+
+		Texture2DVK* pAO = nullptr;
+		if (pMaterial->hasAmbientOcclusionMap())
+		{
+			pAO = reinterpret_cast<Texture2DVK*>(pMaterial->getAmbientOcclusionMap());
+		}
+		else
+		{
+			pAO = m_pDefaultTexture;
+		}
+		pDescriptorSet->writeCombinedImageDescriptor(pAO->getImageView(), pSampler, AO_MAP_BINDING);
+
+		Texture2DVK* pMetallic = nullptr;
+		if (pMaterial->hasMetallicMap())
+		{
+			pMetallic = reinterpret_cast<Texture2DVK*>(pMaterial->getMetallicMap());
+		}
+		else
+		{
+			pMetallic = m_pDefaultTexture;
+		}
+		pDescriptorSet->writeCombinedImageDescriptor(pMetallic->getImageView(), pSampler, METALLIC_MAP_BINDING);
+
+		Texture2DVK* pRoughness = nullptr;
+		if (pMaterial->hasRoughnessMap())
+		{
+			pRoughness = reinterpret_cast<Texture2DVK*>(pMaterial->getRoughnessMap());
+		}
+		else
+		{
+			pRoughness = m_pDefaultTexture;
+		}
+		pDescriptorSet->writeCombinedImageDescriptor(pRoughness->getImageView(), pSampler, ROUGHNESS_MAP_BINDING);
 
 		MeshPipeline meshPipeline = {};
 		meshPipeline.pDescriptorSets = pDescriptorSet;
