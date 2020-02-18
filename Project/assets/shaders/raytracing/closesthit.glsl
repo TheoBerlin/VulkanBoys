@@ -2,6 +2,8 @@
 #extension GL_NV_ray_tracing : require
 #extension GL_EXT_nonuniform_qualifier : enable
 
+#define M_PI 3.1415926535897932384626433832795f
+
 struct RayPayload
 {
 	vec3 color;
@@ -10,7 +12,7 @@ struct RayPayload
 
 struct ShadowRayPayload
 {
-	float occluderFactor;
+	float lightIntensity;
 };
 
 struct Vertex
@@ -97,25 +99,53 @@ float fresnel(vec3 I, vec3 N, float ior)
     // kt = 1 - kr;
 }
 
-float rand(float n)
+float rand(vec3 v)
 {
-	return (fract(sin(n) * 43758.5453123f) - 0.5f) * 2.0f;
+	return fract(tan(distance(v.xy * 1.61803398874989484820459f, v.xy) * v.z) * v.x);
 }
 
-vec3 findBasisVector(vec3 normal)
+float hash(float n)
 {
-	if (abs(normal.y) > 0.0f && abs(normal.z) > 0.0f)
-		return vec3(1.0f, 0.0f, 0.0f);
+    return fract(sin(n) * 43758.5453f);
+}
 
-	if (abs(normal.x) > 0.0f && abs(normal.z) > 0.0f)
-		return vec3(0.0f, 1.0f, 0.0f);
+float noise(vec3 x)
+{
+    // The noise function returns a value in the range -1.0f -> 1.0f
 
-	if (abs(normal.x) > 0.0f && abs(normal.y) > 0.0f)
-		return vec3(0.0f, 0.0f, 1.0f);
+    vec3 p = floor(x);
+    vec3 f = fract(x);
+
+    f       = f * f * (3.0f - 2.0f * f);
+    float n = p.x + p.y * 57.0f + 113.0 * p.z;
+
+    return mix(mix(mix(hash(n + 0.0f), hash(n + 1.0f), f.x),
+                   mix(hash(n + 57.0f), hash(n + 58.0f), f.x), f.y),
+               mix(mix(hash(n + 113.0f), hash(n + 114.0f), f.x),
+                   mix(hash(n + 170.0f), hash(n + 171.0f), f.x), f.y), f.z) * 0.5f + 0.5f;
+}
+
+vec3 findNT(vec3 normal)
+{
+	if (abs(normal.x) > abs(normal.y))
+		return normalize(vec3(normal.z, 0.0f, -normal.x));
+	
+	return normalize(vec3(0.0f, -normal.z, normal.y));
+}
+
+vec3 createSampleDirection(float uniformRandom1, float uniformRandom2)
+{
+	float sinTheta = sqrt(1.0f - uniformRandom1 * uniformRandom1); 
+    float phi = 2.0f * M_PI * uniformRandom2; 
+    float x = sinTheta * cos(phi); 
+    float z = sinTheta * sin(phi); 
+    return vec3(x, uniformRandom1, z); 
 }
 
 void main()
 {
+	uint recursionIndex = rayPayload.recursion;
+
 	uint meshVertexOffset = meshIndices.mi[3 * gl_InstanceCustomIndexNV];
 	uint meshIndexOffset = 	meshIndices.mi[3 * gl_InstanceCustomIndexNV + 1];
 	uint textureIndex = 	meshIndices.mi[3 * gl_InstanceCustomIndexNV + 2];
@@ -134,127 +164,68 @@ void main()
 	transform[2] = vec4(gl_ObjectToWorldNV[2], 0.0f);
 	transform[3] = vec4(gl_ObjectToWorldNV[3], 1.0f);
 
-	vec3 tangent = normalize(v0.Tangent.xyz * barycentricCoords.x + v1.Tangent.xyz * barycentricCoords.y + v2.Tangent.xyz * barycentricCoords.z);
-	vec3 normal  = normalize(v0.Normal.xyz * barycentricCoords.x + v1.Normal.xyz * barycentricCoords.y + v2.Normal.xyz * barycentricCoords.z);
+	vec3 T = normalize(v0.Tangent.xyz * barycentricCoords.x + v1.Tangent.xyz * barycentricCoords.y + v2.Tangent.xyz * barycentricCoords.z);
+	vec3 N  = normalize(v0.Normal.xyz * barycentricCoords.x + v1.Normal.xyz * barycentricCoords.y + v2.Normal.xyz * barycentricCoords.z);
 
-	vec3 T = normalize(vec3(transform * vec4(tangent, 0.0)));
-	vec3 N = normalize(vec3(transform * vec4(normal, 0.0)));
+	T = normalize(vec3(transform * vec4(T, 0.0)));
+	N = normalize(vec3(transform * vec4(N, 0.0)));
 	T = normalize(T - dot(T, N) * N);
 	vec3 B = cross(N, T);
 	mat3 TBN = mat3(T, B, N);
 
-	vec3 worldNormal = texture(normalMaps[textureIndex], texCoords).xyz;
-	worldNormal = normalize(worldNormal * 2.0f - 1.0f);
-	worldNormal = TBN * worldNormal;
+	vec3 normal = texture(normalMaps[textureIndex], texCoords).xyz;
+	normal = normalize(normal * 2.0f - 1.0f);
+	normal = TBN * normal;
 
 	vec4 albedoColor = texture(albedoMaps[textureIndex], texCoords);
-	float refractiveness = (1.0f - albedoColor.a);
-	float reflectiveness = (1.0f - texture(roughnessMaps[textureIndex], texCoords).r);
+	float roughness = texture(roughnessMaps[textureIndex], texCoords).r;
 
-	vec3 hitPos = gl_WorldRayOriginNV + normalize(gl_WorldRayDirectionNV) * gl_HitTNV;
-	uint rayFlags = gl_RayFlagsOpaqueNV;
-	uint cullMask = 0xff;
-	float tmin = 0.001;
-	float tmax = 10000.0;
-
-	uint recursionNumber = rayPayload.recursion;
-
-	uint sbtStride = 0;
-
-	if (recursionNumber < MAX_RECURSION)
+	if (recursionIndex < MAX_RECURSION)
 	{
-		if (refractiveness > 0.1f)
+		vec3 hitPos = gl_WorldRayOriginNV + normalize(gl_WorldRayDirectionNV) * gl_HitTNV;
+		uint rayFlags = gl_RayFlagsOpaqueNV;
+		uint cullMask = 0xff;
+		float tmin = 0.001;
+		float tmax = 10000.0;
+
+		vec3 Nt = findNT(normal);
+		vec3 Nb = cross(normal, Nt);
+
+		vec3 directDiffuse = vec3(0.0f);
+		vec3 indirectDiffuse = vec3(0.0f);
+
+		vec3 lightPos = vec3(0.0f, 5.0f, 0.0f);
+		vec3 lightColor = vec3(1.0f, 1.0f, 1.0f);
+
+		vec3 shadowOrigin = hitPos + normal * 0.001f;
+		vec3 lightDirection = normalize(lightPos - shadowOrigin);
+		traceNV(topLevelAS, rayFlags, cullMask, 1, 0, 1, shadowOrigin, tmin, lightDirection, tmax, 1);
+
+		directDiffuse = lightColor * shadowRayPayload.lightIntensity * max(0.0f, dot(normal, -lightDirection)); 
+
+		uint NUM_SAMPLES = 64;
+		for (uint n = 0; n < NUM_SAMPLES; n++)
 		{
-			float refracionIndex = 1.16f;
-			float NdotD = dot(worldNormal, gl_WorldRayDirectionNV);
-
-			vec3 refrNormal = worldNormal;
-			float refrEta;
-
-			vec3 refractionOrigin;
-			vec3 reflectionOrigin;
-
-			if(NdotD >= 0.0f)
-			{
-				refrNormal = -worldNormal;
-				refrEta = 1.0f / refracionIndex;
-				refractionOrigin = hitPos + worldNormal * 0.001f;
-				reflectionOrigin = hitPos - worldNormal * 0.001f;
-			}
-			else
-			{
-				refrNormal = worldNormal;
-				refrEta = refracionIndex;
-				refractionOrigin = hitPos - worldNormal * 0.001f;
-				reflectionOrigin = hitPos + worldNormal * 0.001f;
-			}
-
-			vec3 refractionColor = vec3(0.0f);
-			float kr = fresnel(gl_WorldRayDirectionNV, worldNormal, refracionIndex);
-			if (kr < 1)
-			{
-				vec3 refractionDirection = myRefract(gl_WorldRayDirectionNV, refrNormal, refrEta);
-				rayPayload.recursion = recursionNumber + 1;
-				traceNV(topLevelAS, rayFlags, cullMask, 0, sbtStride, 0, refractionOrigin, tmin, refractionDirection, tmax, 0);
-				refractionColor = (1.0f - kr) * rayPayload.color;
-			}
-
-			vec3 reflectionDirection = reflect(gl_WorldRayDirectionNV, worldNormal);
-			rayPayload.recursion = recursionNumber + 1;
-			traceNV(topLevelAS, rayFlags, cullMask, 0, sbtStride, 0, reflectionOrigin, tmin, reflectionDirection, tmax, 0);
-			vec3 reflectionColor = kr * rayPayload.color;
-
-			rayPayload.color = refractiveness * (refractionColor + reflectionColor) + (1.0f - refractiveness) * albedoColor.rgb;
+			vec3 seed = vec3(n, n * n, n * n * n);
+			float uniformRandom1 = noise(hitPos + seed.xyz);
+			float uniformRandom2 = noise(hitPos + seed.zyx);
+			vec3 sdl = createSampleDirection(uniformRandom1, uniformRandom2); //Sample Direction Local
+			vec3 sdw = vec3(
+				sdl.x * Nb.x + sdl.y * normal.x + sdl.z * Nt.x,
+				sdl.x * Nb.y + sdl.y * normal.y + sdl.z * Nt.y,
+				sdl.x * Nb.z + sdl.y * normal.z + sdl.z * Nt.z);
+			
+			vec3 rayOrigin = hitPos + sdw * 0.001f;
+			rayPayload.recursion = recursionIndex + 1;
+			traceNV(topLevelAS, rayFlags, cullMask, 0, 0, 0, rayOrigin, tmin, sdw, tmax, 0);
+			indirectDiffuse += uniformRandom1 * rayPayload.color;
 		}
-		else if (reflectiveness > 0.1f)
-		{
-			vec3 lightPos = vec3(0.0f, 5.0f, 0.0f);
-			// float lightRadius = 0.2f;
 
-			// vec3 shadowOrigin = hitPos + worldNormal * 0.001f;
-			// vec3 lightToHit = normalize(shadowOrigin - lightPos);
-			// vec3 u = findBasisVector(lightToHit);
-			// vec3 v = normalize(cross(u, lightToHit));
-			// vec3 offsetU = vec3(0.0f);
-			// vec3 offsetV = vec3(0.0f);
-
-			// float shadowSum = 0.0f;
-			// uint numShadowSamples = 12;
-
-			// float seed = dot(shadowOrigin, shadowOrigin);
-
-			// for (uint i = 0; i < numShadowSamples; i++)
-			// {
-			// 	vec3 lightSamplePoint = lightPos + offsetU + offsetV;
-			// 	vec3 shadowDirection = normalize(lightSamplePoint - shadowOrigin);
-
-			// 	traceNV(topLevelAS, rayFlags, cullMask, 1, sbtStride, 1, shadowOrigin, tmin, shadowDirection, tmax, 1);
-			// 	shadowSum += shadowRayPayload.occluderFactor;
-
-			// 	offsetU = u * rand(seed + i) * lightRadius;
-			// 	offsetV = v * rand(seed + i * i) * lightRadius;
-			// }
-
-			// float shadowDarkness = 0.8f;
-			// float shadow = (1.0f - (shadowSum / float(numShadowSamples)) * shadowDarkness);
-
-			vec3 shadowOrigin = hitPos + worldNormal * 0.001f;
-			vec3 shadowDirection = normalize(lightPos - shadowOrigin);
-			traceNV(topLevelAS, rayFlags, cullMask, 1, sbtStride, 1, shadowOrigin, tmin, shadowDirection, tmax, 1);
-
-			float shadowDarkness = 0.8f;
-			float shadow = 1.0f - shadowRayPayload.occluderFactor * shadowDarkness;
-
-			vec3 origin = hitPos + worldNormal * 0.001f;
-			vec3 reflectionDirection = reflect(gl_WorldRayDirectionNV, worldNormal);
-			rayPayload.recursion = recursionNumber + 1;
-
-			traceNV(topLevelAS, rayFlags, cullMask, 0, sbtStride, 0, origin, tmin, reflectionDirection, tmax, 0);
-			rayPayload.color = shadow * (reflectiveness * rayPayload.color + (1.0f - reflectiveness) * albedoColor.rgb);
-		}
+		indirectDiffuse = indirectDiffuse / float(NUM_SAMPLES); 
+		rayPayload.color = (directDiffuse / M_PI + 2.0f * indirectDiffuse) * albedoColor.rgb; 
 	}
 	else
 	{
-		rayPayload.color = albedoColor.rgb;
+		rayPayload.color = vec3(0.0f); 
 	}
 }

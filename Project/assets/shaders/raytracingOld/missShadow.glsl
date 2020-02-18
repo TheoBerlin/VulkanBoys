@@ -1,15 +1,14 @@
 #version 460
 #extension GL_NV_ray_tracing : require
-#extension GL_EXT_nonuniform_qualifier : enable
 
 struct ShadowRayPayload 
 {
-	float lightIntensity;
+	float occluderFactor;
 };
 
 layout(location = 1) rayPayloadInNV ShadowRayPayload shadowRayPayload;
 
 void main()
 {
-	shadowRayPayload.lightIntensity = 0.0f;
+	shadowRayPayload.occluderFactor = 0.0f;
 }

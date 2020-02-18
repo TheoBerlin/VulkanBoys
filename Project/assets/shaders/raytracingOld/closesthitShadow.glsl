@@ -4,12 +4,12 @@
 
 struct ShadowRayPayload 
 {
-	float lightIntensity;
+	float occluderFactor;
 };
 
 layout(location = 1) rayPayloadInNV ShadowRayPayload shadowRayPayload;
 
 void main()
 {
-	shadowRayPayload.lightIntensity = 0.0f;
+	shadowRayPayload.occluderFactor = 1.0f;
 }

@@ -324,6 +324,7 @@ bool RendererVK::init()
 	HitGroupParams hitGroupShadowParams = {};
 	MissGroupParams missGroupParams = {};
 	MissGroupParams missGroupShadowParams = {};
+	constexpr uint32_t maxRecursions = 2;
 
 	{
 		m_pRaygenShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
@@ -334,13 +335,13 @@ bool RendererVK::init()
 		m_pClosestHitShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
 		m_pClosestHitShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/closesthit.spv");
 		m_pClosestHitShader->finalize();
-		m_pClosestHitShader->setSpecializationConstant<uint32_t>(0, 3);
+		m_pClosestHitShader->setSpecializationConstant<uint32_t>(0, maxRecursions);
 		hitGroupParams.pClosestHitShader = m_pClosestHitShader;
 
 		m_pClosestHitShadowShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
 		m_pClosestHitShadowShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/closesthitShadow.spv");
 		m_pClosestHitShadowShader->finalize();
-		m_pClosestHitShadowShader->setSpecializationConstant<uint32_t>(0, 3);
+		m_pClosestHitShadowShader->setSpecializationConstant<uint32_t>(0, maxRecursions);
 		hitGroupShadowParams.pClosestHitShader = m_pClosestHitShadowShader;
 
 		m_pMissShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
