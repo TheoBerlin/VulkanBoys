@@ -92,7 +92,7 @@ void Application::init()
 	m_pParticleEmitterHandler->initialize(m_pContext);
 
 	m_pParticleTexture = m_pContext->createTexture2D();
-	if (!m_pParticleTexture->initFromFile("assets/textures/flare.png")) {
+	if (!m_pParticleTexture->initFromFile("assets/textures/sun.png")) {
 		LOG("Failed to create particle texture");
 		SAFEDELETE(m_pParticleTexture);
 	}
