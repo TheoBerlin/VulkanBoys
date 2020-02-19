@@ -8,6 +8,7 @@ class IGraphicsContext;
 class IImgui;
 class IRenderer;
 class IMesh;
+class IParticleEmitterHandler;
 
 class IRenderingHandler
 {
@@ -32,11 +33,14 @@ public:
     virtual void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform) = 0;
 
     // Setting a renderer to nullptr will disable it
-    void setMeshRenderer(IRenderer* pMeshRenderer) { m_pMeshRenderer = pMeshRenderer; }
-    void setRayTracer(IRenderer* pRayTracer) { m_pRayTracer = pRayTracer; }
-    void setParticleRenderer(IRenderer* pParticleRenderer) { m_pParticleRenderer = pParticleRenderer; }
+    virtual void setMeshRenderer(IRenderer* pMeshRenderer) = 0;
+    virtual void setRayTracer(IRenderer* pRayTracer) = 0;
+    virtual void setParticleRenderer(IRenderer* pParticleRenderer) = 0;
+
+    void setParticleEmitterHandler(IParticleEmitterHandler* pParticleEmitterHandler) { m_pParticleEmitterHandler = pParticleEmitterHandler; }
 
 protected:
     IGraphicsContext* m_pGraphicsContext;
-    IRenderer* m_pMeshRenderer, *m_pRayTracer, *m_pParticleRenderer;
+
+    IParticleEmitterHandler* m_pParticleEmitterHandler;
 };

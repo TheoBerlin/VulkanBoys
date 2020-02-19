@@ -37,15 +37,14 @@ public:
 	virtual void beginFrame(const Camera& camera) override;
 	virtual void endFrame() override;
 
-	virtual void beginRayTraceFrame(const Camera& camera) override;
-	virtual void endRayTraceFrame() override;
-	virtual void traceRays() override;
-	
-	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
+	// TODO: Move these and all other ray tracing features to a separate renderer
+	void beginRayTraceFrame(const Camera& camera);
+	void endRayTraceFrame();
+	void traceRays();
 
-	virtual void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform) override;
+	void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY);
 
-	virtual void drawImgui(IImgui* pImgui) override;
+	void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform);
 
 private:
 	bool createSemaphores();

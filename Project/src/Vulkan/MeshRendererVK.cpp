@@ -11,7 +11,7 @@
 #include "MeshVK.h"
 #include "PipelineLayoutVK.h"
 #include "PipelineVK.h"
-#include "RenderingHandlerVK.hpp"
+#include "RenderingHandlerVK.h"
 #include "RenderPassVK.h"
 #include "SamplerVK.h"
 #include "SwapChainVK.h"
@@ -136,7 +136,7 @@ bool MeshRendererVK::init()
 	}
 
 	// Last thing is to write the camera buffer to the descriptor set
-	BufferVK* pCameraBuffer = m_pRenderingHandler->getCameraBuffer();
+	BufferVK* pCameraBuffer = m_pRenderingHandler->getCameraMatricesBuffer();
 	m_pDescriptorSet->writeUniformBufferDescriptor(pCameraBuffer->getBuffer(), 0);
 
 	if (m_pContext->getDevice()->supportsRayTracing()) {
@@ -153,7 +153,7 @@ void MeshRendererVK::beginFrame(const Camera& camera)
 
 	m_ppCommandBuffers[m_CurrentFrame]->reset(false);
 	m_ppCommandPools[m_CurrentFrame]->reset();
-	
+
 	// Needed to begin a secondary buffer
 	VkCommandBufferInheritanceInfo inheritanceInfo = {};
 	inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
@@ -171,12 +171,11 @@ void MeshRendererVK::beginFrame(const Camera& camera)
 
 void MeshRendererVK::endFrame()
 {
-	//m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
 	m_ppCommandBuffers[m_CurrentFrame]->end();
 
 	DeviceVK* pDevice = m_pContext->getDevice();
-	pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCommandBuffer(m_CurrentFrame), m_ppCommandBuffers[m_CurrentFrame]);
-	
+	pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCurrentCommandBuffer(), m_ppCommandBuffers[m_CurrentFrame]);
+
 	m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
@@ -198,10 +197,10 @@ void MeshRendererVK::beginRayTraceFrame(const Camera& camera)
 
 	m_ppComputeCommandBuffers[m_CurrentFrame]->begin();
 
-	CameraBuffer cameraBuffer = {};
+	CameraMatricesBuffer cameraBuffer = {};
 	cameraBuffer.Projection = glm::inverse(camera.getProjectionMat());
 	cameraBuffer.View = glm::inverse(camera.getViewMat());
-	m_ppComputeCommandBuffers[m_CurrentFrame]->updateBuffer(m_pRayTracingUniformBuffer, 0, (const void*)&cameraBuffer, sizeof(CameraBuffer));
+	m_ppComputeCommandBuffers[m_CurrentFrame]->updateBuffer(m_pRayTracingUniformBuffer, 0, (const void*)&cameraBuffer, sizeof(CameraMatricesBuffer));
 
 	m_ppComputeCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipelineLayout, 0, 1, &m_pRayTracingDescriptorSet, 0, nullptr);
 }
@@ -296,11 +295,6 @@ void MeshRendererVK::submitMesh(IMesh* pMesh, const glm::vec4& color, const glm:
 	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSet, 0, nullptr);
 
 	m_ppCommandBuffers[m_CurrentFrame]->drawIndexInstanced(pMesh->getIndexCount(), 1, 0, 0, 0);
-}
-
-void MeshRendererVK::drawImgui(IImgui* pImgui)
-{
-	pImgui->render(m_ppCommandBuffers[m_CurrentFrame]);
 }
 
 bool MeshRendererVK::createSemaphores()
@@ -541,7 +535,7 @@ void MeshRendererVK::initRayTracing()
 	m_pCubeMaterial->pMetallicMap->initFromFile("assets/textures/cubeMetallic.jpg");
 
 	m_pMeshCube = m_pContext->createMesh();
-	m_pMeshCube->initFromMemory(vertices, 24, indices, 36);
+	m_pMeshCube->initFromMemory(vertices, sizeof(Vertex), 24, indices, 36);
 	
 	m_pMeshGun = m_pContext->createMesh();
 	m_pMeshGun->initFromFile("assets/meshes/gun.obj");
@@ -654,7 +648,7 @@ void MeshRendererVK::initRayTracing()
 	BufferParams rayTracingUniformBufferParams = {};
 	rayTracingUniformBufferParams.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	rayTracingUniformBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	rayTracingUniformBufferParams.SizeInBytes = sizeof(CameraBuffer);
+	rayTracingUniformBufferParams.SizeInBytes = sizeof(CameraMatricesBuffer);
 
 	m_pRayTracingUniformBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
 	m_pRayTracingUniformBuffer->init(rayTracingUniformBufferParams);

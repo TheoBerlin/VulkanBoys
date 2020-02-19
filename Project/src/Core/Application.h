@@ -1,5 +1,6 @@
 #pragma once
 #include "Common/IEventHandler.h"
+#include "Common/IParticleEmitterHandler.h"
 
 #include "Camera.h"
 
@@ -52,13 +53,16 @@ private:
 	IWindow* m_pWindow;
 	IGraphicsContext* m_pContext;
 	IRenderingHandler* m_pRenderingHandler;
-	IRenderer* m_pMeshRenderer;
+	IRenderer* m_pMeshRenderer, *m_pParticleRenderer;
 	IImgui* m_pImgui;
 	IInputHandler* m_pInputHandler;
 
 	//TODO: Resoures should they be here?
 	IMesh* m_pMesh;
 	ITexture2D* m_pAlbedo;
+
+	IParticleEmitterHandler* m_pParticleEmitterHandler;
+	ITexture2D* m_pParticleTexture;
 
 	bool m_IsRunning;
 	bool m_UpdateCamera;

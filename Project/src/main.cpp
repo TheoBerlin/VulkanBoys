@@ -7,7 +7,7 @@ int main(int argc, const char* argv[])
 	_CrtSetDbgFlag (_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
 
-	Application app; 
+	Application app;
 	app.init();
 	app.run();
 	app.release();

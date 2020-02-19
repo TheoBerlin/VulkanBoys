@@ -46,7 +46,9 @@ Application::Application()
 	m_pInputHandler(nullptr),
 	m_Camera(),
 	m_IsRunning(false),
-	m_UpdateCamera(false)
+	m_UpdateCamera(false),
+	m_pParticleTexture(nullptr),
+	m_pParticleEmitterHandler(nullptr)
 {
 	ASSERT(s_pInstance == nullptr);
 	s_pInstance = this;
@@ -78,36 +80,60 @@ void Application::init()
 
 	//Create context
 	m_pContext = IGraphicsContext::create(m_pWindow, API::VULKAN);
-	m_EnableRayTracing = m_pContext->supportsRayTracing();
-	
+	m_EnableRayTracing = false;//m_pContext->supportsRayTracing();
+
 	//Setup Imgui
 	m_pImgui = m_pContext->createImgui();
 	m_pImgui->init();
 	m_pWindow->addEventHandler(m_pImgui);
-
-	// Setup rendering handler
-	m_pRenderingHandler = m_pContext->createRenderingHandler();
-	m_pRenderingHandler->initialize();
-	m_pRenderingHandler->setClearColor(0.0f, 0.0f, 0.0f);
-
-	// Setup mesh renderer
-	m_pMeshRenderer = m_pContext->createRenderer(m_pRenderingHandler);
-	m_pMeshRenderer->init();
-
-	// TODO: Should the renderer itself call this instead?
-	m_pRenderingHandler->setMeshRenderer(m_pMeshRenderer);
-	// TODO: Create separate ray tracer renderer class
-	if (m_pContext->supportsRayTracing()) {
-		m_pRenderingHandler->setRayTracer(m_pMeshRenderer);
-	}
-
-	m_pRenderingHandler->setViewport(m_pWindow->getWidth(), m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
 
 	//Setup camera
 	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
 	m_Camera.setPosition(glm::vec3(0.0f, 0.5f, -2.0f));
 	m_Camera.setProjection(90.0f, m_pWindow->getWidth(), m_pWindow->getHeight(), 0.1f, 100.0f);
 	m_Camera.update();
+
+	// Setup particles
+	m_pParticleEmitterHandler = m_pContext->createParticleEmitterHandler();
+	m_pParticleEmitterHandler->initialize(m_pContext, &m_Camera);
+
+	m_pParticleTexture = m_pContext->createTexture2D();
+	if (!m_pParticleTexture->initFromFile("assets/textures/sun.png")) {
+		LOG("Failed to create particle texture");
+		SAFEDELETE(m_pParticleTexture);
+	}
+
+	ParticleEmitterInfo emitterInfo = {};
+	emitterInfo.position = glm::vec3(0.0f, 0.0f, 0.0f);
+	emitterInfo.direction = glm::vec3(0.0f, 1.0f, 0.0f);
+	emitterInfo.particleSize = glm::vec2(0.2f, 0.2f);
+	emitterInfo.initialSpeed = 5.0f;
+	emitterInfo.particleDuration = 4.0f;
+	emitterInfo.particlesPerSecond = 2.0f;
+	emitterInfo.pTexture = m_pParticleTexture;
+	m_pParticleEmitterHandler->createEmitter(emitterInfo);
+
+	// Setup rendering handler
+	m_pRenderingHandler = m_pContext->createRenderingHandler();
+	m_pRenderingHandler->initialize();
+	m_pRenderingHandler->setClearColor(0.0f, 0.0f, 0.0f);
+	m_pRenderingHandler->setParticleEmitterHandler(m_pParticleEmitterHandler);
+
+	// Setup renderers
+	m_pMeshRenderer = m_pContext->createMeshRenderer(m_pRenderingHandler);
+	m_pParticleRenderer = m_pContext->createParticleRenderer(m_pRenderingHandler);
+	m_pMeshRenderer->init();
+	m_pParticleRenderer->init();
+
+	// TODO: Should the renderers themselves call these instead?
+	m_pRenderingHandler->setMeshRenderer(m_pMeshRenderer);
+	m_pRenderingHandler->setParticleRenderer(m_pParticleRenderer);
+	// TODO: Create separate ray tracer renderer class
+	if (m_EnableRayTracing) {
+		m_pRenderingHandler->setRayTracer(m_pMeshRenderer);
+	}
+
+	m_pRenderingHandler->setViewport(m_pWindow->getWidth(), m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
 
 	//Load mesh
 	{
@@ -240,6 +266,9 @@ void Application::release()
 	SAFEDELETE(m_pMesh);
 	SAFEDELETE(m_pRenderingHandler);
 	SAFEDELETE(m_pMeshRenderer);
+	SAFEDELETE(m_pParticleRenderer);
+	SAFEDELETE(m_pParticleTexture);
+	SAFEDELETE(m_pParticleEmitterHandler);
 	SAFEDELETE(m_pImgui);
 	SAFEDELETE(m_pContext);
 
@@ -413,6 +442,8 @@ void Application::update(double dt)
 	{
 		Input::setMousePosition(m_pWindow, glm::vec2(m_pWindow->getClientWidth() / 2.0f, m_pWindow->getClientHeight() / 2.0f));
 	}
+
+	m_pParticleEmitterHandler->update(dt);
 }
 
 static glm::vec4 g_Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
@@ -435,8 +466,7 @@ void Application::render(double dt)
 {
 	m_pRenderingHandler->beginFrame(m_Camera);
 
-	if (!m_EnableRayTracing)
-	{
+	if (!m_EnableRayTracing) {
 		g_Rotation = glm::rotate(g_Rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
 		m_pRenderingHandler->submitMesh(m_pMesh, g_Color, glm::mat4(1.0f) * g_Rotation);
 	}
