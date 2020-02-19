@@ -22,13 +22,13 @@ void IParticleEmitterHandler::update(float dt)
     }
 }
 
-void IParticleEmitterHandler::initialize(IGraphicsContext* pGraphicsContext)
+void IParticleEmitterHandler::initialize(IGraphicsContext* pGraphicsContext, const Camera* pCamera)
 {
     m_pGraphicsContext = pGraphicsContext;
 
     // Initialize all emitters
     for (ParticleEmitter* particleEmitter : m_ParticleEmitters) {
-        particleEmitter->initialize(m_pGraphicsContext);
+        particleEmitter->initialize(m_pGraphicsContext, pCamera);
     }
 }
 
@@ -37,7 +37,7 @@ ParticleEmitter* IParticleEmitterHandler::createEmitter(const ParticleEmitterInf
 	ParticleEmitter* pNewEmitter = DBG_NEW ParticleEmitter(emitterInfo);
     m_ParticleEmitters.push_back(pNewEmitter);
     if (m_pGraphicsContext != nullptr) {
-        pNewEmitter->initialize(m_pGraphicsContext);
+        pNewEmitter->initialize(m_pGraphicsContext, m_pCamera);
     }
 
 	return pNewEmitter;

@@ -87,9 +87,15 @@ void Application::init()
 	m_pImgui->init();
 	m_pWindow->addEventHandler(m_pImgui);
 
+	//Setup camera
+	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
+	m_Camera.setPosition(glm::vec3(0.0f, 0.5f, -2.0f));
+	m_Camera.setProjection(90.0f, m_pWindow->getWidth(), m_pWindow->getHeight(), 0.1f, 100.0f);
+	m_Camera.update();
+
 	// Setup particles
 	m_pParticleEmitterHandler = m_pContext->createParticleEmitterHandler();
-	m_pParticleEmitterHandler->initialize(m_pContext);
+	m_pParticleEmitterHandler->initialize(m_pContext, &m_Camera);
 
 	m_pParticleTexture = m_pContext->createTexture2D();
 	if (!m_pParticleTexture->initFromFile("assets/textures/sun.png")) {
@@ -128,12 +134,6 @@ void Application::init()
 	}
 
 	m_pRenderingHandler->setViewport(m_pWindow->getWidth(), m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
-
-	//Setup camera
-	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
-	m_Camera.setPosition(glm::vec3(0.0f, 0.5f, -2.0f));
-	m_Camera.setProjection(90.0f, m_pWindow->getWidth(), m_pWindow->getHeight(), 0.1f, 100.0f);
-	m_Camera.update();
 
 	//Load mesh
 	{

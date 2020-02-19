@@ -4,6 +4,7 @@
 
 #include "Common/IGraphicsContext.h"
 
+class Camera;
 class IBuffer;
 class IGraphicsContext;
 class IMesh;
@@ -33,14 +34,14 @@ class ParticleEmitter
 
     struct ParticleStorage {
         std::vector<glm::vec4> positions, velocities;
-        std::vector<float> ages;
+        std::vector<float> ages, cameraDistances;
     };
 
 public:
     ParticleEmitter(const ParticleEmitterInfo& emitterInfo);
     ~ParticleEmitter();
 
-    bool initialize(IGraphicsContext* pGraphicsContext);
+    bool initialize(IGraphicsContext* pGraphicsContext, const Camera* pCamera);
 
     void update(float dt);
 
@@ -57,6 +58,10 @@ private:
 
     // Spawns particles before the emitter has created its maximum amount of particles
     void spawnNewParticles();
+    void moveParticles(float dt);
+    void calculateCameraDistances();
+    // Sort particles by their distance to the camera
+    void sortParticles();
     void respawnOldParticles();
     void createParticle(size_t particleIdx, float particleAge);
 
@@ -75,4 +80,6 @@ private:
     IBuffer* m_pParticleBuffer;
     // Contains particle size
     IBuffer* m_pEmitterBuffer;
+
+    const Camera* m_pCamera;
 };

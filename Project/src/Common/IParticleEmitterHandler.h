@@ -3,13 +3,13 @@
 #include "Common/ITexture2D.h"
 #include "Core/ParticleEmitter.h"
 
-class IPipeline;
+class Camera;
 class IGraphicsContext;
+class IPipeline;
+class IRenderer;
 class ITexture2D;
 class ParticleEmitter;
 class RenderingHandler;
-
-class IRenderer;
 class Texture2DVK;
 struct ParticleStorage;
 
@@ -22,7 +22,7 @@ public:
     void update(float dt);
     virtual void updateBuffers(IRenderingHandler* pRenderingHandler) = 0;
 
-    void initialize(IGraphicsContext* pGraphicsContext);
+    void initialize(IGraphicsContext* pGraphicsContext, const Camera* pCamera);
 
     ParticleEmitter* createEmitter(const ParticleEmitterInfo& emitterInfo);
 
@@ -30,6 +30,7 @@ public:
 
 protected:
     IGraphicsContext* m_pGraphicsContext;
+    const Camera* m_pCamera;
 
     std::vector<ParticleEmitter*> m_ParticleEmitters;
 };

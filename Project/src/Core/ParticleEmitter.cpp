@@ -22,8 +22,10 @@ ParticleEmitter::~ParticleEmitter()
     SAFEDELETE(m_pEmitterBuffer);
 }
 
-bool ParticleEmitter::initialize(IGraphicsContext* pGraphicsContext)
+bool ParticleEmitter::initialize(IGraphicsContext* pGraphicsContext, const Camera* pCamera)
 {
+    m_pCamera = pCamera;
+
     size_t particleCount = m_ParticlesPerSecond * m_ParticleDuration;
     m_ParticleStorage.positions.reserve(particleCount);
     m_ParticleStorage.velocities.reserve(particleCount);
@@ -40,15 +42,11 @@ void ParticleEmitter::update(float dt)
         spawnNewParticles();
     }
 
-    std::vector<glm::vec4>& positions = m_ParticleStorage.positions;
-    std::vector<glm::vec4>& velocities = m_ParticleStorage.velocities;
-    std::vector<float>& ages = m_ParticleStorage.ages;
+    moveParticles(dt);
 
-    for (size_t particleIdx = 0; particleIdx < m_ParticleStorage.positions.size(); particleIdx++) {
-        positions[particleIdx] += velocities[particleIdx] * dt;
-        velocities[particleIdx].y -= 9.82f * dt;
-        ages[particleIdx] += dt;
-    }
+    // TODO
+    // calculateCameraDistances();
+    // sortParticles();
 
     respawnOldParticles();
 }
@@ -84,29 +82,6 @@ bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
     pGraphicsContext->updateBuffer(m_pEmitterBuffer, 0, &m_ParticleSize, sizeof(glm::vec2));
 }
 
-void ParticleEmitter::respawnOldParticles()
-{
-    std::vector<glm::vec4>& positions = m_ParticleStorage.positions;
-    std::vector<glm::vec4>& velocities = m_ParticleStorage.velocities;
-    std::vector<float>& ages = m_ParticleStorage.ages;
-
-    /*
-        TODO: Optimize respawning, dead pixels are grouped up, no need to iterate through the entire particle storage
-        Three cases of particles grouping up: (d=dead, a=alive)
-        (front) daaaaaadd (back)
-        (front) aaaaaaddd (back)
-        (front) dddaaaaaa (back)
-    */
-    for (size_t particleIdx = 0; particleIdx < m_ParticleStorage.positions.size(); particleIdx++) {
-        float newParticleAge = ages[particleIdx] - m_ParticleDuration;
-        if (newParticleAge < 0.0f) {
-            continue;
-        }
-
-        createParticle(particleIdx, newParticleAge);
-    }
-}
-
 void ParticleEmitter::spawnNewParticles()
 {
     size_t particleCount = m_ParticleStorage.positions.size();
@@ -130,6 +105,42 @@ void ParticleEmitter::spawnNewParticles()
 
         size_t newParticleIdx = particleCount + i;
         createParticle(newParticleIdx, particleAge);
+    }
+}
+
+void ParticleEmitter::moveParticles(float dt)
+{
+    std::vector<glm::vec4>& positions = m_ParticleStorage.positions;
+    std::vector<glm::vec4>& velocities = m_ParticleStorage.velocities;
+    std::vector<float>& ages = m_ParticleStorage.ages;
+
+    for (size_t particleIdx = 0; particleIdx < positions.size(); particleIdx++) {
+        positions[particleIdx] += velocities[particleIdx] * dt;
+        velocities[particleIdx].y -= 9.82f * dt;
+        ages[particleIdx] += dt;
+    }
+}
+
+void ParticleEmitter::respawnOldParticles()
+{
+    std::vector<glm::vec4>& positions = m_ParticleStorage.positions;
+    std::vector<glm::vec4>& velocities = m_ParticleStorage.velocities;
+    std::vector<float>& ages = m_ParticleStorage.ages;
+
+    /*
+        TODO: Optimize respawning, dead pixels are grouped up, no need to iterate through the entire particle storage
+        Three cases of particles grouping up: (d=dead, a=alive)
+        (front) daaaaaadd (back)
+        (front) aaaaaaddd (back)
+        (front) dddaaaaaa (back)
+    */
+    for (size_t particleIdx = 0; particleIdx < m_ParticleStorage.positions.size(); particleIdx++) {
+        float newParticleAge = ages[particleIdx] - m_ParticleDuration;
+        if (newParticleAge < 0.0f) {
+            continue;
+        }
+
+        createParticle(particleIdx, newParticleAge);
     }
 }
 
