@@ -1,7 +1,11 @@
 #include "ParticleEmitter.h"
 
+#include "glm/gtx/vector_angle.hpp"
+
 #include "Common/IBuffer.h"
 #include "Common/IMesh.h"
+
+#include <math.h>
 
 ParticleEmitter::ParticleEmitter(const ParticleEmitterInfo& emitterInfo)
     :m_Position(glm::vec4(emitterInfo.position, 0.0f)),
@@ -10,11 +14,21 @@ ParticleEmitter::ParticleEmitter(const ParticleEmitterInfo& emitterInfo)
     m_ParticleDuration(emitterInfo.particleDuration),
     m_InitialSpeed(emitterInfo.initialSpeed),
     m_ParticlesPerSecond(emitterInfo.particlesPerSecond),
+    m_Spread(emitterInfo.spread),
     m_pTexture(emitterInfo.pTexture),
     m_EmitterAge(0.0f),
+    m_RandEngine(std::random_device()()),
+    m_ZRandomizer(std::cos(m_Spread), 1.0f),
+    m_PhiRandomizer(0.0f, glm::two_pi<float>()),
     m_pParticleBuffer(nullptr),
     m_pEmitterBuffer(nullptr)
-{}
+{
+    // Calculate rotation quaternion
+    glm::vec3 axis = glm::normalize(glm::cross(m_ZVec, m_Direction));
+
+    float angle = glm::angle(m_ZVec, m_Direction);
+    m_CenteringRotQuat = glm::angleAxis(angle, axis);
+}
 
 ParticleEmitter::~ParticleEmitter()
 {
@@ -145,7 +159,25 @@ void ParticleEmitter::respawnOldParticles()
 
 void ParticleEmitter::createParticle(size_t particleIdx, float particleAge)
 {
-    glm::vec4 particleDirection = m_Direction; // TODO: Randomly generate some spread!
+    glm::vec3 particleDirection = m_Direction;
+
+    // Randomized unit vector within a cone based on https://math.stackexchange.com/a/205589
+    float minZ = std::cos(m_Spread);
+    float z = m_ZRandomizer(m_RandEngine);
+    float phi = m_PhiRandomizer(m_RandEngine);
+
+    float sqrtZInv = std::sqrt(1.0f - z * z);
+
+    // Randomized vector given that the cone is centered around (0,0,1)
+    glm::vec3 randVec(sqrtZInv * std::cos(phi), sqrtZInv * std::sin(phi), z);
+    const glm::vec3 zVec(0.0f, 0.0f, 1.0f);
+
+    if (m_Direction == zVec) {
+        particleDirection = randVec;
+    } else {
+        // Rotate the random vector so that the center of the cone is aligned with the emitter
+        particleDirection = m_CenteringRotQuat * randVec;
+    }
 
     /*
         a = (0, -g, 0)
@@ -154,8 +186,8 @@ void ParticleEmitter::createParticle(size_t particleIdx, float particleAge)
     */
 
     float gt = -9.82f * particleAge;
-    glm::vec4 V0 = particleDirection * m_InitialSpeed;
-    m_ParticleStorage.velocities[particleIdx] = glm::vec4(0.0f, gt, 0.0f, 0.0f) + V0;
-    m_ParticleStorage.positions[particleIdx] = glm::vec4(0.0f, gt * particleAge / 2.0f, 0.0f, 1.0f) + V0 * particleAge + m_Position;
+    glm::vec3 V0 = particleDirection * m_InitialSpeed;
+    m_ParticleStorage.velocities[particleIdx] = glm::vec4(glm::vec3(0.0f, gt, 0.0f) + V0, 0.0f);
+    m_ParticleStorage.positions[particleIdx] = glm::vec4(glm::vec3(0.0f, gt * particleAge / 2.0f, 0.0f) + V0 * particleAge + m_Position, 1.0f);
     m_ParticleStorage.ages[particleIdx] = particleAge;
 }
