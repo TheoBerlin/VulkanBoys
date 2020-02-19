@@ -17,12 +17,18 @@ ParticleEmitter::ParticleEmitter(const ParticleEmitterInfo& emitterInfo)
     m_Spread(emitterInfo.spread),
     m_pTexture(emitterInfo.pTexture),
     m_EmitterAge(0.0f),
-    randEngine(std::random_device()()),
-    zRandomizer(std::cos(m_Spread), 1.0f),
-    phiRandomizer(0.0f, glm::two_pi<float>()),
+    m_RandEngine(std::random_device()()),
+    m_ZRandomizer(std::cos(m_Spread), 1.0f),
+    m_PhiRandomizer(0.0f, glm::two_pi<float>()),
     m_pParticleBuffer(nullptr),
     m_pEmitterBuffer(nullptr)
-{}
+{
+    // Calculate rotation quaternion
+    glm::vec3 axis = glm::normalize(glm::cross(m_ZVec, m_Direction));
+
+    float angle = glm::angle(m_ZVec, m_Direction);
+    m_CenteringRotQuat = glm::angleAxis(angle, axis);
+}
 
 ParticleEmitter::~ParticleEmitter()
 {
@@ -157,8 +163,8 @@ void ParticleEmitter::createParticle(size_t particleIdx, float particleAge)
 
     // Randomized unit vector within a cone based on https://math.stackexchange.com/a/205589
     float minZ = std::cos(m_Spread);
-    float z = zRandomizer(randEngine);
-    float phi = phiRandomizer(randEngine);
+    float z = m_ZRandomizer(m_RandEngine);
+    float phi = m_PhiRandomizer(m_RandEngine);
 
     float sqrtZInv = std::sqrt(1.0f - z * z);
 
@@ -170,15 +176,7 @@ void ParticleEmitter::createParticle(size_t particleIdx, float particleAge)
         particleDirection = randVec;
     } else {
         // Rotate the random vector so that the center of the cone is aligned with the emitter
-        // Calculate rotation quaternion
-		glm::vec3 axis = glm::cross(zVec, m_Direction);
-
-		axis = glm::normalize(axis);
-
-        float angle = glm::angle(zVec, m_Direction);
-
-		glm::quat rotQuat = glm::angleAxis(angle, axis);
-        particleDirection = rotQuat * randVec;
+        particleDirection = m_CenteringRotQuat * randVec;
     }
 
     /*
