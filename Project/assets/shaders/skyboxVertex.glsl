@@ -1,7 +1,13 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(location = 0) out vec3 out_Position;
+layout(binding = 0) uniform CameraBuffer
+{
+	mat4 Projection;
+	mat4 View;
+} camera;
+
+layout(location = 0) out vec3 out_TexCoord;
 
 const vec3 positions[36] = vec3[]
 (
@@ -50,16 +56,11 @@ const vec3 positions[36] = vec3[]
 	vec3( 1.0f,  1.0f,  1.0f)  
 );
 
-layout (push_constant) uniform Constants
+void main()
 {
-	mat4 Projection;
-	mat4 View;
-} constants;
+	mat4 view = mat4(mat3(camera.View));
 
-void main() 
-{
-	vec3 position 	= positions[gl_VertexIndex];
-	out_Position	= position;
-	
-	gl_Position 	= constants.Projection * constants.View * vec4(position, 1.0f);
+	out_TexCoord 	= positions[gl_VertexIndex];
+	vec4 position 	= camera.Projection * view * vec4(out_TexCoord, 1.0f);
+	gl_Position 	= position.xyww;
 }

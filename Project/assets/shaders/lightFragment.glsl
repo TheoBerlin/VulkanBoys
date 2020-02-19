@@ -78,6 +78,13 @@ float Geometry(vec3 normal, vec3 viewDir, vec3 lightDirection, float roughness)
 	return GeometryGGX(NdotV, roughness) * GeometryGGX(NdotL, roughness);
 }
 
+vec4 ColorPost(vec3 finalColor)
+{
+	vec3 result = finalColor / (finalColor + vec3(0.75f));
+	result = pow(result, vec3(1.0f / GAMMA));
+	return vec4(result, 1.0f);
+}
+
 void main()
 {
 	vec2 texCoord = in_TexCoord;
@@ -86,13 +93,15 @@ void main()
 	vec4 sampledAlbedo 			= texture(u_Albedo, texCoord);
 	vec4 sampledNormal 			= texture(u_Normal, texCoord);
 	vec4 sampledWorldPosition 	= texture(u_WorldPosition, texCoord);
+	
 	vec3 albedo 		= sampledAlbedo.rgb;
 	vec3 normal 		= sampledNormal.xyz;
 	vec3 worldPosition 	= sampledWorldPosition.xyz;
 	
-	if (length(worldPosition) <= 0)
+	//Just skybox
+	if (length(normal) == 0)
 	{
-		out_Color = vec4(albedo, 1.0f);
+	    out_Color = ColorPost(albedo);
 		return;
 	}
 	
@@ -140,8 +149,5 @@ void main()
 	vec3 ambient = vec3(0.03f) * albedo * ao;
 	vec3 finalColor = ambient + L0;
 	
-	finalColor = finalColor / (finalColor + vec3(1.0f));
-	finalColor = pow(finalColor, vec3(1.0f / GAMMA)); 
-	
-    out_Color = vec4(finalColor, 1.0f);
+    out_Color = ColorPost(finalColor);
 }

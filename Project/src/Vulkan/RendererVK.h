@@ -16,6 +16,7 @@ class Texture2DVK;
 class RenderPassVK;
 class FrameBufferVK;
 class CommandPoolVK;
+class TextureCubeVK;
 class CommandBufferVK;
 class DescriptorSetVK;
 class DescriptorPoolVK;
@@ -92,6 +93,7 @@ public:
 
 	virtual void setClearColor(float r, float g, float b) override;
 	virtual void setClearColor(const glm::vec3& color) override;
+	virtual void setSkybox(ITextureCube* pSkybox) override;
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
 
 	virtual void swapBuffers() override;
@@ -111,6 +113,7 @@ private:
 	bool createPipelines();
 	bool createPipelineLayouts();
 	bool createBuffersAndTextures();
+	bool createSamplers();
 
 	DescriptorSetVK* getDescriptorSetFromMeshAndMaterial(const IMesh* pMesh, const Material* pMaterial);
 
@@ -131,6 +134,7 @@ private:
 
 	DescriptorPoolVK* m_pDescriptorPool;
 	
+	SamplerVK* m_pSkyboxSampler;
 	SamplerVK* m_pGBufferSampler;
 	Texture2DVK* m_pDefaultTexture;
 	Texture2DVK* m_pDefaultNormal;
@@ -142,13 +146,17 @@ private:
 	DescriptorSetVK* m_pLightDescriptorSet;
 	DescriptorSetLayoutVK* m_pLightDescriptorSetLayout;
 	
+	PipelineVK* m_pSkyboxPipeline;
+	PipelineLayoutVK* m_pSkyboxPipelineLayout;
+	DescriptorSetVK* m_pSkyboxDescriptorSet;
+	DescriptorSetLayoutVK* m_pSkyboxDescriptorSetLayout;
+	
 	//TEMPORARY MOVE TO MATERIAL or SOMETHING
-	PipelineVK* m_pPipeline;
 	PipelineVK* m_pGeometryPipeline;
-	PipelineLayoutVK* m_pPipelineLayout;
 	PipelineLayoutVK* m_pGeometryPipelineLayout;
 	DescriptorSetLayoutVK* m_pGeometryDescriptorSetLayout;
 
+	TextureCubeVK* m_pSkybox;
 	VkClearValue m_ClearColor;
 	VkClearValue m_ClearDepth;
 	VkViewport m_Viewport;

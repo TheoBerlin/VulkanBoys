@@ -6,7 +6,7 @@ layout(location = 0) out 	vec4 out_Color;
 
 layout(binding = 0) uniform sampler2D u_Panorama;
 
-const vec2 invAtan = vec2(0.1591f, 0.3183f);
+const vec2 invAtan = vec2(0.1591f, -0.3183f);
 
 vec2 GetTexCoordFromPosition(vec3 position)
 {
@@ -19,7 +19,8 @@ vec2 GetTexCoordFromPosition(vec3 position)
 
 void main()
 {
-	vec2 texCoord = GetTexCoordFromPosition(in_Position);
+	vec3 position = normalize(in_Position);
+	vec2 texCoord = GetTexCoordFromPosition(position);
 	vec3 color = texture(u_Panorama, texCoord).rgb;
 	
 	out_Color = vec4(color, 1.0f);

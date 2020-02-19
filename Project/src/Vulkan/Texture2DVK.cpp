@@ -94,7 +94,7 @@ bool Texture2DVK::initFromMemory(const void* pData, uint32_t width, uint32_t hei
 		uint32_t pixelStride = textureFormatStride(format);
 
 		CopyHandlerVK* pCopyHandler = m_pDevice->getCopyHandler();
-		pCopyHandler->updateImage(pData, m_pTextureImage, width, height, pixelStride, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0);
+		pCopyHandler->updateImage(pData, m_pTextureImage, width, height, pixelStride, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 0);
 
 		if (generateMips)
 		{

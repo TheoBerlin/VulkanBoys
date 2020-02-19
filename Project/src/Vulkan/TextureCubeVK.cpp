@@ -5,7 +5,10 @@
 TextureCubeVK::TextureCubeVK(DeviceVK* pDevice)
 	: m_pDevice(pDevice),
 	m_pImage(nullptr),
-	m_pImageView(nullptr)
+	m_pImageView(nullptr),
+	m_Width(0),
+	m_Miplevels(0),
+	m_Format(ETextureFormat::FORMAT_NONE)
 {
 }
 
@@ -17,6 +20,10 @@ TextureCubeVK::~TextureCubeVK()
 
 bool TextureCubeVK::init(uint32_t width, uint32_t miplevels, ETextureFormat format)
 {
+	m_Width		= width;
+	m_Format	= format;
+	m_Miplevels = miplevels;
+
 	ImageParams imageParams = {};
 	imageParams.Type			= VK_IMAGE_TYPE_2D;
 	imageParams.Flags			= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
@@ -25,7 +32,7 @@ bool TextureCubeVK::init(uint32_t width, uint32_t miplevels, ETextureFormat form
 	imageParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	imageParams.MipLevels		= miplevels;
 	imageParams.Samples			= VK_SAMPLE_COUNT_1_BIT;
-	imageParams.Usage			= VK_IMAGE_USAGE_SAMPLED_BIT;
+	imageParams.Usage			= VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	imageParams.Format			= convertFormat(format);
 
 	m_pImage = DBG_NEW ImageVK(m_pDevice);

@@ -10,8 +10,12 @@
 #include "SamplerVK.h"
 #include "ShaderVK.h"
 #include "RenderPassVK.h"
+#include "Texture2DVK.h"
 #include "FrameBufferVK.h"
 #include "TextureCubeVK.h"
+#include "ReflectionProbeVK.h"
+
+#include <glm/gtc/type_ptr.hpp>
 
 SkyboxRendererVK::SkyboxRendererVK(DeviceVK* pDevice)
 	: m_pDevice(pDevice),
@@ -87,16 +91,77 @@ bool SkyboxRendererVK::init()
 
 void SkyboxRendererVK::generateCubemapFromPanorama(TextureCubeVK* pCubemap, Texture2DVK* pPanorama)
 {
+	ReflectionProbeVK* pReflectionProbe = DBG_NEW ReflectionProbeVK(m_pDevice);
+	if (!pReflectionProbe->initFromTextureCube(pCubemap, m_pPanoramaRenderpass))
+	{
+		return;
+	}
+
+	//Setup
+	uint32_t width = pCubemap->getWidth();
+
+	VkViewport viewport = {};
+	viewport.width		= float(width);
+	viewport.height		= viewport.width;
+	viewport.x			= 0.0f;
+	viewport.y			= 0.0f;
+	viewport.minDepth	= 0.0f;
+	viewport.maxDepth	= 1.0f;
+
+	VkRect2D scissorRect = {};
+	scissorRect.offset	= { 0, 0 };
+	scissorRect.extent	= { width, width };
+
+	glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+	glm::mat4 captureViews[] =
+	{
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
+	};
+
+	//Setup panorama image
+	m_pPanoramaDescriptorSet->writeCombinedImageDescriptor(pPanorama->getImageView(), m_pPanoramaSampler, 0);
+
+	//Draw
 	m_ppCommandBuffers[m_CurrentFrame]->reset();
 	m_ppCommandPools[m_CurrentFrame]->reset();
 
-
-
 	m_ppCommandBuffers[m_CurrentFrame]->begin();
+
+	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPanoramaPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(captureProjection));
+
+	m_ppCommandBuffers[m_CurrentFrame]->setViewports(&viewport, 1);
+	m_ppCommandBuffers[m_CurrentFrame]->setScissorRects(&scissorRect, 1);
+
+	m_ppCommandBuffers[m_CurrentFrame]->bindGraphicsPipeline(m_pPanoramaPipeline);
+	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPanoramaPipelineLayout, 0, 1, &m_pPanoramaDescriptorSet, 0, nullptr);
+
+	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(pCubemap->getImage(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, pCubemap->getMiplevels(), 0, 6);
+
+	VkClearValue clearValue = { 1.0f, 1.0f, 1.0f, 1.0f };
+	for (uint32_t i = 0; i < 6; i++)
+	{
+		FrameBufferVK* pFramebuffer = pReflectionProbe->getFrameBuffer(i);
+
+		m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pPanoramaRenderpass, pFramebuffer, width, width, &clearValue, 1);
+
+		m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPanoramaPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(glm::mat4), sizeof(glm::mat4), (const void*)glm::value_ptr(captureViews[i]));
+		m_ppCommandBuffers[m_CurrentFrame]->drawInstanced(36, 1, 0, 0);
+
+		m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
+	}
+	
+	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(pCubemap->getImage(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, pCubemap->getMiplevels(), 0, 6);
 	m_ppCommandBuffers[m_CurrentFrame]->end();
 
 	m_pDevice->executeCommandBuffer(m_pDevice->getGraphicsQueue(), m_ppCommandBuffers[m_CurrentFrame], nullptr, 0, 0, nullptr, 0);
 	m_pDevice->wait();
+
+	SAFEDELETE(pReflectionProbe);
 }
 
 bool SkyboxRendererVK::createCommandpoolsAndBuffers()
@@ -200,7 +265,7 @@ bool SkyboxRendererVK::createPipelines()
 	VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
 	depthStencilState.depthTestEnable	= VK_FALSE;
 	depthStencilState.depthWriteEnable	= VK_FALSE;
-	depthStencilState.depthCompareOp	= VK_COMPARE_OP_LESS_OR_EQUAL;
+	depthStencilState.depthCompareOp	= VK_COMPARE_OP_LESS;
 	depthStencilState.stencilTestEnable = VK_FALSE;
 	m_pPanoramaPipeline->setDepthStencilState(depthStencilState);
 

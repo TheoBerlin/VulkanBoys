@@ -42,7 +42,7 @@ bool ImageVK::init(const ImageParams& params)
 	VkImageCreateInfo imageInfo = {};
 	imageInfo.sType					= VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageInfo.pNext					= nullptr;
-	imageInfo.flags					= 0;
+	imageInfo.flags					= params.Flags;
 	imageInfo.tiling				= VK_IMAGE_TILING_OPTIMAL;
 	imageInfo.usage					= params.Usage;
 	imageInfo.pQueueFamilyIndices	= nullptr;

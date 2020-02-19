@@ -86,7 +86,7 @@ void Application::init()
 	//Setup renderer
 	m_pRenderer = m_pContext->createRenderer();
 	m_pRenderer->init();
-	m_pRenderer->setClearColor(0.0f, 0.0f, 0.0f);
+	m_pRenderer->setClearColor(1.0f, 0.0f, 0.0f);
 	m_pRenderer->setViewport(m_pWindow->getWidth(), m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
 
 	//Setup camera
@@ -95,164 +95,95 @@ void Application::init()
 	m_Camera.setProjection(90.0f, m_pWindow->getWidth(), m_pWindow->getHeight(), 0.01f, 100.0f);
 	m_Camera.update();
 
-	//Load mesh
-	{
-		using namespace glm;
-
-		Vertex vertices[] =
+	//Load resources
+	ITexture2D* pPanorama = m_pContext->createTexture2D();
+	TaskDispatcher::execute([&]
 		{
-			//FRONT FACE
-			{ vec3(-0.5,  0.5, -0.5), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-			{ vec3( 0.5,  0.5, -0.5), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-			{ vec3(-0.5, -0.5, -0.5), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-			{ vec3( 0.5, -0.5, -0.5), vec3(0.0f,  0.0f, -1.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+			pPanorama->initFromFile("assets/textures/arches.hdr", ETextureFormat::FORMAT_R32G32B32A32_FLOAT, false);
+			m_pSkybox = m_pRenderer->generateTextureCubeFromPanorama(pPanorama, 1024, 1, ETextureFormat::FORMAT_R16G16B16A16_FLOAT);
+		});
 
-			//BACK FACE
-			{ vec3( 0.5,  0.5,  0.5), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-			{ vec3(-0.5,  0.5,  0.5), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-			{ vec3( 0.5, -0.5,  0.5), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-			{ vec3(-0.5, -0.5,  0.5), vec3(0.0f,  0.0f,  1.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
+	m_pMesh = m_pContext->createMesh();
+	TaskDispatcher::execute([&] 
+		{ 
+			m_pMesh->initFromFile("assets/meshes/gun.obj");
+		});
 
-			//RIGHT FACE
-			{ vec3(0.5,  0.5, -0.5), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 0.0f) },
-			{ vec3(0.5,  0.5,  0.5), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 0.0f) },
-			{ vec3(0.5, -0.5, -0.5), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(0.0f, 1.0f) },
-			{ vec3(0.5, -0.5,  0.5), vec3(1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, 1.0f), vec2(1.0f, 1.0f) },
-
-			//LEFT FACE
-			{ vec3(-0.5,  0.5, -0.5), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 0.0f) },
-			{ vec3(-0.5,  0.5,  0.5), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 0.0f) },
-			{ vec3(-0.5, -0.5, -0.5), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(0.0f, 1.0f) },
-			{ vec3(-0.5, -0.5,  0.5), vec3(-1.0f,  0.0f,  0.0f), vec3(0.0f,  0.0f, -1.0f), vec2(1.0f, 1.0f) },
-
-			//TOP FACE
-			{ vec3(-0.5,  0.5,  0.5), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-			{ vec3( 0.5,  0.5,  0.5), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-			{ vec3(-0.5,  0.5, -0.5), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-			{ vec3( 0.5,  0.5, -0.5), vec3(0.0f,  1.0f,  0.0f), vec3(1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
-
-			//BOTTOM FACE
-			{ vec3(-0.5, -0.5, -0.5), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 0.0f) },
-			{ vec3( 0.5, -0.5, -0.5), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 0.0f) },
-			{ vec3(-0.5, -0.5,  0.5), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(0.0f, 1.0f) },
-			{ vec3( 0.5, -0.5,  0.5), vec3(0.0f, -1.0f,  0.0f), vec3(-1.0f,  0.0f, 0.0f), vec2(1.0f, 1.0f) },
-		};
-
-		uint32_t indices[] =
+	m_pSphere = m_pContext->createMesh();
+	TaskDispatcher::execute([&]
 		{
-			//FRONT FACE
-			2, 1, 0,
-			2, 3, 1,
+			m_pSphere->initFromFile("assets/meshes/sphere.obj");
+		});
 
-			//BACK FACE
-			6, 5, 4,
-			6, 7, 5,
+	m_pAlbedo = m_pContext->createTexture2D();
+	TaskDispatcher::execute([this]
+		{
+			m_pAlbedo->initFromFile("assets/textures/albedo.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+		});
 
-			//RIGHT FACE
-			10, 9, 8,
-			10, 11, 9,
+	m_pNormal = m_pContext->createTexture2D();
+	TaskDispatcher::execute([this]
+		{
+			m_pNormal->initFromFile("assets/textures/normal.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+		});
 
-			//LEFT FACE
-			12, 13, 14,
-			13, 15, 14,
+	m_pMetallic = m_pContext->createTexture2D();
+	TaskDispatcher::execute([this]
+		{
+			m_pMetallic->initFromFile("assets/textures/metallic.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+		});
 
-			//TOP FACE
-			18, 17, 16,
-			18, 19, 17,
+	m_pRoughness = m_pContext->createTexture2D();
+	TaskDispatcher::execute([this]
+		{
+			m_pRoughness->initFromFile("assets/textures/roughness.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+		});
 
-			//BOTTOM FACE
-			22, 21, 20,
-			22, 23, 21
-		};
+	//We can set the pointer to the material even if loading happens on another thread
+	m_GunMaterial.setAlbedo(glm::vec4(1.0f));
+	m_GunMaterial.setAmbientOcclusion(1.0f);
+	m_GunMaterial.setMetallic(1.0f);
+	m_GunMaterial.setRoughness(1.0f);
+	m_GunMaterial.setAlbedoMap(m_pAlbedo);
+	m_GunMaterial.setNormalMap(m_pNormal);
+	m_GunMaterial.setMetallicMap(m_pMetallic);
+	m_GunMaterial.setRoughnessMap(m_pRoughness);
 
-		ITexture2D* pPanorama = m_pContext->createTexture2D();
-		TaskDispatcher::execute([&]
-			{
-				pPanorama->initFromFile("assets/textures/arches.hdr", ETextureFormat::FORMAT_R32G32B32A32_FLOAT, false);
-			});
+	m_RedMaterial.setAmbientOcclusion(1.0f);
 
-		m_pMesh = m_pContext->createMesh();
-		TaskDispatcher::execute([&] 
-			{ 
-				m_pMesh->initFromFile("assets/meshes/gun.obj");
-			});
+	SamplerParams samplerParams = {};
+	samplerParams.MinFilter = VK_FILTER_LINEAR;
+	samplerParams.MagFilter = VK_FILTER_LINEAR;
+	samplerParams.WrapModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerParams.WrapModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	m_GunMaterial.createSampler(m_pContext, samplerParams);
+	m_RedMaterial.createSampler(m_pContext, samplerParams);
 
-		m_pSphere = m_pContext->createMesh();
-		TaskDispatcher::execute([&]
-			{
-				m_pSphere->initFromFile("assets/meshes/sphere.obj");
-			});
-
-		m_pAlbedo = m_pContext->createTexture2D();
-		TaskDispatcher::execute([this]
-			{
-				m_pAlbedo->initFromFile("assets/textures/albedo.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
-			});
-
-		m_pNormal = m_pContext->createTexture2D();
-		TaskDispatcher::execute([this]
-			{
-				m_pNormal->initFromFile("assets/textures/normal.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
-			});
-
-		m_pMetallic = m_pContext->createTexture2D();
-		TaskDispatcher::execute([this]
-			{
-				m_pMetallic->initFromFile("assets/textures/metallic.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
-			});
-
-		m_pRoughness = m_pContext->createTexture2D();
-		TaskDispatcher::execute([this]
-			{
-				m_pRoughness->initFromFile("assets/textures/roughness.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
-			});
-
-		//We can set the pointer to the material even if loading happens on another thread
-		m_GunMaterial.setAlbedo(glm::vec4(1.0f));
-		m_GunMaterial.setAmbientOcclusion(1.0f);
-		m_GunMaterial.setMetallic(1.0f);
-		m_GunMaterial.setRoughness(1.0f);
-		m_GunMaterial.setAlbedoMap(m_pAlbedo);
-		m_GunMaterial.setNormalMap(m_pNormal);
-		m_GunMaterial.setMetallicMap(m_pMetallic);
-		m_GunMaterial.setRoughnessMap(m_pRoughness);
-
-		m_RedMaterial.setAmbientOcclusion(1.0f);
-
-		SamplerParams samplerParams = {};
-		samplerParams.MinFilter = VK_FILTER_LINEAR;
-		samplerParams.MagFilter = VK_FILTER_LINEAR;
-		samplerParams.WrapModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerParams.WrapModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		m_GunMaterial.createSampler(m_pContext, samplerParams);
-		m_RedMaterial.createSampler(m_pContext, samplerParams);
-
-		//Setup lights
-		m_LightSetup.addPointLight(PointLight(glm::vec3( 5.0f,  5.0f, -10.0f), glm::vec4(300.0f)));
-		m_LightSetup.addPointLight(PointLight(glm::vec3(-5.0f,  5.0f, -10.0f), glm::vec4(300.0f)));
-		m_LightSetup.addPointLight(PointLight(glm::vec3( 5.0f, -5.0f, -10.0f), glm::vec4(300.0f)));
-		m_LightSetup.addPointLight(PointLight(glm::vec3(-5.0f, -5.0f, -10.0f), glm::vec4(300.0f)));
+	//Setup lights
+	m_LightSetup.addPointLight(PointLight(glm::vec3( 5.0f,  5.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3(-5.0f,  5.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3( 5.0f, -5.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3(-5.0f, -5.0f, -10.0f), glm::vec4(300.0f)));
 		
-		m_LightSetup.addPointLight(PointLight(glm::vec3( 15.0f,  15.0f, -10.0f), glm::vec4(300.0f)));
-		m_LightSetup.addPointLight(PointLight(glm::vec3(  0.0f,  15.0f, -10.0f), glm::vec4(300.0f)));
-		m_LightSetup.addPointLight(PointLight(glm::vec3(-15.0f,  15.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3( 15.0f,  15.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3(  0.0f,  15.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3(-15.0f,  15.0f, -10.0f), glm::vec4(300.0f)));
 
-		m_LightSetup.addPointLight(PointLight(glm::vec3( 15.0f, 0.0f, -10.0f), glm::vec4(300.0f)));
-		m_LightSetup.addPointLight(PointLight(glm::vec3(  0.0f, 0.0f, -10.0f), glm::vec4(300.0f)));
-		m_LightSetup.addPointLight(PointLight(glm::vec3(-15.0f, 0.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3( 15.0f, 0.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3(  0.0f, 0.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3(-15.0f, 0.0f, -10.0f), glm::vec4(300.0f)));
 
-		m_LightSetup.addPointLight(PointLight(glm::vec3( 15.0f, -15.0f, -10.0f), glm::vec4(300.0f)));
-		m_LightSetup.addPointLight(PointLight(glm::vec3(  0.0f, -15.0f, -10.0f), glm::vec4(300.0f)));
-		m_LightSetup.addPointLight(PointLight(glm::vec3(-15.0f, -15.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3( 15.0f, -15.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3(  0.0f, -15.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3(-15.0f, -15.0f, -10.0f), glm::vec4(300.0f)));
 
-		TaskDispatcher::waitForTasks();
+	TaskDispatcher::waitForTasks();
 
-		m_pSkybox = m_pRenderer->generateTextureCubeFromPanorama(pPanorama, 1024, 1, ETextureFormat::FORMAT_R16G16B16A16_FLOAT);
+	m_pRenderer->setSkybox(m_pSkybox);
 
-		SAFEDELETE(pPanorama);
+	SAFEDELETE(pPanorama);
 
-		m_pWindow->show();
-	}
+	m_pWindow->show();
 }
 
 void Application::run()
