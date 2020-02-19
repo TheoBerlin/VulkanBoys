@@ -116,6 +116,7 @@ void ParticleEmitter::spawnNewParticles()
     if (particlesToSpawn == 0) {
         return;
     }
+
     // Create uninitialized particles where createParticle() will fill in the data
     LOG("Spawning %d particles", particlesToSpawn);
     m_ParticleStorage.positions.resize(newParticleCount);

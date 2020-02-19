@@ -10,12 +10,14 @@
 #include "Vulkan/CommandPoolVK.h"
 #include "Vulkan/FrameBufferVK.h"
 #include "Vulkan/GraphicsContextVK.h"
+#include "Vulkan/ImageViewVK.h"
 #include "Vulkan/MeshVK.h"
 #include "Vulkan/PipelineLayoutVK.h"
 #include "Vulkan/PipelineVK.h"
 #include "Vulkan/RenderingHandlerVK.h"
 #include "Vulkan/RenderPassVK.h"
 #include "Vulkan/SamplerVK.h"
+#include "Vulkan/Texture2DVK.h"
 
 #include <array>
 
@@ -116,12 +118,12 @@ void ParticleRendererVK::submitParticles(ParticleEmitter* pEmitter)
 
 	BufferVK* pEmitterBuffer = reinterpret_cast<BufferVK*>(pEmitter->getEmitterBuffer());
 	BufferVK* pParticleBuffer = reinterpret_cast<BufferVK*>(pEmitter->getParticleBuffer());
+	Texture2DVK* pParticleTexture = reinterpret_cast<Texture2DVK*>(pEmitter->getParticleTexture());
 
+	// TODO: Use constant variables or define macros for binding indices
 	m_ppDescriptorSets[frameIndex]->writeUniformBufferDescriptor(pEmitterBuffer->getBuffer(), 3);
 	m_ppDescriptorSets[frameIndex]->writeStorageBufferDescriptor(pParticleBuffer->getBuffer(), 4);
-
-	// TODO: When does the descriptor set need to be bound? Mesh renderer binds it twice...
-	//m_ppCommandBuffers[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_ppDescriptorSets[frameIndex], 0, nullptr);
+	m_ppDescriptorSets[frameIndex]->writeCombinedImageDescriptor(pParticleTexture->getImageView()->getImageView(), m_pSampler->getSampler(), 5);
 
 	uint32_t particleCount = pEmitter->getParticleCount();
 	m_ppCommandBuffers[frameIndex]->drawIndexInstanced(m_pQuadMesh->getIndexCount(), particleCount, 0, 0, 0);

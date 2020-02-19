@@ -50,6 +50,7 @@ public:
 
     IBuffer* getParticleBuffer() { return m_pParticleBuffer; }
     IBuffer* getEmitterBuffer() { return m_pEmitterBuffer; }
+    ITexture2D* getParticleTexture() { return m_pTexture; }
 
 private:
     bool createBuffers(IGraphicsContext* pGraphicsContext);

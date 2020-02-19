@@ -34,7 +34,7 @@ layout (binding = 4) buffer ParticlePositions
 	vec4 positions[];
 } g_ParticlePositions;
 
-layout(location = 0) out vec2 out_TexCoord;
+layout(location = 0) out vec2 out_TexCoords;
 
 void main()
 {
@@ -45,6 +45,6 @@ void main()
 		g_CameraDirections.right 	* vertexPosition.x * g_EmitterProperties.particleSize.x +
 		g_CameraDirections.up 		* vertexPosition.y * g_EmitterProperties.particleSize.y;
 
-	out_TexCoord = vertex.TexCoord;
+	out_TexCoords = vertex.TexCoord;
 	gl_Position = g_CameraMatrices.Projection * g_CameraMatrices.View * worldPosition;
 }
