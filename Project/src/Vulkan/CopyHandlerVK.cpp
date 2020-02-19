@@ -143,6 +143,7 @@ void CopyHandlerVK::generateMips(ImageVK* pImage)
 	for (uint32_t i = 1; i < miplevelCount; i++)
 	{
 		destinationExtent = { std::max(sourceExtent.width / 2U, 1u), std::max(sourceExtent.height / 2U, 1U) };
+
 		pCommandBuffer->transitionImageLayout(pImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, i - 1, 1, 0, 1);
 		pCommandBuffer->blitImage2D(pImage, i - 1, sourceExtent, pImage, i, destinationExtent);
 		sourceExtent = destinationExtent;

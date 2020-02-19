@@ -67,6 +67,7 @@ RendererVK::~RendererVK()
 		}
 	}
 
+	SAFEDELETE(m_pIrradianceMap);
 	SAFEDELETE(m_pSkyboxSampler);
 	SAFEDELETE(m_pSkyboxPipeline);
 	SAFEDELETE(m_pSkyboxPipelineLayout);
@@ -261,7 +262,16 @@ void RendererVK::setClearColor(const glm::vec3& color)
 void RendererVK::setSkybox(ITextureCube* pSkybox)
 {
 	m_pSkybox = reinterpret_cast<TextureCubeVK*>(pSkybox);
+
+	//Generate irradiance from the newly set skybox
+	m_pIrradianceMap = DBG_NEW TextureCubeVK(m_pContext->getDevice());
+	if (m_pIrradianceMap->init(64, 1, ETextureFormat::FORMAT_R16G16B16A16_FLOAT))
+	{
+		m_pSkyboxRenderer->generateIrradiance(m_pSkybox, m_pIrradianceMap);
+	}
+
 	m_pSkyboxDescriptorSet->writeCombinedImageDescriptor(m_pSkybox->getImageView(), m_pSkyboxSampler, 1);
+	m_pLightDescriptorSet->writeCombinedImageDescriptor(m_pIrradianceMap->getImageView(), m_pSkyboxSampler, IRRADIANCE_BINDING);
 }
 
 void RendererVK::setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY)
@@ -441,7 +451,6 @@ bool RendererVK::createRenderPass()
 	m_pRenderPass = DBG_NEW RenderPassVK(m_pContext->getDevice());
 
 	//Albedo
-	description = {};
 	description.format			= VK_FORMAT_R8G8B8A8_UNORM;
 	description.samples			= VK_SAMPLE_COUNT_1_BIT;
 	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;				
@@ -504,7 +513,6 @@ bool RendererVK::createRenderPass()
 
 	m_pRenderPass->addSubpass(colorAttachmentRefs, 3, &depthStencilAttachmentRef);
 
-	dependency = {};
 	dependency.dependencyFlags	= VK_DEPENDENCY_BY_REGION_BIT;
 	dependency.srcSubpass		= VK_SUBPASS_EXTERNAL;
 	dependency.dstSubpass		= 0;
@@ -631,21 +639,18 @@ bool RendererVK::createPipelines()
 	shaders = { pVertexShader, pPixelShader };
 	m_pSkyboxPipeline = DBG_NEW PipelineVK(m_pContext->getDevice());
 
-	blendAttachment = {};
 	blendAttachment.blendEnable		= VK_FALSE;
 	blendAttachment.colorWriteMask	= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	m_pSkyboxPipeline->addColorBlendAttachment(blendAttachment);
 	m_pSkyboxPipeline->addColorBlendAttachment(blendAttachment);
 	m_pSkyboxPipeline->addColorBlendAttachment(blendAttachment);
 
-	rasterizerState = {};
 	rasterizerState.cullMode	= VK_CULL_MODE_BACK_BIT;
 	rasterizerState.frontFace	= VK_FRONT_FACE_CLOCKWISE;
 	rasterizerState.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizerState.lineWidth	= 1.0f;
 	m_pSkyboxPipeline->setRasterizerState(rasterizerState);
 
-	depthStencilState = {};
 	depthStencilState.depthTestEnable	= VK_TRUE;
 	depthStencilState.depthWriteEnable	= VK_TRUE;
 	depthStencilState.depthCompareOp	= VK_COMPARE_OP_LESS_OR_EQUAL;
@@ -712,6 +717,7 @@ bool RendererVK::createPipelineLayouts()
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_ALBEDO_BINDING, 1);
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_NORMAL_BINDING, 1);
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_POSITION_BINDING, 1);	
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, IRRADIANCE_BINDING, 1);
 	if (!m_pLightDescriptorSetLayout->finalize())
 	{
 		return false;

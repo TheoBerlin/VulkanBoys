@@ -153,18 +153,18 @@ bool PipelineVK::finalize(const std::vector<IShader*>& shaders, RenderPassVK* pR
     }
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
-    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.flags = 0;
-    vertexInputInfo.pNext = nullptr;
+    vertexInputInfo.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertexInputInfo.flags                           = 0;
+    vertexInputInfo.pNext                           = nullptr;
     vertexInputInfo.vertexAttributeDescriptionCount = uint32_t(m_VertexAttributes.size());
     vertexInputInfo.pVertexAttributeDescriptions    = (m_VertexAttributes.size() > 0) ? m_VertexAttributes.data() : nullptr;
     vertexInputInfo.vertexBindingDescriptionCount   = uint32_t(m_VertexBindings.size());
     vertexInputInfo.pVertexBindingDescriptions      = (m_VertexBindings.size() > 0) ? m_VertexBindings.data() : nullptr;
 
     VkPipelineViewportStateCreateInfo viewportState = {};
-    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    viewportState.flags = 0;
-    viewportState.pNext = nullptr;
+    viewportState.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewportState.flags         = 0;
+    viewportState.pNext         = nullptr;
     viewportState.viewportCount = 1;
     viewportState.pViewports    = nullptr;
     viewportState.scissorCount  = 1;
@@ -177,21 +177,21 @@ bool PipelineVK::finalize(const std::vector<IShader*>& shaders, RenderPassVK* pR
     };
 
     VkPipelineDynamicStateCreateInfo dynamicState = {};
-    dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamicState.flags = 0;
-    dynamicState.pNext = nullptr;
+    dynamicState.sType              = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicState.flags              = 0;
+    dynamicState.pNext              = nullptr;
     dynamicState.pDynamicStates     = dynamicStates;
     dynamicState.dynamicStateCount  = 2;
 
-    m_BlendState.pAttachments = m_ColorBlendAttachments.data();
-    m_BlendState.attachmentCount = uint32_t(m_ColorBlendAttachments.size());
+    m_BlendState.pAttachments       = m_ColorBlendAttachments.data();
+    m_BlendState.attachmentCount    = uint32_t(m_ColorBlendAttachments.size());
 
     VkGraphicsPipelineCreateInfo pipelineInfo = {};
-    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    pipelineInfo.pNext = nullptr;
-    pipelineInfo.flags = 0;
-    pipelineInfo.stageCount = uint32_t(shaderStagesInfos.size());
-    pipelineInfo.pStages    = shaderStagesInfos.data();
+    pipelineInfo.sType                  = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineInfo.pNext                  = nullptr;
+    pipelineInfo.flags                  = 0;
+    pipelineInfo.stageCount             = uint32_t(shaderStagesInfos.size());
+    pipelineInfo.pStages                = shaderStagesInfos.data();
     pipelineInfo.pVertexInputState      = &vertexInputInfo;
     pipelineInfo.pInputAssemblyState    = &m_InputAssembly;
     pipelineInfo.pViewportState         = &viewportState;
@@ -200,11 +200,11 @@ bool PipelineVK::finalize(const std::vector<IShader*>& shaders, RenderPassVK* pR
     pipelineInfo.pDepthStencilState     = &m_DepthStencilState;
     pipelineInfo.pColorBlendState       = &m_BlendState;
     pipelineInfo.pDynamicState          = &dynamicState;
-    pipelineInfo.renderPass = pRenderPass->getRenderPass();
-    pipelineInfo.layout     = pPipelineLayout->getPipelineLayout();
-    pipelineInfo.subpass    = 0;
-    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-    pipelineInfo.basePipelineIndex  = -1;
+    pipelineInfo.renderPass             = pRenderPass->getRenderPass();
+    pipelineInfo.layout                 = pPipelineLayout->getPipelineLayout();
+    pipelineInfo.subpass                = 0;
+    pipelineInfo.basePipelineHandle     = VK_NULL_HANDLE;
+    pipelineInfo.basePipelineIndex      = -1;
 
     VK_CHECK_RESULT_RETURN_FALSE(vkCreateGraphicsPipelines(m_pDevice->getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_Pipeline), "vkCreateGraphicsPipelines failed");
 

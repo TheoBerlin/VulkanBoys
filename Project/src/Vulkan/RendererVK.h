@@ -38,7 +38,8 @@ class DescriptorSetLayoutVK;
 #define GBUFFER_ALBEDO_BINDING		1
 #define GBUFFER_NORMAL_BINDING		2
 #define GBUFFER_POSITION_BINDING	3
-#define LIGHT_BUFFER_BINDING 4
+#define IRRADIANCE_BINDING			4
+#define LIGHT_BUFFER_BINDING		5
 
 //Stealing name from Unity
 struct MeshFilter
@@ -157,6 +158,7 @@ private:
 	DescriptorSetLayoutVK* m_pGeometryDescriptorSetLayout;
 
 	TextureCubeVK* m_pSkybox;
+	TextureCubeVK* m_pIrradianceMap;
 	VkClearValue m_ClearColor;
 	VkClearValue m_ClearDepth;
 	VkViewport m_Viewport;

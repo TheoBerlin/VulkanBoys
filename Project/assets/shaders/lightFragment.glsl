@@ -6,9 +6,10 @@
 layout(location = 0) in vec2	in_TexCoord;
 layout(location = 0) out vec4	out_Color;
 
-layout(binding = 1) uniform sampler2D u_Albedo;
-layout(binding = 2) uniform sampler2D u_Normal;
-layout(binding = 3) uniform sampler2D u_WorldPosition;
+layout(binding = 1) uniform sampler2D 	u_Albedo;
+layout(binding = 2) uniform sampler2D 	u_Normal;
+layout(binding = 3) uniform sampler2D 	u_WorldPosition;
+layout(binding = 4) uniform samplerCube u_IrradianceMap;
 
 struct PointLight
 {
@@ -23,7 +24,7 @@ layout (binding = 0) uniform PerFrameBuffer
 	vec4 Position;
 } g_PerFrame;
 
-layout (binding = 4) uniform LightBuffer
+layout (binding = 5) uniform LightBuffer
 {
 	PointLight lights[MAX_POINT_LIGHTS];
 } u_Lights;
@@ -40,6 +41,14 @@ const float GAMMA				= 2.2f;
 vec3 Fresnel(vec3 F0, float cosTheta)
 {
 	return F0 + ((vec3(1.0f) - F0) * pow(1.0f - cosTheta, 5.0f));
+}
+
+/*
+	Schlick Fresnel function with roughness
+*/
+vec3 FresnelRoughness(vec3 F0, float cosTheta, float roughness)
+{
+	return F0 + ((max(vec3(1.0f - roughness), F0) - F0) * pow(1.0f - cosTheta, 5.0f));
 }
 
 /*
@@ -117,6 +126,7 @@ void main()
 	vec3 f0 = vec3(0.04f);
 	f0 = mix(f0, albedo, metallic);
 	
+	//Radiance from light
 	vec3 L0 = vec3(0.0f);
 	for (int i = 0; i < MAX_POINT_LIGHTS; i++)
 	{
@@ -146,8 +156,12 @@ void main()
 		L0 += ((diffuse * (albedo / PI)) + specular) * radiance * max(dot(normal, lightDirection), 0.0f);
 	}
 	
-	vec3 ambient = vec3(0.03f) * albedo * ao;
+	//Irradiance from surroundings
+	vec3 irradiance = texture(u_IrradianceMap, normal).rgb;
+	vec3 diffuse 	= irradiance * albedo;
+	vec3 kDiffuse 	= vec3(1.0f) - FresnelRoughness(f0, clamp(dot(normal, viewDir), 0.0f, 1.0f), roughness); 
+	vec3 ambient 	= kDiffuse * diffuse * ao;
+
 	vec3 finalColor = ambient + L0;
-	
     out_Color = ColorPost(finalColor);
 }
