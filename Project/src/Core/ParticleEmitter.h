@@ -57,7 +57,7 @@ private:
     // Spawns particles before the emitter has created its maximum amount of particles
     void spawnNewParticles();
     void respawnOldParticles();
-    void createParticle(Particle& particle);
+    void createParticle(size_t particleIdx, float particleAge);
 
 private:
     glm::vec4 m_Position, m_Direction;

@@ -45,12 +45,6 @@ void ParticleEmitter::update(float dt)
     std::vector<float>& ages = m_ParticleStorage.ages;
 
     for (size_t particleIdx = 0; particleIdx < m_ParticleStorage.positions.size(); particleIdx++) {
-        // positions[particleIdx] = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-        // ages[particleIdx] = 0.1f;
-
-        // positions[particleIdx].y += dt;
-        // ages[particleIdx] = 0.1f;
-
         positions[particleIdx] += velocities[particleIdx] * dt;
         velocities[particleIdx].y -= 9.82f * dt;
         ages[particleIdx] += dt;
@@ -109,12 +103,7 @@ void ParticleEmitter::respawnOldParticles()
             continue;
         }
 
-        Particle respawnedParticle;
-        respawnedParticle.position = &positions[particleIdx];
-        respawnedParticle.velocity = &velocities[particleIdx];
-        respawnedParticle.age = &newParticleAge;
-        createParticle(respawnedParticle);
-        ages[particleIdx] = newParticleAge;
+        createParticle(particleIdx, newParticleAge);
     }
 }
 
@@ -127,32 +116,25 @@ void ParticleEmitter::spawnNewParticles()
     if (particlesToSpawn == 0) {
         return;
     }
+    // Create uninitialized particles where createParticle() will fill in the data
     LOG("Spawning %d particles", particlesToSpawn);
+    m_ParticleStorage.positions.resize(newParticleCount);
+    m_ParticleStorage.velocities.resize(newParticleCount);
+    m_ParticleStorage.ages.resize(newParticleCount);
 
     for (size_t i = 0; i < particlesToSpawn; i++) {
         // Exact time when the particle should have spawned, relative to the creation of the emitter
         float spawnTime = (particleCount + 1 + i) / m_ParticlesPerSecond;
         float particleAge = m_EmitterAge - spawnTime;
 
-        glm::vec4 position, velocity;
-        Particle newParticle = {&position, &velocity, &particleAge};
-        createParticle(newParticle);
-        LOG("Spawned particle at (%f, %f, %f, %f)", newParticle.position->x, newParticle.position->y, newParticle.position->z, newParticle.position->w);
-
-        m_ParticleStorage.positions.push_back(*newParticle.position);
-        m_ParticleStorage.velocities.push_back(*newParticle.velocity);
-        m_ParticleStorage.ages.push_back(particleAge);
-
-        // m_ParticleStorage.positions.push_back(glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
-        // m_ParticleStorage.velocities.push_back(glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
-        // m_ParticleStorage.ages.push_back(0.1f);
+        size_t newParticleIdx = particleCount + i;
+        createParticle(newParticleIdx, particleAge);
     }
 }
 
-void ParticleEmitter::createParticle(Particle& particle)
+void ParticleEmitter::createParticle(size_t particleIdx, float particleAge)
 {
-    glm::vec4 particleDirection = m_Direction; // TODO: Randomly generate!
-    float particleAge = (*particle.age);
+    glm::vec4 particleDirection = m_Direction; // TODO: Randomly generate some spread!
 
     /*
         a = (0, -g, 0)
@@ -162,6 +144,7 @@ void ParticleEmitter::createParticle(Particle& particle)
 
     float gt = -9.82f * particleAge;
     glm::vec4 V0 = particleDirection * m_InitialSpeed;
-    *particle.velocity = glm::vec4(0.0f, gt, 0.0f, 0.0f) + V0;
-    *particle.position = glm::vec4(0.0f, gt * particleAge / 2.0f, 0.0f, 1.0f) + V0 * particleAge + m_Position;
+    m_ParticleStorage.velocities[particleIdx] = glm::vec4(0.0f, gt, 0.0f, 0.0f) + V0;
+    m_ParticleStorage.positions[particleIdx] = glm::vec4(0.0f, gt * particleAge / 2.0f, 0.0f, 1.0f) + V0 * particleAge + m_Position;
+    m_ParticleStorage.ages[particleIdx] = particleAge;
 }
