@@ -3,6 +3,7 @@
 #include "ImguiVK.h"
 #include "BufferVK.h"
 #include "GBufferVK.h"
+#include "SamplerVK.h"
 #include "PipelineVK.h"
 #include "SwapChainVK.h"
 #include "Texture2DVK.h"
@@ -10,12 +11,13 @@
 #include "RenderPassVK.h"
 #include "CommandPoolVK.h"
 #include "FrameBufferVK.h"
+#include "TextureCubeVK.h"
 #include "DescriptorSetVK.h"
 #include "CommandBufferVK.h"
 #include "DescriptorPoolVK.h"
 #include "PipelineLayoutVK.h"
 #include "GraphicsContextVK.h"
-#include "SamplerVK.h"
+#include "SkyboxRendererVK.h"
 
 #include "Core/Camera.h"
 #include "Core/LightSetup.h"
@@ -64,6 +66,7 @@ RendererVK::~RendererVK()
 		}
 	}
 
+	SAFEDELETE(m_pSkyboxRenderer);
 	SAFEDELETE(m_pGBuffer);
 	SAFEDELETE(m_pGBufferSampler);
 	SAFEDELETE(m_pRenderPass);
@@ -94,9 +97,15 @@ bool RendererVK::init()
 	SamplerParams params = {};
 	params.MagFilter = VK_FILTER_NEAREST;
 	params.MinFilter = VK_FILTER_NEAREST;
-	params.WrapModeS = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	params.WrapModeT = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	params.WrapModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	params.WrapModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 	if (!m_pGBufferSampler->init(params))
+	{
+		return false;
+	}
+
+	m_pSkyboxRenderer = DBG_NEW SkyboxRendererVK(m_pContext->getDevice());
+	if (!m_pSkyboxRenderer->init())
 	{
 		return false;
 	}
@@ -145,6 +154,14 @@ bool RendererVK::init()
 	m_pLightDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer, CAMERA_BUFFER_BINDING);
 
 	return true;
+}
+
+ITextureCube* RendererVK::generateTextureCubeFromPanorama(ITexture2D* pPanorama, uint32_t width, uint32_t miplevels, ETextureFormat format)
+{
+	TextureCubeVK* pTextureCube = DBG_NEW TextureCubeVK(m_pContext->getDevice());
+	pTextureCube->init(width, miplevels, format);
+	
+	return pTextureCube;
 }
 
 void RendererVK::onWindowResize(uint32_t width, uint32_t height)

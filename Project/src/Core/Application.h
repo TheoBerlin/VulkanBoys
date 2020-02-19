@@ -10,6 +10,7 @@ class IImgui;
 class IWindow;
 class IRenderer;
 class ITexture2D;
+class ITextureCube;
 class IInputHandler;
 class IGraphicsContext;
 
@@ -64,6 +65,7 @@ private:
 	ITexture2D* m_pNormal;
 	ITexture2D* m_pMetallic;
 	ITexture2D* m_pRoughness;
+	ITextureCube* m_pSkybox;
 	Material m_GunMaterial;
 	Material m_RedMaterial;
 

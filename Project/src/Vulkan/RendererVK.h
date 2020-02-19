@@ -20,6 +20,7 @@ class CommandBufferVK;
 class DescriptorSetVK;
 class DescriptorPoolVK;
 class PipelineLayoutVK;
+class SkyboxRendererVK;
 class GraphicsContextVK;
 class DescriptorSetLayoutVK;
 
@@ -82,6 +83,8 @@ public:
 
 	virtual bool init() override;
 
+	virtual ITextureCube* generateTextureCubeFromPanorama(ITexture2D* pPanorama, uint32_t width, uint32_t miplevels, ETextureFormat format) override;
+
 	virtual void onWindowResize(uint32_t width, uint32_t height) override;
 
 	virtual void beginFrame(const Camera& camera, const LightSetup& lightSetup) override;
@@ -115,6 +118,7 @@ private:
 	std::unordered_map<MeshFilter, MeshPipeline> m_MeshTable;
 
 	GraphicsContextVK* m_pContext;
+	SkyboxRendererVK* m_pSkyboxRenderer;
 	CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
 

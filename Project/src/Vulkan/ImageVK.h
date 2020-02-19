@@ -5,14 +5,15 @@ class DeviceVK;
 
 struct ImageParams
 {
-	VkImageType Type;
-	VkSampleCountFlagBits Samples;
-	VkImageUsageFlags Usage;
-	VkMemoryPropertyFlags MemoryProperty;
-	VkFormat Format;
-	VkExtent3D Extent;
-	uint32_t MipLevels;
-	uint32_t ArrayLayers;
+	VkImageType				Type;
+	VkImageCreateFlags		Flags;
+	VkSampleCountFlagBits	Samples;
+	VkImageUsageFlags		Usage;
+	VkMemoryPropertyFlags	MemoryProperty;
+	VkFormat				Format;
+	VkExtent3D				Extent;
+	uint32_t				MipLevels;
+	uint32_t				ArrayLayers;
 };
 
 class ImageVK

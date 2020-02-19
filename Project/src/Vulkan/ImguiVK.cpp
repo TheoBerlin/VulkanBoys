@@ -585,8 +585,8 @@ bool ImguiVK::createPipelineLayout()
 	SamplerParams samplerParams = {};
 	samplerParams.MinFilter = VK_FILTER_LINEAR;
 	samplerParams.MagFilter = VK_FILTER_LINEAR;
-	samplerParams.WrapModeS = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerParams.WrapModeT = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerParams.WrapModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerParams.WrapModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
 	m_pSampler = DBG_NEW SamplerVK(m_pContext->getDevice());
 	m_pSampler->init(samplerParams);

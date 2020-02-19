@@ -76,18 +76,7 @@ bool Texture2DVK::initFromMemory(const void* pData, uint32_t width, uint32_t hei
 	imageParams.ArrayLayers		= 1;
 	imageParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	imageParams.Usage			= VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-	
-	uint32_t pixelStride = 0;
-	if (format == ETextureFormat::FORMAT_R8G8B8A8_UNORM)
-	{
-		imageParams.Format = VK_FORMAT_R8G8B8A8_UNORM;
-		pixelStride = 4;
-	}
-	else if (format == ETextureFormat::FORMAT_R32G32B32A32_FLOAT)
-	{
-		imageParams.Format = VK_FORMAT_R32G32B32A32_SFLOAT;
-		pixelStride = 16;
-	}
+	imageParams.Format			= convertFormat(format);
 	
 	if (generateMips)
 	{
@@ -100,12 +89,17 @@ bool Texture2DVK::initFromMemory(const void* pData, uint32_t width, uint32_t hei
 		return false;
 	}
 
-	CopyHandlerVK* pCopyHandler = m_pDevice->getCopyHandler();
-	pCopyHandler->updateImage(pData, m_pTextureImage, width, height, pixelStride, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0);
-
-	if (generateMips)
+	if (pData)
 	{
-		pCopyHandler->generateMips(m_pTextureImage);
+		uint32_t pixelStride = textureFormatStride(format);
+
+		CopyHandlerVK* pCopyHandler = m_pDevice->getCopyHandler();
+		pCopyHandler->updateImage(pData, m_pTextureImage, width, height, pixelStride, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0);
+
+		if (generateMips)
+		{
+			pCopyHandler->generateMips(m_pTextureImage);
+		}
 	}
 
 	ImageViewParams imageViewParams = {};

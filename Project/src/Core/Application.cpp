@@ -10,6 +10,7 @@
 #include "Common/ISampler.h"
 #include "Common/IRenderer.h"
 #include "Common/ITexture2D.h"
+#include "Common/ITextureCube.h"
 #include "Common/IInputHandler.h"
 #include "Common/IGraphicsContext.h"
 
@@ -221,8 +222,8 @@ void Application::init()
 		SamplerParams samplerParams = {};
 		samplerParams.MinFilter = VK_FILTER_LINEAR;
 		samplerParams.MagFilter = VK_FILTER_LINEAR;
-		samplerParams.WrapModeS = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-		samplerParams.WrapModeT = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerParams.WrapModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerParams.WrapModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 		m_GunMaterial.createSampler(m_pContext, samplerParams);
 		m_RedMaterial.createSampler(m_pContext, samplerParams);
 
@@ -245,6 +246,8 @@ void Application::init()
 		m_LightSetup.addPointLight(PointLight(glm::vec3(-15.0f, -15.0f, -10.0f), glm::vec4(300.0f)));
 
 		TaskDispatcher::waitForTasks();
+
+		m_pSkybox = m_pRenderer->generateTextureCubeFromPanorama(pPanorama, 1024, 1, ETextureFormat::FORMAT_R16G16B16A16_FLOAT);
 
 		SAFEDELETE(pPanorama);
 
@@ -294,6 +297,7 @@ void Application::release()
 	m_GunMaterial.release();
 	m_RedMaterial.release();
 
+	SAFEDELETE(m_pSkybox);
 	SAFEDELETE(m_pSphere);
 	SAFEDELETE(m_pRoughness);
 	SAFEDELETE(m_pMetallic);
@@ -501,13 +505,13 @@ void Application::render(double dt)
 	g_Rotation = glm::rotate(g_Rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
 
 	m_pRenderer->submitMesh(m_pMesh, m_GunMaterial, glm::mat4(1.0f) * g_Rotation);
-	m_pRenderer->submitMesh(m_pMesh, m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 0.0f)));
-	m_pRenderer->submitMesh(m_pMesh, m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 0.0f)));
+	m_pRenderer->submitMesh(m_pMesh, m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(1.5f, 0.0f, 0.0f)));
+	m_pRenderer->submitMesh(m_pMesh, m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(-1.5f, 0.0f, 0.0f)));
 
 	//Set sphere color
 	m_RedMaterial.setAlbedo(g_Color);
 
-	constexpr uint32_t sphereCount = 7;
+	constexpr uint32_t sphereCount = 8;
 	for (uint32_t y = 0; y < sphereCount; y++)
 	{
 		float yCoord = ((float(sphereCount) * 0.5f) / -2.0f) + float(y * 0.5);

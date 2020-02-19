@@ -1,13 +1,6 @@
 #pragma once
 #include "Core/Core.h"
 
-enum class ETextureFormat : uint8_t
-{
-	FORMAT_NONE					= 0,
-	FORMAT_R8G8B8A8_UNORM		= 1,
-	FORMAT_R32G32B32A32_FLOAT	= 2
-};
-
 class ITexture2D
 {
 public:

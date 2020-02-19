@@ -4,4 +4,6 @@
 "tools/glslc.exe" -fshader-stage=fragment assets/shaders/geometryFragment.glsl -o assets/shaders/geometryFragment.spv
 "tools/glslc.exe" -fshader-stage=vertex assets/shaders/lightVertex.glsl -o assets/shaders/lightVertex.spv 
 "tools/glslc.exe" -fshader-stage=fragment assets/shaders/lightFragment.glsl -o assets/shaders/lightFragment.spv
+"tools/glslc.exe" -fshader-stage=vertex assets/shaders/panoramaCubemapVertex.glsl -o assets/shaders/panoramaCubemapVertex.spv 
+"tools/glslc.exe" -fshader-stage=fragment assets/shaders/panoramaCubemapFragment.glsl -o assets/shaders/panoramaCubemapFragment.spv
 pause

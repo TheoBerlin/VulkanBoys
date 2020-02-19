@@ -4,6 +4,8 @@
 #include <glm/glm.hpp>
 
 class IImgui;
+class ITextureCube;
+class ITexture2D;
 class IMesh;
 class Camera;
 class Material;
@@ -17,6 +19,8 @@ public:
 	DECL_INTERFACE(IRenderer);
 
 	virtual bool init() = 0;
+
+	virtual ITextureCube* generateTextureCubeFromPanorama(ITexture2D* pPanorama, uint32_t width, uint32_t miplevels, ETextureFormat format) = 0;
 
 	virtual void onWindowResize(uint32_t width, uint32_t height) = 0;
 

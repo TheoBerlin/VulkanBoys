@@ -7,8 +7,9 @@ struct SamplerParams
 {
 	VkFilter MagFilter;
 	VkFilter MinFilter;
-	VkSamplerAddressMode WrapModeS;
-	VkSamplerAddressMode WrapModeT;
+	VkSamplerAddressMode WrapModeU;
+	VkSamplerAddressMode WrapModeV;
+	VkSamplerAddressMode WrapModeW;
 };
 
 class ISampler
