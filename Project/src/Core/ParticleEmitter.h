@@ -4,6 +4,8 @@
 
 #include "Common/IGraphicsContext.h"
 
+#include <random>
+
 class Camera;
 class IBuffer;
 class IGraphicsContext;
@@ -14,6 +16,8 @@ struct ParticleEmitterInfo {
     glm::vec3 position, direction;
     glm::vec2 particleSize;
     float particleDuration, initialSpeed, particlesPerSecond;
+    // The angle by which spawned particles' directions can diverge from the emitter's direction, [0,pi], where pi means particles can be fired in any direction
+    float spread;
     ITexture2D* pTexture;
 };
 
@@ -66,9 +70,13 @@ private:
     void createParticle(size_t particleIdx, float particleAge);
 
 private:
-    glm::vec4 m_Position, m_Direction;
+    glm::vec3 m_Position, m_Direction;
     glm::vec2 m_ParticleSize;
-    float m_ParticleDuration, m_InitialSpeed, m_ParticlesPerSecond;
+    float m_ParticleDuration, m_InitialSpeed, m_ParticlesPerSecond, m_Spread;
+
+    std::mt19937 randEngine;
+    std::uniform_real_distribution<float> zRandomizer;
+    std::uniform_real_distribution<float> phiRandomizer;
 
     ParticleStorage m_ParticleStorage;
     ITexture2D* m_pTexture;

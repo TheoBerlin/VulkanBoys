@@ -107,9 +107,10 @@ void Application::init()
 	emitterInfo.position = glm::vec3(0.0f, 0.0f, 0.0f);
 	emitterInfo.direction = glm::vec3(0.0f, 1.0f, 0.0f);
 	emitterInfo.particleSize = glm::vec2(0.2f, 0.2f);
-	emitterInfo.initialSpeed = 5.0f;
-	emitterInfo.particleDuration = 4.0f;
-	emitterInfo.particlesPerSecond = 2.0f;
+	emitterInfo.initialSpeed = 5.5f;
+	emitterInfo.particleDuration = 3.0f;
+	emitterInfo.particlesPerSecond = 15.0f;
+	emitterInfo.spread = glm::quarter_pi<float>() / 1.3f;
 	emitterInfo.pTexture = m_pParticleTexture;
 	m_pParticleEmitterHandler->createEmitter(emitterInfo);
 
