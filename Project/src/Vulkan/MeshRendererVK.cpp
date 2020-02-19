@@ -26,7 +26,6 @@
 #include "Ray Tracing/RayTracingPipelineVK.h"
 #include "Ray Tracing/RayTracingSceneVK.h"
 #include "ShaderVK.h"
-#include "Scene.h"
 #include "ImageVK.h"
 #include "ImageViewVK.h"
 

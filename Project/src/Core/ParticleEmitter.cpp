@@ -93,7 +93,6 @@ void ParticleEmitter::spawnNewParticles()
     }
 
     // Create uninitialized particles where createParticle() will fill in the data
-    LOG("Spawning %d particles", particlesToSpawn);
     m_ParticleStorage.positions.resize(newParticleCount);
     m_ParticleStorage.velocities.resize(newParticleCount);
     m_ParticleStorage.ages.resize(newParticleCount);
