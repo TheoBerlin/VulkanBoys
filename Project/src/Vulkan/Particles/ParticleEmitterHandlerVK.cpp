@@ -21,8 +21,8 @@ void ParticleEmitterHandlerVK::updateBuffers(IRenderingHandler* pRenderingHandle
         pCommandBuffer->updateBuffer(pEmitterBuffer, 0, &emitterBuffer, sizeof(EmitterBuffer));
 
         const std::vector<glm::vec4>& particlePositions = pEmitter->getParticleStorage().positions;
-        ParticleBuffer particleBuffer = {};
+        ParticleBuffer particleBuffer = {}; // TODO: How do I insert data into an array within a storage buffer struct?
         particleBuffer.positions = particlePositions.data();
-        pCommandBuffer->updateBuffer(pParticleBuffer, 0, &particleBuffer, sizeof(glm::vec4) * particlePositions.size());
+        pCommandBuffer->updateBuffer(pParticleBuffer, 0, particlePositions.data(), sizeof(glm::vec4) * particlePositions.size());
     }
 }

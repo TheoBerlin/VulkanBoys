@@ -150,11 +150,8 @@ void RenderingHandlerVK::beginFrame(const Camera& camera)
 		}
 
 		if (m_pParticleRenderer != nullptr) {
-			LOG("Begin frame");
 			m_pParticleRenderer->beginFrame(camera);
-			LOG("Submit particles");
 			submitParticles();
-			LOG("Submitted particles");
 		}
 
 		startRenderPass();
@@ -379,9 +376,7 @@ void RenderingHandlerVK::updateBuffers(const Camera& camera)
 	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraDirectionsBuffer, 0, (const void*)&cameraDirectionsBuffer, sizeof(CameraDirectionsBuffer));
 
 	// Update particle buffers
-	LOG("Updating particle buffers");
 	m_pParticleEmitterHandler->updateBuffers(this);
-	LOG("Updated particle buffers");
 }
 
 void RenderingHandlerVK::startRenderPass()

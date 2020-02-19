@@ -81,7 +81,7 @@ void Application::init()
 	//Create context
 	m_pContext = IGraphicsContext::create(m_pWindow, API::VULKAN);
 	m_EnableRayTracing = false;//m_pContext->supportsRayTracing();
-	
+
 	//Setup Imgui
 	m_pImgui = m_pContext->createImgui();
 	m_pImgui->init();
@@ -103,7 +103,7 @@ void Application::init()
 	emitterInfo.particleSize = glm::vec2(0.2f, 0.2f);
 	emitterInfo.initialSpeed = 5.0f;
 	emitterInfo.particleDuration = 4.0f;
-	emitterInfo.particlesPerSecond = 10.0f;
+	emitterInfo.particlesPerSecond = 2.0f;
 	emitterInfo.pTexture = m_pParticleTexture;
 	m_pParticleEmitterHandler->createEmitter(emitterInfo);
 

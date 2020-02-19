@@ -55,8 +55,9 @@ private:
     bool createBuffers(IGraphicsContext* pGraphicsContext);
 
     // Spawns particles before the emitter has created its maximum amount of particles
-    void spawnParticles();
-    void createParticle(const Particle& particle);
+    void spawnNewParticles();
+    void respawnOldParticles();
+    void createParticle(Particle& particle);
 
 private:
     glm::vec4 m_Position, m_Direction;

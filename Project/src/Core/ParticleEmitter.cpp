@@ -10,6 +10,7 @@ ParticleEmitter::ParticleEmitter(const ParticleEmitterInfo& emitterInfo)
     m_ParticleDuration(emitterInfo.particleDuration),
     m_InitialSpeed(emitterInfo.initialSpeed),
     m_ParticlesPerSecond(emitterInfo.particlesPerSecond),
+    m_pTexture(emitterInfo.pTexture),
     m_EmitterAge(0.0f),
     m_pParticleBuffer(nullptr),
     m_pEmitterBuffer(nullptr)
@@ -36,7 +37,7 @@ void ParticleEmitter::update(float dt)
     size_t maxParticleCount = m_ParticlesPerSecond * m_ParticleDuration;
     if (m_ParticleStorage.positions.size() < maxParticleCount) {
         m_EmitterAge += dt;
-        spawnParticles();
+        spawnNewParticles();
     }
 
     std::vector<glm::vec4>& positions = m_ParticleStorage.positions;
@@ -44,28 +45,18 @@ void ParticleEmitter::update(float dt)
     std::vector<float>& ages = m_ParticleStorage.ages;
 
     for (size_t particleIdx = 0; particleIdx < m_ParticleStorage.positions.size(); particleIdx++) {
+        // positions[particleIdx] = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        // ages[particleIdx] = 0.1f;
+
+        // positions[particleIdx].y += dt;
+        // ages[particleIdx] = 0.1f;
+
         positions[particleIdx] += velocities[particleIdx] * dt;
         velocities[particleIdx].y -= 9.82f * dt;
         ages[particleIdx] += dt;
     }
 
-    /*
-        TODO: Optimize respawning, dead pixels are grouped up, no need to iterate through the entire particle storage
-        Two cases of particles grouping up: (d=dead, a=alive)
-        (front) dddaaaddd (back)
-        (front) aaaaaaddd (back)
-    */
-
-    // Respawn old particles
-    for (size_t particleIdx = 0; particleIdx < m_ParticleStorage.positions.size(); particleIdx++) {
-        float newParticleAge = ages[particleIdx] - m_ParticleDuration;
-        if (newParticleAge < 0.0f) {
-            continue;
-        }
-
-        createParticle({&positions[particleIdx], &velocities[particleIdx], &newParticleAge});
-        ages[particleIdx] = newParticleAge;
-    }
+    respawnOldParticles();
 }
 
 bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
@@ -99,7 +90,35 @@ bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
     pGraphicsContext->updateBuffer(m_pEmitterBuffer, 0, &m_ParticleSize, sizeof(glm::vec2));
 }
 
-void ParticleEmitter::spawnParticles()
+void ParticleEmitter::respawnOldParticles()
+{
+    std::vector<glm::vec4>& positions = m_ParticleStorage.positions;
+    std::vector<glm::vec4>& velocities = m_ParticleStorage.velocities;
+    std::vector<float>& ages = m_ParticleStorage.ages;
+
+    /*
+        TODO: Optimize respawning, dead pixels are grouped up, no need to iterate through the entire particle storage
+        Three cases of particles grouping up: (d=dead, a=alive)
+        (front) daaaaaadd (back)
+        (front) aaaaaaddd (back)
+        (front) dddaaaaaa (back)
+    */
+    for (size_t particleIdx = 0; particleIdx < m_ParticleStorage.positions.size(); particleIdx++) {
+        float newParticleAge = ages[particleIdx] - m_ParticleDuration;
+        if (newParticleAge < 0.0f) {
+            continue;
+        }
+
+        Particle respawnedParticle;
+        respawnedParticle.position = &positions[particleIdx];
+        respawnedParticle.velocity = &velocities[particleIdx];
+        respawnedParticle.age = &newParticleAge;
+        createParticle(respawnedParticle);
+        ages[particleIdx] = newParticleAge;
+    }
+}
+
+void ParticleEmitter::spawnNewParticles()
 {
     size_t particleCount = m_ParticleStorage.positions.size();
     size_t newParticleCount = m_EmitterAge * m_ParticlesPerSecond;
@@ -108,23 +127,29 @@ void ParticleEmitter::spawnParticles()
     if (particlesToSpawn == 0) {
         return;
     }
+    LOG("Spawning %d particles", particlesToSpawn);
 
     for (size_t i = 0; i < particlesToSpawn; i++) {
         // Exact time when the particle should have spawned, relative to the creation of the emitter
-        float spawnTime = (particleCount + 1 + i) * m_ParticlesPerSecond;
+        float spawnTime = (particleCount + 1 + i) / m_ParticlesPerSecond;
         float particleAge = m_EmitterAge - spawnTime;
 
         glm::vec4 position, velocity;
         Particle newParticle = {&position, &velocity, &particleAge};
         createParticle(newParticle);
+        LOG("Spawned particle at (%f, %f, %f, %f)", newParticle.position->x, newParticle.position->y, newParticle.position->z, newParticle.position->w);
 
         m_ParticleStorage.positions.push_back(*newParticle.position);
         m_ParticleStorage.velocities.push_back(*newParticle.velocity);
         m_ParticleStorage.ages.push_back(particleAge);
+
+        // m_ParticleStorage.positions.push_back(glm::vec4(0.0f, 0.0f, 0.0f, 1.0f));
+        // m_ParticleStorage.velocities.push_back(glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
+        // m_ParticleStorage.ages.push_back(0.1f);
     }
 }
 
-void ParticleEmitter::createParticle(const Particle& particle)
+void ParticleEmitter::createParticle(Particle& particle)
 {
     glm::vec4 particleDirection = m_Direction; // TODO: Randomly generate!
     float particleAge = (*particle.age);
@@ -138,5 +163,5 @@ void ParticleEmitter::createParticle(const Particle& particle)
     float gt = -9.82f * particleAge;
     glm::vec4 V0 = particleDirection * m_InitialSpeed;
     *particle.velocity = glm::vec4(0.0f, gt, 0.0f, 0.0f) + V0;
-    *particle.position = glm::vec4(0.0f, gt * particleAge / 2.0f, 0.0f, 0.0f) + V0 * particleAge + m_Position;
+    *particle.position = glm::vec4(0.0f, gt * particleAge / 2.0f, 0.0f, 1.0f) + V0 * particleAge + m_Position;
 }

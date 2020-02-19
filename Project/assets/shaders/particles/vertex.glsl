@@ -41,7 +41,7 @@ void main()
 	QuadVertex vertex = vertices[gl_VertexIndex];
 	vec2 vertexPosition = vertex.Position.xy;
 
-	vec4 worldPosition = g_ParticlePositions.positions[gl_VertexIndex] + 
+	vec4 worldPosition = g_ParticlePositions.positions[gl_InstanceIndex] + 
 		g_CameraDirections.right 	* vertexPosition.x * g_EmitterProperties.particleSize.x +
 		g_CameraDirections.up 		* vertexPosition.y * g_EmitterProperties.particleSize.y;
 

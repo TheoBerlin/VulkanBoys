@@ -52,7 +52,7 @@ private:
 
 	DescriptorSetLayoutVK* m_pDescriptorSetLayout;
 	DescriptorPoolVK* m_pDescriptorPool;
-	DescriptorSetVK* m_pDescriptorSet;
+	DescriptorSetVK* m_ppDescriptorSets[MAX_FRAMES_IN_FLIGHT];
 
 	PipelineLayoutVK* m_pPipelineLayout;
 	PipelineVK* m_pPipeline;
