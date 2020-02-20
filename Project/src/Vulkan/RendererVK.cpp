@@ -25,6 +25,10 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
+#ifdef max
+	#undef max
+#endif
+
 RendererVK::RendererVK(GraphicsContextVK* pContext)
 	: m_pContext(pContext),
 	m_ppCommandPools(),
@@ -265,9 +269,19 @@ void RendererVK::setSkybox(ITextureCube* pSkybox)
 
 	//Generate irradiance from the newly set skybox
 	m_pIrradianceMap = DBG_NEW TextureCubeVK(m_pContext->getDevice());
-	if (m_pIrradianceMap->init(64, 1, ETextureFormat::FORMAT_R16G16B16A16_FLOAT))
+	if (m_pIrradianceMap->init(32, 1, ETextureFormat::FORMAT_R16G16B16A16_FLOAT))
 	{
 		m_pSkyboxRenderer->generateIrradiance(m_pSkybox, m_pIrradianceMap);
+	}
+
+	constexpr uint32_t size = 128;
+	const uint32_t miplevels = std::floor(std::log2(size)) + 1U;;
+
+	//Generate pre filtered environmentmap
+	m_pEnvironmentMap = DBG_NEW TextureCubeVK(m_pContext->getDevice());
+	if (m_pEnvironmentMap->init(size, miplevels, ETextureFormat::FORMAT_R16G16B16A16_FLOAT))
+	{
+		m_pSkyboxRenderer->prefilterEnvironmentMap(m_pSkybox, m_pEnvironmentMap);
 	}
 
 	m_pSkyboxDescriptorSet->writeCombinedImageDescriptor(m_pSkybox->getImageView(), m_pSkyboxSampler, 1);

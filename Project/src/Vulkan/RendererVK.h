@@ -157,8 +157,10 @@ private:
 	PipelineLayoutVK* m_pGeometryPipelineLayout;
 	DescriptorSetLayoutVK* m_pGeometryDescriptorSetLayout;
 
+	Texture2DVK* m_pIntegrationLUT;
 	TextureCubeVK* m_pSkybox;
 	TextureCubeVK* m_pIrradianceMap;
+	TextureCubeVK* m_pEnvironmentMap;
 	VkClearValue m_ClearColor;
 	VkClearValue m_ClearDepth;
 	VkViewport m_Viewport;

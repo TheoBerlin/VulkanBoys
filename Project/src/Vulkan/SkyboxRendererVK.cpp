@@ -151,7 +151,7 @@ void SkyboxRendererVK::generateCubemapFromPanorama(TextureCubeVK* pCubemap, Text
 	VkClearValue clearValue = { 1.0f, 1.0f, 1.0f, 1.0f };
 	for (uint32_t i = 0; i < 6; i++)
 	{
-		FrameBufferVK* pFramebuffer = pReflectionProbe->getFrameBuffer(i);
+		FrameBufferVK* pFramebuffer = pReflectionProbe->getFrameBuffer(i, 0);
 
 		m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pPanoramaRenderpass, pFramebuffer, width, width, &clearValue, 1);
 
@@ -226,7 +226,7 @@ void SkyboxRendererVK::generateIrradiance(TextureCubeVK* pCubemap, TextureCubeVK
 	VkClearValue clearValue = { 1.0f, 1.0f, 1.0f, 1.0f };
 	for (uint32_t i = 0; i < 6; i++)
 	{
-		FrameBufferVK* pFramebuffer = pReflectionProbe->getFrameBuffer(i);
+		FrameBufferVK* pFramebuffer = pReflectionProbe->getFrameBuffer(i, 0);
 
 		m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pIrradianceRenderpass, pFramebuffer, width, width, &clearValue, 1);
 
@@ -243,6 +243,11 @@ void SkyboxRendererVK::generateIrradiance(TextureCubeVK* pCubemap, TextureCubeVK
 	m_pDevice->wait();
 
 	SAFEDELETE(pReflectionProbe);
+}
+
+void SkyboxRendererVK::prefilterEnvironmentMap(TextureCubeVK* pCubemap, TextureCubeVK* pEnvironmentMap)
+{
+
 }
 
 bool SkyboxRendererVK::createCommandpoolsAndBuffers()

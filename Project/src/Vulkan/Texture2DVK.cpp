@@ -43,6 +43,11 @@ bool Texture2DVK::initFromFile(const std::string& filename, ETextureFormat forma
 	{
 		pPixels = (void*)stbi_loadf(filename.c_str(), &texWidth, &texHeight, &bpp, STBI_rgb_alpha);
 	}
+	else
+	{
+		LOG("Error format not supported");
+		return false;
+	}
 	
 	if (pPixels == nullptr)
 	{

@@ -99,7 +99,7 @@ void Application::init()
 	ITexture2D* pPanorama = m_pContext->createTexture2D();
 	TaskDispatcher::execute([&]
 		{
-			pPanorama->initFromFile("assets/textures/snow.hdr", ETextureFormat::FORMAT_R32G32B32A32_FLOAT, false);
+			pPanorama->initFromFile("assets/textures/arches.hdr", ETextureFormat::FORMAT_R32G32B32A32_FLOAT, false);
 			m_pSkybox = m_pRenderer->generateTextureCubeFromPanorama(pPanorama, 1024, 1, ETextureFormat::FORMAT_R16G16B16A16_FLOAT);
 		});
 

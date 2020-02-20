@@ -26,6 +26,7 @@ public:
 
 	void generateCubemapFromPanorama(TextureCubeVK* pCubemap, Texture2DVK* pPanorama);
 	void generateIrradiance(TextureCubeVK* pCubemap, TextureCubeVK* pIrradianceMap);
+	void prefilterEnvironmentMap(TextureCubeVK* pCubemap, TextureCubeVK* pEnvironmentMap);
 
 private:
 	bool createCommandpoolsAndBuffers();
