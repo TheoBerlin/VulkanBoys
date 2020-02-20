@@ -14,6 +14,12 @@ public:
     	m_AccelerationStructures *= factor;
     }
 
+    size_t getDescriptorTypesCount() const
+    {
+        return (m_UniformBuffers > 0) + (m_StorageBuffers > 0) + (m_SampledImages > 0) + (m_StorageImages > 0)
+            + (m_AccelerationStructures > 0);
+    }
+
     void operator+=(const DescriptorCounts& other)
     {
         m_UniformBuffers += other.m_UniformBuffers;

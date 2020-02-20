@@ -101,10 +101,10 @@ bool DescriptorSetLayoutVK::finalize()
 
 	if (vkCreateDescriptorSetLayout(m_pDevice->getDevice(), &descriptorSetLayoutInfo, nullptr, &m_DescriptorSetLayout) != VK_SUCCESS) {
 		LOG("Failed to create descriptor set layout");
-        return true;
+        return false;
 	} else {
 		D_LOG("--- DescriptorSetLayout: Vulkan DescriptorSetLayout created successfully");
-        return false;
+        return true;
 	}
 }
 

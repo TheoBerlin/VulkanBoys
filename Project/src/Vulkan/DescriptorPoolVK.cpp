@@ -39,6 +39,11 @@ bool DescriptorPoolVK::init(const DescriptorCounts& descriptorCounts, uint32_t d
 {
 	m_DescriptorCapacities = descriptorCounts;
 
+	size_t descriptorTypeCount = 0;
+	if (descriptorCounts.m_StorageBuffers > 0) {
+
+	}
+
 	std::array<VkDescriptorPoolSize, 5> poolSizes;
 	poolSizes[0] = {};
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -62,7 +67,7 @@ bool DescriptorPoolVK::init(const DescriptorCounts& descriptorCounts, uint32_t d
 
 	VkDescriptorPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolInfo.poolSizeCount = poolSizes.size();
+	poolInfo.poolSizeCount = descriptorCounts.getDescriptorTypesCount();
 	poolInfo.pPoolSizes = poolSizes.data();
 	poolInfo.maxSets = descriptorSetCount;
 
