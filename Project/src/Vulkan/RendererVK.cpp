@@ -376,20 +376,10 @@ bool RendererVK::init()
 			m_pClosestHitLightProbeShader->setSpecializationConstant<uint32_t>(0, MAX_RECURSIONS);
 			hitGroupLightProbeParams.pClosestHitShader = m_pClosestHitLightProbeShader;
 
-			m_pClosestHitShadowShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-			m_pClosestHitShadowShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/lightprobes/closesthitShadow.spv");
-			m_pClosestHitShadowShader->finalize();
-			hitGroupShadowParams.pClosestHitShader = m_pClosestHitShadowShader;
-
 			m_pMissLightProbeShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
 			m_pMissLightProbeShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/lightprobes/missLightProbe.spv");
 			m_pMissLightProbeShader->finalize();
 			missGroupLightProbeParams.pMissShader = m_pMissLightProbeShader;
-
-			m_pMissShadowShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-			m_pMissShadowShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/lightprobes/missShadow.spv");
-			m_pMissShadowShader->finalize();
-			missGroupShadowParams.pMissShader = m_pMissShadowShader;
 		}
 
 		{
@@ -407,12 +397,23 @@ bool RendererVK::init()
 			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(2, WORLD_SIZE_Z);
 			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(3, SAMPLES_PER_PROBE);
 			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(4, NUM_PROBES_PER_DIMENSION);
+			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(5, MAX_RECURSIONS);
 			hitGroupFinalParams.pClosestHitShader = m_pClosestHitFinalShader;
+
+			m_pClosestHitShadowShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pClosestHitShadowShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/lightprobes/closesthitShadow.spv");
+			m_pClosestHitShadowShader->finalize();
+			hitGroupShadowParams.pClosestHitShader = m_pClosestHitShadowShader;
 
 			m_pMissFinalShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
 			m_pMissFinalShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/lightprobes/miss.spv");
 			m_pMissFinalShader->finalize();
 			missGroupFinalParams.pMissShader = m_pMissFinalShader;
+
+			m_pMissShadowShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pMissShadowShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/lightprobes/missShadow.spv");
+			m_pMissShadowShader->finalize();
+			missGroupShadowParams.pMissShader = m_pMissShadowShader;
 		}
 
 		{
@@ -446,18 +447,18 @@ bool RendererVK::init()
 	m_pRayTracingPrePassPipeline->addRaygenShaderGroup(raygenGroupLightProbeParams);
 
 	m_pRayTracingPrePassPipeline->addMissShaderGroup(missGroupLightProbeParams);
-	m_pRayTracingPrePassPipeline->addMissShaderGroup(missGroupShadowParams);
 
 	m_pRayTracingPrePassPipeline->addHitShaderGroup(hitGroupLightProbeParams);
-	m_pRayTracingPrePassPipeline->addHitShaderGroup(hitGroupShadowParams);
 	m_pRayTracingPrePassPipeline->finalize(m_pRayTracingPipelineLayout);
 
 	m_pRayTracingPipeline = new RayTracingPipelineVK(m_pContext);
 	m_pRayTracingPipeline->addRaygenShaderGroup(raygenGroupFinalParams);
 
 	m_pRayTracingPipeline->addMissShaderGroup(missGroupFinalParams);
+	m_pRayTracingPipeline->addMissShaderGroup(missGroupShadowParams);
 
 	m_pRayTracingPipeline->addHitShaderGroup(hitGroupFinalParams);
+	m_pRayTracingPipeline->addHitShaderGroup(hitGroupShadowParams);
 
 	m_pRayTracingPipeline->finalize(m_pRayTracingPipelineLayout);
 

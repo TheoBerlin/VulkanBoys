@@ -38,7 +38,7 @@ layout(binding = 7, set = 0) uniform sampler2D normalMaps[16];
 layout(binding = 8, set = 0) uniform sampler2D roughnessMaps[16];
 
 // Max. number of recursion is passed via a specialization constant
-layout (constant_id = 0) const int MAX_RECURSION = 0;
+layout (constant_id = 0) const int MAX_RECURSIONS = 0;
 
 vec3 myRefract(vec3 I, vec3 N, float ior)
 {
@@ -173,7 +173,7 @@ void main()
 	rayPayload.color = albedoColor.rgb;
 	return; 
 
-	if (recursionIndex < MAX_RECURSION)
+	if (recursionIndex < MAX_RECURSIONS)
 	{
 		vec3 hitPos = gl_WorldRayOriginNV + normalize(gl_WorldRayDirectionNV) * gl_HitTNV;
 		uint rayFlags = gl_RayFlagsOpaqueNV;
@@ -184,17 +184,7 @@ void main()
 		vec3 Nt = findNT(normal);
 		vec3 Nb = cross(normal, Nt);
 
-		vec3 directDiffuse = vec3(0.0f);
 		vec3 indirectDiffuse = vec3(0.0f);
-
-		vec3 lightPos = vec3(0.0f, 5.0f, 0.0f);
-		vec3 lightColor = vec3(1.0f, 1.0f, 1.0f);
-
-		vec3 shadowOrigin = hitPos + normal * 0.001f;
-		vec3 lightDirection = normalize(lightPos - shadowOrigin);
-		traceNV(topLevelAS, rayFlags, cullMask, 1, 0, 1, shadowOrigin, tmin, lightDirection, tmax, 1);
-
-		directDiffuse = lightColor * shadowRayPayload.lightIntensity * max(0.0f, dot(normal, -lightDirection)); 
 
 		uint NUM_SAMPLES = 16;
 		for (uint n = 0; n < NUM_SAMPLES; n++)
@@ -215,7 +205,7 @@ void main()
 		}
 
 		indirectDiffuse = indirectDiffuse / float(NUM_SAMPLES); 
-		rayPayload.color = (directDiffuse / M_PI + 2.0f * indirectDiffuse) * albedoColor.rgb; 
+		rayPayload.color = 2.0f * indirectDiffuse * albedoColor.rgb; 
 	}
 	else
 	{

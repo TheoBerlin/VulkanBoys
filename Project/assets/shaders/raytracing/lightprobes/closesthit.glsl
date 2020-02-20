@@ -28,6 +28,7 @@ layout(location = 1) rayPayloadNV ShadowRayPayload shadowRayPayload;
 
 hitAttributeNV vec3 attribs;
 
+layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
 layout(binding = 3, set = 0) buffer Vertices { Vertex v[]; } vertices;
 layout(binding = 4, set = 0) buffer Indices { uint i[]; } indices;
 layout(binding = 5, set = 0) buffer MeshIndices { uint mi[]; } meshIndices;
@@ -41,6 +42,7 @@ layout (constant_id = 1) const uint WORLD_SIZE_Y = 1;
 layout (constant_id = 2) const uint WORLD_SIZE_Z = 1;
 layout (constant_id = 3) const uint SAMPLES_PER_PROBE = 64;
 layout (constant_id = 4) const uint NUM_PROBES_PER_DIMENSION = 10;
+layout (constant_id = 5) const int MAX_RECURSIONS = 0;
 
 float hash(float n)
 {
@@ -154,38 +156,6 @@ void inverseSF(vec3 p, out vec4 closestIndexes, out vec4 weights)
 	weights /= weightSum;
 }
 
-mat3 createRotationMatrix(vec3 a, vec3 b)
-{
-	if (a == -b)
-		return mat3(1.0f);
-
-	vec3 v = cross(a, b);
-	float s = length(v);
-	float c = dot(a, b);
-
-	mat3 vx = mat3(	 0.0f, 	-v.z,	 v.y,
-					 v.z, 	 0.0f, 	-v.x,
-					-v.y, 	 v.x, 	 0.0f);
-
-	return mat3(1.0f) + vx + vx * vx * (1.0f - c) / (s * s);
-
-	// float cosTheta = dot(a, b);
-	// float sinTheta = length(cross(a, b));
-
-	// mat3 G = mat3(	 cosTheta, 	-sinTheta,	0.0f,
-	// 				 sinTheta, 	 cosTheta, 	0.0f,
-	// 				0.0f, 	 0.0f, 	 1.0f);
-
-	// vec3 u = normalize(cosTheta * a);
-	// vec3 v = normalize(b - cosTheta * a);
-	// vec3 w = normalize(cross(b, a));
-
-	// mat3 FInv = mat3(u, v, w);
-	// mat3 F = inverse(FInv);
-
-	// return FInv * G * F;
-}
-
 void main()
 {
 	uint recursionIndex = rayPayload.recursion;
@@ -230,71 +200,123 @@ void main()
 	float tmin = 0.001;
 	float tmax = 10000.0;
 
-	vec3 Nt = findNT(normal);
-	vec3 Nb = cross(normal, Nt);
-	mat3 localToWorld = mat3(	Nb.x, normal.x, Nt.x,
-								Nb.y, normal.y, Nt.y,
-								Nb.z, normal.z, Nt.z);
+	vec3 directDiffuse = vec3(0.0f);
+	vec3 indirectDiffuse = vec3(0.0f);
+	vec3 directSpecular = vec3(0.0f);
 
-	vec3 worldSize = vec3(WORLD_SIZE_X, WORLD_SIZE_Y, WORLD_SIZE_Z);
-	vec3 bestLightProbe = findBestLightProbe(hitPos);
-	uvec3 bestLightProbe3DIndex = uvec3(bestLightProbe + vec3(NUM_PROBES_PER_DIMENSION - 1) / 2.0f);
-	
-	uint baseLightProbeIndex = (bestLightProbe3DIndex.x + NUM_PROBES_PER_DIMENSION * (bestLightProbe3DIndex.y + NUM_PROBES_PER_DIMENSION * bestLightProbe3DIndex.z)) * SAMPLES_PER_PROBE;
-
-	vec3 diffuse = vec3(0.0f);
-
-	uint NUM_DIFFUSE_SAMPLES = 64;
-	for (uint n = 0; n < NUM_DIFFUSE_SAMPLES; n++)
+	if (recursionIndex < MAX_RECURSIONS)
 	{
-		vec3 seed = vec3(n, n * n, n * n * n);
-		float cosTheta = noise(hitPos + seed.xyz);
-		float uniformRandom = noise(hitPos + seed.zyx);
+		{
+			//Calculate Direct Diffuse
+			vec3 lightPos = vec3(0.0f, 10.0f, 0.0f);
+			vec3 lightColor = vec3(1.0f, 1.0f, 1.0f);
 
-		vec3 sdw = TBN * createSampleDirection(cosTheta, uniformRandom); //Sample Direction World
+			vec3 shadowOrigin = hitPos + normal * 0.001f;
+			vec3 lightDirection = normalize(lightPos - shadowOrigin);
+			traceNV(topLevelAS, rayFlags, cullMask, 1, 0, 1, shadowOrigin, tmin, lightDirection, tmax, 1);
 
-		vec4 closestIndexes;
-		vec4 weights;
-		inverseSF(sdw, closestIndexes, weights);
+			directDiffuse = shadowRayPayload.lightIntensity * lightColor * max(0.0f, dot(normal, lightDirection)) / M_PI; 
+		}
 
-		vec3 color0 = weights[0] * lightProbeValues.colors[baseLightProbeIndex + uint(round(closestIndexes[0]))].rgb;
-		vec3 color1 = weights[1] * lightProbeValues.colors[baseLightProbeIndex + uint(round(closestIndexes[1]))].rgb;
-		vec3 color2 = weights[2] * lightProbeValues.colors[baseLightProbeIndex + uint(round(closestIndexes[2]))].rgb;
-		vec3 color3 = weights[3] * lightProbeValues.colors[baseLightProbeIndex + uint(round(closestIndexes[3]))].rgb;
+		{
+			//Calculate Indirect Diffuse
+			vec3 worldSize = vec3(WORLD_SIZE_X, WORLD_SIZE_Y, WORLD_SIZE_Z);
+			vec3 bestLightProbe = findBestLightProbe(hitPos);
+			uvec3 bestLightProbe3DIndex = uvec3(bestLightProbe + vec3(NUM_PROBES_PER_DIMENSION - 1) / 2.0f);
+			
+			uint baseLightProbeIndex = (bestLightProbe3DIndex.x + NUM_PROBES_PER_DIMENSION * (bestLightProbe3DIndex.y + NUM_PROBES_PER_DIMENSION * bestLightProbe3DIndex.z)) * SAMPLES_PER_PROBE;
+			
+			const uint totalNumberOfProbes = NUM_PROBES_PER_DIMENSION * NUM_PROBES_PER_DIMENSION * NUM_PROBES_PER_DIMENSION;
+			float probeWeights[totalNumberOfProbes];
+			float maxDistanceToProbe = length(worldSize / 2.0f);
 
-		diffuse += cosTheta * (color0 + color1 + color2 + color3);
+			// {
+			// 	//Calculate Light Probe Weights
+			// 	float totalInverseDistance = 0.0f;
+
+			// 	for (uint p = 0; p < totalNumberOfProbes; p++)
+			// 	{
+			// 		vec3 lightProbe3DIndex = vec3(p % NUM_PROBES_PER_DIMENSION, (p / NUM_PROBES_PER_DIMENSION) % NUM_PROBES_PER_DIMENSION, p / (NUM_PROBES_PER_DIMENSION * NUM_PROBES_PER_DIMENSION));
+			// 		vec3 lightProbeCenter = (lightProbe3DIndex / vec3(NUM_PROBES_PER_DIMENSION - 1)) * worldSize - worldSize / 2.0f;
+			// 		vec3 deltaLightProbe = (lightProbeCenter - hitPos);
+			// 		float lightProbeDistance = length(deltaLightProbe);
+			// 		float inverseLightProbeDistance = maxDistanceToProbe - lightProbeDistance;
+					
+			// 		if ( > 0.0f)
+			// 		{
+			// 			probeWeights[p] = inverseLightProbeDistance;
+			// 			totalInverseDistance += inverseLightProbeDistance;
+			// 		}
+			// 		else
+			// 		{
+			// 			probeWeights[p] = 0.0f;
+			// 		}
+			// 	}
+
+			// 	for (uint p = 0; p < totalNumberOfProbes; p++)
+			// 	{
+			// 		probeWeights[p] /= totalInverseDistance;
+			// 	}
+			// }
+
+			uint NUM_DIFFUSE_SAMPLES = 64;
+			for (uint n = 0; n < NUM_DIFFUSE_SAMPLES; n++)
+			{
+				vec3 seed = vec3(n, n * n, n * n * n);
+				float cosTheta = noise(hitPos + seed.xyz);
+				float uniformRandom = noise(hitPos + seed.zyx);
+
+				vec3 sdw = TBN * createSampleDirection(cosTheta, uniformRandom); //Sample Direction World
+
+				vec4 closestIndexes;
+				vec4 weights;
+				inverseSF(sdw, closestIndexes, weights);
+				
+				float numberOfSampledProbes = 0.0f;
+				vec3 currentDiffuse = vec3(0.0f);
+
+				for (uint p = 0; p < totalNumberOfProbes; p++)
+				{
+					//uint p = 13;
+					vec3 lightProbe3DIndex = vec3(p % NUM_PROBES_PER_DIMENSION, (p / NUM_PROBES_PER_DIMENSION) % NUM_PROBES_PER_DIMENSION, p / (NUM_PROBES_PER_DIMENSION * NUM_PROBES_PER_DIMENSION));
+					vec3 lightProbeCenter = (lightProbe3DIndex / vec3(NUM_PROBES_PER_DIMENSION - 1)) * worldSize - worldSize / 2.0f;
+					vec3 deltaLightProbe = (lightProbeCenter - hitPos);
+					float lightProbeDistance = length(deltaLightProbe);
+
+					if (dot(deltaLightProbe / lightProbeDistance, normal) > 0.0f)
+					{
+						numberOfSampledProbes += 1.0f;
+
+						vec3 color0 = weights[0] * lightProbeValues.colors[p + uint(round(closestIndexes[0]))].rgb;
+						vec3 color1 = weights[1] * lightProbeValues.colors[p + uint(round(closestIndexes[1]))].rgb;
+						vec3 color2 = weights[2] * lightProbeValues.colors[p + uint(round(closestIndexes[2]))].rgb;
+						vec3 color3 = weights[3] * lightProbeValues.colors[p + uint(round(closestIndexes[3]))].rgb;
+
+						currentDiffuse += cosTheta * (color0 + color1 + color2 + color3) / lightProbeDistance;
+					}
+				}
+
+				currentDiffuse /= max(1.0f, numberOfSampledProbes);
+				indirectDiffuse += currentDiffuse;
+			}
+
+			indirectDiffuse = indirectDiffuse / float(NUM_DIFFUSE_SAMPLES); 
+		}
+
+		{
+			//Calculate Direct Specular
+			vec3 origin = hitPos + normal * 0.001f;
+			vec3 reflectionDirection = reflect(gl_WorldRayDirectionNV, normal);
+			rayPayload.recursion = recursionIndex + 1;
+
+			traceNV(topLevelAS, rayFlags, cullMask, 0, 0, 0, origin, tmin, reflectionDirection, tmax, 0);
+			directSpecular = (1.0f - roughness) * rayPayload.color;
+		}
+
+		rayPayload.color = (indirectDiffuse); 
 	}
-
-	diffuse = diffuse / float(NUM_DIFFUSE_SAMPLES); 
-
-	mat3 R = createRotationMatrix(normal, normalize(reflect(gl_WorldRayDirectionNV, normal)));
-
-	vec3 specular = vec3(0.0f);
-
-	uint NUM_SPECULAR_SAMPLES = 128;
-	for (uint n = 0; n < NUM_SPECULAR_SAMPLES; n++)
+	else
 	{
-		float seedIndex = n + NUM_DIFFUSE_SAMPLES;
-		vec3 seed = vec3(seedIndex, seedIndex * seedIndex, seedIndex * seedIndex * seedIndex);
-		float minCosTheta = 1.0f - roughness;
-		float cosTheta = 1.0f - noise(hitPos + seed.xyz) * minCosTheta;
-		float uniformRandom = noise(hitPos + seed.zyx);
-
-		vec3 sdw = transpose(R) * TBN * createSampleDirection(cosTheta, uniformRandom); //Sample Direction World
-
-		vec4 closestIndexes;
-		vec4 weights;
-		inverseSF(sdw, closestIndexes, weights);
-
-		vec3 color0 = weights[0] * lightProbeValues.colors[baseLightProbeIndex + uint(round(closestIndexes[0]))].rgb;
-		vec3 color1 = weights[1] * lightProbeValues.colors[baseLightProbeIndex + uint(round(closestIndexes[1]))].rgb;
-		vec3 color2 = weights[2] * lightProbeValues.colors[baseLightProbeIndex + uint(round(closestIndexes[2]))].rgb;
-		vec3 color3 = weights[3] * lightProbeValues.colors[baseLightProbeIndex + uint(round(closestIndexes[3]))].rgb;
-
-		specular += cosTheta * (color0 + color1 + color2 + color3);
+		rayPayload.color = albedoColor.rgb;
 	}
-
-	specular = specular / float(NUM_SPECULAR_SAMPLES); 
-
-	rayPayload.color = (diffuse + specular) * albedoColor.rgb; 
 }

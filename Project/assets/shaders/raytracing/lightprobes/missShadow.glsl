@@ -10,5 +10,5 @@ layout(location = 1) rayPayloadInNV ShadowRayPayload shadowRayPayload;
 
 void main()
 {
-	shadowRayPayload.lightIntensity = 16.0f;
+	shadowRayPayload.lightIntensity = 1.0f;
 }
