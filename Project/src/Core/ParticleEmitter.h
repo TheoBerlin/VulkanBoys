@@ -22,32 +22,32 @@ struct ParticleEmitterInfo {
 };
 
 struct ParticleBuffer {
-    const glm::vec4* positions;
+    const glm::vec4* positions, velocities;
+    const float* ages;
 };
 
 struct EmitterBuffer {
+    glm::vec4 position, direction;
     glm::vec2 particleSize;
+    float particleDuration, initialSpeed, spread;
 };
 
 class ParticleEmitter
 {
-    struct Particle {
-        glm::vec4* position, *velocity;
-        float* age;
-    };
-
     struct ParticleStorage {
         std::vector<glm::vec4> positions, velocities;
-        std::vector<float> ages, cameraDistances;
+        std::vector<float> ages;
     };
 
 public:
     ParticleEmitter(const ParticleEmitterInfo& emitterInfo);
     ~ParticleEmitter();
 
-    bool initialize(IGraphicsContext* pGraphicsContext, const Camera* pCamera);
+    bool initializeCPU(IGraphicsContext* pGraphicsContext, const Camera* pCamera);
+    bool initializeGPU(IGraphicsContext* pGraphicsContext, const Camera* pCamera);
 
-    void update(float dt);
+    void updateCPU(float dt);
+    void updateGPU(float dt);
 
     const ParticleStorage& getParticleStorage() const { return m_ParticleStorage; }
     glm::vec2 getParticleSize() const { return m_ParticleSize; }
@@ -57,17 +57,22 @@ public:
     IBuffer* getEmitterBuffer() { return m_pEmitterBuffer; }
     ITexture2D* getParticleTexture() { return m_pTexture; }
 
+    // Whether or not the emitter's settings (above) have been changed during the current frame
+    bool m_EmitterUpdated;
+
 private:
     bool createBuffers(IGraphicsContext* pGraphicsContext);
 
     // Spawns particles before the emitter has created its maximum amount of particles
-    void spawnNewParticles();
-    void moveParticles(float dt);
-    void calculateCameraDistances();
-    // Sort particles by their distance to the camera
-    void sortParticles();
-    void respawnOldParticles();
-    void createParticle(size_t particleIdx, float particleAge);
+    void spawnNewParticlesCPU();
+    void moveParticlesCPU(float dt);
+    void respawnOldParticlesCPU();
+    void createParticleCPU(size_t particleIdx, float particleAge);
+
+    void spawnNewParticlesGPU();
+    void moveParticlesGPU(float dt);
+    void respawnOldParticlesGPU();
+    void createParticleGPU(size_t particleIdx, float particleAge);
 
 private:
     glm::vec3 m_Position, m_Direction;
@@ -82,7 +87,6 @@ private:
     const glm::vec3 m_ZVec = glm::vec3(0.0f, 0.0f, 1.0f);
     // Random directions for particle are centered around (0,0,1), this quaternion centers them around the emitter's direction
     glm::quat m_CenteringRotQuat;
-    
 
     ParticleStorage m_ParticleStorage;
     ITexture2D* m_pTexture;

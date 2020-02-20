@@ -16,6 +16,7 @@ ParticleEmitter::ParticleEmitter(const ParticleEmitterInfo& emitterInfo)
     m_ParticlesPerSecond(emitterInfo.particlesPerSecond),
     m_Spread(emitterInfo.spread),
     m_pTexture(emitterInfo.pTexture),
+    m_EmitterUpdated(false),
     m_EmitterAge(0.0f),
     m_RandEngine(std::random_device()()),
     m_ZRandomizer(std::cos(m_Spread), 1.0f),
@@ -36,7 +37,7 @@ ParticleEmitter::~ParticleEmitter()
     SAFEDELETE(m_pEmitterBuffer);
 }
 
-bool ParticleEmitter::initialize(IGraphicsContext* pGraphicsContext, const Camera* pCamera)
+bool ParticleEmitter::initializeCPU(IGraphicsContext* pGraphicsContext, const Camera* pCamera)
 {
     m_pCamera = pCamera;
 
@@ -48,21 +49,17 @@ bool ParticleEmitter::initialize(IGraphicsContext* pGraphicsContext, const Camer
     return createBuffers(pGraphicsContext);
 }
 
-void ParticleEmitter::update(float dt)
+void ParticleEmitter::updateCPU(float dt)
 {
     size_t maxParticleCount = m_ParticlesPerSecond * m_ParticleDuration;
     if (m_ParticleStorage.positions.size() < maxParticleCount) {
         m_EmitterAge += dt;
-        spawnNewParticles();
+        spawnNewParticlesCPU();
     }
 
-    moveParticles(dt);
+    moveParticlesCPU(dt);
 
-    // TODO
-    // calculateCameraDistances();
-    // sortParticles();
-
-    respawnOldParticles();
+    respawnOldParticlesCPU();
 }
 
 bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
@@ -96,7 +93,7 @@ bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
     pGraphicsContext->updateBuffer(m_pEmitterBuffer, 0, &m_ParticleSize, sizeof(glm::vec2));
 }
 
-void ParticleEmitter::spawnNewParticles()
+void ParticleEmitter::spawnNewParticlesCPU()
 {
     size_t particleCount = m_ParticleStorage.positions.size();
     size_t newParticleCount = m_EmitterAge * m_ParticlesPerSecond;
@@ -117,11 +114,11 @@ void ParticleEmitter::spawnNewParticles()
         float particleAge = m_EmitterAge - spawnTime;
 
         size_t newParticleIdx = particleCount + i;
-        createParticle(newParticleIdx, particleAge);
+        createParticleCPU(newParticleIdx, particleAge);
     }
 }
 
-void ParticleEmitter::moveParticles(float dt)
+void ParticleEmitter::moveParticlesCPU(float dt)
 {
     std::vector<glm::vec4>& positions = m_ParticleStorage.positions;
     std::vector<glm::vec4>& velocities = m_ParticleStorage.velocities;
@@ -134,7 +131,7 @@ void ParticleEmitter::moveParticles(float dt)
     }
 }
 
-void ParticleEmitter::respawnOldParticles()
+void ParticleEmitter::respawnOldParticlesCPU()
 {
     std::vector<glm::vec4>& positions = m_ParticleStorage.positions;
     std::vector<glm::vec4>& velocities = m_ParticleStorage.velocities;
@@ -153,11 +150,11 @@ void ParticleEmitter::respawnOldParticles()
             continue;
         }
 
-        createParticle(particleIdx, newParticleAge);
+        createParticleCPU(particleIdx, newParticleAge);
     }
 }
 
-void ParticleEmitter::createParticle(size_t particleIdx, float particleAge)
+void ParticleEmitter::createParticleCPU(size_t particleIdx, float particleAge)
 {
     glm::vec3 particleDirection = m_Direction;
 

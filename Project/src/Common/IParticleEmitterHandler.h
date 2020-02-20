@@ -28,9 +28,15 @@ public:
 
     std::vector<ParticleEmitter*>& getParticleEmitters() { return m_ParticleEmitters; }
 
+    bool gpuComputed() const { return m_GPUComputed; }
+    virtual void toggleComputationDevice() = 0;
+
 protected:
     IGraphicsContext* m_pGraphicsContext;
     const Camera* m_pCamera;
 
     std::vector<ParticleEmitter*> m_ParticleEmitters;
+
+    // Whether to use the GPU or the CPU for updating particle data
+    bool m_GPUComputed;
 };

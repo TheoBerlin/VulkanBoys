@@ -16,13 +16,24 @@ void ParticleEmitterHandlerVK::updateBuffers(IRenderingHandler* pRenderingHandle
         BufferVK* pEmitterBuffer = reinterpret_cast<BufferVK*>(pEmitter->getEmitterBuffer());
         BufferVK* pParticleBuffer = reinterpret_cast<BufferVK*>(pEmitter->getParticleBuffer());
 
-        EmitterBuffer emitterBuffer = {};
-        emitterBuffer.particleSize = pEmitter->getParticleSize();
-        pCommandBuffer->updateBuffer(pEmitterBuffer, 0, &emitterBuffer, sizeof(EmitterBuffer));
+        if (pEmitter->m_EmitterUpdated) {
+            EmitterBuffer emitterBuffer = {};
+            emitterBuffer.particleSize = pEmitter->getParticleSize();
+            pCommandBuffer->updateBuffer(pEmitterBuffer, 0, &emitterBuffer, sizeof(EmitterBuffer));
+
+            pEmitter->m_EmitterUpdated = false;
+        }
 
         const std::vector<glm::vec4>& particlePositions = pEmitter->getParticleStorage().positions;
-        ParticleBuffer particleBuffer = {}; // TODO: How do I insert data into an array within a storage buffer struct?
-        particleBuffer.positions = particlePositions.data();
+        ParticleBuffer particleBuffer = {
+            particlePositions.data()
+        };
+
         pCommandBuffer->updateBuffer(pParticleBuffer, 0, particlePositions.data(), sizeof(glm::vec4) * particlePositions.size());
     }
+}
+
+void ParticleEmitterHandlerVK::toggleComputationDevice()
+{
+    m_GPUComputed = !m_GPUComputed;
 }

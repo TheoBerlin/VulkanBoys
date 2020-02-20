@@ -17,4 +17,5 @@ class ParticleEmitterHandlerVK : public IParticleEmitterHandler
 {
 public:
     virtual void updateBuffers(IRenderingHandler* pRenderingHandler) override;
+    virtual void toggleComputationDevice() override;
 };
