@@ -50,6 +50,7 @@ public:
 	virtual void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform) override;
 
 	virtual void traceRays() override;
+	virtual void changeRayTraceRenderMode() override;
 
 	virtual void drawImgui(IImgui* pImgui) override;
 
@@ -101,8 +102,9 @@ private:
 	//Temp Ray Tracing Stuff
 	RayTracingSceneVK* m_pRayTracingScene;
 	RayTracingPipelineVK* m_pRayTracingPipeline;
+	RayTracingPipelineVK* m_pRayTracingPrePassPipeline;
+	RayTracingPipelineVK* m_pRayTracingLightProbeVisualizerPipeline;
 	PipelineLayoutVK* m_pRayTracingPipelineLayout;
-	ShaderBindingTableVK* m_pSBT;
 	ImageVK* m_pRayTracingStorageImage;
 	ImageViewVK* m_pRayTracingStorageImageView;
 	
@@ -131,11 +133,21 @@ private:
 	uint32_t m_InstanceIndex4;
 	uint32_t m_InstanceIndex5;
 
-	ShaderVK* m_pRaygenShader;
-	ShaderVK* m_pClosestHitShader;
+	ShaderVK* m_pRaygenLightProbeShader;
+
+	ShaderVK* m_pClosestHitLightProbeShader;
 	ShaderVK* m_pClosestHitShadowShader;
-	ShaderVK* m_pMissShader;
+
+	ShaderVK* m_pMissLightProbeShader;
 	ShaderVK* m_pMissShadowShader;
+
+	ShaderVK* m_pRaygenFinalShader;
+	ShaderVK* m_pClosestHitFinalShader;
+	ShaderVK* m_pMissFinalShader;
+
+	ShaderVK* m_pRaygenLightProbeVisualizerShader;
+	ShaderVK* m_pClosestHitLightProbeVisualizerShader;
+	ShaderVK* m_pMissLightProbeVisualizerShader;
 
 	SamplerVK* m_pSampler;
 	
@@ -143,6 +155,10 @@ private:
 	TempMaterial* m_pGunMaterial;
 	TempMaterial* m_pSphereMaterial;
 	TempMaterial* m_pPlaneMaterial;
+
+	BufferVK* m_pLightProbeBuffer;
+
+	uint32_t m_RayTraceRenderMode;
 
 	float m_TempTimer;
 };

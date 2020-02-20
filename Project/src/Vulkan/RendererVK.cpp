@@ -28,6 +28,13 @@
 #include "ImageVK.h"
 #include "ImageViewVK.h"
 
+constexpr uint32_t MAX_RECURSIONS = 2;
+constexpr uint32_t WORLD_SIZE_X = 10;
+constexpr uint32_t WORLD_SIZE_Y = 10;
+constexpr uint32_t WORLD_SIZE_Z = 10;
+constexpr uint32_t SAMPLES_PER_PROBE = 256;
+constexpr uint32_t NUM_PROBES_PER_DIMENSION = 3;
+
 RendererVK::RendererVK(GraphicsContextVK* pContext)
 	: m_pContext(pContext),
 	m_ppCommandPools(),
@@ -81,8 +88,8 @@ RendererVK::~RendererVK()
 
 	SAFEDELETE(m_pRayTracingScene);
 	SAFEDELETE(m_pRayTracingPipeline);
+	SAFEDELETE(m_pRayTracingPrePassPipeline);
 	SAFEDELETE(m_pRayTracingPipelineLayout);
-	SAFEDELETE(m_pSBT);
 	SAFEDELETE(m_pRayTracingStorageImage);
 	SAFEDELETE(m_pRayTracingStorageImageView);
 
@@ -96,11 +103,21 @@ RendererVK::~RendererVK()
 	SAFEDELETE(m_pMeshSphere);
 	SAFEDELETE(m_pMeshPlane);
 
-	SAFEDELETE(m_pRaygenShader);
-	SAFEDELETE(m_pClosestHitShader);
+	SAFEDELETE(m_pRaygenLightProbeShader);
+
+	SAFEDELETE(m_pClosestHitLightProbeShader);
 	SAFEDELETE(m_pClosestHitShadowShader);
-	SAFEDELETE(m_pMissShader);
+
+	SAFEDELETE(m_pMissLightProbeShader);
 	SAFEDELETE(m_pMissShadowShader);
+
+	SAFEDELETE(m_pRaygenFinalShader);
+	SAFEDELETE(m_pClosestHitFinalShader);
+	SAFEDELETE(m_pMissFinalShader);
+
+	SAFEDELETE(m_pRaygenLightProbeVisualizerShader);
+	SAFEDELETE(m_pClosestHitLightProbeVisualizerShader);
+	SAFEDELETE(m_pMissLightProbeVisualizerShader);
 
 	SAFEDELETE(m_pSampler);
 
@@ -108,6 +125,8 @@ RendererVK::~RendererVK()
 	SAFEDELETE(m_pCubeMaterial);
 	SAFEDELETE(m_pSphereMaterial);
 	SAFEDELETE(m_pPlaneMaterial);
+
+	SAFEDELETE(m_pLightProbeBuffer);
 
 	m_pContext = nullptr;
 }
@@ -276,7 +295,7 @@ bool RendererVK::init()
 	m_pSphereMaterial->pNormalMap->initFromFile("assets/textures/cubeNormal.jpg");
 
 	m_pSphereMaterial->pRoughnessMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
-	m_pSphereMaterial->pRoughnessMap->initFromFile("assets/textures/whiteOpaque.png");
+	m_pSphereMaterial->pRoughnessMap->initFromFile("assets/textures/cubeRoughness.jpg");
 
 	m_pPlaneMaterial = new TempMaterial();
 	m_pPlaneMaterial->pAlbedo = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
@@ -300,7 +319,7 @@ bool RendererVK::init()
 	m_pMeshPlane = m_pContext->createMesh();
 	m_pMeshPlane->initFromMemory(planeVertices, 4, planeIndices, 6);
 
-	m_Matrix0 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f)));
+	m_Matrix0 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 3.0f)));
 	m_Matrix1 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
 	m_Matrix2 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f)));
 	m_Matrix3 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 2.0f, 0.0f)));
@@ -315,59 +334,141 @@ bool RendererVK::init()
 	m_InstanceIndex3 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshCube, m_pCubeMaterial, m_Matrix3);
 	m_InstanceIndex4 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshSphere, m_pSphereMaterial, m_Matrix4);
 	m_InstanceIndex5 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshPlane, m_pPlaneMaterial, m_Matrix5);
+	m_pRayTracingScene->generateLightProbeGeometry(WORLD_SIZE_X, WORLD_SIZE_Y, WORLD_SIZE_Z, SAMPLES_PER_PROBE, NUM_PROBES_PER_DIMENSION);
 	m_pRayTracingScene->finalize();
+
+	m_RayTraceRenderMode = 0;
 
 	m_TempTimer = 0;
 
-	RaygenGroupParams raygenGroupParams = {};
-	HitGroupParams hitGroupParams = {};
+	RaygenGroupParams raygenGroupLightProbeParams = {};
+
+	HitGroupParams hitGroupLightProbeParams = {};
 	HitGroupParams hitGroupShadowParams = {};
-	MissGroupParams missGroupParams = {};
+
+	MissGroupParams missGroupLightProbeParams = {};
 	MissGroupParams missGroupShadowParams = {};
-	constexpr uint32_t maxRecursions = 2;
+
+	RaygenGroupParams raygenGroupFinalParams = {};
+	HitGroupParams hitGroupFinalParams = {};
+	MissGroupParams missGroupFinalParams = {};
+
+	RaygenGroupParams raygenGroupLightProbeVisualizerParams = {};
+	HitGroupParams hitGroupLightProbeVisualizerParams = {};
+	MissGroupParams missGroupLightProbeVisualizerParams = {};
 
 	{
-		m_pRaygenShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-		m_pRaygenShader->initFromFile(EShader::RAYGEN_SHADER, "main", "assets/shaders/raytracing/raygen.spv");
-		m_pRaygenShader->finalize();
-		raygenGroupParams.pRaygenShader = m_pRaygenShader;
+		{
+			//Pre Pass
+			m_pRaygenLightProbeShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pRaygenLightProbeShader->initFromFile(EShader::RAYGEN_SHADER, "main", "assets/shaders/raytracing/lightprobes/raygenLightProbe.spv");
+			m_pRaygenLightProbeShader->finalize();
+			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(0, WORLD_SIZE_X);
+			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(1, WORLD_SIZE_Y);
+			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(2, WORLD_SIZE_Z);
+			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(3, SAMPLES_PER_PROBE);
+			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(4, NUM_PROBES_PER_DIMENSION);
+			raygenGroupLightProbeParams.pRaygenShader = m_pRaygenLightProbeShader;
 
-		m_pClosestHitShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-		m_pClosestHitShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/closesthit.spv");
-		m_pClosestHitShader->finalize();
-		m_pClosestHitShader->setSpecializationConstant<uint32_t>(0, maxRecursions);
-		hitGroupParams.pClosestHitShader = m_pClosestHitShader;
+			m_pClosestHitLightProbeShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pClosestHitLightProbeShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/lightprobes/closesthitLightProbe.spv");
+			m_pClosestHitLightProbeShader->finalize();
+			m_pClosestHitLightProbeShader->setSpecializationConstant<uint32_t>(0, MAX_RECURSIONS);
+			hitGroupLightProbeParams.pClosestHitShader = m_pClosestHitLightProbeShader;
 
-		m_pClosestHitShadowShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-		m_pClosestHitShadowShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/closesthitShadow.spv");
-		m_pClosestHitShadowShader->finalize();
-		m_pClosestHitShadowShader->setSpecializationConstant<uint32_t>(0, maxRecursions);
-		hitGroupShadowParams.pClosestHitShader = m_pClosestHitShadowShader;
+			m_pClosestHitShadowShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pClosestHitShadowShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/lightprobes/closesthitShadow.spv");
+			m_pClosestHitShadowShader->finalize();
+			hitGroupShadowParams.pClosestHitShader = m_pClosestHitShadowShader;
 
-		m_pMissShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-		m_pMissShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/miss.spv");
-		m_pMissShader->finalize();
-		missGroupParams.pMissShader = m_pMissShader;
+			m_pMissLightProbeShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pMissLightProbeShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/lightprobes/missLightProbe.spv");
+			m_pMissLightProbeShader->finalize();
+			missGroupLightProbeParams.pMissShader = m_pMissLightProbeShader;
 
-		m_pMissShadowShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-		m_pMissShadowShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/missShadow.spv");
-		m_pMissShadowShader->finalize();
-		missGroupShadowParams.pMissShader = m_pMissShadowShader;
+			m_pMissShadowShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pMissShadowShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/lightprobes/missShadow.spv");
+			m_pMissShadowShader->finalize();
+			missGroupShadowParams.pMissShader = m_pMissShadowShader;
+		}
+
+		{
+			//Final
+			m_pRaygenFinalShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pRaygenFinalShader->initFromFile(EShader::RAYGEN_SHADER, "main", "assets/shaders/raytracing/lightprobes/raygen.spv");
+			m_pRaygenFinalShader->finalize();
+			raygenGroupFinalParams.pRaygenShader = m_pRaygenFinalShader;
+
+			m_pClosestHitFinalShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pClosestHitFinalShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/lightprobes/closesthit.spv");
+			m_pClosestHitFinalShader->finalize();
+			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(0, WORLD_SIZE_X);
+			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(1, WORLD_SIZE_Y);
+			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(2, WORLD_SIZE_Z);
+			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(3, SAMPLES_PER_PROBE);
+			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(4, NUM_PROBES_PER_DIMENSION);
+			hitGroupFinalParams.pClosestHitShader = m_pClosestHitFinalShader;
+
+			m_pMissFinalShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pMissFinalShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/lightprobes/miss.spv");
+			m_pMissFinalShader->finalize();
+			missGroupFinalParams.pMissShader = m_pMissFinalShader;
+		}
+
+		{
+			//Light Probe Visualizer
+			m_pRaygenLightProbeVisualizerShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pRaygenLightProbeVisualizerShader->initFromFile(EShader::RAYGEN_SHADER, "main", "assets/shaders/raytracing/lightprobes/raygenVisualizer.spv");
+			m_pRaygenLightProbeVisualizerShader->finalize();
+			raygenGroupLightProbeVisualizerParams.pRaygenShader = m_pRaygenLightProbeVisualizerShader;
+
+			m_pClosestHitLightProbeVisualizerShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pClosestHitLightProbeVisualizerShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/lightprobes/closesthitVisualizer.spv");
+			m_pClosestHitLightProbeVisualizerShader->finalize();
+			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(0, WORLD_SIZE_X);
+			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(1, WORLD_SIZE_Y);
+			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(2, WORLD_SIZE_Z);
+			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(3, SAMPLES_PER_PROBE);
+			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(4, NUM_PROBES_PER_DIMENSION);
+			hitGroupLightProbeVisualizerParams.pClosestHitShader = m_pClosestHitLightProbeVisualizerShader;
+
+			m_pMissLightProbeVisualizerShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pMissLightProbeVisualizerShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/lightprobes/missVisualizer.spv");
+			m_pMissLightProbeVisualizerShader->finalize();
+			missGroupLightProbeVisualizerParams.pMissShader = m_pMissLightProbeVisualizerShader;
+		}
 	}
 
 	std::cout << "Creating RTX Pipeline Layout" << std::endl;
 	createRayTracingPipelineLayouts();
 
-	m_pRayTracingPipeline = new RayTracingPipelineVK(m_pContext->getDevice());
-	m_pRayTracingPipeline->addRaygenShaderGroup(raygenGroupParams);
-	m_pRayTracingPipeline->addMissShaderGroup(missGroupParams);
-	m_pRayTracingPipeline->addMissShaderGroup(missGroupShadowParams);
-	m_pRayTracingPipeline->addHitShaderGroup(hitGroupParams);
-	m_pRayTracingPipeline->addHitShaderGroup(hitGroupShadowParams);
+	m_pRayTracingPrePassPipeline = new RayTracingPipelineVK(m_pContext);
+	m_pRayTracingPrePassPipeline->addRaygenShaderGroup(raygenGroupLightProbeParams);
+
+	m_pRayTracingPrePassPipeline->addMissShaderGroup(missGroupLightProbeParams);
+	m_pRayTracingPrePassPipeline->addMissShaderGroup(missGroupShadowParams);
+
+	m_pRayTracingPrePassPipeline->addHitShaderGroup(hitGroupLightProbeParams);
+	m_pRayTracingPrePassPipeline->addHitShaderGroup(hitGroupShadowParams);
+	m_pRayTracingPrePassPipeline->finalize(m_pRayTracingPipelineLayout);
+
+	m_pRayTracingPipeline = new RayTracingPipelineVK(m_pContext);
+	m_pRayTracingPipeline->addRaygenShaderGroup(raygenGroupFinalParams);
+
+	m_pRayTracingPipeline->addMissShaderGroup(missGroupFinalParams);
+
+	m_pRayTracingPipeline->addHitShaderGroup(hitGroupFinalParams);
+
 	m_pRayTracingPipeline->finalize(m_pRayTracingPipelineLayout);
-	
-	m_pSBT = new ShaderBindingTableVK(m_pContext);
-	m_pSBT->init(m_pRayTracingPipeline);
+
+	m_pRayTracingLightProbeVisualizerPipeline = new RayTracingPipelineVK(m_pContext);
+	m_pRayTracingLightProbeVisualizerPipeline->addRaygenShaderGroup(raygenGroupLightProbeVisualizerParams);
+
+	m_pRayTracingLightProbeVisualizerPipeline->addMissShaderGroup(missGroupLightProbeVisualizerParams);
+
+	m_pRayTracingLightProbeVisualizerPipeline->addHitShaderGroup(hitGroupLightProbeVisualizerParams);
+
+	m_pRayTracingLightProbeVisualizerPipeline->finalize(m_pRayTracingPipelineLayout);
 
 	ImageParams imageParams = {};
 	imageParams.Type = VK_IMAGE_TYPE_2D;
@@ -462,6 +563,15 @@ bool RendererVK::init()
 		}
 	}
 
+	m_pLightProbeBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
+
+	BufferParams lightProbeBufferParams = {};
+	lightProbeBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	lightProbeBufferParams.SizeInBytes = sizeof(float) * 4 * SAMPLES_PER_PROBE * NUM_PROBES_PER_DIMENSION * NUM_PROBES_PER_DIMENSION * NUM_PROBES_PER_DIMENSION;
+	lightProbeBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+	m_pLightProbeBuffer->init(lightProbeBufferParams);
+
 	m_pRayTracingDescriptorSet->writeAccelerationStructureDescriptor(m_pRayTracingScene->getTLAS().accelerationStructure, 0);
 	m_pRayTracingDescriptorSet->writeStorageImageDescriptor(m_pRayTracingStorageImageView->getImageView(), 1);
 	m_pRayTracingDescriptorSet->writeUniformBufferDescriptor(m_pRayTracingUniformBuffer->getBuffer(), 2);
@@ -471,6 +581,7 @@ bool RendererVK::init()
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(albedoImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 6);
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(normalImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 7);
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(roughnessImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 8);
+	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pLightProbeBuffer->getBuffer(), 9);
 	
 	return true;
 }
@@ -660,11 +771,27 @@ void RendererVK::submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat
 
 void RendererVK::traceRays()
 {
-	vkCmdBindPipeline(m_ppComputeCommandBuffers[m_CurrentFrame]->getCommandBuffer(), VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipeline->getPipeline());
-
 	m_ppComputeCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipelineLayout, 0, 1, &m_pRayTracingDescriptorSet, 0, nullptr);
 
-	m_ppComputeCommandBuffers[m_CurrentFrame]->traceRays(m_pSBT, m_pContext->getSwapChain()->getExtent().width, m_pContext->getSwapChain()->getExtent().height, 0);
+	vkCmdBindPipeline(m_ppComputeCommandBuffers[m_CurrentFrame]->getCommandBuffer(), VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPrePassPipeline->getPipeline());
+	m_ppComputeCommandBuffers[m_CurrentFrame]->traceRays(m_pRayTracingPrePassPipeline->getSBT(), NUM_PROBES_PER_DIMENSION, NUM_PROBES_PER_DIMENSION, NUM_PROBES_PER_DIMENSION, 0);
+
+	if (m_RayTraceRenderMode == 0)
+	{
+		vkCmdBindPipeline(m_ppComputeCommandBuffers[m_CurrentFrame]->getCommandBuffer(), VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipeline->getPipeline());
+		m_ppComputeCommandBuffers[m_CurrentFrame]->traceRays(m_pRayTracingPipeline->getSBT(), m_pContext->getSwapChain()->getExtent().width, m_pContext->getSwapChain()->getExtent().height, 1, 0);
+	}
+	else if (m_RayTraceRenderMode == 1)
+	{
+		vkCmdBindPipeline(m_ppComputeCommandBuffers[m_CurrentFrame]->getCommandBuffer(), VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingLightProbeVisualizerPipeline->getPipeline());
+		m_ppComputeCommandBuffers[m_CurrentFrame]->traceRays(m_pRayTracingLightProbeVisualizerPipeline->getSBT(), m_pContext->getSwapChain()->getExtent().width, m_pContext->getSwapChain()->getExtent().height, 1, 0);
+	}
+}
+
+void RendererVK::changeRayTraceRenderMode()
+{
+	m_RayTraceRenderMode++;
+	m_RayTraceRenderMode = m_RayTraceRenderMode % 2;
 }
 
 void RendererVK::drawImgui(IImgui* pImgui)
@@ -887,6 +1014,7 @@ bool RendererVK::createRayTracingPipelineLayouts()
 	m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, nullptr, 6, MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
 	m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, nullptr, 7, MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
 	m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, nullptr, 8, MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
+	m_pRayTracingDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, 9, 1);
 	m_pRayTracingDescriptorSetLayout->finalize();
 
 	std::vector<const DescriptorSetLayoutVK*> rayTracingDescriptorSetLayouts = { m_pRayTracingDescriptorSetLayout };

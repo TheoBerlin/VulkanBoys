@@ -29,12 +29,7 @@ layout(location = 1) rayPayloadNV ShadowRayPayload shadowRayPayload;
 hitAttributeNV vec3 attribs;
 
 layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
-layout(binding = 2, set = 0) uniform CameraProperties
-{
-	mat4 viewInverse;
-	mat4 projInverse;
-	vec4 lightPos;
-} cam;
+
 layout(binding = 3, set = 0) buffer Vertices { Vertex v[]; } vertices;
 layout(binding = 4, set = 0) buffer Indices { uint i[]; } indices;
 layout(binding = 5, set = 0) buffer MeshIndices { uint mi[]; } meshIndices;
@@ -99,11 +94,6 @@ float fresnel(vec3 I, vec3 N, float ior)
     // kt = 1 - kr;
 }
 
-float rand(vec3 v)
-{
-	return fract(tan(distance(v.xy * 1.61803398874989484820459f, v.xy) * v.z) * v.x);
-}
-
 float hash(float n)
 {
     return fract(sin(n) * 43758.5453f);
@@ -133,13 +123,13 @@ vec3 findNT(vec3 normal)
 	return normalize(vec3(0.0f, -normal.z, normal.y));
 }
 
-vec3 createSampleDirection(float uniformRandom1, float uniformRandom2)
+vec3 createSampleDirection(float cosTheta, float uniformRandom)
 {
-	float sinTheta = sqrt(1.0f - uniformRandom1 * uniformRandom1); 
-    float phi = 2.0f * M_PI * uniformRandom2; 
+	float sinTheta = sqrt(1.0f - cosTheta * cosTheta); 
+    float phi = 2.0f * M_PI * uniformRandom; 
     float x = sinTheta * cos(phi); 
-    float z = sinTheta * sin(phi); 
-    return vec3(x, uniformRandom1, z); 
+    float y = sinTheta * sin(phi); 
+    return vec3(x, y, cosTheta); 
 }
 
 void main()
@@ -180,11 +170,14 @@ void main()
 	vec4 albedoColor = texture(albedoMaps[textureIndex], texCoords);
 	float roughness = texture(roughnessMaps[textureIndex], texCoords).r;
 
+	rayPayload.color = albedoColor.rgb;
+	return; 
+
 	if (recursionIndex < MAX_RECURSION)
 	{
 		vec3 hitPos = gl_WorldRayOriginNV + normalize(gl_WorldRayDirectionNV) * gl_HitTNV;
 		uint rayFlags = gl_RayFlagsOpaqueNV;
-		uint cullMask = 0xff;
+		uint cullMask = 0x80;
 		float tmin = 0.001;
 		float tmax = 10000.0;
 

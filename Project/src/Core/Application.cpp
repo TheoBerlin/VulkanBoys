@@ -315,6 +315,10 @@ void Application::onKeyPressed(EKey key)
             Input::releaseMouse(m_pWindow);
         }
 	}
+	else if (key == EKey::KEY_R)
+	{
+		m_pRenderer->changeRayTraceRenderMode();
+	}
 }
 
 void Application::onKeyReleased(EKey key)
