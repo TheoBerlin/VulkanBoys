@@ -2,8 +2,9 @@
 
 #include "Vulkan/VulkanCommon.h"
 
+class ShaderBindingTableVK;
+class GraphicsContextVK;
 class PipelineLayoutVK;
-class DeviceVK;
 class ShaderVK;
 
 struct RaygenGroupParams
@@ -28,7 +29,7 @@ class RayTracingPipelineVK
 public:
 	DECL_NO_COPY(RayTracingPipelineVK);
 
-	RayTracingPipelineVK(DeviceVK* pDevice);
+	RayTracingPipelineVK(GraphicsContextVK* pGraphicsContext);
 	~RayTracingPipelineVK();
 
 	void addRaygenShaderGroup(const RaygenGroupParams& params);
@@ -47,11 +48,13 @@ public:
 	
 	uint32_t getNumShaders() { return m_Shaders.size(); }
 
+	ShaderBindingTableVK* getSBT() { return m_pSBT; }
+
 private:
 	void createShaderStageInfo(VkPipelineShaderStageCreateInfo& shaderStageInfo, const ShaderVK* pShader);
 	
 private:
-	DeviceVK* m_pDevice;
+	GraphicsContextVK* m_pGraphicsContext;
 	
 	std::vector<VkRayTracingShaderGroupCreateInfoNV> m_RaygenShaderGroups;
 	std::vector<VkRayTracingShaderGroupCreateInfoNV> m_MissShaderGroups;
@@ -64,4 +67,6 @@ private:
 	uint32_t m_MaxRecursionDepth;
 
 	VkPipeline m_Pipeline;
+
+	ShaderBindingTableVK* m_pSBT;
 };

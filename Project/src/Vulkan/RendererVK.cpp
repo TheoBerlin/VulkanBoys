@@ -357,7 +357,7 @@ bool RendererVK::init()
 	std::cout << "Creating RTX Pipeline Layout" << std::endl;
 	createRayTracingPipelineLayouts();
 
-	m_pRayTracingPipeline = new RayTracingPipelineVK(m_pContext->getDevice());
+	m_pRayTracingPipeline = new RayTracingPipelineVK(m_pContext);
 	m_pRayTracingPipeline->addRaygenShaderGroup(raygenGroupParams);
 	m_pRayTracingPipeline->addMissShaderGroup(missGroupParams);
 	m_pRayTracingPipeline->addMissShaderGroup(missGroupShadowParams);

@@ -1,13 +1,16 @@
 #include "RayTracingPipelineVK.h"
 
+#include "Vulkan/Ray Tracing/ShaderBindingTableVK.h"
+#include "Vulkan/GraphicsContextVK.h"
 #include "Vulkan/DeviceVK.h"
 #include "Vulkan/ShaderVK.h"
 #include "Vulkan/PipelineLayoutVK.h"
 
-RayTracingPipelineVK::RayTracingPipelineVK(DeviceVK* pDevice) :
-	m_pDevice(pDevice),
-	m_MaxRecursionDepth(pDevice->getRayTracingProperties().maxRecursionDepth),
-	m_Pipeline(VK_NULL_HANDLE)
+RayTracingPipelineVK::RayTracingPipelineVK(GraphicsContextVK* pGraphicsContext) :
+	m_pGraphicsContext(pGraphicsContext),
+	m_MaxRecursionDepth(m_pGraphicsContext->getDevice()->getRayTracingProperties().maxRecursionDepth),
+	m_Pipeline(VK_NULL_HANDLE),
+	m_pSBT(nullptr)
 {
 }
 
@@ -15,9 +18,11 @@ RayTracingPipelineVK::~RayTracingPipelineVK()
 {
 	if (m_Pipeline != VK_NULL_HANDLE)
 	{
-		vkDestroyPipeline(m_pDevice->getDevice(), m_Pipeline, nullptr);
+		vkDestroyPipeline(m_pGraphicsContext->getDevice()->getDevice(), m_Pipeline, nullptr);
 		m_Pipeline = VK_NULL_HANDLE;
 	}
+
+	SAFEDELETE(m_pSBT);
 }
 
 void RayTracingPipelineVK::addRaygenShaderGroup(const RaygenGroupParams& params)
@@ -127,9 +132,13 @@ bool RayTracingPipelineVK::finalize(PipelineLayoutVK* pPipelineLayout)
 	rayPipelineInfo.maxRecursionDepth = m_MaxRecursionDepth;
 	rayPipelineInfo.layout = pPipelineLayout->getPipelineLayout();
 	
-	VK_CHECK_RESULT_RETURN_FALSE(m_pDevice->vkCreateRayTracingPipelinesNV(m_pDevice->getDevice(), VK_NULL_HANDLE, 1, &rayPipelineInfo, nullptr, &m_Pipeline), "--- RayTracingPipeline: Failed to create RayTracingPipeline!");
+	VK_CHECK_RESULT_RETURN_FALSE(m_pGraphicsContext->getDevice()->vkCreateRayTracingPipelinesNV(m_pGraphicsContext->getDevice()->getDevice(), VK_NULL_HANDLE, 1, &rayPipelineInfo, nullptr, &m_Pipeline), "--- RayTracingPipeline: Failed to create RayTracingPipeline!");
 
 	LOG("--- RayTracingPipeline: Successfully created RayTracingPipeline!");
+
+	m_pSBT = new ShaderBindingTableVK(m_pGraphicsContext);
+	m_pSBT->init(this);
+
 	return true;
 }
 
