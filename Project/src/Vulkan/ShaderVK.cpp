@@ -82,11 +82,11 @@ void ShaderVK::setSpecializationConstant(uint32_t index, void* pData, uint32_t s
 {
 	uint32_t specializationDataOffset = m_SpecializationData.size();
 	m_SpecializationData.resize(specializationDataOffset + sizeInBytes);
-	memcpy(m_SpecializationData.data(), pData, sizeInBytes);
+	memcpy(specializationDataOffset + m_SpecializationData.data(), pData, sizeInBytes);
 
 	VkSpecializationMapEntry specializationEntry = {};
 	specializationEntry.constantID = index;
-	specializationEntry.offset = 0;
+	specializationEntry.offset = specializationDataOffset;
 	specializationEntry.size = sizeInBytes;
 	m_SpecializationEntries.push_back(specializationEntry);
 
