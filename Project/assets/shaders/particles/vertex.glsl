@@ -26,7 +26,11 @@ layout(binding = 2) uniform CameraDirections
 
 layout (binding = 3) uniform EmitterProperties
 {
-	vec2 particleSize;
+	vec4 position, direction;
+    vec2 particleSize; // Only this variable is used in this shader
+	mat4 centeringRotMatrix;
+    float particleDuration, initialSpeed, spread;
+	float minZ;
 } g_EmitterProperties;
 
 layout (binding = 4) buffer ParticlePositions

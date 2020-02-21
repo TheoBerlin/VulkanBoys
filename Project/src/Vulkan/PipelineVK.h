@@ -21,7 +21,10 @@ public:
 	void setCulling(bool culling) { m_Culling = culling; }
 	void setWireFrame(bool wireframe) { m_WireFrame = wireframe; }
 
+	// Creates a graphics pipeline
 	bool finalize(const std::vector<IShader*>& shaders, RenderPassVK* pRenderPass, PipelineLayoutVK* pPipelineLayout);
+	// Creates a compute pipeline
+	bool finalizeCompute(IShader* shader, PipelineLayoutVK* pPipelineLayout);
 
 	VkPipeline getPipeline() const { return m_Pipeline; }
 

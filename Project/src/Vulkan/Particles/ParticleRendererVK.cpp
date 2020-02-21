@@ -231,14 +231,14 @@ bool ParticleRendererVK::createPipeline()
 	IShader* pVertexShader = m_pGraphicsContext->createShader();
 	pVertexShader->initFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/particles/vertex.spv");
 	if (!pVertexShader->finalize()) {
-        LOG("Failed to create vertex shader for particle emitter handler");
+        LOG("Failed to create vertex shader for particle renderer");
 		return false;
 	}
 
 	IShader* pPixelShader = m_pGraphicsContext->createShader();
 	pPixelShader->initFromFile(EShader::PIXEL_SHADER, "main", "assets/shaders/particles/fragment.spv");
 	if (!pPixelShader->finalize()) {
-		LOG("Failed to create pixel shader for particle emitter handler");
+		LOG("Failed to create pixel shader for particle renderer");
 		return false;
 	}
 

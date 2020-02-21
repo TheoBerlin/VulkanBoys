@@ -29,7 +29,10 @@ struct ParticleBuffer {
 struct EmitterBuffer {
     glm::vec4 position, direction;
     glm::vec2 particleSize;
+    glm::mat4x4 centeringRotMatrix;
     float particleDuration, initialSpeed, spread;
+    // Used when randomizing a direction for new particles
+    float minZ;
 };
 
 class ParticleEmitter
@@ -46,11 +49,10 @@ public:
     bool initializeCPU(IGraphicsContext* pGraphicsContext, const Camera* pCamera);
     bool initializeGPU(IGraphicsContext* pGraphicsContext, const Camera* pCamera);
 
-    void updateCPU(float dt);
-    void updateGPU(float dt);
+    void update(float dt);
 
     const ParticleStorage& getParticleStorage() const { return m_ParticleStorage; }
-    glm::vec2 getParticleSize() const { return m_ParticleSize; }
+    void createEmitterBuffer(EmitterBuffer& emitterBuffer);
     uint32_t getParticleCount() const { return (uint32_t)m_ParticleStorage.positions.size(); }
 
     IBuffer* getParticleBuffer() { return m_pParticleBuffer; }
@@ -64,15 +66,10 @@ private:
     bool createBuffers(IGraphicsContext* pGraphicsContext);
 
     // Spawns particles before the emitter has created its maximum amount of particles
-    void spawnNewParticlesCPU();
-    void moveParticlesCPU(float dt);
-    void respawnOldParticlesCPU();
-    void createParticleCPU(size_t particleIdx, float particleAge);
-
-    void spawnNewParticlesGPU();
-    void moveParticlesGPU(float dt);
-    void respawnOldParticlesGPU();
-    void createParticleGPU(size_t particleIdx, float particleAge);
+    void spawnNewParticles();
+    void moveParticles(float dt);
+    void respawnOldParticles();
+    void createParticle(size_t particleIdx, float particleAge);
 
 private:
     glm::vec3 m_Position, m_Direction;

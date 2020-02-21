@@ -49,17 +49,29 @@ bool ParticleEmitter::initializeCPU(IGraphicsContext* pGraphicsContext, const Ca
     return createBuffers(pGraphicsContext);
 }
 
-void ParticleEmitter::updateCPU(float dt)
+void ParticleEmitter::update(float dt)
 {
     size_t maxParticleCount = m_ParticlesPerSecond * m_ParticleDuration;
     if (m_ParticleStorage.positions.size() < maxParticleCount) {
         m_EmitterAge += dt;
-        spawnNewParticlesCPU();
+        spawnNewParticles();
     }
 
-    moveParticlesCPU(dt);
+    moveParticles(dt);
 
-    respawnOldParticlesCPU();
+    respawnOldParticles();
+}
+
+void ParticleEmitter::createEmitterBuffer(EmitterBuffer& emitterBuffer)
+{
+    emitterBuffer.position = glm::vec4(m_Position, 1.0f);
+    emitterBuffer.direction = glm::vec4(m_Direction, 0.0f);
+    emitterBuffer.particleSize = m_ParticleSize;
+    emitterBuffer.centeringRotMatrix = glm::mat4_cast(m_CenteringRotQuat);
+    emitterBuffer.particleDuration = m_ParticleDuration;
+    emitterBuffer.initialSpeed = m_InitialSpeed;
+    emitterBuffer.spread = m_Spread;
+    emitterBuffer.minZ = std::cos(m_Spread);
 }
 
 bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
@@ -90,10 +102,12 @@ bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
     }
 
     // Put initial data into emitter buffer
-    pGraphicsContext->updateBuffer(m_pEmitterBuffer, 0, &m_ParticleSize, sizeof(glm::vec2));
+    EmitterBuffer emitterBuffer = {};
+    createEmitterBuffer(emitterBuffer);
+    pGraphicsContext->updateBuffer(m_pEmitterBuffer, 0, &emitterBuffer, sizeof(EmitterBuffer));
 }
 
-void ParticleEmitter::spawnNewParticlesCPU()
+void ParticleEmitter::spawnNewParticles()
 {
     size_t particleCount = m_ParticleStorage.positions.size();
     size_t newParticleCount = m_EmitterAge * m_ParticlesPerSecond;
@@ -114,11 +128,11 @@ void ParticleEmitter::spawnNewParticlesCPU()
         float particleAge = m_EmitterAge - spawnTime;
 
         size_t newParticleIdx = particleCount + i;
-        createParticleCPU(newParticleIdx, particleAge);
+        createParticle(newParticleIdx, particleAge);
     }
 }
 
-void ParticleEmitter::moveParticlesCPU(float dt)
+void ParticleEmitter::moveParticles(float dt)
 {
     std::vector<glm::vec4>& positions = m_ParticleStorage.positions;
     std::vector<glm::vec4>& velocities = m_ParticleStorage.velocities;
@@ -131,7 +145,7 @@ void ParticleEmitter::moveParticlesCPU(float dt)
     }
 }
 
-void ParticleEmitter::respawnOldParticlesCPU()
+void ParticleEmitter::respawnOldParticles()
 {
     std::vector<glm::vec4>& positions = m_ParticleStorage.positions;
     std::vector<glm::vec4>& velocities = m_ParticleStorage.velocities;
@@ -150,16 +164,15 @@ void ParticleEmitter::respawnOldParticlesCPU()
             continue;
         }
 
-        createParticleCPU(particleIdx, newParticleAge);
+        createParticle(particleIdx, newParticleAge);
     }
 }
 
-void ParticleEmitter::createParticleCPU(size_t particleIdx, float particleAge)
+void ParticleEmitter::createParticle(size_t particleIdx, float particleAge)
 {
     glm::vec3 particleDirection = m_Direction;
 
     // Randomized unit vector within a cone based on https://math.stackexchange.com/a/205589
-    float minZ = std::cos(m_Spread);
     float z = m_ZRandomizer(m_RandEngine);
     float phi = m_PhiRandomizer(m_RandEngine);
 
@@ -167,9 +180,8 @@ void ParticleEmitter::createParticleCPU(size_t particleIdx, float particleAge)
 
     // Randomized vector given that the cone is centered around (0,0,1)
     glm::vec3 randVec(sqrtZInv * std::cos(phi), sqrtZInv * std::sin(phi), z);
-    const glm::vec3 zVec(0.0f, 0.0f, 1.0f);
 
-    if (m_Direction == zVec) {
+    if (m_Direction == m_ZVec) {
         particleDirection = randVec;
     } else {
         // Rotate the random vector so that the center of the cone is aligned with the emitter

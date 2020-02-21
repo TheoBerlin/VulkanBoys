@@ -20,9 +20,12 @@ public:
     ~IParticleEmitterHandler();
 
     void update(float dt);
+    // Perform particle logic updates on the GPU
     virtual void updateBuffers(IRenderingHandler* pRenderingHandler) = 0;
 
     void initialize(IGraphicsContext* pGraphicsContext, const Camera* pCamera);
+    // Initializes resources for GPU-side computing of particles
+    virtual bool initializeGPUCompute() = 0;
 
     ParticleEmitter* createEmitter(const ParticleEmitterInfo& emitterInfo);
 
@@ -39,4 +42,7 @@ protected:
 
     // Whether to use the GPU or the CPU for updating particle data
     bool m_GPUComputed;
+
+private:
+    virtual void updateGPU(float dt) = 0;
 };

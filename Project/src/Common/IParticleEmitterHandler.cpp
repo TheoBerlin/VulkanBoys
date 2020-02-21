@@ -18,8 +18,12 @@ IParticleEmitterHandler::~IParticleEmitterHandler()
 
 void IParticleEmitterHandler::update(float dt)
 {
-    for (ParticleEmitter* particleEmitter : m_ParticleEmitters) {
-        particleEmitter->updateCPU(dt);
+    if (m_GPUComputed) {
+        updateGPU(dt);
+    } else {
+        for (ParticleEmitter* particleEmitter : m_ParticleEmitters) {
+            particleEmitter->update(dt);
+        }
     }
 }
 
