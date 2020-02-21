@@ -14,22 +14,26 @@
 #include "FrameBufferVK.h"
 #include "TextureCubeVK.h"
 #include "ReflectionProbeVK.h"
+#include "BufferVK.h"
 
 #include <glm/gtc/type_ptr.hpp>
+
+#include <algorithm>
+
+#ifdef max
+	#undef max
+#endif
 
 SkyboxRendererVK::SkyboxRendererVK(DeviceVK* pDevice)
 	: m_pDevice(pDevice),
 	m_pDescriptorPool(nullptr),
 	m_pPanoramaPipeline(nullptr),
-	m_pPanoramaPipelineLayout(nullptr),
+	m_pFilterCubePipelineLayout(nullptr),
 	m_pPanoramaDescriptorSet(nullptr),
-	m_pPanoramaDescriptorSetLayout(nullptr),
+	m_pFilterCubeDescriptorSetLayout(nullptr),
 	m_pCubeFilterSampler(nullptr),
-	m_pPanoramaRenderpass(nullptr),
-	m_pIrradianceRenderpass(nullptr),
+	m_pFilterCubeRenderpass(nullptr),
 	m_pIrradiancePipeline(nullptr),
-	m_pIrradiancePipelineLayout(nullptr),
-	m_pIrradianceDescriptorSetLayout(nullptr),
 	m_ppCommandPools(),
 	m_ppCommandBuffers(),
 	m_CurrentFrame(0)
@@ -44,17 +48,18 @@ SkyboxRendererVK::~SkyboxRendererVK()
 	}
 
 	SAFEDELETE(m_pDescriptorPool);
-	SAFEDELETE(m_pCubeFilterSampler);
-	
-	SAFEDELETE(m_pPanoramaRenderpass);
-	SAFEDELETE(m_pPanoramaPipeline);
-	SAFEDELETE(m_pPanoramaPipelineLayout);
-	SAFEDELETE(m_pPanoramaDescriptorSetLayout);
 
-	SAFEDELETE(m_pIrradianceRenderpass);
+	SAFEDELETE(m_pCubeFilterBuffer);
+	SAFEDELETE(m_pCubeFilterSampler);
+	SAFEDELETE(m_pFilterCubeRenderpass);
+	SAFEDELETE(m_pFilterCubePipelineLayout);
+	SAFEDELETE(m_pFilterCubeDescriptorSetLayout);
+	
+	SAFEDELETE(m_pPanoramaPipeline);
+
 	SAFEDELETE(m_pIrradiancePipeline);
-	SAFEDELETE(m_pIrradiancePipelineLayout);
-	SAFEDELETE(m_pIrradianceDescriptorSetLayout);
+
+	SAFEDELETE(m_pPreFilterPipeline);
 }
 
 bool SkyboxRendererVK::init()
@@ -68,6 +73,17 @@ bool SkyboxRendererVK::init()
 
 	m_pCubeFilterSampler = DBG_NEW SamplerVK(m_pDevice);
 	if (!m_pCubeFilterSampler->init(samplerParams))
+	{
+		return false;
+	}
+
+	BufferParams cubeFilterBufferParams = {};
+	cubeFilterBufferParams.Usage			= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	cubeFilterBufferParams.SizeInBytes		= sizeof(glm::mat4);
+	cubeFilterBufferParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+	m_pCubeFilterBuffer = DBG_NEW BufferVK(m_pDevice);
+	if (!m_pCubeFilterBuffer->init(cubeFilterBufferParams))
 	{
 		return false;
 	}
@@ -98,7 +114,7 @@ bool SkyboxRendererVK::init()
 void SkyboxRendererVK::generateCubemapFromPanorama(TextureCubeVK* pCubemap, Texture2DVK* pPanorama)
 {
 	ReflectionProbeVK* pReflectionProbe = DBG_NEW ReflectionProbeVK(m_pDevice);
-	if (!pReflectionProbe->initFromTextureCube(pCubemap, m_pPanoramaRenderpass))
+	if (!pReflectionProbe->initFromTextureCube(pCubemap, m_pFilterCubeRenderpass))
 	{
 		return;
 	}
@@ -130,7 +146,8 @@ void SkyboxRendererVK::generateCubemapFromPanorama(TextureCubeVK* pCubemap, Text
 	};
 
 	//Setup panorama image
-	m_pPanoramaDescriptorSet->writeCombinedImageDescriptor(pPanorama->getImageView(), m_pCubeFilterSampler, 0);
+	m_pPanoramaDescriptorSet->writeUniformBufferDescriptor(m_pCubeFilterBuffer, 0);
+	m_pPanoramaDescriptorSet->writeCombinedImageDescriptor(pPanorama->getImageView(), m_pCubeFilterSampler, 1);
 
 	//Draw
 	m_ppCommandBuffers[m_CurrentFrame]->reset();
@@ -138,13 +155,13 @@ void SkyboxRendererVK::generateCubemapFromPanorama(TextureCubeVK* pCubemap, Text
 
 	m_ppCommandBuffers[m_CurrentFrame]->begin();
 
-	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPanoramaPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(captureProjection));
+	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCubeFilterBuffer, 0, (const void*)glm::value_ptr(captureProjection), sizeof(glm::mat4));
 
 	m_ppCommandBuffers[m_CurrentFrame]->setViewports(&viewport, 1);
 	m_ppCommandBuffers[m_CurrentFrame]->setScissorRects(&scissorRect, 1);
 
 	m_ppCommandBuffers[m_CurrentFrame]->bindGraphicsPipeline(m_pPanoramaPipeline);
-	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPanoramaPipelineLayout, 0, 1, &m_pPanoramaDescriptorSet, 0, nullptr);
+	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pFilterCubePipelineLayout, 0, 1, &m_pPanoramaDescriptorSet, 0, nullptr);
 
 	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(pCubemap->getImage(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, pCubemap->getMiplevels(), 0, 6);
 
@@ -153,9 +170,9 @@ void SkyboxRendererVK::generateCubemapFromPanorama(TextureCubeVK* pCubemap, Text
 	{
 		FrameBufferVK* pFramebuffer = pReflectionProbe->getFrameBuffer(i, 0);
 
-		m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pPanoramaRenderpass, pFramebuffer, width, width, &clearValue, 1);
+		m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pFilterCubeRenderpass, pFramebuffer, width, width, &clearValue, 1);
 
-		m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPanoramaPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(glm::mat4), sizeof(glm::mat4), (const void*)glm::value_ptr(captureViews[i]));
+		m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pFilterCubePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(captureViews[i]));
 		m_ppCommandBuffers[m_CurrentFrame]->drawInstanced(36, 1, 0, 0);
 
 		m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
@@ -173,7 +190,7 @@ void SkyboxRendererVK::generateCubemapFromPanorama(TextureCubeVK* pCubemap, Text
 void SkyboxRendererVK::generateIrradiance(TextureCubeVK* pCubemap, TextureCubeVK* pIrradianceMap)
 {
 	ReflectionProbeVK* pReflectionProbe = DBG_NEW ReflectionProbeVK(m_pDevice);
-	if (!pReflectionProbe->initFromTextureCube(pIrradianceMap, m_pPanoramaRenderpass))
+	if (!pReflectionProbe->initFromTextureCube(pIrradianceMap, m_pFilterCubeRenderpass))
 	{
 		return;
 	}
@@ -205,7 +222,8 @@ void SkyboxRendererVK::generateIrradiance(TextureCubeVK* pCubemap, TextureCubeVK
 	};
 
 	//Setup panorama image
-	m_pIrradianceDescriptorSet->writeCombinedImageDescriptor(pCubemap->getImageView(), m_pCubeFilterSampler, 0);
+	m_pIrradianceDescriptorSet->writeUniformBufferDescriptor(m_pCubeFilterBuffer, 0);
+	m_pIrradianceDescriptorSet->writeCombinedImageDescriptor(pCubemap->getImageView(), m_pCubeFilterSampler, 1);
 
 	//Draw
 	m_ppCommandBuffers[m_CurrentFrame]->reset();
@@ -213,13 +231,13 @@ void SkyboxRendererVK::generateIrradiance(TextureCubeVK* pCubemap, TextureCubeVK
 
 	m_ppCommandBuffers[m_CurrentFrame]->begin();
 
-	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pIrradiancePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(captureProjection));
+	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCubeFilterBuffer, 0, (const void*)glm::value_ptr(captureProjection), sizeof(glm::mat4));
 
 	m_ppCommandBuffers[m_CurrentFrame]->setViewports(&viewport, 1);
 	m_ppCommandBuffers[m_CurrentFrame]->setScissorRects(&scissorRect, 1);
 
 	m_ppCommandBuffers[m_CurrentFrame]->bindGraphicsPipeline(m_pIrradiancePipeline);
-	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pIrradiancePipelineLayout, 0, 1, &m_pIrradianceDescriptorSet, 0, nullptr);
+	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pFilterCubePipelineLayout, 0, 1, &m_pIrradianceDescriptorSet, 0, nullptr);
 
 	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(pIrradianceMap->getImage(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, pIrradianceMap->getMiplevels(), 0, 6);
 
@@ -228,9 +246,9 @@ void SkyboxRendererVK::generateIrradiance(TextureCubeVK* pCubemap, TextureCubeVK
 	{
 		FrameBufferVK* pFramebuffer = pReflectionProbe->getFrameBuffer(i, 0);
 
-		m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pIrradianceRenderpass, pFramebuffer, width, width, &clearValue, 1);
+		m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pFilterCubeRenderpass, pFramebuffer, width, width, &clearValue, 1);
 
-		m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pIrradiancePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, sizeof(glm::mat4), sizeof(glm::mat4), (const void*)glm::value_ptr(captureViews[i]));
+		m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pFilterCubePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(captureViews[i]));
 		m_ppCommandBuffers[m_CurrentFrame]->drawInstanced(36, 1, 0, 0);
 
 		m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
@@ -247,7 +265,89 @@ void SkyboxRendererVK::generateIrradiance(TextureCubeVK* pCubemap, TextureCubeVK
 
 void SkyboxRendererVK::prefilterEnvironmentMap(TextureCubeVK* pCubemap, TextureCubeVK* pEnvironmentMap)
 {
+	ReflectionProbeVK* pReflectionProbe = DBG_NEW ReflectionProbeVK(m_pDevice);
+	if (!pReflectionProbe->initFromTextureCube(pEnvironmentMap, m_pFilterCubeRenderpass))
+	{
+		return;
+	}
 
+	//Setup
+	const uint32_t width		= pEnvironmentMap->getWidth();
+	const uint32_t miplevels	= pEnvironmentMap->getMiplevels();
+
+	glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+	glm::mat4 captureViews[] =
+	{
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+	   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
+	};
+
+	//Setup panorama image
+	m_pPreFilterDescriptorSet->writeUniformBufferDescriptor(m_pCubeFilterBuffer, 0);
+	m_pPreFilterDescriptorSet->writeCombinedImageDescriptor(pCubemap->getImageView(), m_pCubeFilterSampler, 1);
+
+	//Draw
+	m_ppCommandBuffers[m_CurrentFrame]->reset();
+	m_ppCommandPools[m_CurrentFrame]->reset();
+
+	m_ppCommandBuffers[m_CurrentFrame]->begin();
+
+	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCubeFilterBuffer, 0, (const void*)glm::value_ptr(captureProjection), sizeof(glm::mat4));
+
+	m_ppCommandBuffers[m_CurrentFrame]->bindGraphicsPipeline(m_pPreFilterPipeline);
+	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pFilterCubePipelineLayout, 0, 1, &m_pPreFilterDescriptorSet, 0, nullptr);
+
+	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(pEnvironmentMap->getImage(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, pEnvironmentMap->getMiplevels(), 0, 6);
+
+	VkViewport viewport = {};
+	viewport.width		= float(width);
+	viewport.height		= viewport.width;
+	viewport.x			= 0.0f;
+	viewport.y			= 0.0f;
+	viewport.minDepth	= 0.0f;
+	viewport.maxDepth	= 1.0f;
+
+	VkRect2D scissorRect = {};
+	scissorRect.offset = { 0, 0 };
+	scissorRect.extent = { width, width };
+
+	VkClearValue clearValue = { 1.0f, 1.0f, 1.0f, 1.0f };
+	for (uint32_t mip = 0; mip < miplevels; mip++)
+	{
+		m_ppCommandBuffers[m_CurrentFrame]->setViewports(&viewport, 1);
+		m_ppCommandBuffers[m_CurrentFrame]->setScissorRects(&scissorRect, 1);
+
+		const float roughness = float(mip) / float(miplevels - 1);
+		m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pFilterCubePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(float), (const void*)&roughness);
+
+		for (uint32_t i = 0; i < 6; i++)
+		{
+			FrameBufferVK* pFramebuffer = pReflectionProbe->getFrameBuffer(i, mip);
+
+			m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pFilterCubeRenderpass, pFramebuffer, scissorRect.extent.width, scissorRect.extent.height, &clearValue, 1);
+
+			m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pFilterCubePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(captureViews[i]));
+			m_ppCommandBuffers[m_CurrentFrame]->drawInstanced(36, 1, 0, 0);
+
+			m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
+		}
+
+		scissorRect.extent = { std::max(scissorRect.extent.width / 2U, 1U), std::max(scissorRect.extent.height / 2U, 1U) };
+		viewport.width	= float(scissorRect.extent.width);
+		viewport.height = viewport.width;
+	}
+
+	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(pEnvironmentMap->getImage(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, pEnvironmentMap->getMiplevels(), 0, 6);
+	m_ppCommandBuffers[m_CurrentFrame]->end();
+
+	m_pDevice->executeCommandBuffer(m_pDevice->getGraphicsQueue(), m_ppCommandBuffers[m_CurrentFrame], nullptr, 0, 0, nullptr, 0);
+	m_pDevice->wait();
+
+	SAFEDELETE(pReflectionProbe);
 }
 
 bool SkyboxRendererVK::createCommandpoolsAndBuffers()
@@ -285,58 +385,51 @@ bool SkyboxRendererVK::createPipelineLayouts()
 		return false;
 	}
 
-	//Generate cubemap
-	m_pPanoramaDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(m_pDevice);
-	m_pPanoramaDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, 0, 1);
-	if (!m_pPanoramaDescriptorSetLayout->finalize())
+	m_pFilterCubeDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(m_pDevice);
+	m_pFilterCubeDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0, 1);
+	m_pFilterCubeDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, 1, 1);
+	if (!m_pFilterCubeDescriptorSetLayout->finalize())
 	{
 		return false;
 	}
 
-	m_pPanoramaDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pPanoramaDescriptorSetLayout);
+	//Generate cubemap
+	m_pPanoramaDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pFilterCubeDescriptorSetLayout);
 	if (!m_pPanoramaDescriptorSet)
+	{
+		return false;
+	}
+
+	//Generate irradiance
+	m_pIrradianceDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pFilterCubeDescriptorSetLayout);
+	if (!m_pIrradianceDescriptorSet)
+	{
+		return false;
+	}
+
+	//Pre-Filter environmentmap
+	m_pPreFilterDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pFilterCubeDescriptorSetLayout);
+	if (!m_pPreFilterDescriptorSet)
 	{
 		return false;
 	}
 
 	//Matrices
 	VkPushConstantRange pushConstantRange = {};
-	pushConstantRange.size			= sizeof(glm::mat4) * 2;
-	pushConstantRange.stageFlags	= VK_SHADER_STAGE_VERTEX_BIT;
+	pushConstantRange.size			= sizeof(glm::mat4) + sizeof(float);
+	pushConstantRange.stageFlags	= VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 	pushConstantRange.offset		= 0;
 
-	std::vector<VkPushConstantRange> pushConstantRanges = { pushConstantRange };
-	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { m_pPanoramaDescriptorSetLayout };
+	std::vector<VkPushConstantRange> pushConstantRanges				= { pushConstantRange };
+	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts	= { m_pFilterCubeDescriptorSetLayout };
 
-	m_pPanoramaPipelineLayout = DBG_NEW PipelineLayoutVK(m_pDevice);
-	if (!m_pPanoramaPipelineLayout->init(descriptorSetLayouts, pushConstantRanges))
-	{
-		return false;
-	}
-
-	//Generate irradiance
-	m_pIrradianceDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(m_pDevice);
-	m_pIrradianceDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, 0, 1);
-	if (!m_pIrradianceDescriptorSetLayout->finalize())
-	{
-		return false;
-	}
-
-	m_pIrradianceDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pIrradianceDescriptorSetLayout);
-	if (!m_pIrradianceDescriptorSet)
-	{
-		return false;
-	}
-
-	descriptorSetLayouts = { m_pIrradianceDescriptorSetLayout };
-
-	m_pIrradiancePipelineLayout = DBG_NEW PipelineLayoutVK(m_pDevice);
-	return m_pIrradiancePipelineLayout->init(descriptorSetLayouts, pushConstantRanges);
+	m_pFilterCubePipelineLayout = DBG_NEW PipelineLayoutVK(m_pDevice);
+	return m_pFilterCubePipelineLayout->init(descriptorSetLayouts, pushConstantRanges);
 }
 
 bool SkyboxRendererVK::createPipelines()
 {
-	//Genrate cubemaps
+	//Generate cubemaps
 	ShaderVK* pVertexShader = DBG_NEW ShaderVK(m_pDevice);
 	pVertexShader->initFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/filterCubemap.spv");
 	if (!pVertexShader->finalize())
@@ -373,14 +466,14 @@ bool SkyboxRendererVK::createPipelines()
 	m_pPanoramaPipeline->setDepthStencilState(depthStencilState);
 
 	std::vector<IShader*> shaders = { pVertexShader, pPixelShader };
-	if (!m_pPanoramaPipeline->finalize(shaders, m_pPanoramaRenderpass, m_pPanoramaPipelineLayout))
+	if (!m_pPanoramaPipeline->finalize(shaders, m_pFilterCubeRenderpass, m_pFilterCubePipelineLayout))
 	{
 		return false;
 	}
 
 	SAFEDELETE(pPixelShader);
 
-	//Genrate irradiance
+	//Generate irradiance
 	pPixelShader = DBG_NEW ShaderVK(m_pDevice);
 	pPixelShader->initFromFile(EShader::PIXEL_SHADER, "main", "assets/shaders/genIrradianceFragment.spv");
 	if (!pPixelShader->finalize())
@@ -394,7 +487,28 @@ bool SkyboxRendererVK::createPipelines()
 	m_pIrradiancePipeline->setDepthStencilState(depthStencilState);
 
 	shaders = { pVertexShader, pPixelShader };
-	if (!m_pIrradiancePipeline->finalize(shaders, m_pIrradianceRenderpass, m_pIrradiancePipelineLayout))
+	if (!m_pIrradiancePipeline->finalize(shaders, m_pFilterCubeRenderpass, m_pFilterCubePipelineLayout))
+	{
+		return false;
+	}
+
+	SAFEDELETE(pPixelShader);
+
+	//Pre-Filter environmentmap
+	pPixelShader = DBG_NEW ShaderVK(m_pDevice);
+	pPixelShader->initFromFile(EShader::PIXEL_SHADER, "main", "assets/shaders/preFilterEnvironment.spv");
+	if (!pPixelShader->finalize())
+	{
+		return false;
+	}
+
+	m_pPreFilterPipeline = DBG_NEW PipelineVK(m_pDevice);
+	m_pPreFilterPipeline->addColorBlendAttachment(blendAttachment);
+	m_pPreFilterPipeline->setRasterizerState(rasterizerState);
+	m_pPreFilterPipeline->setDepthStencilState(depthStencilState);
+
+	shaders = { pVertexShader, pPixelShader };
+	if (!m_pPreFilterPipeline->finalize(shaders, m_pFilterCubeRenderpass, m_pFilterCubePipelineLayout))
 	{
 		return false;
 	}
@@ -407,8 +521,8 @@ bool SkyboxRendererVK::createPipelines()
 
 bool SkyboxRendererVK::createRenderPasses()
 {
-	//Create renderpass for panorama
-	m_pPanoramaRenderpass = DBG_NEW RenderPassVK(m_pDevice);
+	//Create renderpass for filter cubes
+	m_pFilterCubeRenderpass = DBG_NEW RenderPassVK(m_pDevice);
 	VkAttachmentDescription description = {};
 	description.format			= VK_FORMAT_R16G16B16A16_SFLOAT;
 	description.samples			= VK_SAMPLE_COUNT_1_BIT;
@@ -418,12 +532,12 @@ bool SkyboxRendererVK::createRenderPasses()
 	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
 	description.finalLayout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	m_pPanoramaRenderpass->addAttachment(description);
+	m_pFilterCubeRenderpass->addAttachment(description);
 
 	VkAttachmentReference colorAttachmentRef = {};
 	colorAttachmentRef.attachment	= 0;
 	colorAttachmentRef.layout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	m_pPanoramaRenderpass->addSubpass(&colorAttachmentRef, 1, nullptr);
+	m_pFilterCubeRenderpass->addSubpass(&colorAttachmentRef, 1, nullptr);
 
 	VkSubpassDependency dependency = {};
 	dependency.dependencyFlags	= VK_DEPENDENCY_BY_REGION_BIT;
@@ -434,16 +548,6 @@ bool SkyboxRendererVK::createRenderPasses()
 	dependency.srcAccessMask	= 0;
 	dependency.dstAccessMask	= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-	m_pPanoramaRenderpass->addSubpassDependency(dependency);
-	if (!m_pPanoramaRenderpass->finalize())
-	{
-		return false;
-	}
-
-	//Create renderpass for irradiance generation
-	m_pIrradianceRenderpass = DBG_NEW RenderPassVK(m_pDevice);
-	m_pIrradianceRenderpass->addAttachment(description);
-	m_pIrradianceRenderpass->addSubpass(&colorAttachmentRef, 1, nullptr);
-	m_pIrradianceRenderpass->addSubpassDependency(dependency);
-	return m_pIrradianceRenderpass->finalize();
+	m_pFilterCubeRenderpass->addSubpassDependency(dependency);
+	return m_pFilterCubeRenderpass->finalize();
 }

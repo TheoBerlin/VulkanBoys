@@ -15,11 +15,11 @@ public:
 
 	void addVertexBinding(uint32_t binding, VkVertexInputRate inputRate, uint32_t stride);
 	void addVertexAttribute(uint32_t binding, VkFormat format, uint32_t location, uint32_t offset);
-	void addColorBlendAttachment(VkPipelineColorBlendAttachmentState colorBlendAttachment);
+	void addColorBlendAttachment(const VkPipelineColorBlendAttachmentState& colorBlendAttachment);
 
 	void setInputAssembly(VkPrimitiveTopology topology, bool primitiveRestartEnable);
-	void setRasterizerState(VkPipelineRasterizationStateCreateInfo rasterizerState);
-	void setDepthStencilState(VkPipelineDepthStencilStateCreateInfo depthStencilState);
+	void setRasterizerState(const VkPipelineRasterizationStateCreateInfo& rasterizerState);
+	void setDepthStencilState(const VkPipelineDepthStencilStateCreateInfo& depthStencilState);
 	void setBlendState(VkLogicOp logicOp, bool logicOpEnable, float blendConstants[4]);
 
 	bool finalize(const std::vector<IShader*>& shaders, RenderPassVK* pRenderPass, PipelineLayoutVK* pPipelineLayout);

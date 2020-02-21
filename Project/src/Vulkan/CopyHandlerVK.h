@@ -9,7 +9,7 @@ class BufferVK;
 class CommandPoolVK;
 class CommandBufferVK;
 
-#define MAX_COMMAND_BUFFERS 3
+#define MAX_COMMAND_BUFFERS 6
 
 class CopyHandlerVK
 {

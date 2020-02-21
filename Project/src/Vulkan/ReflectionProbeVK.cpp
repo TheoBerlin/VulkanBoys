@@ -3,6 +3,12 @@
 #include "FrameBufferVK.h"
 #include "ImageViewVK.h"
 
+#include <algorithm>
+
+#ifdef max
+	#undef max
+#endif
+
 ReflectionProbeVK::ReflectionProbeVK(DeviceVK* pDevice)
 	: m_pDevice(pDevice),
 	m_FrameBuffers(),
@@ -25,7 +31,6 @@ ReflectionProbeVK::~ReflectionProbeVK()
 bool ReflectionProbeVK::initFromTextureCube(TextureCubeVK* pCubemap, RenderPassVK* pRenderPass)
 {
 	ImageVK* pImage = pCubemap->getImage();
-	const uint32_t size				= pCubemap->getWidth();
 	const uint32_t miplevels		= pCubemap->getMiplevels();
 	const uint32_t frameBufferCount = miplevels * 6;
 
@@ -38,6 +43,7 @@ bool ReflectionProbeVK::initFromTextureCube(TextureCubeVK* pCubemap, RenderPassV
 	m_ImageViews.resize(frameBufferCount);
 	m_FrameBuffers.resize(frameBufferCount);
 
+	uint32_t size = pCubemap->getWidth();
 	for (uint32_t mip = 0; mip < miplevels; mip++)
 	{
 		imageViewParams.FirstMipLevel = mip;
@@ -60,6 +66,8 @@ bool ReflectionProbeVK::initFromTextureCube(TextureCubeVK* pCubemap, RenderPassV
 				return false;
 			}
 		}
+
+		size = std::max(size / 2U, 1U);
 	}
 
 	return true;

@@ -622,14 +622,14 @@ bool ImguiVK::createFontTexture()
 {
 	ImGuiIO& io = ImGui::GetIO();
 
-	uint8_t* pPixels = nullptr;
-	int32_t width	= 0;
-	int32_t height	= 0;
+	uint8_t* pPixels	= nullptr;
+	int32_t width		= 0;
+	int32_t height		= 0;
 	io.Fonts->GetTexDataAsRGBA32(&pPixels, &width, &height);
-	size_t uploadSize = width * height * 4;
+	int32_t uploadSize	= width * height * 4;
 
 	m_pFontTexture = m_pContext->createTexture2D();
-	return m_pFontTexture->initFromMemory(pPixels, width, height, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+	return m_pFontTexture->initFromMemory(pPixels, width, height, ETextureFormat::FORMAT_R8G8B8A8_UNORM, 0, false);
 }
 
 bool ImguiVK::createBuffers(uint32_t vertexBufferSize, uint32_t indexBufferSize)

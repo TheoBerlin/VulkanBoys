@@ -57,13 +57,13 @@ bool Texture2DVK::initFromFile(const std::string& filename, ETextureFormat forma
 
 	LOG("-- LOADED TEXTURE: %s", filename.c_str());
 
-	bool result = initFromMemory(pPixels, texWidth, texHeight, format, generateMips);
+	bool result = initFromMemory(pPixels, texWidth, texHeight, format, 0, generateMips);
 	stbi_image_free(pPixels);
 	
 	return result;
 }
 
-bool Texture2DVK::initFromMemory(const void* pData, uint32_t width, uint32_t height, ETextureFormat format, bool generateMips)
+bool Texture2DVK::initFromMemory(const void* pData, uint32_t width, uint32_t height, ETextureFormat format, uint32_t usageFlags, bool generateMips)
 {
 	uint32_t miplevels = 1U;
 	if (generateMips)
@@ -80,7 +80,7 @@ bool Texture2DVK::initFromMemory(const void* pData, uint32_t width, uint32_t hei
 	imageParams.Samples			= VK_SAMPLE_COUNT_1_BIT;
 	imageParams.ArrayLayers		= 1;
 	imageParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	imageParams.Usage			= VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	imageParams.Usage			= VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | usageFlags;
 	imageParams.Format			= convertFormat(format);
 	
 	if (generateMips)

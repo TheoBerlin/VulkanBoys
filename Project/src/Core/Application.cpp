@@ -91,7 +91,7 @@ void Application::init()
 
 	//Setup camera
 	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
-	m_Camera.setPosition(glm::vec3(0.0f, 1.0f, 0.0f));
+	m_Camera.setPosition(glm::vec3(0.0f, 1.0f, -3.0f));
 	m_Camera.setProjection(90.0f, m_pWindow->getWidth(), m_pWindow->getHeight(), 0.01f, 100.0f);
 	m_Camera.update();
 
@@ -100,7 +100,7 @@ void Application::init()
 	TaskDispatcher::execute([&]
 		{
 			pPanorama->initFromFile("assets/textures/arches.hdr", ETextureFormat::FORMAT_R32G32B32A32_FLOAT, false);
-			m_pSkybox = m_pRenderer->generateTextureCubeFromPanorama(pPanorama, 1024, 1, ETextureFormat::FORMAT_R16G16B16A16_FLOAT);
+			m_pSkybox = m_pRenderer->generateTextureCubeFromPanorama(pPanorama, 2048, 1, ETextureFormat::FORMAT_R16G16B16A16_FLOAT);
 		});
 
 	m_pMesh = m_pContext->createMesh();

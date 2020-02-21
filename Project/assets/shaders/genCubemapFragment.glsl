@@ -4,7 +4,7 @@
 layout(location = 0) in 	vec3 in_Position;
 layout(location = 0) out 	vec4 out_Color;
 
-layout(binding = 0) uniform sampler2D u_Panorama;
+layout(binding = 1) uniform sampler2D u_Panorama;
 
 const vec2 invAtan = vec2(0.1591f, -0.3183f);
 

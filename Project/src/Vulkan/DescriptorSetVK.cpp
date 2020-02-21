@@ -75,15 +75,15 @@ void DescriptorSetVK::writeImageDescriptor(ImageViewVK* pImageView, SamplerVK* p
     imageInfo.imageLayout   = layout;
 
     VkWriteDescriptorSet descriptorImageWrite = {};
-    descriptorImageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorImageWrite.dstSet = m_DescriptorSet;
-    descriptorImageWrite.dstBinding = binding;
-    descriptorImageWrite.dstArrayElement = 0;
-    descriptorImageWrite.descriptorType = descriptorType;
-    descriptorImageWrite.descriptorCount = 1;
-    descriptorImageWrite.pBufferInfo = nullptr;
-    descriptorImageWrite.pImageInfo = &imageInfo;
-    descriptorImageWrite.pTexelBufferView = nullptr;
+    descriptorImageWrite.sType              = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorImageWrite.dstSet             = m_DescriptorSet;
+    descriptorImageWrite.dstBinding         = binding;
+    descriptorImageWrite.dstArrayElement    = 0;
+    descriptorImageWrite.descriptorType     = descriptorType;
+    descriptorImageWrite.descriptorCount    = 1;
+    descriptorImageWrite.pBufferInfo        = nullptr;
+    descriptorImageWrite.pImageInfo         = &imageInfo;
+    descriptorImageWrite.pTexelBufferView   = nullptr;
 
     vkUpdateDescriptorSets(m_pDevice->getDevice(), 1, &descriptorImageWrite, 0, nullptr);
 }

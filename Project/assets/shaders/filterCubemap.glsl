@@ -54,10 +54,15 @@ const vec3 positions[36] = vec3[]
 	vec3( 1.0f,  1.0f,  1.0f)  
 );
 
+layout (binding = 0) uniform Camera 
+{ 
+	mat4 Projection; 
+} camera;
+
 layout (push_constant) uniform Constants
 {
-	mat4 Projection;
 	mat4 View;
+	float Roughness;
 } constants;
 
 void main() 
@@ -65,5 +70,5 @@ void main()
 	vec3 position 	= positions[gl_VertexIndex];
 	out_Position	= position;
 	
-	gl_Position 	= constants.Projection * constants.View * vec4(position, 1.0f);
+	gl_Position 	= camera.Projection * constants.View * vec4(position, 1.0f);
 }

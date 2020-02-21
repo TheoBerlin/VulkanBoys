@@ -4,7 +4,7 @@
 layout(location = 0) in     vec3 in_Position;
 layout(location = 0) out    vec4 out_Color;
 
-layout(binding = 0) uniform samplerCube u_EnvMap; 
+layout(binding = 1) uniform samplerCube u_EnvMap; 
 
 const float PI = 3.14159265359f;
 

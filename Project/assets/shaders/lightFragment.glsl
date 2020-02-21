@@ -1,7 +1,8 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-#define MAX_POINT_LIGHTS 13
+#define MAX_POINT_LIGHTS 	13
+#define MAX_REFLECTION_MIPS 6.0f
 
 layout(location = 0) in vec2	in_TexCoord;
 layout(location = 0) out vec4	out_Color;
@@ -10,6 +11,8 @@ layout(binding = 1) uniform sampler2D 	u_Albedo;
 layout(binding = 2) uniform sampler2D 	u_Normal;
 layout(binding = 3) uniform sampler2D 	u_WorldPosition;
 layout(binding = 4) uniform samplerCube u_IrradianceMap;
+layout(binding = 5) uniform samplerCube u_EnvironmentMap;
+layout(binding = 6) uniform sampler2D 	u_BrdfLUT;
 
 struct PointLight
 {
@@ -24,7 +27,7 @@ layout (binding = 0) uniform PerFrameBuffer
 	vec4 Position;
 } g_PerFrame;
 
-layout (binding = 5) uniform LightBuffer
+layout (binding = 7) uniform LightBuffer
 {
 	PointLight lights[MAX_POINT_LIGHTS];
 } u_Lights;
@@ -159,9 +162,16 @@ void main()
 	//Irradiance from surroundings
 	vec3 irradiance = texture(u_IrradianceMap, normal).rgb;
 	vec3 diffuse 	= irradiance * albedo;
-	vec3 kDiffuse 	= vec3(1.0f) - FresnelRoughness(f0, clamp(dot(normal, viewDir), 0.0f, 1.0f), roughness); 
-	vec3 ambient 	= kDiffuse * diffuse * ao;
+	vec3 f 			= FresnelRoughness(f0, clamp(dot(normal, viewDir), 0.0f, 1.0f), roughness);
+	vec3 kDiffuse 	= vec3(1.0f) - f;
 
+	vec3 reflection 		= reflect(-viewDir, normal);
+	vec3 prefilteredColor 	= textureLod(u_EnvironmentMap, reflection, roughness * MAX_REFLECTION_MIPS).rgb;
+	
+	vec2 envBRDF 	= texture(u_BrdfLUT, vec2(max(dot(normal, viewDir), 0.0f), roughness)).rg;
+	vec3 specular	= prefilteredColor * (f * envBRDF.x + envBRDF.y);
+
+	vec3 ambient 	= (kDiffuse * diffuse + specular) * ao;
 	vec3 finalColor = ambient + L0;
     out_Color = ColorPost(finalColor);
 }

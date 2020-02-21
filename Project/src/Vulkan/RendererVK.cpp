@@ -44,6 +44,8 @@ RendererVK::RendererVK(GraphicsContextVK* pContext)
 	m_pLightDescriptorSetLayout(nullptr),
 	m_pCameraBuffer(nullptr),
 	m_pLightBuffer(nullptr),
+	m_pEnvironmentMap(nullptr),
+	m_pIntegrationLUT(nullptr),
 	m_ClearColor(),
 	m_ClearDepth(),
 	m_Viewport(),
@@ -71,6 +73,9 @@ RendererVK::~RendererVK()
 		}
 	}
 
+	SAFEDELETE(m_pBRDFSampler);
+	SAFEDELETE(m_pIntegrationLUT);
+	SAFEDELETE(m_pEnvironmentMap);
 	SAFEDELETE(m_pIrradianceMap);
 	SAFEDELETE(m_pSkyboxSampler);
 	SAFEDELETE(m_pSkyboxPipeline);
@@ -151,11 +156,17 @@ bool RendererVK::init()
 		return false;
 	}
 
+	if (!generateBRDFLookUp())
+	{
+		return false;
+	}
+
 	m_pLightDescriptorSet->writeCombinedImageDescriptor(m_pGBuffer->getColorAttachment(0), m_pGBufferSampler, GBUFFER_ALBEDO_BINDING);
 	m_pLightDescriptorSet->writeCombinedImageDescriptor(m_pGBuffer->getColorAttachment(1), m_pGBufferSampler, GBUFFER_NORMAL_BINDING);
 	m_pLightDescriptorSet->writeCombinedImageDescriptor(m_pGBuffer->getColorAttachment(2), m_pGBufferSampler, GBUFFER_POSITION_BINDING);
 	m_pLightDescriptorSet->writeUniformBufferDescriptor(m_pLightBuffer, LIGHT_BUFFER_BINDING);
 	m_pLightDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer, CAMERA_BUFFER_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptor(m_pIntegrationLUT->getImageView(), m_pBRDFSampler, BRDF_LUT_BINDING);
 
 	m_pSkyboxDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer, 0);
 
@@ -275,7 +286,7 @@ void RendererVK::setSkybox(ITextureCube* pSkybox)
 	}
 
 	constexpr uint32_t size = 128;
-	const uint32_t miplevels = std::floor(std::log2(size)) + 1U;;
+	const uint32_t miplevels = 5; //std::floor(std::log2(size)) + 1U;;
 
 	//Generate pre filtered environmentmap
 	m_pEnvironmentMap = DBG_NEW TextureCubeVK(m_pContext->getDevice());
@@ -286,6 +297,7 @@ void RendererVK::setSkybox(ITextureCube* pSkybox)
 
 	m_pSkyboxDescriptorSet->writeCombinedImageDescriptor(m_pSkybox->getImageView(), m_pSkyboxSampler, 1);
 	m_pLightDescriptorSet->writeCombinedImageDescriptor(m_pIrradianceMap->getImageView(), m_pSkyboxSampler, IRRADIANCE_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptor(m_pEnvironmentMap->getImageView(), m_pSkyboxSampler, ENVIRONMENT_BINDING);
 }
 
 void RendererVK::setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY)
@@ -333,6 +345,164 @@ void RendererVK::submitMesh(IMesh* pMesh, const Material& material, const glm::m
 void RendererVK::drawImgui(IImgui* pImgui)
 {
 	pImgui->render(m_ppCommandBuffers[m_CurrentFrame]);
+}
+
+bool RendererVK::generateBRDFLookUp()
+{
+	constexpr uint32_t size = 512;
+
+	m_pIntegrationLUT = DBG_NEW Texture2DVK(m_pContext->getDevice());
+	if (!m_pIntegrationLUT->initFromMemory(nullptr, size, size, ETextureFormat::FORMAT_R16G16B16A16_FLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false))
+	{
+		return false;
+	}
+
+	RenderPassVK* pRenderPass = DBG_NEW RenderPassVK(m_pContext->getDevice());
+	
+	VkAttachmentDescription attachment = {};
+	attachment.flags			= 0;
+	attachment.format			= VK_FORMAT_R16G16B16A16_SFLOAT;
+	attachment.samples			= VK_SAMPLE_COUNT_1_BIT;
+	attachment.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
+	attachment.finalLayout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	attachment.loadOp			= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachment.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
+	attachment.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachment.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	pRenderPass->addAttachment(attachment);
+
+	VkAttachmentReference attachmentRef = {};
+	attachmentRef.attachment	= 0;
+	attachmentRef.layout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	pRenderPass->addSubpass(&attachmentRef, 1, nullptr);
+
+	VkSubpassDependency dependency = {};
+	dependency.srcSubpass		= VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass		= 0;
+	dependency.dependencyFlags	= VK_DEPENDENCY_BY_REGION_BIT;
+	dependency.srcAccessMask	= 0;
+	dependency.dstAccessMask	= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	dependency.srcStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.dstStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	pRenderPass->addSubpassDependency(dependency);
+	if (!pRenderPass->finalize())
+	{
+		return false;
+	}
+
+	ImageViewParams imageViewParams = {};
+	imageViewParams.Type			= VK_IMAGE_VIEW_TYPE_2D;
+	imageViewParams.FirstLayer		= 0;
+	imageViewParams.LayerCount		= 1;
+	imageViewParams.FirstMipLevel	= 0;
+	imageViewParams.MipLevels		= 1;
+	imageViewParams.AspectFlags		= VK_IMAGE_ASPECT_COLOR_BIT;
+	
+	ImageViewVK* pImageView = DBG_NEW ImageViewVK(m_pContext->getDevice(), m_pIntegrationLUT->getImage());
+	if (!pImageView->init(imageViewParams))
+	{
+		return false;
+	}
+
+	FrameBufferVK* pFrameBuffer = DBG_NEW FrameBufferVK(m_pContext->getDevice());
+	pFrameBuffer->addColorAttachment(pImageView);
+	if (!pFrameBuffer->finalize(pRenderPass, size, size))
+	{
+		return false;
+	}
+
+	IShader* pVertexShader = m_pContext->createShader();
+	pVertexShader->initFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/fullscreenVertex.spv");
+	if (!pVertexShader->finalize())
+	{
+		return false;
+	}
+
+	IShader* pPixelShader = m_pContext->createShader();
+	pPixelShader->initFromFile(EShader::PIXEL_SHADER, "main", "assets/shaders/genIntegrationMap.spv");
+	if (!pPixelShader->finalize())
+	{
+		return false;
+	}
+
+	std::vector<VkPushConstantRange> pushConstantRanges = {};
+	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = {};
+
+	PipelineLayoutVK* pPipelineLayout = DBG_NEW PipelineLayoutVK(m_pContext->getDevice());
+	if (!pPipelineLayout->init(descriptorSetLayouts, pushConstantRanges))
+	{
+		return false;
+	}
+
+	PipelineVK* pPipeline = DBG_NEW PipelineVK(m_pContext->getDevice());
+	
+	VkPipelineColorBlendAttachmentState blendstate = {};
+	blendstate.blendEnable		= VK_FALSE;
+	blendstate.colorWriteMask	= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	pPipeline->addColorBlendAttachment(blendstate);
+
+	VkPipelineDepthStencilStateCreateInfo depthState = {};
+	depthState.depthTestEnable		= VK_FALSE;
+	depthState.depthWriteEnable		= VK_FALSE;
+	depthState.stencilTestEnable	= VK_FALSE;
+	pPipeline->setDepthStencilState(depthState);
+
+	VkPipelineRasterizationStateCreateInfo rasterizerState = {};
+	rasterizerState.cullMode	= VK_CULL_MODE_NONE;
+	rasterizerState.lineWidth	= 1.0f;
+	rasterizerState.frontFace	= VK_FRONT_FACE_CLOCKWISE;
+	pPipeline->setRasterizerState(rasterizerState);
+	
+	std::vector<IShader*> shaders = { pVertexShader, pPixelShader };
+	if (!pPipeline->finalize(shaders, pRenderPass, pPipelineLayout))
+	{
+		return false;
+	}
+
+	DeviceVK* pDevice = m_pContext->getDevice();
+	m_ppCommandBuffers[0]->reset();
+	m_ppCommandPools[0]->reset();
+
+	m_ppCommandBuffers[0]->begin();
+	m_ppCommandBuffers[0]->transitionImageLayout(m_pIntegrationLUT->getImage(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, 1, 0, 1);
+
+	m_ppCommandBuffers[0]->beginRenderPass(pRenderPass, pFrameBuffer, size, size, nullptr, 0);
+
+	m_ppCommandBuffers[0]->bindGraphicsPipeline(pPipeline);
+	
+	VkViewport viewport = {};
+	viewport.width		= float(size);
+	viewport.height		= float(size);
+	viewport.minDepth	= 0.0f;
+	viewport.maxDepth	= 1.0f;
+	viewport.x			= 0.0f;
+	viewport.y			= 0.0f;
+	m_ppCommandBuffers[0]->setViewports(&viewport, 1);
+
+	VkRect2D scissorRect = {};
+	scissorRect.offset = { 0, 0 };
+	scissorRect.extent = { size, size };
+	m_ppCommandBuffers[0]->setScissorRects(&scissorRect, 1);
+
+	m_ppCommandBuffers[0]->drawInstanced(3, 1, 0, 0);
+
+	m_ppCommandBuffers[0]->endRenderPass();
+
+	m_ppCommandBuffers[0]->transitionImageLayout(m_pIntegrationLUT->getImage(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1);
+	m_ppCommandBuffers[0]->end();
+	
+	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppCommandBuffers[0], nullptr, nullptr, 0, nullptr, 0);
+	pDevice->wait();
+
+	SAFEDELETE(pPipeline);
+	SAFEDELETE(pPipelineLayout);
+	SAFEDELETE(pVertexShader);
+	SAFEDELETE(pPixelShader);
+	SAFEDELETE(pRenderPass);
+	SAFEDELETE(pImageView);
+	SAFEDELETE(pFrameBuffer);
+
+	return true;
 }
 
 bool RendererVK::createGBuffer()
@@ -598,7 +768,7 @@ bool RendererVK::createPipelines()
 
 	//Light Pass
 	pVertexShader = m_pContext->createShader();
-	pVertexShader->initFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/lightVertex.spv");
+	pVertexShader->initFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/fullscreenVertex.spv");
 	if (!pVertexShader->finalize())
 	{
 		return false;
@@ -685,9 +855,9 @@ bool RendererVK::createPipelineLayouts()
 {
 	//Descriptorpool
 	DescriptorCounts descriptorCounts = {};
-	descriptorCounts.m_SampledImages = 128;
-	descriptorCounts.m_StorageBuffers = 128;
-	descriptorCounts.m_UniformBuffers = 128;
+	descriptorCounts.m_SampledImages	= 128;
+	descriptorCounts.m_StorageBuffers	= 128;
+	descriptorCounts.m_UniformBuffers	= 128;
 
 	m_pDescriptorPool = DBG_NEW DescriptorPoolVK(m_pContext->getDevice());
 	if (!m_pDescriptorPool->init(descriptorCounts, 16))
@@ -732,6 +902,8 @@ bool RendererVK::createPipelineLayouts()
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_NORMAL_BINDING, 1);
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_POSITION_BINDING, 1);	
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, IRRADIANCE_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ENVIRONMENT_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, BRDF_LUT_BINDING, 1);
 	if (!m_pLightDescriptorSetLayout->finalize())
 	{
 		return false;
@@ -805,14 +977,14 @@ bool RendererVK::createBuffersAndTextures()
 
 	uint8_t whitePixels[] = { 255, 255, 255, 255 };
 	m_pDefaultTexture = DBG_NEW Texture2DVK(m_pContext->getDevice());
-	if (!m_pDefaultTexture->initFromMemory(whitePixels, 1, 1, ETextureFormat::FORMAT_R8G8B8A8_UNORM, false))
+	if (!m_pDefaultTexture->initFromMemory(whitePixels, 1, 1, ETextureFormat::FORMAT_R8G8B8A8_UNORM, 0, false))
 	{
 		return false;
 	}
 
 	uint8_t pixels[] = { 127, 127, 255, 255 };
 	m_pDefaultNormal = DBG_NEW Texture2DVK(m_pContext->getDevice());
-	return m_pDefaultNormal->initFromMemory(pixels, 1, 1, ETextureFormat::FORMAT_R8G8B8A8_UNORM, false);
+	return m_pDefaultNormal->initFromMemory(pixels, 1, 1, ETextureFormat::FORMAT_R8G8B8A8_UNORM, 0, false);
 }
 
 bool RendererVK::createSamplers()
@@ -832,6 +1004,12 @@ bool RendererVK::createSamplers()
 
 	m_pSkyboxSampler = DBG_NEW SamplerVK(m_pContext->getDevice());
 	if (!m_pSkyboxSampler->init(params))
+	{
+		return false;
+	}
+
+	m_pBRDFSampler = DBG_NEW SamplerVK(m_pContext->getDevice());
+	if (!m_pBRDFSampler->init(params))
 	{
 		return false;
 	}

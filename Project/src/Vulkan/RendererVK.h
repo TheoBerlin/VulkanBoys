@@ -1,10 +1,9 @@
 #pragma once
 #include "Common/IRenderer.h"
-
-#include "VulkanCommon.h"
-
 #include "Common/IMesh.h"
 #include "Core/Material.h"
+
+#include "VulkanCommon.h"
 
 #include <unordered_map>
 
@@ -39,7 +38,9 @@ class DescriptorSetLayoutVK;
 #define GBUFFER_NORMAL_BINDING		2
 #define GBUFFER_POSITION_BINDING	3
 #define IRRADIANCE_BINDING			4
-#define LIGHT_BUFFER_BINDING		5
+#define ENVIRONMENT_BINDING			5
+#define BRDF_LUT_BINDING			6
+#define LIGHT_BUFFER_BINDING		7
 
 //Stealing name from Unity
 struct MeshFilter
@@ -65,8 +66,7 @@ namespace std
 			ASSERT(filter.pMesh);
 			ASSERT(filter.pMaterial);
 
-			return ((hash<uint32_t>()(filter.pMesh->getMeshID()) ^
-				(hash<uint32_t>()(filter.pMaterial->getMaterialID()) << 1)) >> 1);
+			return ((hash<uint32_t>()(filter.pMesh->getMeshID()) ^ (hash<uint32_t>()(filter.pMaterial->getMaterialID()) << 1)) >> 1);
 		}
 	};
 }
@@ -107,6 +107,7 @@ private:
 	void createFramebuffers();
 	void releaseFramebuffers();
 
+	bool generateBRDFLookUp();
 	bool createGBuffer();
 	bool createSemaphores();
 	bool createCommandPoolAndBuffers();
@@ -137,6 +138,7 @@ private:
 	
 	SamplerVK* m_pSkyboxSampler;
 	SamplerVK* m_pGBufferSampler;
+	SamplerVK* m_pBRDFSampler;
 	Texture2DVK* m_pDefaultTexture;
 	Texture2DVK* m_pDefaultNormal;
 	BufferVK* m_pCameraBuffer;

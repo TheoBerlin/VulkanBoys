@@ -2,6 +2,7 @@
 #include "VulkanCommon.h"
 
 class DeviceVK;
+class BufferVK;
 class SamplerVK;
 class PipelineVK;
 class Texture2DVK;
@@ -39,20 +40,21 @@ private:
 	CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
 
+	BufferVK* m_pCubeFilterBuffer;
 	SamplerVK* m_pCubeFilterSampler;
+	RenderPassVK* m_pFilterCubeRenderpass;
 	DescriptorPoolVK* m_pDescriptorPool;
+	PipelineLayoutVK* m_pFilterCubePipelineLayout;
+	DescriptorSetLayoutVK* m_pFilterCubeDescriptorSetLayout;
 
-	RenderPassVK* m_pPanoramaRenderpass;
 	PipelineVK* m_pPanoramaPipeline;
-	PipelineLayoutVK* m_pPanoramaPipelineLayout;
-	DescriptorSetLayoutVK* m_pPanoramaDescriptorSetLayout;
 	DescriptorSetVK* m_pPanoramaDescriptorSet;
 
-	RenderPassVK* m_pIrradianceRenderpass;
 	PipelineVK* m_pIrradiancePipeline;
-	PipelineLayoutVK* m_pIrradiancePipelineLayout;
-	DescriptorSetLayoutVK* m_pIrradianceDescriptorSetLayout;
 	DescriptorSetVK* m_pIrradianceDescriptorSet;
+
+	PipelineVK* m_pPreFilterPipeline;
+	DescriptorSetVK* m_pPreFilterDescriptorSet;
 
 	uint32_t m_CurrentFrame;
 };

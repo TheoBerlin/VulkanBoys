@@ -108,33 +108,33 @@ void PipelineVK::addVertexAttribute(uint32_t binding, VkFormat format, uint32_t 
     m_VertexAttributes.emplace_back(vertexInputAttribute);
 }
 
-void PipelineVK::addColorBlendAttachment(VkPipelineColorBlendAttachmentState colorBlendAttachment)
+void PipelineVK::addColorBlendAttachment(const VkPipelineColorBlendAttachmentState& colorBlendAttachment)
 {
     m_ColorBlendAttachments.emplace_back(colorBlendAttachment);
 }
 
 void PipelineVK::setInputAssembly(VkPrimitiveTopology topology, bool primitiveRestartEnable)
 {
-    m_InputAssembly.topology = topology;
-    m_InputAssembly.primitiveRestartEnable = primitiveRestartEnable ? VK_TRUE : VK_FALSE;
+    m_InputAssembly.topology                = topology;
+    m_InputAssembly.primitiveRestartEnable  = primitiveRestartEnable ? VK_TRUE : VK_FALSE;
 }
 
-void PipelineVK::setRasterizerState(VkPipelineRasterizationStateCreateInfo rasterizerState)
+void PipelineVK::setRasterizerState(const VkPipelineRasterizationStateCreateInfo& rasterizerState)
 {
-    m_RasterizerState = rasterizerState;
+    m_RasterizerState       = rasterizerState;
     m_RasterizerState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 }
 
-void PipelineVK::setDepthStencilState(VkPipelineDepthStencilStateCreateInfo depthStencilState)
+void PipelineVK::setDepthStencilState(const VkPipelineDepthStencilStateCreateInfo& depthStencilState)
 {
-    m_DepthStencilState = depthStencilState;
-    m_DepthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    m_DepthStencilState         = depthStencilState;
+    m_DepthStencilState.sType   = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 }
 
 void PipelineVK::setBlendState(VkLogicOp logicOp, bool logicOpEnable, float blendConstants[4])
 {
-    m_BlendState.logicOp = logicOp;
-    m_BlendState.logicOpEnable = logicOpEnable ? VK_TRUE : VK_FALSE;
+    m_BlendState.logicOp        = logicOp;
+    m_BlendState.logicOpEnable  = logicOpEnable ? VK_TRUE : VK_FALSE;
     
     memcpy(m_BlendState.blendConstants, blendConstants, sizeof(float) * 4);
 }
