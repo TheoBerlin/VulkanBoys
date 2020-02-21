@@ -54,6 +54,7 @@ private:
 	IGraphicsContext* m_pContext;
 	IRenderingHandler* m_pRenderingHandler;
 	IRenderer* m_pMeshRenderer, *m_pParticleRenderer;
+	IRenderer* m_pRayTracingRenderer;
 	IImgui* m_pImgui;
 	IInputHandler* m_pInputHandler;
 

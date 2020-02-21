@@ -29,6 +29,7 @@ public:
 	virtual IRenderingHandler* createRenderingHandler() = 0;
 	virtual IRenderer* createMeshRenderer(IRenderingHandler* pRenderingHandler) = 0;
 	virtual IRenderer* createParticleRenderer(IRenderingHandler* pRenderingHandler) = 0;
+	virtual IRenderer* createRayTracingRenderer(IRenderingHandler* pRenderingHandler) = 0;
 	virtual IParticleEmitterHandler* createParticleEmitterHandler() = 0;
 	virtual IImgui* createImgui() = 0;
 

@@ -79,7 +79,15 @@ void CommandBufferVK::begin(VkCommandBufferInheritanceInfo* pInheritaneInfo)
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.pNext = nullptr;
 	// If inheritance info is not nullptr, this is a secondary command buffer
-	beginInfo.flags = pInheritaneInfo == nullptr ? 0 : VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+	if (pInheritaneInfo != nullptr)
+	{
+		beginInfo.flags = pInheritaneInfo->renderPass == VK_NULL_HANDLE ? 0 : VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+	}
+	else
+	{
+		beginInfo.flags = 0;
+	}
+
 	beginInfo.pInheritanceInfo = pInheritaneInfo;
 
 	VK_CHECK_RESULT(vkBeginCommandBuffer(m_CommandBuffer, &beginInfo), "Begin CommandBuffer Failed");

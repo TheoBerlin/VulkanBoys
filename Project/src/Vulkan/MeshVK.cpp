@@ -179,7 +179,7 @@ bool MeshVK::initAsSphere(uint32_t subDivisions)
 		finalIndices.push_back(triangles[i].indices[2]);
 	}
 
-	initFromMemory(finalVertices.data(), finalVertices.size(), finalIndices.data(), finalIndices.size());
+	initFromMemory(finalVertices.data(), sizeof(Vertex), finalVertices.size(), finalIndices.data(), finalIndices.size());
 	return true;
 }
 

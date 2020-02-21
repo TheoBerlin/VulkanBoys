@@ -109,7 +109,7 @@ void ParticleRendererVK::endFrame()
 	m_ppCommandBuffers[currentFrame]->end();
 
 	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
-	pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCurrentCommandBuffer(), m_ppCommandBuffers[currentFrame]);
+	pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCurrentGraphicsCommandBuffer(), m_ppCommandBuffers[currentFrame]);
 }
 
 void ParticleRendererVK::submitParticles(ParticleEmitter* pEmitter)

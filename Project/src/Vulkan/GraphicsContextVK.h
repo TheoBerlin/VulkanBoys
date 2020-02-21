@@ -23,6 +23,7 @@ public:
 	virtual IRenderingHandler* createRenderingHandler() override;
 	virtual IRenderer* createMeshRenderer(IRenderingHandler* pRenderingHandler) override;
 	virtual IRenderer* createParticleRenderer(IRenderingHandler* pRenderingHandler) override;
+	virtual IRenderer* createRayTracingRenderer(IRenderingHandler* pRenderingHandler) override;
 	virtual IParticleEmitterHandler* createParticleEmitterHandler() override;
 	virtual IImgui* createImgui() override;
 
