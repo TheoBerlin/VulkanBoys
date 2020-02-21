@@ -1,7 +1,7 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-#define MAX_POINT_LIGHTS 	13
+#define MAX_POINT_LIGHTS 	4
 #define MAX_REFLECTION_MIPS 6.0f
 
 layout(location = 0) in vec2	in_TexCoord;
@@ -32,11 +32,8 @@ layout (binding = 7) uniform LightBuffer
 	PointLight lights[MAX_POINT_LIGHTS];
 } u_Lights;
 
-const float PI 					= 3.14159265359f;
-const float AMBIENT_LIGHT		= 0.1f;
-const float SPECULAR_STRENGTH	= 0.5f;
-const int 	SPECULAR_EXPONENT	= 128;
-const float GAMMA				= 2.2f;
+const float PI 		= 3.14159265359f;
+const float GAMMA	= 2.2f;
 
 /*
 	Schlick Fresnel function
@@ -125,9 +122,12 @@ void main()
 	
 	vec3 cameraPosition = g_PerFrame.Position.xyz;
 	vec3 viewDir 		= normalize(cameraPosition - worldPosition);
+	vec3 reflection 	= reflect(-viewDir, normal);
 	
 	vec3 f0 = vec3(0.04f);
 	f0 = mix(f0, albedo, metallic);
+
+	float metallicFactor = 1.0f - metallic;
 	
 	//Radiance from light
 	vec3 L0 = vec3(0.0f);
@@ -149,12 +149,11 @@ void main()
 		float ndf 	= Distrubution(normal, halfVector, roughness);
 		float g 	= Geometry(normal, viewDir, lightDirection, roughness);
 		
-		float denom 	= 4.0f * max(dot(normal, viewDir), 0.0f) * max(dot(normal, lightDirection), 0.0f);
-		vec3 specular   = (ndf * g * f) / max(denom, 0.001f);	
+		float denom 	= (4.0f * max(dot(normal, viewDir), 0.0f) * max(dot(normal, lightDirection), 0.0f)) + 0.0001f;
+		vec3 specular   = (ndf * g * f) / denom;	
 		
 		//Take 1.0f minus the incoming radiance to get the diffuse (Energy conservation)
-		float metallicFactor 	= 1.0f - metallic;
-		vec3 diffuse 			= (vec3(1.0f) - f) * metallicFactor;
+		vec3 diffuse = (vec3(1.0f) - f) * metallicFactor;
 		
 		L0 += ((diffuse * (albedo / PI)) + specular) * radiance * max(dot(normal, lightDirection), 0.0f);
 	}
@@ -163,15 +162,15 @@ void main()
 	vec3 irradiance = texture(u_IrradianceMap, normal).rgb;
 	vec3 diffuse 	= irradiance * albedo;
 	vec3 f 			= FresnelRoughness(f0, clamp(dot(normal, viewDir), 0.0f, 1.0f), roughness);
-	vec3 kDiffuse 	= vec3(1.0f) - f;
+	vec3 kDiffuse 	= (vec3(1.0f) - f) * metallicFactor;
 
-	vec3 reflection 		= reflect(-viewDir, normal);
 	vec3 prefilteredColor 	= textureLod(u_EnvironmentMap, reflection, roughness * MAX_REFLECTION_MIPS).rgb;
 	
 	vec2 envBRDF 	= texture(u_BrdfLUT, vec2(max(dot(normal, viewDir), 0.0f), roughness)).rg;
 	vec3 specular	= prefilteredColor * (f * envBRDF.x + envBRDF.y);
 
-	vec3 ambient 	= (kDiffuse * diffuse + specular) * ao;
+	vec3 ambient 	= ((kDiffuse * diffuse) + specular) * ao;
+	
 	vec3 finalColor = ambient + L0;
     out_Color = ColorPost(finalColor);
 }

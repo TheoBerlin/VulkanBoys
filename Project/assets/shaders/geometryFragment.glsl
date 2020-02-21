@@ -26,6 +26,8 @@ layout(binding = 4) uniform sampler2D u_AmbientOcclusionMap;
 layout(binding = 5) uniform sampler2D u_MetallicMap;
 layout(binding = 6) uniform sampler2D u_RoughnessMap;
 
+const float GAMMA = 2.2f;
+
 void main()
 {
 	vec3 worldPosition = in_WorldPosition;
@@ -36,16 +38,16 @@ void main()
 	
 	mat3 tbn = mat3(tangent, bitangent, normal);
 	
-	vec4 texColor 		= texture(u_AlbedoMap, texcoord);
-	vec4 normalMap 		= texture(u_NormalMap, texcoord);
-	vec4 aoMap 			= texture(u_AmbientOcclusionMap, texcoord);
-	vec4 metallicMap 	= texture(u_MetallicMap, texcoord);
-	vec4 roughnessMap 	= texture(u_RoughnessMap, texcoord);
+	vec3 texColor 	= pow(texture(u_AlbedoMap, texcoord).rgb, vec3(GAMMA));
+	vec3 normalMap 	= texture(u_NormalMap, texcoord).rgb;
+	float ao 		= texture(u_AmbientOcclusionMap, texcoord).r;
+	float metallic 	= texture(u_MetallicMap, texcoord).r;
+	float roughness = texture(u_RoughnessMap, texcoord).r;
 	
-	vec3 sampledNormal = ((normalMap.xyz * 2.0f) - 1.0f);
-	sampledNormal = normalize(tbn * normalize(sampledNormal));
+	vec3 sampledNormal 	= ((normalMap * 2.0f) - 1.0f);
+	sampledNormal 		= normalize(tbn * normalize(sampledNormal));
 		
-	out_Albedo 		= vec4(constants.Color.rgb * texColor.rgb, constants.Ambient * aoMap.r);
-	out_Normals		= vec4(sampledNormal, constants.Metallic * metallicMap.r);
-	out_Position 	= vec4(worldPosition, constants.Roughness * roughnessMap.r);
+	out_Albedo 		= vec4(constants.Color.rgb * texColor, constants.Ambient * ao);
+	out_Normals		= vec4(sampledNormal, constants.Metallic * metallic);
+	out_Position 	= vec4(worldPosition, constants.Roughness * roughness);
 }

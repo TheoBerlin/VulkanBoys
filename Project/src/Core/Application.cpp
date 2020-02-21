@@ -160,22 +160,10 @@ void Application::init()
 	m_RedMaterial.createSampler(m_pContext, samplerParams);
 
 	//Setup lights
-	m_LightSetup.addPointLight(PointLight(glm::vec3( 5.0f,  5.0f, -10.0f), glm::vec4(300.0f)));
-	m_LightSetup.addPointLight(PointLight(glm::vec3(-5.0f,  5.0f, -10.0f), glm::vec4(300.0f)));
-	m_LightSetup.addPointLight(PointLight(glm::vec3( 5.0f, -5.0f, -10.0f), glm::vec4(300.0f)));
-	m_LightSetup.addPointLight(PointLight(glm::vec3(-5.0f, -5.0f, -10.0f), glm::vec4(300.0f)));
-		
-	m_LightSetup.addPointLight(PointLight(glm::vec3( 15.0f,  15.0f, -10.0f), glm::vec4(300.0f)));
-	m_LightSetup.addPointLight(PointLight(glm::vec3(  0.0f,  15.0f, -10.0f), glm::vec4(300.0f)));
-	m_LightSetup.addPointLight(PointLight(glm::vec3(-15.0f,  15.0f, -10.0f), glm::vec4(300.0f)));
-
-	m_LightSetup.addPointLight(PointLight(glm::vec3( 15.0f, 0.0f, -10.0f), glm::vec4(300.0f)));
-	m_LightSetup.addPointLight(PointLight(glm::vec3(  0.0f, 0.0f, -10.0f), glm::vec4(300.0f)));
-	m_LightSetup.addPointLight(PointLight(glm::vec3(-15.0f, 0.0f, -10.0f), glm::vec4(300.0f)));
-
-	m_LightSetup.addPointLight(PointLight(glm::vec3( 15.0f, -15.0f, -10.0f), glm::vec4(300.0f)));
-	m_LightSetup.addPointLight(PointLight(glm::vec3(  0.0f, -15.0f, -10.0f), glm::vec4(300.0f)));
-	m_LightSetup.addPointLight(PointLight(glm::vec3(-15.0f, -15.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3( 10.0f,  10.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3(-10.0f,  10.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3( 10.0f, -10.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3(-10.0f, -10.0f, -10.0f), glm::vec4(300.0f)));
 
 	TaskDispatcher::waitForTasks();
 

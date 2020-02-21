@@ -83,18 +83,18 @@ void main()
     {
         vec2 xi         = Hammersley(i, SAMPLE_COUNT);
         vec3 halfVector = ImportanceSample(xi, normal, constants.Roughness);
-        vec3 light      = normalize(2.0f * dot(view, halfVector) * halfVector - view);
+        vec3 light      = (2.0f * dot(view, halfVector) * halfVector) - view;
 
-        float dotNL = max(dot(normal, light), 0.0f);
+        float dotNL = clamp(dot(normal, light), 0.0f, 1.0f);
         if (dotNL > 0.0f)
         {
             float d     = Distribution(normal, halfVector, constants.Roughness);
-            float dotNH = max(dot(normal, halfVector), 0.0f);
-            float dotHV = max(dot(halfVector, view), 0.0f);
+            float dotNH = clamp(dot(normal, halfVector), 0.0f, 1.0f);
+            float dotHV = clamp(dot(halfVector, view), 0.0f, 1.0f);
             float pdf   = d * dotNH / (4.0f * dotHV) + 0.0001f; 
 
-            float resolution    = 2048.0f;
-            float saTexel       = 4.0f * PI / (6.0 * resolution * resolution);
+            const float RESOLUTION = 2048.0f;
+            float saTexel       = 4.0f * PI / (6.0 * RESOLUTION * RESOLUTION);
             float saSample      = 1.0f / (float(SAMPLE_COUNT) * pdf + 0.0001f);
 
             float mipLevel = (constants.Roughness == 0.0f) ? 0.0f : 0.5f * log2(saSample / saTexel); 
