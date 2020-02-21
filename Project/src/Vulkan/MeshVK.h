@@ -22,7 +22,7 @@ public:
 	virtual uint32_t getMeshID() const override;
 
 private:
-	glm::vec3 MeshVK::calculateTangent(const Vertex& v0, const Vertex& v1, const Vertex& v2);
+	glm::vec3 calculateTangent(const Vertex& v0, const Vertex& v1, const Vertex& v2);
 
 private:
 	DeviceVK* m_pDevice;
