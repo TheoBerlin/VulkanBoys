@@ -18,7 +18,7 @@ public:
 	~MeshVK();
 
 	virtual bool initFromFile(const std::string& filepath) override;
-	virtual bool initFromMemory(const Vertex* pVertices, uint32_t vertexCount, const uint32_t* pIndices, uint32_t indexCount) override;
+	virtual bool initFromMemory(const void* pVertices, size_t vertexSize, uint32_t vertexCount, const uint32_t* pIndices, uint32_t indexCount) override;
 	virtual bool initAsSphere(uint32_t subDivisions);
 
 	virtual IBuffer* getVertexBuffer() const override;

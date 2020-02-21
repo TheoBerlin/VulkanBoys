@@ -1,9 +1,14 @@
 #include "GraphicsContextVK.h"
-#include "MeshVK.h"
-#include "ImguiVK.h"
+
 #include "BufferVK.h"
+#include "CopyHandlerVK.h"
+#include "ImguiVK.h"
+#include "MeshVK.h"
+#include "MeshRendererVK.h"
+#include "Particles/ParticleEmitterHandlerVK.h"
+#include "Particles/ParticleRendererVK.h"
+#include "RenderingHandlerVK.h"
 #include "ShaderVK.h"
-#include "RendererVK.h"
 #include "SwapChainVK.h"
 #include "Texture2DVK.h"
 
@@ -14,8 +19,7 @@ GraphicsContextVK::GraphicsContextVK(IWindow* pWindow)
 	m_pSwapChain(nullptr),
 	m_Device(),
 	m_Instance()
-{
-}
+{}
 
 GraphicsContextVK::~GraphicsContextVK()
 {
@@ -32,7 +36,7 @@ void GraphicsContextVK::init()
 #if VALIDATION_LAYERS_ENABLED
 	m_Instance.addRequiredExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif
-	
+
 	GLFWwindow* pNativeWindow = reinterpret_cast<GLFWwindow*>(m_pWindow->getNativeHandle());
 
 	uint32_t count = 0;
@@ -43,7 +47,7 @@ void GraphicsContextVK::init()
 	}
 
 	m_Instance.addOptionalExtension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-	
+
 	//m_Instance.debugPrintAvailableExtensions();
 	//m_Instance.debugPrintAvailableLayers();
 
@@ -57,7 +61,7 @@ void GraphicsContextVK::init()
 	m_Device.addOptionalExtension(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
 	//m_Device.addOptionalExtension(VK_KHR_MAINTENANCE3_EXTENSION_NAME);
 	m_Device.addOptionalExtension(VK_NV_RAY_TRACING_EXTENSION_NAME);
-	
+
 	m_Device.finalize(&m_Instance);
 
 	//SwapChain init
@@ -65,9 +69,24 @@ void GraphicsContextVK::init()
 	m_pSwapChain->init(m_pWindow, VK_FORMAT_B8G8R8A8_UNORM, MAX_FRAMES_IN_FLIGHT, true);
 }
 
-IRenderer* GraphicsContextVK::createRenderer()
+IRenderingHandler* GraphicsContextVK::createRenderingHandler()
 {
-	return DBG_NEW RendererVK(this);
+	return DBG_NEW RenderingHandlerVK(this);
+}
+
+IRenderer* GraphicsContextVK::createMeshRenderer(IRenderingHandler* pRenderingHandler)
+{
+	return DBG_NEW MeshRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler));
+}
+
+IRenderer* GraphicsContextVK::createParticleRenderer(IRenderingHandler* pRenderingHandler)
+{
+	return DBG_NEW ParticleRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler));
+}
+
+IParticleEmitterHandler* GraphicsContextVK::createParticleEmitterHandler()
+{
+	return DBG_NEW ParticleEmitterHandlerVK();
 }
 
 IImgui* GraphicsContextVK::createImgui()
@@ -88,6 +107,12 @@ IShader* GraphicsContextVK::createShader()
 IBuffer* GraphicsContextVK::createBuffer()
 {
 	return DBG_NEW BufferVK(&m_Device);
+}
+
+void GraphicsContextVK::updateBuffer(IBuffer* pDestination, uint64_t destinationOffset, const void* pSource, uint64_t sizeInBytes)
+{
+	BufferVK* pDestBuffer = reinterpret_cast<BufferVK*>(pDestination);
+	m_Device.getCopyHandler()->updateBuffer(pDestBuffer, destinationOffset, pSource, sizeInBytes);
 }
 
 IFrameBuffer* GraphicsContextVK::createFrameBuffer()
@@ -121,4 +146,9 @@ void GraphicsContextVK::sync()
 void GraphicsContextVK::swapBuffers(VkSemaphore renderSemaphore)
 {
 	m_pSwapChain->present(renderSemaphore);
+}
+
+bool GraphicsContextVK::supportsRayTracing() const
+{
+	return m_Device.supportsRayTracing();
 }

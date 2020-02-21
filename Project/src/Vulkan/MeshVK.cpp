@@ -97,14 +97,14 @@ bool MeshVK::initFromFile(const std::string& filepath)
 	//TODO: Calculate normals
 
 	LOG("-- LOADED MESH: %s", filepath.c_str());
-	return initFromMemory(vertices.data(), uint32_t(vertices.size()), indices.data(), uint32_t(indices.size()));
+	return initFromMemory(vertices.data(), sizeof(Vertex), uint32_t(vertices.size()), indices.data(), uint32_t(indices.size()));
 }
 
-bool MeshVK::initFromMemory(const Vertex* pVertices, uint32_t vertexCount, const uint32_t* pIndices, uint32_t indexCount)
+bool MeshVK::initFromMemory(const void* pVertices, size_t vertexSize, uint32_t vertexCount, const uint32_t* pIndices, uint32_t indexCount)
 {
 	BufferParams vertexBufferParams = {};
 	vertexBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	vertexBufferParams.SizeInBytes = sizeof(Vertex) * vertexCount;
+	vertexBufferParams.SizeInBytes = vertexSize * vertexCount;
 	vertexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 	m_pVertexBuffer = DBG_NEW BufferVK(m_pDevice);

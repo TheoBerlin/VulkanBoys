@@ -41,7 +41,7 @@ bool BufferVK::init(const BufferParams& params)
 	bufferInfo.size		= params.SizeInBytes;
 	bufferInfo.usage	= params.Usage;
 
-	if (params.IsExclusive)
+	if (params.IsExclusive || !m_pDevice->hasUniqueQueueFamilyIndices())
 	{
 		bufferInfo.queueFamilyIndexCount = 0;
 		bufferInfo.pQueueFamilyIndices = nullptr;
@@ -56,7 +56,7 @@ bool BufferVK::init(const BufferParams& params)
 	}
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateBuffer(m_pDevice->getDevice(), &bufferInfo, nullptr, &m_Buffer), "Failed to create buffer");
-	
+
 	m_Params = params;
 	D_LOG("--- Buffer: Vulkan Buffer created successfully. SizeInBytes=%d", m_Params.SizeInBytes);
 

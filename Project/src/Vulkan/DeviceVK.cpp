@@ -66,7 +66,7 @@ void DeviceVK::addOptionalExtension(const char* extensionName)
 	m_RequestedOptionalExtensions.push_back(extensionName);
 }
 
-void DeviceVK::executeCommandBuffer(VkQueue queue, CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages, 
+void DeviceVK::executePrimaryCommandBuffer(VkQueue queue, CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages, 
 	uint32_t waitSemaphoreCount, const VkSemaphore* pSignalSemaphores, uint32_t signalSemaphoreCount)
 {
 	//Submit
@@ -87,6 +87,12 @@ void DeviceVK::executeCommandBuffer(VkQueue queue, CommandBufferVK* pCommandBuff
 	VK_CHECK_RESULT(result, "vkQueueSubmit failed");
 }
 
+void DeviceVK::executeSecondaryCommandBuffer(CommandBufferVK* pPrimaryCommandBuffer, CommandBufferVK* pSecondaryCommandBuffer)
+{
+	VkCommandBuffer secondaryBuffer = pSecondaryCommandBuffer->getCommandBuffer();
+	vkCmdExecuteCommands(pPrimaryCommandBuffer->getCommandBuffer(), 1, &secondaryBuffer);
+}
+
 void DeviceVK::wait()
 {
 	VkResult result = vkDeviceWaitIdle(m_Device);
@@ -94,6 +100,18 @@ void DeviceVK::wait()
 	{ 
 		LOG("vkDeviceWaitIdle failed");
 	}
+}
+
+bool DeviceVK::hasUniqueQueueFamilyIndices() const
+{
+	std::set<uint32_t> familyIndices = {
+		m_DeviceQueueFamilyIndices.computeFamily.value(),
+		m_DeviceQueueFamilyIndices.graphicsFamily.value(),
+		m_DeviceQueueFamilyIndices.presentFamily.value(),
+		m_DeviceQueueFamilyIndices.transferFamily.value()
+	};
+
+	return familyIndices.size() == 4;
 }
 
 bool DeviceVK::initPhysicalDevice(InstanceVK* pInstance)
