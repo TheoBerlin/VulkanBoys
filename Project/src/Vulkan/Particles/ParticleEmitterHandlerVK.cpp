@@ -10,7 +10,7 @@
 void ParticleEmitterHandlerVK::updateBuffers(IRenderingHandler* pRenderingHandler)
 {
     RenderingHandlerVK* pRenderingHandlerVK = reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler);
-    CommandBufferVK* pCommandBuffer = pRenderingHandlerVK->getCurrentCommandBuffer();
+    CommandBufferVK* pCommandBuffer = pRenderingHandlerVK->getCurrentGraphicsCommandBuffer();
 
     for (ParticleEmitter* pEmitter : m_ParticleEmitters) {
         BufferVK* pEmitterBuffer = reinterpret_cast<BufferVK*>(pEmitter->getEmitterBuffer());

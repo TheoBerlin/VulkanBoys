@@ -51,7 +51,7 @@ public:
 	void drawIndexInstanced(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset, uint32_t firstInstance);
 
 	//Ray Tracing
-	void traceRays(ShaderBindingTableVK* pShaderBindingTable, uint32_t width, uint32_t height);
+	void traceRays(ShaderBindingTableVK* pShaderBindingTable, uint32_t width, uint32_t height, uint32_t raygenOffset);
 
 	//GETTERS
 	VkFence getFence() const { return m_Fence; }

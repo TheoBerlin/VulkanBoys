@@ -79,7 +79,15 @@ void CommandBufferVK::begin(VkCommandBufferInheritanceInfo* pInheritaneInfo)
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.pNext = nullptr;
 	// If inheritance info is not nullptr, this is a secondary command buffer
-	beginInfo.flags = pInheritaneInfo == nullptr ? 0 : VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+	if (pInheritaneInfo != nullptr)
+	{
+		beginInfo.flags = pInheritaneInfo->renderPass == VK_NULL_HANDLE ? 0 : VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+	}
+	else
+	{
+		beginInfo.flags = 0;
+	}
+
 	beginInfo.pInheritanceInfo = pInheritaneInfo;
 
 	VK_CHECK_RESULT(vkBeginCommandBuffer(m_CommandBuffer, &beginInfo), "Begin CommandBuffer Failed");
@@ -278,13 +286,12 @@ void CommandBufferVK::drawIndexInstanced(uint32_t indexCount, uint32_t instanceC
 	vkCmdDrawIndexed(m_CommandBuffer, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
 }
 
-void CommandBufferVK::traceRays(ShaderBindingTableVK* pShaderBindingTable, uint32_t width, uint32_t height)
+void CommandBufferVK::traceRays(ShaderBindingTableVK* pShaderBindingTable, uint32_t width, uint32_t height, uint32_t raygenOffset)
 {
 	VkBuffer bufferSBT = pShaderBindingTable->getBuffer()->getBuffer();
 
-	uint32_t raygenOffset = pShaderBindingTable->getBindingOffsetRaygenShaderGroup();
 	uint32_t missOffset = pShaderBindingTable->getBindingOffsetMissShaderGroup();
-	uint32_t intersectOffset = pShaderBindingTable->getBindingOffsetIntersectShaderGroup();
+	uint32_t intersectOffset = pShaderBindingTable->getBindingOffsetHitShaderGroup();
 
 	m_pDevice->vkCmdTraceRaysNV(m_CommandBuffer,
 		bufferSBT, raygenOffset,

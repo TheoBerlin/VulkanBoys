@@ -2,8 +2,9 @@
 
 #include "Vulkan/VulkanCommon.h"
 
+class ShaderBindingTableVK;
+class GraphicsContextVK;
 class PipelineLayoutVK;
-class DeviceVK;
 class ShaderVK;
 
 struct RaygenGroupParams
@@ -11,7 +12,7 @@ struct RaygenGroupParams
 	ShaderVK* pRaygenShader = nullptr;
 };
 
-struct IntersectGroupParams
+struct HitGroupParams
 {
 	ShaderVK* pIntersectShader = nullptr;
 	ShaderVK* pAnyHitShader = nullptr;
@@ -28,12 +29,12 @@ class RayTracingPipelineVK
 public:
 	DECL_NO_COPY(RayTracingPipelineVK);
 
-	RayTracingPipelineVK(DeviceVK* pDevice);
+	RayTracingPipelineVK(GraphicsContextVK* pGraphicsContext);
 	~RayTracingPipelineVK();
 
 	void addRaygenShaderGroup(const RaygenGroupParams& params);
 	void addMissShaderGroup(const MissGroupParams& params);
-	void addIntersectShaderGroup(const IntersectGroupParams& params);
+	void addHitShaderGroup(const HitGroupParams& params);
 
 	bool finalize(PipelineLayoutVK* pPipelineLayout);
 	
@@ -42,20 +43,22 @@ public:
 	VkPipeline getPipeline() { return m_Pipeline; }
 	uint32_t getNumRaygenShaderGroups() { return m_RaygenShaderGroups.size(); }
 	uint32_t getNumMissShaderGroups() { return m_MissShaderGroups.size(); }
-	uint32_t getNumIntersectShaderGroups() { return m_IntersectShaderGroups.size(); }
+	uint32_t getNumIntersectShaderGroups() { return m_HitShaderGroups.size(); }
 	uint32_t getNumTotalShaderGroups() { return m_AllShaderGroups.size(); }
 	
 	uint32_t getNumShaders() { return m_Shaders.size(); }
+
+	ShaderBindingTableVK* getSBT() { return m_pSBT; }
 
 private:
 	void createShaderStageInfo(VkPipelineShaderStageCreateInfo& shaderStageInfo, const ShaderVK* pShader);
 	
 private:
-	DeviceVK* m_pDevice;
+	GraphicsContextVK* m_pGraphicsContext;
 	
 	std::vector<VkRayTracingShaderGroupCreateInfoNV> m_RaygenShaderGroups;
 	std::vector<VkRayTracingShaderGroupCreateInfoNV> m_MissShaderGroups;
-	std::vector<VkRayTracingShaderGroupCreateInfoNV> m_IntersectShaderGroups;
+	std::vector<VkRayTracingShaderGroupCreateInfoNV> m_HitShaderGroups;
 	std::vector<VkRayTracingShaderGroupCreateInfoNV> m_AllShaderGroups; //Redundant
 
 	std::vector<VkPipelineShaderStageCreateInfo> m_ShaderStagesInfos;
@@ -64,4 +67,6 @@ private:
 	uint32_t m_MaxRecursionDepth;
 
 	VkPipeline m_Pipeline;
+
+	ShaderBindingTableVK* m_pSBT;
 };
