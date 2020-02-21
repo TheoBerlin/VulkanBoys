@@ -11,17 +11,15 @@ class ITexture2D;
 class ParticleEmitter;
 class RenderingHandler;
 class Texture2DVK;
-struct ParticleStorage;
 
 class IParticleEmitterHandler
 {
 public:
     IParticleEmitterHandler();
-    ~IParticleEmitterHandler();
+    virtual ~IParticleEmitterHandler();
 
-    void update(float dt);
-    // Perform particle logic updates on the GPU
-    virtual void updateBuffers(IRenderingHandler* pRenderingHandler) = 0;
+    virtual void update(float dt) = 0;
+    virtual void updateRenderingBuffers(IRenderingHandler* pRenderingHandler) = 0;
 
     void initialize(IGraphicsContext* pGraphicsContext, const Camera* pCamera);
     // Initializes resources for GPU-side computing of particles
@@ -44,5 +42,5 @@ protected:
     bool m_GPUComputed;
 
 private:
-    virtual void updateGPU(float dt) = 0;
+    virtual void initializeEmitter(ParticleEmitter* pEmitter) = 0;
 };

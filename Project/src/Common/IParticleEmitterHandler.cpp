@@ -16,24 +16,18 @@ IParticleEmitterHandler::~IParticleEmitterHandler()
 	}
 }
 
-void IParticleEmitterHandler::update(float dt)
-{
-    if (m_GPUComputed) {
-        updateGPU(dt);
-    } else {
-        for (ParticleEmitter* particleEmitter : m_ParticleEmitters) {
-            particleEmitter->update(dt);
-        }
-    }
-}
-
 void IParticleEmitterHandler::initialize(IGraphicsContext* pGraphicsContext, const Camera* pCamera)
 {
     m_pGraphicsContext = pGraphicsContext;
 
+    if (initializeGPUCompute()) {
+        LOG("Failed to initialize Particle Emitter Handler GPU compute resources");
+        return;
+    }
+
     // Initialize all emitters
     for (ParticleEmitter* particleEmitter : m_ParticleEmitters) {
-        particleEmitter->initializeCPU(m_pGraphicsContext, pCamera);
+        initializeEmitter(particleEmitter);
     }
 }
 
@@ -42,7 +36,7 @@ ParticleEmitter* IParticleEmitterHandler::createEmitter(const ParticleEmitterInf
 	ParticleEmitter* pNewEmitter = DBG_NEW ParticleEmitter(emitterInfo);
     m_ParticleEmitters.push_back(pNewEmitter);
     if (m_pGraphicsContext != nullptr) {
-        pNewEmitter->initializeCPU(m_pGraphicsContext, m_pCamera);
+        initializeEmitter(pNewEmitter);
     }
 
 	return pNewEmitter;

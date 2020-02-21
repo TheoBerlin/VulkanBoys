@@ -263,7 +263,7 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 	}
 
 	//Setup pipelinestate
-	pCommandBuffer->bindGraphicsPipeline(m_pPipeline);
+	pCommandBuffer->bindPipeline(m_pPipeline);
 	//Set shader variable list
 	pCommandBuffer->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSet, 0, nullptr);
 

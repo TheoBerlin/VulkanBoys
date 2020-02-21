@@ -21,11 +21,6 @@ struct ParticleEmitterInfo {
     ITexture2D* pTexture;
 };
 
-struct ParticleBuffer {
-    const glm::vec4* positions, velocities;
-    const float* ages;
-};
-
 struct EmitterBuffer {
     glm::vec4 position, direction;
     glm::vec2 particleSize;
@@ -35,27 +30,29 @@ struct EmitterBuffer {
     float minZ;
 };
 
+struct ParticleStorage {
+    std::vector<glm::vec4> positions, velocities;
+    std::vector<float> ages;
+};
+
 class ParticleEmitter
 {
-    struct ParticleStorage {
-        std::vector<glm::vec4> positions, velocities;
-        std::vector<float> ages;
-    };
-
 public:
     ParticleEmitter(const ParticleEmitterInfo& emitterInfo);
     ~ParticleEmitter();
 
-    bool initializeCPU(IGraphicsContext* pGraphicsContext, const Camera* pCamera);
-    bool initializeGPU(IGraphicsContext* pGraphicsContext, const Camera* pCamera);
+    bool initialize(IGraphicsContext* pGraphicsContext, const Camera* pCamera);
 
     void update(float dt);
 
     const ParticleStorage& getParticleStorage() const { return m_ParticleStorage; }
     void createEmitterBuffer(EmitterBuffer& emitterBuffer);
+    // TODO: Change this to use the emitter's age to calculate the particle count. Using the size doesn't work if particles only exist on the GPU.
     uint32_t getParticleCount() const { return (uint32_t)m_ParticleStorage.positions.size(); }
 
-    IBuffer* getParticleBuffer() { return m_pParticleBuffer; }
+    IBuffer* getPositionsBuffer() { return m_pPositionsBuffer; }
+    IBuffer* getVelocitiesBuffer() { return m_pVelocitiesBuffer; }
+    IBuffer* getAgesBuffer() { return m_pAgesBuffer; }
     IBuffer* getEmitterBuffer() { return m_pEmitterBuffer; }
     ITexture2D* getParticleTexture() { return m_pTexture; }
 
@@ -91,8 +88,11 @@ private:
     // The amount of time since the emitter started emitting particles. Used for spawning particles.
     float m_EmitterAge;
 
-    // Contains particle positions
-    IBuffer* m_pParticleBuffer;
+    // GPU-side particle data
+    IBuffer* m_pPositionsBuffer;
+    IBuffer* m_pVelocitiesBuffer;
+    IBuffer* m_pAgesBuffer;
+
     // Contains particle size
     IBuffer* m_pEmitterBuffer;
 

@@ -7,13 +7,22 @@ layout (push_constant) uniform Constants
 	float dt;
 } g_Time;
 
-layout(binding = 0) buffer Particles
-{ 
-	vec4 positions[], velocities[];
-	float ages[];
-} g_Particles;
+layout(binding = 0) buffer Positions
+{
+	vec4 positions[];
+} g_Positions;
 
-layout (binding = 1) uniform EmitterProperties
+layout(binding = 1) buffer Velocities
+{
+	vec4 velocities[];
+} g_Velocities;
+
+layout(binding = 2) buffer Ages
+{
+	float ages[];
+} g_Ages;
+
+layout (binding = 3) uniform EmitterProperties
 {
 	vec4 position, direction;
     vec2 particleSize;
@@ -23,31 +32,39 @@ layout (binding = 1) uniform EmitterProperties
 	float minZ;
 } g_EmitterProperties;
 
-float rand(float seed, float minVal, float maxVal)
+/*float rand(float seed, float minVal, float maxVal)
 {
 	// noise1 returns a [-1, 1] value
 	return (noise1(seed) + 1 + minVal) / (maxVal - minVal);
+}*/
+
+float rand1(float p, float minVal, float maxVal)
+{
+    p = fract(p * .1031);
+    p *= p + 33.33;
+    p *= p + p;
+    return minVal + (maxVal - minVal) * fract(p);
 }
 
-void createParticle(int particleIdx, float particleAge)
+void createParticle(uint particleIdx, float particleAge)
 {
     // Randomized unit vector within a cone based on https://math.stackexchange.com/a/205589
-    float minZ = cos(m_Spread);
-    float z = rand(particleAge, g_EmitterProperties.minZ, 1.0);
-    float phi = rand(particleAge, 0.0, TWO_PI);
+    float minZ = cos(g_EmitterProperties.spread);
+    float z = rand1(particleAge, g_EmitterProperties.minZ, 1.0);
+    float phi = rand1(particleAge, 0.0, TWO_PI);
 
     float sqrtZInv = sqrt(1.0f - z * z);
 
     // Randomized vector given that the cone is centered around (0,0,1)
-    vec3 randVec(sqrtZInv * cos(phi), sqrtZInv * sin(phi), z);
-    const vec3 zVec(0.0f, 0.0f, 1.0f);
+    vec3 randVec = vec3(sqrtZInv * cos(phi), sqrtZInv * sin(phi), z);
+    const vec3 zVec = vec3(0.0f, 0.0f, 1.0f);
 
     vec3 particleDirection;
-    if (m_Direction == zVec) {
+    if (g_EmitterProperties.direction.xyz == zVec) {
         particleDirection = randVec;
     } else {
         // Rotate the random vector so that the center of the cone is aligned with the emitter
-        particleDirection = g_EmitterProperties.centeringRotMatrix * randVec;
+        particleDirection = vec3(g_EmitterProperties.centeringRotMatrix * vec4(randVec, 0.0));
     }
 
     /*
@@ -57,16 +74,18 @@ void createParticle(int particleIdx, float particleAge)
     */
 
     float gt = -9.82 * particleAge;
-    vec3 V0 = particleDirection * m_InitialSpeed;
-    m_ParticleStorage.velocities[particleIdx] = vec4(vec3(0.0, gt, 0.0) + V0, 0.0);
-    m_ParticleStorage.positions[particleIdx] = vec4(vec3(0.0, gt * particleAge / 2.0, 0.0) + V0 * particleAge + m_Position, 1.0);
-    m_ParticleStorage.ages[particleIdx] = particleAge;
+    vec3 V0 = particleDirection * g_EmitterProperties.initialSpeed;
+    g_Velocities.velocities[particleIdx] = vec4(vec3(0.0, gt, 0.0) + V0, 0.0);
+    g_Positions.positions[particleIdx] = vec4(vec3(0.0, gt * particleAge / 2.0, 0.0) + V0 * particleAge + g_EmitterProperties.position.xyz, 1.0);
+    g_Ages.ages[particleIdx] = particleAge;
 }
 
 void main()
 {
+    uint particleIdx = gl_GlobalInvocationID.x;
+
 	float dt = g_Time.dt;
-	float age = g_Particles.ages[gl_GlobalInvocationID];
+	float age = g_Ages.ages[particleIdx];
 	age += dt;
 
 	if (age > g_EmitterProperties.particleDuration) {
@@ -74,8 +93,8 @@ void main()
 		float newParticleAge = age - g_EmitterProperties.particleDuration;
         createParticle(particleIdx, newParticleAge);
 	} else {
-		g_Particles.positions[gl_GlobalInvocationID] += g_Particles.velocities[gl_GlobalInvocationID] * dt;
-		g_Particles.velocities[gl_GlobalInvocationID].y -= 9.82 * dt;
-		g_Particles.ages[gl_GlobalInvocationID] += age;
+		g_Positions.positions[particleIdx] += g_Velocities.velocities[particleIdx] * dt;
+		g_Velocities.velocities[particleIdx].y -= 9.82 * dt;
+		g_Ages.ages[particleIdx] += age;
 	}
 }

@@ -21,7 +21,9 @@ ParticleEmitter::ParticleEmitter(const ParticleEmitterInfo& emitterInfo)
     m_RandEngine(std::random_device()()),
     m_ZRandomizer(std::cos(m_Spread), 1.0f),
     m_PhiRandomizer(0.0f, glm::two_pi<float>()),
-    m_pParticleBuffer(nullptr),
+    m_pPositionsBuffer(nullptr),
+    m_pVelocitiesBuffer(nullptr),
+    m_pAgesBuffer(nullptr),
     m_pEmitterBuffer(nullptr)
 {
     // Calculate rotation quaternion
@@ -33,11 +35,13 @@ ParticleEmitter::ParticleEmitter(const ParticleEmitterInfo& emitterInfo)
 
 ParticleEmitter::~ParticleEmitter()
 {
-    SAFEDELETE(m_pParticleBuffer);
+    SAFEDELETE(m_pPositionsBuffer);
+    SAFEDELETE(m_pVelocitiesBuffer);
+    SAFEDELETE(m_pAgesBuffer);
     SAFEDELETE(m_pEmitterBuffer);
 }
 
-bool ParticleEmitter::initializeCPU(IGraphicsContext* pGraphicsContext, const Camera* pCamera)
+bool ParticleEmitter::initialize(IGraphicsContext* pGraphicsContext, const Camera* pCamera)
 {
     m_pCamera = pCamera;
 
@@ -78,22 +82,36 @@ bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
 {
     size_t particleCount = m_ParticlesPerSecond * m_ParticleDuration;
 
-    // Create particle buffer
+    // Create particle buffers
     BufferParams bufferParams = {};
     bufferParams.IsExclusive = true;
     bufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     bufferParams.Usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     bufferParams.SizeInBytes = particleCount * sizeof(glm::vec4);
 
-    m_pParticleBuffer = pGraphicsContext->createBuffer();
-    if (!m_pParticleBuffer->init(bufferParams)) {
-        LOG("Failed to create particle buffer");
+    m_pPositionsBuffer = pGraphicsContext->createBuffer();
+    if (!m_pPositionsBuffer->init(bufferParams)) {
+        LOG("Failed to create particle positions buffer");
+        return false;
+    }
+
+    m_pVelocitiesBuffer = pGraphicsContext->createBuffer();
+    if (!m_pVelocitiesBuffer->init(bufferParams)) {
+        LOG("Failed to create particle velocities buffer");
+        return false;
+    }
+
+    bufferParams.SizeInBytes = particleCount * sizeof(float);
+
+    m_pAgesBuffer = pGraphicsContext->createBuffer();
+    if (!m_pAgesBuffer->init(bufferParams)) {
+        LOG("Failed to create particle ages buffer");
         return false;
     }
 
     // Create emitter buffer
     bufferParams.Usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-    bufferParams.SizeInBytes = sizeof(glm::vec2);
+    bufferParams.SizeInBytes = sizeof(EmitterBuffer);
 
     m_pEmitterBuffer = pGraphicsContext->createBuffer();
     if (!m_pEmitterBuffer->init(bufferParams)) {

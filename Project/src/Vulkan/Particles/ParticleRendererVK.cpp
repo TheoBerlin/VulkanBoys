@@ -99,7 +99,7 @@ void ParticleRendererVK::beginFrame(const Camera& camera)
 	BufferVK* pIndexBuffer = reinterpret_cast<BufferVK*>(m_pQuadMesh->getIndexBuffer());
 	m_ppCommandBuffers[frameIndex]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-	m_ppCommandBuffers[frameIndex]->bindGraphicsPipeline(m_pPipeline);
+	m_ppCommandBuffers[frameIndex]->bindPipeline(m_pPipeline);
 	m_ppCommandBuffers[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_ppDescriptorSets[frameIndex], 0, nullptr);
 }
 
@@ -117,12 +117,12 @@ void ParticleRendererVK::submitParticles(ParticleEmitter* pEmitter)
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
 
 	BufferVK* pEmitterBuffer = reinterpret_cast<BufferVK*>(pEmitter->getEmitterBuffer());
-	BufferVK* pParticleBuffer = reinterpret_cast<BufferVK*>(pEmitter->getParticleBuffer());
+	BufferVK* pPositionBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
 	Texture2DVK* pParticleTexture = reinterpret_cast<Texture2DVK*>(pEmitter->getParticleTexture());
 
 	// TODO: Use constant variables or define macros for binding indices
 	m_ppDescriptorSets[frameIndex]->writeUniformBufferDescriptor(pEmitterBuffer->getBuffer(), 3);
-	m_ppDescriptorSets[frameIndex]->writeStorageBufferDescriptor(pParticleBuffer->getBuffer(), 4);
+	m_ppDescriptorSets[frameIndex]->writeStorageBufferDescriptor(pPositionBuffer->getBuffer(), 4);
 	m_ppDescriptorSets[frameIndex]->writeCombinedImageDescriptor(pParticleTexture->getImageView()->getImageView(), m_pSampler->getSampler(), 5);
 
 	uint32_t particleCount = pEmitter->getParticleCount();

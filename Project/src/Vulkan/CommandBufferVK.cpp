@@ -125,7 +125,7 @@ void CommandBufferVK::bindIndexBuffer(const BufferVK* pIndexBuffer, VkDeviceSize
 	vkCmdBindIndexBuffer(m_CommandBuffer, pIndexBuffer->getBuffer(), offset, indexType);
 }
 
-void CommandBufferVK::bindGraphicsPipeline(PipelineVK* pPipeline)
+void CommandBufferVK::bindPipeline(PipelineVK* pPipeline)
 {
 	vkCmdBindPipeline(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pPipeline->getPipeline());
 }
@@ -292,4 +292,9 @@ void CommandBufferVK::traceRays(ShaderBindingTableVK* pShaderBindingTable, uint3
 		bufferSBT, intersectOffset, pShaderBindingTable->getBindingStride(),
 		VK_NULL_HANDLE, 0, 0,
 		width, height, 1);
+}
+
+void CommandBufferVK::dispatch(const glm::u32vec3& groupSize)
+{
+	vkCmdDispatch(m_CommandBuffer, groupSize.x, groupSize.y, groupSize.z);
 }

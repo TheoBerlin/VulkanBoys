@@ -5,6 +5,7 @@
 #include "Core/ParticleEmitter.h"
 #include "Vulkan/VulkanCommon.h"
 
+class BufferVK;
 class CommandBufferVK;
 class CommandPoolVK;
 class DescriptorPoolVK;
@@ -28,13 +29,23 @@ public:
     ParticleEmitterHandlerVK();
     ~ParticleEmitterHandlerVK();
 
-    virtual void updateBuffers(IRenderingHandler* pRenderingHandler) override;
+    virtual void update(float dt) override;
+    virtual void updateRenderingBuffers(IRenderingHandler* pRenderingHandler) override;
     virtual bool initializeGPUCompute() override;
 
     virtual void toggleComputationDevice() override;
 
 private:
+    // Initializes an emitter and prepares its buffers for computing or rendering
+    virtual void initializeEmitter(ParticleEmitter* pEmitter) override;
+
     void updateGPU(float dt);
+    // Transition an emitter's buffers to prepare it for computing
+    void prepBufferForCompute(BufferVK* pBuffer);
+    // Transition an emitter's buffers to prepare it for rendering
+    void prepBufferForRendering(BufferVK* pBuffer);
+    void beginUpdateFrame();
+    void endUpdateFrame();
 
     bool createCommandPoolAndBuffers();
     bool createPipelineLayout();
@@ -54,4 +65,6 @@ private:
     PipelineVK* m_pPipeline;
 
     SamplerVK* m_pSampler;
+
+    uint32_t m_CurrentFrame;
 };

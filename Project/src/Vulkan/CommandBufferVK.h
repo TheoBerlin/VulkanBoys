@@ -31,7 +31,7 @@ public:
 
 	void bindVertexBuffers(const BufferVK* const * ppVertexBuffers, uint32_t vertexBufferCount, const VkDeviceSize* pOffsets);
 	void bindIndexBuffer(const BufferVK* pIndexBuffer, VkDeviceSize offset, VkIndexType indexType);
-	void bindGraphicsPipeline(PipelineVK* pPipelineState);
+	void bindPipeline(PipelineVK* pPipelineState);
 	void bindDescriptorSet(VkPipelineBindPoint bindPoint, PipelineLayoutVK* pPipelineLayout, uint32_t firstSet, uint32_t count, const DescriptorSetVK* const * ppDescriptorSets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets);
 
 	void pushConstants(PipelineLayoutVK* pPipelineLayout, VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size, const void* pValues);
@@ -52,6 +52,8 @@ public:
 
 	//Ray Tracing
 	void traceRays(ShaderBindingTableVK* pShaderBindingTable, uint32_t width, uint32_t height);
+
+	void dispatch(const glm::u32vec3& groupSize);
 
 	//GETTERS
 	VkFence getFence() const { return m_Fence; }

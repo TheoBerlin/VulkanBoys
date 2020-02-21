@@ -376,7 +376,7 @@ void RenderingHandlerVK::updateBuffers(const Camera& camera)
 	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraDirectionsBuffer, 0, (const void*)&cameraDirectionsBuffer, sizeof(CameraDirectionsBuffer));
 
 	// Update particle buffers
-	m_pParticleEmitterHandler->updateBuffers(this);
+	m_pParticleEmitterHandler->updateRenderingBuffers(this);
 }
 
 void RenderingHandlerVK::startRenderPass()
