@@ -248,7 +248,7 @@ bool ParticleRendererVK::createPipeline()
 	m_pPipeline->setCulling(false);
 	m_pPipeline->setDepthTest(true);
 	m_pPipeline->setWireFrame(false);
-	m_pPipeline->finalize(shaders, m_pRenderingHandler->getRenderPass(), m_pPipelineLayout);
+	m_pPipeline->finalizeGraphics(shaders, m_pRenderingHandler->getRenderPass(), m_pPipelineLayout);
 
 	SAFEDELETE(pVertexShader);
 	SAFEDELETE(pPixelShader);

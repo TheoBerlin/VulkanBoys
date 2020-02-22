@@ -22,11 +22,12 @@ public:
 	void setWireFrame(bool wireframe) { m_WireFrame = wireframe; }
 
 	// Creates a graphics pipeline
-	bool finalize(const std::vector<IShader*>& shaders, RenderPassVK* pRenderPass, PipelineLayoutVK* pPipelineLayout);
+	bool finalizeGraphics(const std::vector<IShader*>& shaders, RenderPassVK* pRenderPass, PipelineLayoutVK* pPipelineLayout);
 	// Creates a compute pipeline
 	bool finalizeCompute(IShader* shader, PipelineLayoutVK* pPipelineLayout);
 
 	VkPipeline getPipeline() const { return m_Pipeline; }
+	VkPipelineBindPoint getBindPoint() const { return m_BindPoint; }
 
 private:
     void createShaderStageInfo(VkPipelineShaderStageCreateInfo& shaderStageInfo, const IShader* shader);
@@ -40,4 +41,6 @@ private:
 	bool m_WireFrame;
 	bool m_Culling;
 	bool m_DepthTest;
+
+	VkPipelineBindPoint m_BindPoint;
 };

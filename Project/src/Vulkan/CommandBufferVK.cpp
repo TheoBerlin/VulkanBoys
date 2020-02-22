@@ -127,7 +127,7 @@ void CommandBufferVK::bindIndexBuffer(const BufferVK* pIndexBuffer, VkDeviceSize
 
 void CommandBufferVK::bindPipeline(PipelineVK* pPipeline)
 {
-	vkCmdBindPipeline(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pPipeline->getPipeline());
+	vkCmdBindPipeline(m_CommandBuffer, pPipeline->getBindPoint(), pPipeline->getPipeline());
 }
 
 void CommandBufferVK::bindDescriptorSet(VkPipelineBindPoint bindPoint, PipelineLayoutVK* pPipelineLayout, uint32_t firstSet, uint32_t count, const DescriptorSetVK* const* ppDescriptorSets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets)

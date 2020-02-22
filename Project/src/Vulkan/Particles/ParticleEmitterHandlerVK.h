@@ -43,7 +43,7 @@ private:
     // Transition an emitter's buffers to prepare it for computing
     void prepBufferForCompute(BufferVK* pBuffer);
     // Transition an emitter's buffers to prepare it for rendering
-    void prepBufferForRendering(BufferVK* pBuffer);
+    void prepBufferForRendering(BufferVK* pBuffer, CommandBufferVK* pCommandBuffer);
     void beginUpdateFrame();
     void endUpdateFrame();
 

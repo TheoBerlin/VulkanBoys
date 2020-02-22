@@ -28,6 +28,8 @@ struct EmitterBuffer {
     float particleDuration, initialSpeed, spread;
     // Used when randomizing a direction for new particles
     float minZ;
+    // This padding gets the buffer size up to 128 bytes
+    glm::vec4 padding;
 };
 
 struct ParticleStorage {
@@ -44,11 +46,12 @@ public:
     bool initialize(IGraphicsContext* pGraphicsContext, const Camera* pCamera);
 
     void update(float dt);
+    void updateGPU(float dt);
 
     const ParticleStorage& getParticleStorage() const { return m_ParticleStorage; }
     void createEmitterBuffer(EmitterBuffer& emitterBuffer);
     // TODO: Change this to use the emitter's age to calculate the particle count. Using the size doesn't work if particles only exist on the GPU.
-    uint32_t getParticleCount() const { return (uint32_t)m_ParticleStorage.positions.size(); }
+    uint32_t getParticleCount() const { return uint32_t(m_ParticlesPerSecond * m_EmitterAge); }
 
     IBuffer* getPositionsBuffer() { return m_pPositionsBuffer; }
     IBuffer* getVelocitiesBuffer() { return m_pVelocitiesBuffer; }

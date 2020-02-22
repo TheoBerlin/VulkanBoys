@@ -20,7 +20,7 @@ void IParticleEmitterHandler::initialize(IGraphicsContext* pGraphicsContext, con
 {
     m_pGraphicsContext = pGraphicsContext;
 
-    if (initializeGPUCompute()) {
+    if (!initializeGPUCompute()) {
         LOG("Failed to initialize Particle Emitter Handler GPU compute resources");
         return;
     }

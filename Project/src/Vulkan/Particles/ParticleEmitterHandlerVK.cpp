@@ -63,7 +63,7 @@ void ParticleEmitterHandlerVK::updateRenderingBuffers(IRenderingHandler* pRender
 
 		if (m_GPUComputed) {
 			// Transition particle positions buffer
-			prepBufferForRendering(pPositionsBuffer);
+			prepBufferForRendering(pPositionsBuffer, pCommandBuffer);
 		} else {
 			// Update emitter buffer. If GPU computing is enabled, this will already have been updated
 			if (pEmitter->m_EmitterUpdated) {
@@ -123,15 +123,18 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 	bufferMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
 	bufferMemoryBarrier.pNext = nullptr;
 	bufferMemoryBarrier.srcAccessMask = 0;
-	bufferMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-	// It is unknown if the rendering or computing is next, but if it 
+	bufferMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+	//bufferMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+	// It is unknown if the rendering or computing is next
 	bufferMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	bufferMemoryBarrier.dstQueueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+	bufferMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	// bufferMemoryBarrier.srcQueueFamilyIndex = queueFamilyIndices.computeFamily.value();
+	// bufferMemoryBarrier.dstQueueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
 	bufferMemoryBarrier.offset = 0;
 	bufferMemoryBarrier.size = VK_WHOLE_SIZE;
 
 	std::vector<BufferVK*> emitterBuffers = {
-		reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()),
+		//reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()),
 		reinterpret_cast<BufferVK*>(pEmitter->getVelocitiesBuffer()),
 		reinterpret_cast<BufferVK*>(pEmitter->getAgesBuffer())
 	};
@@ -153,7 +156,7 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 			0, nullptr);
 
 		// The velocities and ages buffers are only used for computing
-		dstFlags = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+		//dstFlags = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 	}
 
 	// TODO: If the renderer is next to use the buffers, it will use the graphics queue. There is no guarantee that this transition will finish by then.
@@ -166,18 +169,21 @@ void ParticleEmitterHandlerVK::updateGPU(float dt)
 	beginUpdateFrame();
 
 	for (ParticleEmitter* pEmitter : m_ParticleEmitters) {
+		pEmitter->updateGPU(dt);
+
 		// Update descriptor set
 		BufferVK* pPositionsBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
 		BufferVK* pVelocitiesBuffer = reinterpret_cast<BufferVK*>(pEmitter->getVelocitiesBuffer());
 		BufferVK* pAgesBuffer = reinterpret_cast<BufferVK*>(pEmitter->getAgesBuffer());
 		BufferVK* pEmitterBuffer = reinterpret_cast<BufferVK*>(pEmitter->getEmitterBuffer());
 
-		prepBufferForCompute(pPositionsBuffer);
+		//prepBufferForCompute(pPositionsBuffer);
 		// TODO: The two transitions beneath are not needed, are they...?
-		// prepBufferForCompute(pVelocitiesBuffer);
-		// prepBufferForCompute(pAgesBuffer);
+		//prepBufferForCompute(pVelocitiesBuffer);
+		//prepBufferForCompute(pAgesBuffer);
 
 		// TODO: Use constant variables or define macros for binding indices
+		m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float), (const void*)&dt);
 		m_ppDescriptorSets[m_CurrentFrame]->writeStorageBufferDescriptor(pPositionsBuffer->getBuffer(), 0);
 		m_ppDescriptorSets[m_CurrentFrame]->writeStorageBufferDescriptor(pVelocitiesBuffer->getBuffer(), 1);
 		m_ppDescriptorSets[m_CurrentFrame]->writeStorageBufferDescriptor(pAgesBuffer->getBuffer(), 2);
@@ -201,10 +207,15 @@ void ParticleEmitterHandlerVK::prepBufferForCompute(BufferVK* pBuffer)
 	VkBufferMemoryBarrier bufferMemoryBarrier = {};
 	bufferMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
 	bufferMemoryBarrier.pNext = nullptr;
-	bufferMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	bufferMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-	bufferMemoryBarrier.srcQueueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-	bufferMemoryBarrier.dstQueueFamilyIndex = queueFamilyIndices.computeFamily.value();
+
+	//bufferMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	// bufferMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+	// bufferMemoryBarrier.srcQueueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+	// bufferMemoryBarrier.dstQueueFamilyIndex = queueFamilyIndices.computeFamily.value();
+	bufferMemoryBarrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+	bufferMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+	bufferMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	bufferMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	bufferMemoryBarrier.buffer = pBuffer->getBuffer();
 	bufferMemoryBarrier.offset = 0;
 	bufferMemoryBarrier.size = VK_WHOLE_SIZE;
@@ -219,7 +230,7 @@ void ParticleEmitterHandlerVK::prepBufferForCompute(BufferVK* pBuffer)
 		0, nullptr);
 }
 
-void ParticleEmitterHandlerVK::prepBufferForRendering(BufferVK* pBuffer)
+void ParticleEmitterHandlerVK::prepBufferForRendering(BufferVK* pBuffer, CommandBufferVK* pCommandBuffer)
 {
 	GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
 	DeviceVK* pDevice = pGraphicsContext->getDevice();
@@ -228,17 +239,19 @@ void ParticleEmitterHandlerVK::prepBufferForRendering(BufferVK* pBuffer)
 	VkBufferMemoryBarrier bufferMemoryBarrier = {};
 	bufferMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
 	bufferMemoryBarrier.pNext = nullptr;
-	bufferMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	bufferMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-	bufferMemoryBarrier.srcQueueFamilyIndex = queueFamilyIndices.computeFamily.value();
-	bufferMemoryBarrier.dstQueueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
+	bufferMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+	bufferMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;// | VK_ACCESS_SHADER_WRITE_BIT;
+	//bufferMemoryBarrier.srcQueueFamilyIndex = queueFamilyIndices.computeFamily.value();
+	bufferMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	bufferMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	//bufferMemoryBarrier.dstQueueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
 	bufferMemoryBarrier.buffer = pBuffer->getBuffer();
 	bufferMemoryBarrier.offset = 0;
 	bufferMemoryBarrier.size = VK_WHOLE_SIZE;
 
 	vkCmdPipelineBarrier(
-		m_ppCommandBuffers[m_CurrentFrame]->getCommandBuffer(),
-		VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+		pCommandBuffer->getCommandBuffer(),
+		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
 		VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 		0,
 		0, nullptr,
@@ -248,7 +261,7 @@ void ParticleEmitterHandlerVK::prepBufferForRendering(BufferVK* pBuffer)
 
 void ParticleEmitterHandlerVK::beginUpdateFrame()
 {
-	m_ppCommandBuffers[m_CurrentFrame]->reset(false);
+	m_ppCommandBuffers[m_CurrentFrame]->reset(true);
 	m_ppCommandPools[m_CurrentFrame]->reset();
 
 	m_ppCommandBuffers[m_CurrentFrame]->begin(nullptr);
@@ -256,6 +269,7 @@ void ParticleEmitterHandlerVK::beginUpdateFrame()
 	m_ppCommandBuffers[m_CurrentFrame]->bindPipeline(m_pPipeline);
 	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, m_pPipelineLayout, 0, 1, &m_ppDescriptorSets[m_CurrentFrame], 0, nullptr);
 
+	// Update emitter buffers
 	for (ParticleEmitter* pEmitter : m_ParticleEmitters) {
 		if (pEmitter->m_EmitterUpdated) {
 			EmitterBuffer emitterBuffer = {};
@@ -286,9 +300,9 @@ bool ParticleEmitterHandlerVK::createCommandPoolAndBuffers()
     GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
     DeviceVK* pDevice = pGraphicsContext->getDevice();
 
-	const uint32_t graphicsQueueIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
+	const uint32_t computeQueueIndex = pDevice->getQueueFamilyIndices().computeFamily.value();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, graphicsQueueIndex);
+		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, computeQueueIndex);
 
 		if (!m_ppCommandPools[i]->init()) {
 			return false;
@@ -323,13 +337,6 @@ bool ParticleEmitterHandlerVK::createPipelineLayout()
 	// Emitter properties
 	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_COMPUTE_BIT, 3, 1);
 
-	// Particle Texture
-	m_pSampler = new SamplerVK(pDevice);
-	m_pSampler->init(VkFilter::VK_FILTER_LINEAR, VkFilter::VK_FILTER_LINEAR, VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT, VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT);
-	VkSampler sampler = m_pSampler->getSampler();
-
-	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, &sampler, 5, 1);
-
 	if (!m_pDescriptorSetLayout->finalize()) {
 		LOG("Failed to finalize descriptor set layout");
 		return false;
@@ -358,7 +365,13 @@ bool ParticleEmitterHandlerVK::createPipelineLayout()
 	}
 
 	m_pPipelineLayout = DBG_NEW PipelineLayoutVK(pDevice);
-	return m_pPipelineLayout->init(descriptorSetLayouts, {});
+
+	VkPushConstantRange pushConstantRange = {};
+	pushConstantRange.size = sizeof(float);
+	pushConstantRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	pushConstantRange.offset = 0;
+
+	return m_pPipelineLayout->init(descriptorSetLayouts, {pushConstantRange});
 }
 
 bool ParticleEmitterHandlerVK::createPipeline()

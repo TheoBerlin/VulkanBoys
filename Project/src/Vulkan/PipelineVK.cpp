@@ -58,7 +58,7 @@ void PipelineVK::addColorBlendAttachment(bool blendEnable, VkColorComponentFlags
     m_ColorBlendAttachments.emplace_back(colorBlendAttachment);
 }
 
-bool PipelineVK::finalize(const std::vector<IShader*>& shaders, RenderPassVK* pRenderPass, PipelineLayoutVK* pPipelineLayout)
+bool PipelineVK::finalizeGraphics(const std::vector<IShader*>& shaders, RenderPassVK* pRenderPass, PipelineLayoutVK* pPipelineLayout)
 {
     // Define shader stage create infos
     std::vector<VkPipelineShaderStageCreateInfo> shaderStagesInfos;
@@ -167,6 +167,7 @@ bool PipelineVK::finalize(const std::vector<IShader*>& shaders, RenderPassVK* pR
 
     VK_CHECK_RESULT_RETURN_FALSE(vkCreateGraphicsPipelines(m_pDevice->getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_Pipeline), "vkCreateGraphicsPipelines failed");
 
+    m_BindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     D_LOG("--- Pipeline: Vulkan graphics pipeline created successfully");
 
     m_VertexAttributes.clear();
@@ -188,6 +189,7 @@ bool PipelineVK::finalizeCompute(IShader* shader, PipelineLayoutVK* pPipelineLay
 
     VK_CHECK_RESULT_RETURN_FALSE(vkCreateComputePipelines(m_pDevice->getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_Pipeline), "vkCreateComputePipelines failed");
 
+    m_BindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
     D_LOG("--- Pipeline: Vulkan graphics pipeline created successfully");
     return true;
 }

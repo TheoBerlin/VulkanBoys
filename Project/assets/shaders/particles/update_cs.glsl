@@ -30,6 +30,7 @@ layout (binding = 3) uniform EmitterProperties
     float particleDuration, initialSpeed, spread;
 	// Used when randomizing a direction for new particles
 	float minZ;
+    vec4 padding;
 } g_EmitterProperties;
 
 /*float rand(float seed, float minVal, float maxVal)
@@ -83,7 +84,11 @@ void createParticle(uint particleIdx, float particleAge)
 void main()
 {
     uint particleIdx = gl_GlobalInvocationID.x;
-
+    //g_Ages.ages[particleIdx] += g_Time.dt;
+    g_Positions.positions[particleIdx].x += 1.0 * g_Time.dt;
+    g_Ages.ages[particleIdx] = 1.0;
+    g_Ages.ages[0] = 5.0;
+/*
 	float dt = g_Time.dt;
 	float age = g_Ages.ages[particleIdx];
 	age += dt;
@@ -96,5 +101,5 @@ void main()
 		g_Positions.positions[particleIdx] += g_Velocities.velocities[particleIdx] * dt;
 		g_Velocities.velocities[particleIdx].y -= 9.82 * dt;
 		g_Ages.ages[particleIdx] += age;
-	}
+	}*/
 }

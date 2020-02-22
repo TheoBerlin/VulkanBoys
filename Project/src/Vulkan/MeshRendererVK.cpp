@@ -138,9 +138,9 @@ bool MeshRendererVK::init()
 	BufferVK* pCameraBuffer = m_pRenderingHandler->getCameraMatricesBuffer();
 	m_pDescriptorSet->writeUniformBufferDescriptor(pCameraBuffer->getBuffer(), 0);
 
-	if (m_pContext->getDevice()->supportsRayTracing()) {
+	/*if (m_pContext->getDevice()->supportsRayTracing()) {
 		initRayTracing();
-	}
+	}*/
 
 	return true;
 }
@@ -358,7 +358,7 @@ bool MeshRendererVK::createPipelines()
 		m_pPipeline->setDepthTest(true);
 		m_pPipeline->setWireFrame(false);
 		//TODO: Return bool
-		m_pPipeline->finalize(shaders, m_pRenderPass, m_pPipelineLayout);
+		m_pPipeline->finalizeGraphics(shaders, m_pRenderPass, m_pPipelineLayout);
 
 	SAFEDELETE(pVertexShader);
 	SAFEDELETE(pPixelShader);

@@ -46,24 +46,39 @@ bool ParticleEmitter::initialize(IGraphicsContext* pGraphicsContext, const Camer
     m_pCamera = pCamera;
 
     size_t particleCount = m_ParticlesPerSecond * m_ParticleDuration;
-    m_ParticleStorage.positions.reserve(particleCount);
-    m_ParticleStorage.velocities.reserve(particleCount);
-    m_ParticleStorage.ages.reserve(particleCount);
+    m_ParticleStorage.positions.resize(particleCount);
+    m_ParticleStorage.velocities.resize(particleCount);
+    m_ParticleStorage.ages.resize(particleCount);
+
+    // Set the particle ages so that the first particle will respawn after the first update
+    float spawnRateReciprocal = 1.0f / m_ParticlesPerSecond;
+    std::vector<float>& ages = m_ParticleStorage.ages;
+
+    for (size_t i = 0; i < particleCount; i++) {
+        ages[i] = m_ParticleDuration - i * spawnRateReciprocal;
+    }
 
     return createBuffers(pGraphicsContext);
 }
 
 void ParticleEmitter::update(float dt)
 {
-    size_t maxParticleCount = m_ParticlesPerSecond * m_ParticleDuration;
-    if (m_ParticleStorage.positions.size() < maxParticleCount) {
+    if (m_EmitterAge < m_ParticleDuration) {
         m_EmitterAge += dt;
-        spawnNewParticles();
     }
 
     moveParticles(dt);
 
     respawnOldParticles();
+}
+
+void ParticleEmitter::updateGPU(float dt)
+{
+    if (m_EmitterAge < m_ParticleDuration) {
+        m_EmitterAge += dt;
+    }
+
+    // The rest is performed by the particle emitter handler
 }
 
 void ParticleEmitter::createEmitterBuffer(EmitterBuffer& emitterBuffer)
@@ -76,6 +91,7 @@ void ParticleEmitter::createEmitterBuffer(EmitterBuffer& emitterBuffer)
     emitterBuffer.initialSpeed = m_InitialSpeed;
     emitterBuffer.spread = m_Spread;
     emitterBuffer.minZ = std::cos(m_Spread);
+    emitterBuffer.padding = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
 }
 
 bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
@@ -95,6 +111,7 @@ bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
         return false;
     }
 
+    bufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     m_pVelocitiesBuffer = pGraphicsContext->createBuffer();
     if (!m_pVelocitiesBuffer->init(bufferParams)) {
         LOG("Failed to create particle velocities buffer");
@@ -128,7 +145,7 @@ bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
 void ParticleEmitter::spawnNewParticles()
 {
     size_t particleCount = m_ParticleStorage.positions.size();
-    size_t newParticleCount = m_EmitterAge * m_ParticlesPerSecond;
+    size_t newParticleCount = size_t(m_EmitterAge * m_ParticlesPerSecond);
     size_t particlesToSpawn = newParticleCount - particleCount;
 
     if (particlesToSpawn == 0) {
