@@ -478,6 +478,9 @@ void Application::renderUI(double dt)
 
 void Application::render(double dt)
 {
+	if (m_pParticleEmitterHandler->gpuComputed()) {
+		int a = 0;
+	}
 	m_pRenderingHandler->beginFrame(m_Camera);
 
 	if (!m_EnableRayTracing) {

@@ -89,6 +89,7 @@ void CommandBufferVK::end()
 {
 	VK_CHECK_RESULT(vkEndCommandBuffer(m_CommandBuffer), "End CommandBuffer Failed");
 }
+
 void CommandBufferVK::beginRenderPass(RenderPassVK* pRenderPass, FrameBufferVK* pFrameBuffer, uint32_t width, uint32_t height, VkClearValue* pClearVales, uint32_t clearValueCount)
 {
 	VkRenderPassBeginInfo renderPassInfo = {};
@@ -173,6 +174,52 @@ void CommandBufferVK::copyBuffer(BufferVK* pSource, uint64_t sourceOffset, Buffe
 	bufferCopy.dstOffset	= destinationOffset;
 
 	vkCmdCopyBuffer(m_CommandBuffer, pSource->getBuffer(), pDestination->getBuffer(), 1, &bufferCopy);
+}
+
+void CommandBufferVK::releaseBufferOwnership(BufferVK* pBuffer, VkAccessFlags srcAccessMask, uint32_t srcQueueFamilyIndex, uint32_t dstQueueFamilyIndex, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask)
+{
+	VkBufferMemoryBarrier bufferMemoryBarrier = {};
+	bufferMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+	bufferMemoryBarrier.pNext = nullptr;
+	bufferMemoryBarrier.srcAccessMask = srcAccessMask;
+	bufferMemoryBarrier.dstAccessMask = 0;
+	bufferMemoryBarrier.srcQueueFamilyIndex = srcQueueFamilyIndex;
+	bufferMemoryBarrier.dstQueueFamilyIndex = dstQueueFamilyIndex;
+	bufferMemoryBarrier.offset = 0;
+	bufferMemoryBarrier.size = VK_WHOLE_SIZE;
+	bufferMemoryBarrier.buffer = pBuffer->getBuffer();
+
+	vkCmdPipelineBarrier(
+		m_CommandBuffer,
+		srcStageMask,
+		dstStageMask,
+		0,
+		0, nullptr,
+		1, &bufferMemoryBarrier,
+		0, nullptr);
+}
+
+void CommandBufferVK::acquireBufferOwnership(BufferVK* pBuffer, VkAccessFlags dstAccessMask, uint32_t srcQueueFamilyIndex, uint32_t dstQueueFamilyIndex, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask)
+{
+	VkBufferMemoryBarrier bufferMemoryBarrier = {};
+	bufferMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+	bufferMemoryBarrier.pNext = nullptr;
+	bufferMemoryBarrier.srcAccessMask = 0;
+	bufferMemoryBarrier.dstAccessMask = dstAccessMask;
+	bufferMemoryBarrier.srcQueueFamilyIndex = srcQueueFamilyIndex;
+	bufferMemoryBarrier.dstQueueFamilyIndex = dstQueueFamilyIndex;
+	bufferMemoryBarrier.offset = 0;
+	bufferMemoryBarrier.size = VK_WHOLE_SIZE;
+	bufferMemoryBarrier.buffer = pBuffer->getBuffer();
+
+	vkCmdPipelineBarrier(
+		m_CommandBuffer,
+		srcStageMask,
+		dstStageMask,
+		0,
+		0, nullptr,
+		1, &bufferMemoryBarrier,
+		0, nullptr);
 }
 
 void CommandBufferVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height)

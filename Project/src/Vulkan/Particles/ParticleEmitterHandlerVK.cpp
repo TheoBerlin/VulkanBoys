@@ -20,7 +20,7 @@ ParticleEmitterHandlerVK::ParticleEmitterHandlerVK()
 	m_pDescriptorSetLayout(nullptr),
 	m_pPipelineLayout(nullptr),
 	m_pPipeline(nullptr),
-	m_pSampler(nullptr),
+	m_pCommandPoolGraphics(nullptr),
 	m_CurrentFrame(0)
 {
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -39,7 +39,7 @@ ParticleEmitterHandlerVK::~ParticleEmitterHandlerVK()
 	SAFEDELETE(m_pDescriptorSetLayout);
 	SAFEDELETE(m_pPipelineLayout);
 	SAFEDELETE(m_pPipeline);
-	SAFEDELETE(m_pSampler);
+	SAFEDELETE(m_pCommandPoolGraphics);
 }
 
 void ParticleEmitterHandlerVK::update(float dt)
@@ -59,12 +59,7 @@ void ParticleEmitterHandlerVK::updateRenderingBuffers(IRenderingHandler* pRender
     CommandBufferVK* pCommandBuffer = pRenderingHandlerVK->getCurrentCommandBuffer();
 
     for (ParticleEmitter* pEmitter : m_ParticleEmitters) {
-        BufferVK* pPositionsBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
-
-		if (m_GPUComputed) {
-			// Transition particle positions buffer
-			prepBufferForRendering(pPositionsBuffer, pCommandBuffer);
-		} else {
+		if (!m_GPUComputed) {
 			// Update emitter buffer. If GPU computing is enabled, this will already have been updated
 			if (pEmitter->m_EmitterUpdated) {
 				EmitterBuffer emitterBuffer = {};
@@ -78,6 +73,7 @@ void ParticleEmitterHandlerVK::updateRenderingBuffers(IRenderingHandler* pRender
 
 			// Update particle positions buffer
 			const std::vector<glm::vec4>& particlePositions = pEmitter->getParticleStorage().positions;
+			BufferVK* pPositionsBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
 
 			pCommandBuffer->updateBuffer(pPositionsBuffer, 0, particlePositions.data(), sizeof(glm::vec4) * particlePositions.size());
 		}
@@ -103,70 +99,170 @@ bool ParticleEmitterHandlerVK::initializeGPUCompute()
 
 void ParticleEmitterHandlerVK::toggleComputationDevice()
 {
-    m_GPUComputed = !m_GPUComputed;
+	GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
+	DeviceVK* pDevice = pGraphicsContext->getDevice();
+
+	if (m_GPUComputed) {
+		// Disable GPU-side computing
+		CommandBufferVK* pTempCommandBuffer = m_pCommandPoolGraphics->allocateCommandBuffer();
+		pTempCommandBuffer->reset();
+		pTempCommandBuffer->begin();
+
+		for (ParticleEmitter* pEmitter : m_ParticleEmitters) {
+			BufferVK* pPositionsBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
+
+			releaseFromCompute(pPositionsBuffer, pTempCommandBuffer);
+			acquireForGraphics(pPositionsBuffer, pTempCommandBuffer);
+		}
+
+		pTempCommandBuffer->end();
+		pDevice->executePrimaryCommandBuffer(pDevice->getGraphicsQueue(), pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+
+		// Wait for command buffer to finish executing before deleting it
+		pTempCommandBuffer->reset(true);
+		m_pCommandPoolGraphics->freeCommandBuffer(&pTempCommandBuffer);
+	} else {
+		// Enable GPU-side computing
+		CommandBufferVK* pTempCommandBuffer = m_ppCommandPools[0]->allocateCommandBuffer();
+		pTempCommandBuffer->reset();
+		pTempCommandBuffer->begin();
+
+		// Since ImGui is what triggered this, and ImGui is handled AFTER particles are updated, the particle buffers will be used
+		// for rendering next, and the renderer will try to acquire ownership of the buffers for the rendering queue, the compute queue needs to release them
+		for (ParticleEmitter* pEmitter : m_ParticleEmitters) {
+			BufferVK* pPositionsBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
+			releaseFromCompute(pPositionsBuffer, pTempCommandBuffer);
+		}
+
+		pTempCommandBuffer->end();
+		pDevice->executePrimaryCommandBuffer(pDevice->getComputeQueue(), pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+
+		// Wait for command buffer to finish executing before deleting it
+		pTempCommandBuffer->reset(true);
+		m_ppCommandPools[0]->freeCommandBuffer(&pTempCommandBuffer);
+	}
+
+	m_GPUComputed = !m_GPUComputed;
+}
+
+void ParticleEmitterHandlerVK::releaseFromGraphics(BufferVK* pBuffer, CommandBufferVK* pCommandBuffer)
+{
+	GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
+	DeviceVK* pDevice = pGraphicsContext->getDevice();
+	const QueueFamilyIndices& queueFamilyIndices = pDevice->getQueueFamilyIndices();
+
+	pCommandBuffer->releaseBufferOwnership(
+		pBuffer,
+		VK_ACCESS_SHADER_READ_BIT,
+		queueFamilyIndices.graphicsFamily.value(),
+		queueFamilyIndices.computeFamily.value(),
+		VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
+		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+	);
+}
+
+void ParticleEmitterHandlerVK::releaseFromCompute(BufferVK* pBuffer, CommandBufferVK* pCommandBuffer)
+{
+	GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
+	DeviceVK* pDevice = pGraphicsContext->getDevice();
+	const QueueFamilyIndices& queueFamilyIndices = pDevice->getQueueFamilyIndices();
+
+	pCommandBuffer->releaseBufferOwnership(
+		pBuffer,
+		VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+		queueFamilyIndices.computeFamily.value(),
+		queueFamilyIndices.graphicsFamily.value(),
+		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+		VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
+	);
+}
+
+void ParticleEmitterHandlerVK::acquireForGraphics(BufferVK* pBuffer, CommandBufferVK* pCommandBuffer)
+{
+	GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
+	DeviceVK* pDevice = pGraphicsContext->getDevice();
+	const QueueFamilyIndices& queueFamilyIndices = pDevice->getQueueFamilyIndices();
+
+	pCommandBuffer->acquireBufferOwnership(
+		pBuffer,
+		VK_ACCESS_SHADER_READ_BIT,
+		queueFamilyIndices.computeFamily.value(),
+		queueFamilyIndices.graphicsFamily.value(),
+		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+		VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
+	);
+}
+
+void ParticleEmitterHandlerVK::acquireForCompute(BufferVK* pBuffer, CommandBufferVK* pCommandBuffer)
+{
+	GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
+	DeviceVK* pDevice = pGraphicsContext->getDevice();
+	const QueueFamilyIndices& queueFamilyIndices = pDevice->getQueueFamilyIndices();
+
+	pCommandBuffer->acquireBufferOwnership(
+		pBuffer,
+		VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+		queueFamilyIndices.graphicsFamily.value(),
+		queueFamilyIndices.computeFamily.value(),
+		VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
+		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+	);
 }
 
 void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 {
 	pEmitter->initialize(m_pGraphicsContext, m_pCamera);
-/*
-	// A temporary command buffer is needed as it is not known if one of the member buffers have begun recording or not
-	CommandBufferVK* pTempCommandBuffer = m_ppCommandPools[0]->allocateCommandBuffer();
-	pTempCommandBuffer->reset();
-	pTempCommandBuffer->begin();
 
 	GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
 	DeviceVK* pDevice = pGraphicsContext->getDevice();
 	const QueueFamilyIndices& queueFamilyIndices = pDevice->getQueueFamilyIndices();
 
-	VkBufferMemoryBarrier bufferMemoryBarrier = {};
-	bufferMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-	bufferMemoryBarrier.pNext = nullptr;
-	bufferMemoryBarrier.srcAccessMask = 0;
-	bufferMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
-	//bufferMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-	// It is unknown if the rendering or computing is next
-	bufferMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	bufferMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	// bufferMemoryBarrier.srcQueueFamilyIndex = queueFamilyIndices.computeFamily.value();
-	// bufferMemoryBarrier.dstQueueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-	bufferMemoryBarrier.offset = 0;
-	bufferMemoryBarrier.size = VK_WHOLE_SIZE;
+	// Transfer ownership of buffers to compute queue
+	if (queueFamilyIndices.graphicsFamily.value() != queueFamilyIndices.computeFamily.value()) {
+		BufferVK* pVelocitiesBuffer = reinterpret_cast<BufferVK*>(pEmitter->getVelocitiesBuffer());
+		BufferVK* pAgesBuffer = reinterpret_cast<BufferVK*>(pEmitter->getAgesBuffer());
 
-	std::vector<BufferVK*> emitterBuffers = {
-		//reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()),
-		reinterpret_cast<BufferVK*>(pEmitter->getVelocitiesBuffer()),
-		reinterpret_cast<BufferVK*>(pEmitter->getAgesBuffer())
-	};
+		CommandBufferVK* pTempCommandBufferGraphics = m_pCommandPoolGraphics->allocateCommandBuffer();
+		pTempCommandBufferGraphics->reset();
+		pTempCommandBufferGraphics->begin();
 
-	// The positions buffer will be used for both rendering and computing and it is unknown if
-	// the particles will be used for computing or rendering next, so leave the door open for either option.
-	VkPipelineStageFlags dstFlags = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		CommandBufferVK* pTempCommandBufferCompute = m_ppCommandPools[0]->allocateCommandBuffer();
+		pTempCommandBufferCompute->reset();
+		pTempCommandBufferCompute->begin();
 
-	for (BufferVK* pBuffer : emitterBuffers) {
-		bufferMemoryBarrier.buffer = pBuffer->getBuffer();
+		if (m_GPUComputed) {
+			releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), pTempCommandBufferGraphics);
+		}
+		releaseFromGraphics(pVelocitiesBuffer, pTempCommandBufferGraphics);
+		releaseFromGraphics(pAgesBuffer, pTempCommandBufferGraphics);
 
-		vkCmdPipelineBarrier(
-			pTempCommandBuffer->getCommandBuffer(),
-			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-			dstFlags,
-			0,
-			0, nullptr,
-			1, &bufferMemoryBarrier,
-			0, nullptr);
+		// These only need to be acquired once, as the rendering stage does not use them
+		acquireForCompute(pVelocitiesBuffer, pTempCommandBufferCompute);
+		acquireForCompute(pAgesBuffer, pTempCommandBufferCompute);
 
-		// The velocities and ages buffers are only used for computing
-		//dstFlags = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+		pTempCommandBufferGraphics->end();
+		pDevice->executePrimaryCommandBuffer(pDevice->getGraphicsQueue(), pTempCommandBufferGraphics, nullptr, nullptr, 0, nullptr, 0);
+
+		pTempCommandBufferCompute->end();
+		pDevice->executePrimaryCommandBuffer(pDevice->getComputeQueue(), pTempCommandBufferCompute, nullptr, nullptr, 0, nullptr, 0);
+
+		// Wait for command buffers to finish executing before deleting them
+		pTempCommandBufferGraphics->reset(true);
+		pTempCommandBufferCompute->reset(true);
+		m_pCommandPoolGraphics->freeCommandBuffer(&pTempCommandBufferGraphics);
+		m_ppCommandPools[0]->freeCommandBuffer(&pTempCommandBufferCompute);
 	}
-
-	// TODO: If the renderer is next to use the buffers, it will use the graphics queue. There is no guarantee that this transition will finish by then.
-	pDevice->executePrimaryCommandBuffer(pDevice->getComputeQueue(), pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
-	m_ppCommandPools[0]->freeCommandBuffer(&pTempCommandBuffer);*/
 }
 
 void ParticleEmitterHandlerVK::updateGPU(float dt)
 {
 	beginUpdateFrame();
+
+	GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
+	DeviceVK* pDevice = pGraphicsContext->getDevice();
+	const QueueFamilyIndices& queueFamilyIndices = pDevice->getQueueFamilyIndices();
+
+	bool transferOwnerships = queueFamilyIndices.graphicsFamily.value() != queueFamilyIndices.computeFamily.value();
 
 	for (ParticleEmitter* pEmitter : m_ParticleEmitters) {
 		pEmitter->updateGPU(dt);
@@ -177,10 +273,9 @@ void ParticleEmitterHandlerVK::updateGPU(float dt)
 		BufferVK* pAgesBuffer = reinterpret_cast<BufferVK*>(pEmitter->getAgesBuffer());
 		BufferVK* pEmitterBuffer = reinterpret_cast<BufferVK*>(pEmitter->getEmitterBuffer());
 
-		//prepBufferForCompute(pPositionsBuffer);
-		// TODO: The two transitions beneath are not needed, are they...?
-		//prepBufferForCompute(pVelocitiesBuffer);
-		//prepBufferForCompute(pAgesBuffer);
+		if (transferOwnerships) {
+			acquireForCompute(pPositionsBuffer, m_ppCommandBuffers[m_CurrentFrame]);
+		}
 
 		// TODO: Use constant variables or define macros for binding indices
 		m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float), (const void*)&dt);
@@ -193,70 +288,13 @@ void ParticleEmitterHandlerVK::updateGPU(float dt)
 		glm::u32vec3 workGroupSize(particleCount, 0, 0);
 
 		m_ppCommandBuffers[m_CurrentFrame]->dispatch(workGroupSize);
+
+		if (transferOwnerships) {
+			releaseFromCompute(pPositionsBuffer, m_ppCommandBuffers[m_CurrentFrame]);
+		}
     }
 
 	endUpdateFrame();
-}
-
-void ParticleEmitterHandlerVK::prepBufferForCompute(BufferVK* pBuffer)
-{
-	GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
-	DeviceVK* pDevice = pGraphicsContext->getDevice();
-	const QueueFamilyIndices& queueFamilyIndices = pDevice->getQueueFamilyIndices();
-
-	VkBufferMemoryBarrier bufferMemoryBarrier = {};
-	bufferMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-	bufferMemoryBarrier.pNext = nullptr;
-
-	//bufferMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	// bufferMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-	// bufferMemoryBarrier.srcQueueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-	// bufferMemoryBarrier.dstQueueFamilyIndex = queueFamilyIndices.computeFamily.value();
-	bufferMemoryBarrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-	bufferMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-	bufferMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	bufferMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	bufferMemoryBarrier.buffer = pBuffer->getBuffer();
-	bufferMemoryBarrier.offset = 0;
-	bufferMemoryBarrier.size = VK_WHOLE_SIZE;
-
-	vkCmdPipelineBarrier(
-		m_ppCommandBuffers[m_CurrentFrame]->getCommandBuffer(),
-		VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-		0,
-		0, nullptr,
-		1, &bufferMemoryBarrier,
-		0, nullptr);
-}
-
-void ParticleEmitterHandlerVK::prepBufferForRendering(BufferVK* pBuffer, CommandBufferVK* pCommandBuffer)
-{
-	GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
-	DeviceVK* pDevice = pGraphicsContext->getDevice();
-	const QueueFamilyIndices& queueFamilyIndices = pDevice->getQueueFamilyIndices();
-
-	VkBufferMemoryBarrier bufferMemoryBarrier = {};
-	bufferMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-	bufferMemoryBarrier.pNext = nullptr;
-	bufferMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-	bufferMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;// | VK_ACCESS_SHADER_WRITE_BIT;
-	//bufferMemoryBarrier.srcQueueFamilyIndex = queueFamilyIndices.computeFamily.value();
-	bufferMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	bufferMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	//bufferMemoryBarrier.dstQueueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
-	bufferMemoryBarrier.buffer = pBuffer->getBuffer();
-	bufferMemoryBarrier.offset = 0;
-	bufferMemoryBarrier.size = VK_WHOLE_SIZE;
-
-	vkCmdPipelineBarrier(
-		pCommandBuffer->getCommandBuffer(),
-		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-		VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-		0,
-		0, nullptr,
-		1, &bufferMemoryBarrier,
-		0, nullptr);
 }
 
 void ParticleEmitterHandlerVK::beginUpdateFrame()
@@ -300,7 +338,8 @@ bool ParticleEmitterHandlerVK::createCommandPoolAndBuffers()
     GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
     DeviceVK* pDevice = pGraphicsContext->getDevice();
 
-	const uint32_t computeQueueIndex = pDevice->getQueueFamilyIndices().computeFamily.value();
+	const QueueFamilyIndices& queueFamilyIndices = pDevice->getQueueFamilyIndices();
+	const uint32_t computeQueueIndex = queueFamilyIndices.computeFamily.value();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, computeQueueIndex);
 
@@ -314,7 +353,8 @@ bool ParticleEmitterHandlerVK::createCommandPoolAndBuffers()
 		}
 	}
 
-	return true;
+	m_pCommandPoolGraphics = DBG_NEW CommandPoolVK(pDevice, queueFamilyIndices.graphicsFamily.value());
+	return m_pCommandPoolGraphics->init();
 }
 
 bool ParticleEmitterHandlerVK::createPipelineLayout()

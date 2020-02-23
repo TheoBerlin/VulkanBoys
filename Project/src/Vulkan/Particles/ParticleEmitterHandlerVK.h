@@ -35,15 +35,17 @@ public:
 
     virtual void toggleComputationDevice() override;
 
+    void releaseFromGraphics(BufferVK* pBuffer, CommandBufferVK* pCommandBuffer);
+    void releaseFromCompute(BufferVK* pBuffer, CommandBufferVK* pCommandBuffer);
+    void acquireForGraphics(BufferVK* pBuffer, CommandBufferVK* pCommandBuffer);
+    void acquireForCompute(BufferVK* pBuffer, CommandBufferVK* pCommandBuffer);
+
 private:
     // Initializes an emitter and prepares its buffers for computing or rendering
     virtual void initializeEmitter(ParticleEmitter* pEmitter) override;
 
     void updateGPU(float dt);
-    // Transition an emitter's buffers to prepare it for computing
-    void prepBufferForCompute(BufferVK* pBuffer);
-    // Transition an emitter's buffers to prepare it for rendering
-    void prepBufferForRendering(BufferVK* pBuffer, CommandBufferVK* pCommandBuffer);
+
     void beginUpdateFrame();
     void endUpdateFrame();
 
@@ -57,14 +59,15 @@ private:
     CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
     CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];
 
+    // Used for creating temporary graphics command buffers for initializing emitter buffers
+    CommandPoolVK* m_pCommandPoolGraphics;
+
     DescriptorPoolVK* m_pDescriptorPool;
     DescriptorSetLayoutVK* m_pDescriptorSetLayout;
     DescriptorSetVK* m_ppDescriptorSets[MAX_FRAMES_IN_FLIGHT];
 
     PipelineLayoutVK* m_pPipelineLayout;
     PipelineVK* m_pPipeline;
-
-    SamplerVK* m_pSampler;
 
     uint32_t m_CurrentFrame;
 };

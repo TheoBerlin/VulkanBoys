@@ -11,6 +11,7 @@
 #include "Vulkan/FrameBufferVK.h"
 #include "Vulkan/GraphicsContextVK.h"
 #include "Vulkan/MeshRendererVK.h"
+#include "Vulkan/Particles/ParticleEmitterHandlerVK.h"
 #include "Vulkan/Particles/ParticleRendererVK.h"
 #include "Vulkan/PipelineVK.h"
 #include "Vulkan/RenderPassVK.h"
@@ -388,11 +389,22 @@ void RenderingHandlerVK::startRenderPass()
 
 void RenderingHandlerVK::submitParticles()
 {
-	std::vector<ParticleEmitter*>& particleEmitters = m_pParticleEmitterHandler->getParticleEmitters();
+	ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
 
-	for (ParticleEmitter* pParticleEmitter : particleEmitters) {
-		m_pParticleRenderer->submitParticles(pParticleEmitter);
-	}
+	m_pParticleRenderer->submitParticles(pEmitterHandler);
+/*
+	// Transfer buffer ownerships to the graphics queue
+	for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters()) {
+		if (pEmitterHandler->gpuComputed()) {
+			pEmitterHandler->acquireForGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppCommandBuffers[m_CurrentFrame]);
+		}
+
+		m_pParticleRenderer->submitParticles(pEmitter);
+
+		if (pEmitterHandler->gpuComputed()) {
+			pEmitterHandler->releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppCommandBuffers[m_CurrentFrame]);
+		}
+	}*/
 }
 
 bool RenderingHandlerVK::createBuffers()

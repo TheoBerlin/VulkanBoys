@@ -12,6 +12,7 @@
 #include "Vulkan/GraphicsContextVK.h"
 #include "Vulkan/ImageViewVK.h"
 #include "Vulkan/MeshVK.h"
+#include "Vulkan/Particles/ParticleEmitterHandlerVK.h"
 #include "Vulkan/PipelineLayoutVK.h"
 #include "Vulkan/PipelineVK.h"
 #include "Vulkan/RenderingHandlerVK.h"
@@ -110,6 +111,35 @@ void ParticleRendererVK::endFrame()
 
 	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
 	pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCurrentCommandBuffer(), m_ppCommandBuffers[currentFrame]);
+}
+
+void ParticleRendererVK::submitParticles(ParticleEmitterHandlerVK* pEmitterHandler)
+{
+	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
+
+	bool transferOwnerships = pEmitterHandler->gpuComputed();
+
+	for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters()) {
+		BufferVK* pEmitterBuffer = reinterpret_cast<BufferVK*>(pEmitter->getEmitterBuffer());
+		BufferVK* pPositionBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
+		Texture2DVK* pParticleTexture = reinterpret_cast<Texture2DVK*>(pEmitter->getParticleTexture());
+
+		if (transferOwnerships) {
+			pEmitterHandler->acquireForGraphics(pPositionBuffer,m_ppCommandBuffers[frameIndex]);
+		}
+
+		// TODO: Use constant variables or define macros for binding indices
+		m_ppDescriptorSets[frameIndex]->writeUniformBufferDescriptor(pEmitterBuffer->getBuffer(), 3);
+		m_ppDescriptorSets[frameIndex]->writeStorageBufferDescriptor(pPositionBuffer->getBuffer(), 4);
+		m_ppDescriptorSets[frameIndex]->writeCombinedImageDescriptor(pParticleTexture->getImageView()->getImageView(), m_pSampler->getSampler(), 5);
+
+		uint32_t particleCount = pEmitter->getParticleCount();
+		m_ppCommandBuffers[frameIndex]->drawIndexInstanced(m_pQuadMesh->getIndexCount(), particleCount, 0, 0, 0);
+
+		if (transferOwnerships) {
+			pEmitterHandler->releaseFromGraphics(pPositionBuffer,m_ppCommandBuffers[frameIndex]);
+		}
+	}
 }
 
 void ParticleRendererVK::submitParticles(ParticleEmitter* pEmitter)
