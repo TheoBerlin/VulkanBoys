@@ -1,5 +1,7 @@
 #version 450
 
+layout (local_size_x=1,local_size_y=1) in;
+
 #define TWO_PI 2.0 * 3.1415926535897932384626433832795
 
 layout (push_constant) uniform Constants
@@ -22,22 +24,13 @@ layout(binding = 2) buffer Ages
 	float ages[];
 } g_Ages;
 
-layout (binding = 3) uniform EmitterProperties
+layout(binding = 3) uniform EmitterProperties
 {
+	mat4 centeringRotMatrix;
 	vec4 position, direction;
     vec2 particleSize;
-	mat4 centeringRotMatrix;
     float particleDuration, initialSpeed, spread;
-	// Used when randomizing a direction for new particles
-	float minZ;
-    vec4 padding;
 } g_EmitterProperties;
-
-/*float rand(float seed, float minVal, float maxVal)
-{
-	// noise1 returns a [-1, 1] value
-	return (noise1(seed) + 1 + minVal) / (maxVal - minVal);
-}*/
 
 float rand1(float p, float minVal, float maxVal)
 {
@@ -51,8 +44,8 @@ void createParticle(uint particleIdx, float particleAge)
 {
     // Randomized unit vector within a cone based on https://math.stackexchange.com/a/205589
     float minZ = cos(g_EmitterProperties.spread);
-    float z = rand1(particleAge, g_EmitterProperties.minZ, 1.0);
-    float phi = rand1(particleAge, 0.0, TWO_PI);
+    float z = rand1(particleIdx, minZ, 1.0);
+    float phi = rand1(particleIdx, 0.0, TWO_PI);
 
     float sqrtZInv = sqrt(1.0f - z * z);
 
@@ -76,30 +69,26 @@ void createParticle(uint particleIdx, float particleAge)
 
     float gt = -9.82 * particleAge;
     vec3 V0 = particleDirection * g_EmitterProperties.initialSpeed;
-    g_Velocities.velocities[particleIdx] = vec4(vec3(0.0, gt, 0.0) + V0, 0.0);
-    g_Positions.positions[particleIdx] = vec4(vec3(0.0, gt * particleAge / 2.0, 0.0) + V0 * particleAge + g_EmitterProperties.position.xyz, 1.0);
+
+    g_Velocities.velocities[particleIdx] = vec4(vec3(0.0, gt, 0.0) + V0, particleAge);
+    g_Positions.positions[particleIdx] = vec4(vec3(0.0, gt * particleAge * 0.5, 0.0) + V0 * particleAge + g_EmitterProperties.position.xyz, 1.0);
     g_Ages.ages[particleIdx] = particleAge;
 }
 
 void main()
 {
     uint particleIdx = gl_GlobalInvocationID.x;
-    //g_Ages.ages[particleIdx] += g_Time.dt;
-    g_Positions.positions[particleIdx].x += 1.0 * g_Time.dt;
-    g_Ages.ages[particleIdx] = 1.0;
-    g_Ages.ages[0] = 5.0;
-/*
 	float dt = g_Time.dt;
-	float age = g_Ages.ages[particleIdx];
-	age += dt;
+    float age = g_Ages.ages[particleIdx] + dt;
+
+    // Move particle
+    g_Positions.positions[particleIdx] += g_Velocities.velocities[particleIdx] * dt;
+    g_Velocities.velocities[particleIdx].y -= 9.82 * dt;
+    g_Ages.ages[particleIdx] = age;
 
 	if (age > g_EmitterProperties.particleDuration) {
 		// Respawn old particle
 		float newParticleAge = age - g_EmitterProperties.particleDuration;
         createParticle(particleIdx, newParticleAge);
-	} else {
-		g_Positions.positions[particleIdx] += g_Velocities.velocities[particleIdx] * dt;
-		g_Velocities.velocities[particleIdx].y -= 9.82 * dt;
-		g_Ages.ages[particleIdx] += age;
-	}*/
+	}
 }

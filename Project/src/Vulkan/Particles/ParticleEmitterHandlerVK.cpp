@@ -110,8 +110,6 @@ void ParticleEmitterHandlerVK::toggleComputationDevice()
 
 		for (ParticleEmitter* pEmitter : m_ParticleEmitters) {
 			BufferVK* pPositionsBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
-
-			releaseFromCompute(pPositionsBuffer, pTempCommandBuffer);
 			acquireForGraphics(pPositionsBuffer, pTempCommandBuffer);
 		}
 
@@ -123,23 +121,40 @@ void ParticleEmitterHandlerVK::toggleComputationDevice()
 		m_pCommandPoolGraphics->freeCommandBuffer(&pTempCommandBuffer);
 	} else {
 		// Enable GPU-side computing
-		CommandBufferVK* pTempCommandBuffer = m_ppCommandPools[0]->allocateCommandBuffer();
-		pTempCommandBuffer->reset();
-		pTempCommandBuffer->begin();
+		CommandBufferVK* pTempCmdBufferCompute = m_ppCommandPools[0]->allocateCommandBuffer();
+		pTempCmdBufferCompute->reset();
+		pTempCmdBufferCompute->begin();
 
-		// Since ImGui is what triggered this, and ImGui is handled AFTER particles are updated, the particle buffers will be used
-		// for rendering next, and the renderer will try to acquire ownership of the buffers for the rendering queue, the compute queue needs to release them
 		for (ParticleEmitter* pEmitter : m_ParticleEmitters) {
+			// Since ImGui is what triggered this, and ImGui is handled AFTER particles are updated, the particle buffers will be used
+			// for rendering next, and the renderer will try to acquire ownership of the buffers for the rendering queue, the compute queue needs to release them
 			BufferVK* pPositionsBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
-			releaseFromCompute(pPositionsBuffer, pTempCommandBuffer);
+			releaseFromCompute(pPositionsBuffer, pTempCmdBufferCompute);
+
+			// Copy age and velocity data to the GPU buffers
+			const ParticleStorage& particleStorage = pEmitter->getParticleStorage();
+
+			BufferVK* pAgesBuffer = reinterpret_cast<BufferVK*>(pEmitter->getAgesBuffer());
+			pTempCmdBufferCompute->updateBuffer(pAgesBuffer, 0, (const void*)particleStorage.ages.data(), particleStorage.ages.size() * sizeof(float));
+
+			BufferVK* pVelocitiesBuffer = reinterpret_cast<BufferVK*>(pEmitter->getVelocitiesBuffer());
+			pTempCmdBufferCompute->updateBuffer(pVelocitiesBuffer, 0, (const void*)particleStorage.velocities.data(), particleStorage.ages.size() * sizeof(glm::vec4));
+
+			// Update emitter buffer
+			EmitterBuffer emitterBuffer = {};
+			pEmitter->createEmitterBuffer(emitterBuffer);
+
+			BufferVK* pEmitterBuffer = reinterpret_cast<BufferVK*>(pEmitter->getEmitterBuffer());
+			pTempCmdBufferCompute->updateBuffer(pEmitterBuffer, 0, &emitterBuffer, sizeof(EmitterBuffer));
 		}
 
-		pTempCommandBuffer->end();
-		pDevice->executePrimaryCommandBuffer(pDevice->getComputeQueue(), pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+		pTempCmdBufferCompute->end();
+
+		pDevice->executePrimaryCommandBuffer(pDevice->getComputeQueue(), pTempCmdBufferCompute, nullptr, nullptr, 0, nullptr, 0);
 
 		// Wait for command buffer to finish executing before deleting it
-		pTempCommandBuffer->reset(true);
-		m_ppCommandPools[0]->freeCommandBuffer(&pTempCommandBuffer);
+		pTempCmdBufferCompute->reset(true);
+		m_ppCommandPools[0]->freeCommandBuffer(&pTempCmdBufferCompute);
 	}
 
 	m_GPUComputed = !m_GPUComputed;
@@ -285,7 +300,7 @@ void ParticleEmitterHandlerVK::updateGPU(float dt)
 		m_ppDescriptorSets[m_CurrentFrame]->writeUniformBufferDescriptor(pEmitterBuffer->getBuffer(), 3);
 
 		uint32_t particleCount = pEmitter->getParticleCount();
-		glm::u32vec3 workGroupSize(particleCount, 0, 0);
+		glm::u32vec3 workGroupSize(particleCount, 1, 1);
 
 		m_ppCommandBuffers[m_CurrentFrame]->dispatch(workGroupSize);
 
@@ -432,21 +447,4 @@ bool ParticleEmitterHandlerVK::createPipeline()
 
 	SAFEDELETE(pComputeShader);
 	return true;
-}
-
-void ParticleEmitterHandlerVK::writeBufferDescriptors()
-{
-	// // Storage buffer for quad vertices
-	// BufferVK* pVertBuffer = reinterpret_cast<BufferVK*>(m_pQuadMesh->getVertexBuffer());
-
-	// // Camera buffers
-	// BufferVK* pCameraMatricesBuffer = m_pRenderingHandler->getCameraMatricesBuffer();
-	// BufferVK* pCameraDirectionsBuffer = m_pRenderingHandler->getCameraDirectionsBuffer();
-
-	// for (DescriptorSetVK* pDescriptorSet : m_ppDescriptorSets) {
-	// 	pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer->getBuffer(), 0);
-
-	// 	pDescriptorSet->writeUniformBufferDescriptor(pCameraMatricesBuffer->getBuffer(), 1);
-	// 	pDescriptorSet->writeUniformBufferDescriptor(pCameraDirectionsBuffer->getBuffer(), 2);
-	// }
 }

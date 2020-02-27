@@ -53,8 +53,6 @@ private:
     bool createPipelineLayout();
     bool createPipeline();
 
-    void writeBufferDescriptors();
-
 private:
     CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
     CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];

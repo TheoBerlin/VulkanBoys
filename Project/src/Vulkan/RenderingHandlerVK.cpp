@@ -193,6 +193,13 @@ void RenderingHandlerVK::endFrame()
     // Submit the rendering handler's command buffer
 	if (m_pRayTracer == nullptr) {
     	m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
+
+		ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
+		if (pEmitterHandler->gpuComputed()) {
+			for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters()) {
+				pEmitterHandler->releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppCommandBuffers[m_CurrentFrame]);
+			}
+		}
 	}
 
 	m_ppCommandBuffers[m_CurrentFrame]->end();
@@ -391,8 +398,6 @@ void RenderingHandlerVK::submitParticles()
 {
 	ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
 
-	m_pParticleRenderer->submitParticles(pEmitterHandler);
-/*
 	// Transfer buffer ownerships to the graphics queue
 	for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters()) {
 		if (pEmitterHandler->gpuComputed()) {
@@ -400,11 +405,7 @@ void RenderingHandlerVK::submitParticles()
 		}
 
 		m_pParticleRenderer->submitParticles(pEmitter);
-
-		if (pEmitterHandler->gpuComputed()) {
-			pEmitterHandler->releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppCommandBuffers[m_CurrentFrame]);
-		}
-	}*/
+	}
 }
 
 bool RenderingHandlerVK::createBuffers()

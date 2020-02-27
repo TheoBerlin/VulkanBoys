@@ -1,5 +1,7 @@
 #pragma once
 
+#define NOMINMAX
+
 #include "glm/glm.hpp"
 
 #include "Common/IGraphicsContext.h"
@@ -22,15 +24,12 @@ struct ParticleEmitterInfo {
 };
 
 struct EmitterBuffer {
+    glm::mat4x4 centeringRotMatrix;
     glm::vec4 position, direction;
     glm::vec2 particleSize;
-    glm::mat4x4 centeringRotMatrix;
     float particleDuration, initialSpeed, spread;
-    // Used when randomizing a direction for new particles
-    float minZ;
-    // This padding gets the buffer size up to 128 bytes
-    glm::vec4 padding;
 };
+    // This padding gets the buffer size up to 128 bytes
 
 struct ParticleStorage {
     std::vector<glm::vec4> positions, velocities;
@@ -51,7 +50,7 @@ public:
     const ParticleStorage& getParticleStorage() const { return m_ParticleStorage; }
     void createEmitterBuffer(EmitterBuffer& emitterBuffer);
     // TODO: Change this to use the emitter's age to calculate the particle count. Using the size doesn't work if particles only exist on the GPU.
-    uint32_t getParticleCount() const { return uint32_t(m_ParticlesPerSecond * m_EmitterAge); }
+    uint32_t getParticleCount() const;
 
     IBuffer* getPositionsBuffer() { return m_pPositionsBuffer; }
     IBuffer* getVelocitiesBuffer() { return m_pVelocitiesBuffer; }

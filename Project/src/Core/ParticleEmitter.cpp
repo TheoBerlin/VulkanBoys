@@ -5,6 +5,7 @@
 #include "Common/IBuffer.h"
 #include "Common/IMesh.h"
 
+#include <algorithm>
 #include <math.h>
 
 ParticleEmitter::ParticleEmitter(const ParticleEmitterInfo& emitterInfo)
@@ -64,6 +65,7 @@ bool ParticleEmitter::initialize(IGraphicsContext* pGraphicsContext, const Camer
 void ParticleEmitter::update(float dt)
 {
     if (m_EmitterAge < m_ParticleDuration) {
+        m_EmitterUpdated = true;
         m_EmitterAge += dt;
     }
 
@@ -75,6 +77,7 @@ void ParticleEmitter::update(float dt)
 void ParticleEmitter::updateGPU(float dt)
 {
     if (m_EmitterAge < m_ParticleDuration) {
+        m_EmitterUpdated = true;
         m_EmitterAge += dt;
     }
 
@@ -90,8 +93,11 @@ void ParticleEmitter::createEmitterBuffer(EmitterBuffer& emitterBuffer)
     emitterBuffer.particleDuration = m_ParticleDuration;
     emitterBuffer.initialSpeed = m_InitialSpeed;
     emitterBuffer.spread = m_Spread;
-    emitterBuffer.minZ = std::cos(m_Spread);
-    emitterBuffer.padding = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
+}
+
+uint32_t ParticleEmitter::getParticleCount() const
+{
+    return std::min((uint32_t)(m_ParticlesPerSecond * m_ParticleDuration), (uint32_t)(m_ParticlesPerSecond * m_EmitterAge));
 }
 
 bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
@@ -111,7 +117,6 @@ bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
         return false;
     }
 
-    bufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     m_pVelocitiesBuffer = pGraphicsContext->createBuffer();
     if (!m_pVelocitiesBuffer->init(bufferParams)) {
         LOG("Failed to create particle velocities buffer");
@@ -232,6 +237,6 @@ void ParticleEmitter::createParticle(size_t particleIdx, float particleAge)
     float gt = -9.82f * particleAge;
     glm::vec3 V0 = particleDirection * m_InitialSpeed;
     m_ParticleStorage.velocities[particleIdx] = glm::vec4(glm::vec3(0.0f, gt, 0.0f) + V0, 0.0f);
-    m_ParticleStorage.positions[particleIdx] = glm::vec4(glm::vec3(0.0f, gt * particleAge / 2.0f, 0.0f) + V0 * particleAge + m_Position, 1.0f);
+    m_ParticleStorage.positions[particleIdx] = glm::vec4(glm::vec3(0.0f, gt * particleAge * 0.5f, 0.0f) + V0 * particleAge + m_Position, 1.0f);
     m_ParticleStorage.ages[particleIdx] = particleAge;
 }
