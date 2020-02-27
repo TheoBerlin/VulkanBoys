@@ -277,6 +277,7 @@ bool ParticleRendererVK::createPipeline()
 	m_pPipeline->addColorBlendAttachment(true, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
 	m_pPipeline->setCulling(false);
 	m_pPipeline->setDepthTest(true);
+	m_pPipeline->setDepthWrite(false);
 	m_pPipeline->setWireFrame(false);
 	m_pPipeline->finalizeGraphics(shaders, m_pRenderingHandler->getRenderPass(), m_pPipelineLayout);
 
