@@ -49,7 +49,8 @@ Application::Application()
 	m_IsRunning(false),
 	m_UpdateCamera(false),
 	m_pParticleTexture(nullptr),
-	m_pParticleEmitterHandler(nullptr)
+	m_pParticleEmitterHandler(nullptr),
+	m_CurrentEmitterIdx(0)
 {
 	ASSERT(s_pInstance == nullptr);
 	s_pInstance = this;
@@ -468,7 +469,7 @@ void Application::renderUI(double dt)
 	ImGui::End();
 
 	// Particle control panel
-	ImGui::SetNextWindowSize(ImVec2(280, 110), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(320, 210), ImGuiCond_Always);
 	if (ImGui::Begin("Particles", NULL, ImGuiWindowFlags_NoResize))
 	{
 		ImGui::Text("Toggle Computation Device");
@@ -476,6 +477,22 @@ void Application::renderUI(double dt)
 		if (ImGui::Button(btnLabel, ImVec2(40, 25))) {
 			m_pParticleEmitterHandler->toggleComputationDevice();
 		}
+
+		// Get currently selected
+		ParticleEmitter* pEmitter = m_pParticleEmitterHandler->getParticleEmitter(m_CurrentEmitterIdx);
+		glm::vec3 emitterPos = pEmitter->getPosition();
+		glm::vec3 emitterDirection = pEmitter->getDirection();
+		float emitterSpeed = pEmitter->getInitialSpeed();
+
+		if (ImGui::SliderFloat3("Position", glm::value_ptr(emitterPos), -10.0f, 10.0f)) {
+			pEmitter->setPosition(emitterPos);
+		} else if (ImGui::SliderFloat3("Direction", glm::value_ptr(emitterDirection), -1.0f, 1.0f)) {
+			pEmitter->setDirection(glm::normalize(emitterDirection));
+		} else if (ImGui::SliderFloat("Speed", &emitterSpeed, 0.0f, 20.0f)) {
+			pEmitter->setInitialSpeed(emitterSpeed);
+		}
+
+		ImGui::Text("Particles: %d", pEmitter->getParticleCount());
 	}
 	ImGui::End();
 
@@ -484,9 +501,6 @@ void Application::renderUI(double dt)
 
 void Application::render(double dt)
 {
-	if (m_pParticleEmitterHandler->gpuComputed()) {
-		int a = 0;
-	}
 	m_pRenderingHandler->beginFrame(m_Camera);
 
 	if (!m_EnableRayTracing) {

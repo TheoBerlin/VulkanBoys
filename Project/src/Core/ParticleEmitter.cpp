@@ -27,11 +27,7 @@ ParticleEmitter::ParticleEmitter(const ParticleEmitterInfo& emitterInfo)
     m_pAgesBuffer(nullptr),
     m_pEmitterBuffer(nullptr)
 {
-    // Calculate rotation quaternion
-    glm::vec3 axis = glm::normalize(glm::cross(m_ZVec, m_Direction));
-
-    float angle = glm::angle(m_ZVec, m_Direction);
-    m_CenteringRotQuat = glm::angleAxis(angle, axis);
+    buildCenteringQuaternion();
 }
 
 ParticleEmitter::~ParticleEmitter()
@@ -98,6 +94,25 @@ void ParticleEmitter::createEmitterBuffer(EmitterBuffer& emitterBuffer)
 uint32_t ParticleEmitter::getParticleCount() const
 {
     return std::min((uint32_t)(m_ParticlesPerSecond * m_ParticleDuration), (uint32_t)(m_ParticlesPerSecond * m_EmitterAge));
+}
+
+void ParticleEmitter::setPosition(const glm::vec3& position)
+{
+    m_Position = position;
+    m_EmitterUpdated = true;
+}
+
+void ParticleEmitter::setDirection(const glm::vec3& direction)
+{
+    m_Direction = direction;
+    buildCenteringQuaternion();
+    m_EmitterUpdated = true;
+}
+
+void ParticleEmitter::setInitialSpeed(float initialSpeed)
+{
+    m_InitialSpeed = initialSpeed;
+    m_EmitterUpdated = true;
 }
 
 bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
@@ -239,4 +254,12 @@ void ParticleEmitter::createParticle(size_t particleIdx, float particleAge)
     m_ParticleStorage.velocities[particleIdx] = glm::vec4(glm::vec3(0.0f, gt, 0.0f) + V0, 0.0f);
     m_ParticleStorage.positions[particleIdx] = glm::vec4(glm::vec3(0.0f, gt * particleAge * 0.5f, 0.0f) + V0 * particleAge + m_Position, 1.0f);
     m_ParticleStorage.ages[particleIdx] = particleAge;
+}
+
+void ParticleEmitter::buildCenteringQuaternion()
+{
+    glm::vec3 axis = glm::normalize(glm::cross(m_ZVec, m_Direction));
+
+    float angle = glm::angle(m_ZVec, m_Direction);
+    m_CenteringRotQuat = glm::angleAxis(angle, axis);
 }
