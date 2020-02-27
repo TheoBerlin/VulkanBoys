@@ -10,7 +10,8 @@ PipelineVK::PipelineVK(DeviceVK* pDevice)
     m_Pipeline(VK_NULL_HANDLE),
 	m_WireFrame(false),
     m_Culling(true),
-    m_DepthTest(true)
+    m_DepthTest(true),
+    m_DepthWrite(true)
 {
 }
 
@@ -136,7 +137,7 @@ bool PipelineVK::finalizeGraphics(const std::vector<IShader*>& shaders, RenderPa
     VkPipelineDepthStencilStateCreateInfo depthStencil = {};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     depthStencil.depthTestEnable    = m_DepthTest ? VK_TRUE : VK_FALSE;
-    depthStencil.depthWriteEnable   = VK_TRUE;
+    depthStencil.depthWriteEnable   = m_DepthWrite ? VK_TRUE : VK_FALSE;
     depthStencil.depthCompareOp     = VK_COMPARE_OP_LESS_OR_EQUAL;
     depthStencil.depthBoundsTestEnable  = VK_FALSE;
     depthStencil.stencilTestEnable      = VK_FALSE;
