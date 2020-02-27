@@ -73,14 +73,14 @@ bool BufferVK::init(const BufferParams& params)
 
 	vkBindBufferMemory(m_pDevice->getDevice(), m_Buffer, m_Memory, 0);
 	D_LOG("--- Buffer: Vulkan Allocated '%d' bytes for buffer", memRequirements.size);
-    
+
     return true;
 }
 
 void BufferVK::map(void** ppMappedMemory)
 {
 	assert((ppMappedMemory != nullptr) && (m_Params.MemoryProperty & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT));
-	
+
 	if (!m_IsMapped)
 	{
 		VK_CHECK_RESULT(vkMapMemory(m_pDevice->getDevice(), m_Memory, 0, m_Params.SizeInBytes, 0, ppMappedMemory), "MapMemory Failed");

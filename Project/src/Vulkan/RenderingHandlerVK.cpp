@@ -11,6 +11,7 @@
 #include "Vulkan/FrameBufferVK.h"
 #include "Vulkan/GraphicsContextVK.h"
 #include "Vulkan/MeshRendererVK.h"
+#include "Vulkan/Particles/ParticleEmitterHandlerVK.h"
 #include "Vulkan/Particles/ParticleRendererVK.h"
 #include "Vulkan/PipelineVK.h"
 #include "Vulkan/RenderPassVK.h"
@@ -199,6 +200,13 @@ void RenderingHandlerVK::endFrame()
 		pDevice->executeSecondaryCommandBuffer(m_ppGraphicsCommandBuffers[m_CurrentFrame], m_ppCommandBuffersSecondary[m_CurrentFrame]);
 
     	m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
+
+		ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
+		if (pEmitterHandler->gpuComputed()) {
+			for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters()) {
+				pEmitterHandler->releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
+			}
+		}
 	}
 
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->end();
@@ -396,7 +404,7 @@ void RenderingHandlerVK::updateBuffers(const Camera& camera)
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraDirectionsBuffer, 0, (const void*)&cameraDirectionsBuffer, sizeof(CameraDirectionsBuffer));
 
 	// Update particle buffers
-	m_pParticleEmitterHandler->updateBuffers(this);
+	m_pParticleEmitterHandler->updateRenderingBuffers(this);
 }
 
 void RenderingHandlerVK::startRenderPass()
@@ -408,10 +416,15 @@ void RenderingHandlerVK::startRenderPass()
 
 void RenderingHandlerVK::submitParticles()
 {
-	std::vector<ParticleEmitter*>& particleEmitters = m_pParticleEmitterHandler->getParticleEmitters();
+	ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
 
-	for (ParticleEmitter* pParticleEmitter : particleEmitters) {
-		m_pParticleRenderer->submitParticles(pParticleEmitter);
+	// Transfer buffer ownerships to the graphics queue
+	for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters()) {
+		if (pEmitterHandler->gpuComputed()) {
+			pEmitterHandler->acquireForGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
+		}
+
+		m_pParticleRenderer->submitParticles(pEmitter);
 	}
 }
 

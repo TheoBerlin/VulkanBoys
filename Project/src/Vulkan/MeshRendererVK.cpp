@@ -245,7 +245,7 @@ void MeshRendererVK::submitMesh(IMesh* pMesh, const glm::vec4& color, const glm:
 {
 	ASSERT(pMesh != nullptr);
 
-	m_ppCommandBuffers[m_CurrentFrame]->bindGraphicsPipeline(m_pPipeline);
+	m_ppCommandBuffers[m_CurrentFrame]->bindPipeline(m_pPipeline);
 
 	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0,				   sizeof(glm::mat4), (const void*)glm::value_ptr(transform));
 	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec4), (const void*)glm::value_ptr(color));
@@ -328,7 +328,7 @@ bool MeshRendererVK::createPipelines()
 		m_pPipeline->setDepthTest(true);
 		m_pPipeline->setWireFrame(false);
 		//TODO: Return bool
-		m_pPipeline->finalize(shaders, m_pRenderPass, m_pPipelineLayout);
+		m_pPipeline->finalizeGraphics(shaders, m_pRenderPass, m_pPipelineLayout);
 
 	SAFEDELETE(pVertexShader);
 	SAFEDELETE(pPixelShader);

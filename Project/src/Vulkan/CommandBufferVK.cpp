@@ -97,6 +97,7 @@ void CommandBufferVK::end()
 {
 	VK_CHECK_RESULT(vkEndCommandBuffer(m_CommandBuffer), "End CommandBuffer Failed");
 }
+
 void CommandBufferVK::beginRenderPass(RenderPassVK* pRenderPass, FrameBufferVK* pFrameBuffer, uint32_t width, uint32_t height, VkClearValue* pClearVales, uint32_t clearValueCount)
 {
 	VkRenderPassBeginInfo renderPassInfo = {};
@@ -133,9 +134,9 @@ void CommandBufferVK::bindIndexBuffer(const BufferVK* pIndexBuffer, VkDeviceSize
 	vkCmdBindIndexBuffer(m_CommandBuffer, pIndexBuffer->getBuffer(), offset, indexType);
 }
 
-void CommandBufferVK::bindGraphicsPipeline(PipelineVK* pPipeline)
+void CommandBufferVK::bindPipeline(PipelineVK* pPipeline)
 {
-	vkCmdBindPipeline(m_CommandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pPipeline->getPipeline());
+	vkCmdBindPipeline(m_CommandBuffer, pPipeline->getBindPoint(), pPipeline->getPipeline());
 }
 
 void CommandBufferVK::bindDescriptorSet(VkPipelineBindPoint bindPoint, PipelineLayoutVK* pPipelineLayout, uint32_t firstSet, uint32_t count, const DescriptorSetVK* const* ppDescriptorSets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets)
@@ -181,6 +182,52 @@ void CommandBufferVK::copyBuffer(BufferVK* pSource, uint64_t sourceOffset, Buffe
 	bufferCopy.dstOffset	= destinationOffset;
 
 	vkCmdCopyBuffer(m_CommandBuffer, pSource->getBuffer(), pDestination->getBuffer(), 1, &bufferCopy);
+}
+
+void CommandBufferVK::releaseBufferOwnership(BufferVK* pBuffer, VkAccessFlags srcAccessMask, uint32_t srcQueueFamilyIndex, uint32_t dstQueueFamilyIndex, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask)
+{
+	VkBufferMemoryBarrier bufferMemoryBarrier = {};
+	bufferMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+	bufferMemoryBarrier.pNext = nullptr;
+	bufferMemoryBarrier.srcAccessMask = srcAccessMask;
+	bufferMemoryBarrier.dstAccessMask = 0;
+	bufferMemoryBarrier.srcQueueFamilyIndex = srcQueueFamilyIndex;
+	bufferMemoryBarrier.dstQueueFamilyIndex = dstQueueFamilyIndex;
+	bufferMemoryBarrier.offset = 0;
+	bufferMemoryBarrier.size = VK_WHOLE_SIZE;
+	bufferMemoryBarrier.buffer = pBuffer->getBuffer();
+
+	vkCmdPipelineBarrier(
+		m_CommandBuffer,
+		srcStageMask,
+		dstStageMask,
+		0,
+		0, nullptr,
+		1, &bufferMemoryBarrier,
+		0, nullptr);
+}
+
+void CommandBufferVK::acquireBufferOwnership(BufferVK* pBuffer, VkAccessFlags dstAccessMask, uint32_t srcQueueFamilyIndex, uint32_t dstQueueFamilyIndex, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask)
+{
+	VkBufferMemoryBarrier bufferMemoryBarrier = {};
+	bufferMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+	bufferMemoryBarrier.pNext = nullptr;
+	bufferMemoryBarrier.srcAccessMask = 0;
+	bufferMemoryBarrier.dstAccessMask = dstAccessMask;
+	bufferMemoryBarrier.srcQueueFamilyIndex = srcQueueFamilyIndex;
+	bufferMemoryBarrier.dstQueueFamilyIndex = dstQueueFamilyIndex;
+	bufferMemoryBarrier.offset = 0;
+	bufferMemoryBarrier.size = VK_WHOLE_SIZE;
+	bufferMemoryBarrier.buffer = pBuffer->getBuffer();
+
+	vkCmdPipelineBarrier(
+		m_CommandBuffer,
+		srcStageMask,
+		dstStageMask,
+		0,
+		0, nullptr,
+		1, &bufferMemoryBarrier,
+		0, nullptr);
 }
 
 void CommandBufferVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height)
@@ -299,4 +346,9 @@ void CommandBufferVK::traceRays(ShaderBindingTableVK* pShaderBindingTable, uint3
 		bufferSBT, intersectOffset, pShaderBindingTable->getBindingStride(),
 		VK_NULL_HANDLE, 0, 0,
 		width, height, 1);
+}
+
+void CommandBufferVK::dispatch(const glm::u32vec3& groupSize)
+{
+	vkCmdDispatch(m_CommandBuffer, groupSize.x, groupSize.y, groupSize.z);
 }

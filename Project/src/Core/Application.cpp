@@ -459,10 +459,23 @@ void Application::renderUI(double dt)
 {
 	m_pImgui->begin(dt);
 
+	// Color picker for mesh
 	ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);
 	if (ImGui::Begin("Color", NULL, ImGuiWindowFlags_NoResize))
 	{
 		ImGui::ColorPicker4("##picker", glm::value_ptr(g_Color), ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview);
+	}
+	ImGui::End();
+
+	// Particle control panel
+	ImGui::SetNextWindowSize(ImVec2(280, 110), ImGuiCond_Always);
+	if (ImGui::Begin("Particles", NULL, ImGuiWindowFlags_NoResize))
+	{
+		ImGui::Text("Toggle Computation Device");
+		const char* btnLabel = m_pParticleEmitterHandler->gpuComputed() ? "GPU" : "CPU";
+		if (ImGui::Button(btnLabel, ImVec2(40, 25))) {
+			m_pParticleEmitterHandler->toggleComputationDevice();
+		}
 	}
 	ImGui::End();
 
@@ -471,6 +484,9 @@ void Application::renderUI(double dt)
 
 void Application::render(double dt)
 {
+	if (m_pParticleEmitterHandler->gpuComputed()) {
+		int a = 0;
+	}
 	m_pRenderingHandler->beginFrame(m_Camera);
 
 	if (!m_EnableRayTracing) {
@@ -478,7 +494,7 @@ void Application::render(double dt)
 		m_pRenderingHandler->submitMesh(m_pMesh, g_Color, glm::mat4(1.0f) * g_Rotation);
 	}
 
-	//m_pRenderingHandler->drawImgui(m_pImgui);
+	m_pRenderingHandler->drawImgui(m_pImgui);
 	m_pRenderingHandler->endFrame();
 	m_pRenderingHandler->swapBuffers();
 }

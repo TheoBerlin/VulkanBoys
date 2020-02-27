@@ -10,6 +10,7 @@ class DescriptorSetLayoutVK;
 class DescriptorSetVK;
 class GraphicsContextVK;
 class MeshVK;
+class ParticleEmitterHandlerVK;
 class ParticleEmitter;
 class PipelineLayoutVK;
 class PipelineVK;
@@ -32,7 +33,8 @@ public:
 	virtual void beginFrame(const Camera& camera) override;
 	virtual void endFrame() override;
 
-	void submitParticles(ParticleEmitter* pParticleEmitter);
+	void submitParticles(ParticleEmitterHandlerVK* pEmitterHandler);
+	void submitParticles(ParticleEmitter* pEmitter);
 
 	void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY);
 

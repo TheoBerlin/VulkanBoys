@@ -1,5 +1,5 @@
 :: Mesh
-"tools/glslc.exe" -fshader-stage=vertex assets/shaders/vertex.glsl -o assets/shaders/vertex.spv 
+"tools/glslc.exe" -fshader-stage=vertex assets/shaders/vertex.glsl -o assets/shaders/vertex.spv
 "tools/glslc.exe" -fshader-stage=fragment assets/shaders/fragment.glsl -o assets/shaders/fragment.spv
 :: Raytracing
 "tools/glslc.exe" -fshader-stage=rgen assets/shaders/raytracing/raygen.glsl -o assets/shaders/raytracing/raygen.spv
@@ -8,6 +8,7 @@
 "tools/glslc.exe" -fshader-stage=rmiss assets/shaders/raytracing/missShadow.glsl -o assets/shaders/raytracing/missShadow.spv 
 "tools/glslc.exe" -fshader-stage=rchit assets/shaders/raytracing/closesthitShadow.glsl -o assets/shaders/raytracing/closesthitShadow.spv 
 :: Particles
-"tools/glslc.exe" -fshader-stage=vertex assets/shaders/particles/vertex.glsl -o assets/shaders/particles/vertex.spv 
-"tools/glslc.exe" -fshader-stage=fragment assets/shaders/particles/fragment.glsl -o assets/shaders/particles/fragment.spv 
+"tools/glslc.exe" -fshader-stage=vertex assets/shaders/particles/vertex.glsl -o assets/shaders/particles/vertex.spv
+"tools/glslc.exe" -fshader-stage=fragment assets/shaders/particles/fragment.glsl -o assets/shaders/particles/fragment.spv
+"tools/glslc.exe" -fshader-stage=compute assets/shaders/particles/update_cs.glsl -o assets/shaders/particles/update_cs.spv
 pause

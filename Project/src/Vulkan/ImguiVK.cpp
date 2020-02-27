@@ -263,7 +263,7 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 	}
 
 	//Setup pipelinestate
-	pCommandBuffer->bindGraphicsPipeline(m_pPipeline);
+	pCommandBuffer->bindPipeline(m_pPipeline);
 	//Set shader variable list
 	pCommandBuffer->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSet, 0, nullptr);
 
@@ -551,7 +551,7 @@ bool ImguiVK::createPipeline()
 	m_pPipeline->setWireFrame(false);
 	m_pPipeline->setDepthTest(false);
 
-	m_pPipeline->finalize(shaders, m_pRenderPass, m_pPipelineLayout);
+	m_pPipeline->finalizeGraphics(shaders, m_pRenderPass, m_pPipelineLayout);
 
 	SAFEDELETE(pVertexShader);
 	SAFEDELETE(pPixelShader);
