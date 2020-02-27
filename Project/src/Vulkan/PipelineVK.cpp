@@ -205,5 +205,5 @@ void PipelineVK::createShaderStageInfo(VkPipelineShaderStageCreateInfo& shaderSt
     shaderStageInfo.stage     = convertShaderType(shader->getShaderType());
     shaderStageInfo.module    = shaderVK->getShaderModule();
     shaderStageInfo.pName     = shader->getEntryPoint().c_str();
-    shaderStageInfo.pSpecializationInfo = nullptr;
+    shaderStageInfo.pSpecializationInfo = reinterpret_cast<const ShaderVK*>(shader)->getSpecializationInfo();
 }

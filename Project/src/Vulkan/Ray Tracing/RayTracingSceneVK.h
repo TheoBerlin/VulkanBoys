@@ -24,12 +24,12 @@ struct TempMaterial
 	{
 		SAFEDELETE(pAlbedo);
 		SAFEDELETE(pNormalMap);
-		SAFEDELETE(pMetallicMap);
+		SAFEDELETE(pRoughnessMap);
 	}
 
 	Texture2DVK* pAlbedo = nullptr;
 	Texture2DVK* pNormalMap = nullptr;
-	Texture2DVK* pMetallicMap = nullptr;
+	Texture2DVK* pRoughnessMap = nullptr;
 };
 
 class RayTracingSceneVK
@@ -68,11 +68,13 @@ public:
 	RayTracingSceneVK(IGraphicsContext* pContext);
 	~RayTracingSceneVK();
 
-	uint32_t addGraphicsObjectInstance(IMesh* pMesh, TempMaterial* pMaterial, const glm::mat3x4& transform = glm::mat3x4(1.0f));
-	void updateMeshInstance(uint32_t index, const glm::mat3x4& transform);
+	uint32_t addGraphicsObjectInstance(IMesh* pMesh, TempMaterial* pMaterial, const glm::mat3x4& transform = glm::mat3x4(1.0f), uint8_t customMask = 0x80);
+	void updateGraphicsObject(uint32_t index, const glm::mat3x4& transform);
 	bool finalize();
 
 	void update();
+
+	void generateLightProbeGeometry(uint32_t worldSizeX, uint32_t worldSizeY, uint32_t worldSizeZ, uint32_t samplesPerProbe, uint32_t numProbesPerDimension);
 
 	BufferVK* getCombinedVertexBuffer() { return m_pCombinedVertexBuffer; }
 	BufferVK* getCombinedIndexBuffer() { return m_pCombinedIndexBuffer; }
@@ -90,7 +92,7 @@ private:
 	void updateInstanceBuffer();
 	void createCombinedGraphicsObjectData();
 	VkDeviceSize findMaxMemReqBLAS();
-	
+
 private:
 	GraphicsContextVK* m_pContext;
 	DeviceVK* m_pDevice;
@@ -119,4 +121,7 @@ private:
 	CommandBufferVK* m_pTempCommandBuffer;
 
 	bool m_Finalized;
+
+	MeshVK* m_pLightProbeMesh;
+	TempMaterial* m_pVeryTempMaterial;
 };

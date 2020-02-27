@@ -51,7 +51,8 @@ public:
     BufferVK* getCameraDirectionsBuffer() { return m_pCameraDirectionsBuffer; }
 
     // Used by renderers to execute their secondary command buffers
-    CommandBufferVK* getCurrentCommandBuffer() { return m_ppCommandBuffers[m_CurrentFrame]; }
+    CommandBufferVK* getCurrentGraphicsCommandBuffer() { return m_ppGraphicsCommandBuffers[m_CurrentFrame]; }
+	CommandBufferVK* getCurrentComputeCommandBuffer() { return m_ppComputeCommandBuffers[m_CurrentFrame]; }
 
     uint32_t getCurrentFrameIndex() const { return m_CurrentFrame; }
     FrameBufferVK* getCurrentBackBuffer() const { return m_ppBackbuffers[m_BackBufferIndex]; }
@@ -82,11 +83,15 @@ private:
 	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_RenderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
 
-    CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];
-	CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
+    CommandPoolVK* m_ppGraphicsCommandPools[MAX_FRAMES_IN_FLIGHT];
+	CommandBufferVK* m_ppGraphicsCommandBuffers[MAX_FRAMES_IN_FLIGHT];
+
+	CommandPoolVK* m_ppComputeCommandPools[MAX_FRAMES_IN_FLIGHT];
+	CommandBufferVK* m_ppComputeCommandBuffers[MAX_FRAMES_IN_FLIGHT];
 
     CommandPoolVK* m_ppCommandPoolsSecondary[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppCommandBuffersSecondary[MAX_FRAMES_IN_FLIGHT];
+
 
     RenderPassVK* m_pRenderPass;
     PipelineVK* m_pPipeline;

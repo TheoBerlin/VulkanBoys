@@ -40,6 +40,7 @@ Application::Application()
 	m_pContext(nullptr),
 	m_pRenderingHandler(nullptr),
 	m_pMeshRenderer(nullptr),
+	m_pRayTracingRenderer(nullptr),
 	m_pImgui(nullptr),
 	m_pMesh(nullptr),
 	m_pAlbedo(nullptr),
@@ -80,7 +81,9 @@ void Application::init()
 
 	//Create context
 	m_pContext = IGraphicsContext::create(m_pWindow, API::VULKAN);
-	m_EnableRayTracing = false;//m_pContext->supportsRayTracing();
+
+	bool forceRayTracingOff = true;
+	m_EnableRayTracing = m_pContext->supportsRayTracing() && !forceRayTracingOff;
 
 	//Setup Imgui
 	m_pImgui = m_pContext->createImgui();
@@ -123,15 +126,17 @@ void Application::init()
 	// Setup renderers
 	m_pMeshRenderer = m_pContext->createMeshRenderer(m_pRenderingHandler);
 	m_pParticleRenderer = m_pContext->createParticleRenderer(m_pRenderingHandler);
+	m_pRayTracingRenderer = m_pContext->createRayTracingRenderer(m_pRenderingHandler);
 	m_pMeshRenderer->init();
 	m_pParticleRenderer->init();
+	m_pRayTracingRenderer->init();
 
 	// TODO: Should the renderers themselves call these instead?
 	m_pRenderingHandler->setMeshRenderer(m_pMeshRenderer);
 	m_pRenderingHandler->setParticleRenderer(m_pParticleRenderer);
 	// TODO: Create separate ray tracer renderer class
 	if (m_EnableRayTracing) {
-		m_pRenderingHandler->setRayTracer(m_pMeshRenderer);
+		m_pRenderingHandler->setRayTracer(m_pRayTracingRenderer);
 	}
 
 	m_pRenderingHandler->setViewport(m_pWindow->getWidth(), m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
@@ -267,6 +272,7 @@ void Application::release()
 	SAFEDELETE(m_pMesh);
 	SAFEDELETE(m_pRenderingHandler);
 	SAFEDELETE(m_pMeshRenderer);
+	SAFEDELETE(m_pRayTracingRenderer);
 	SAFEDELETE(m_pParticleRenderer);
 	SAFEDELETE(m_pParticleTexture);
 	SAFEDELETE(m_pParticleEmitterHandler);

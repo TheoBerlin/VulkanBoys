@@ -56,7 +56,7 @@ void ParticleEmitterHandlerVK::update(float dt)
 void ParticleEmitterHandlerVK::updateRenderingBuffers(IRenderingHandler* pRenderingHandler)
 {
     RenderingHandlerVK* pRenderingHandlerVK = reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler);
-    CommandBufferVK* pCommandBuffer = pRenderingHandlerVK->getCurrentCommandBuffer();
+    CommandBufferVK* pCommandBuffer = pRenderingHandlerVK->getCurrentGraphicsCommandBuffer();
 
     for (ParticleEmitter* pEmitter : m_ParticleEmitters) {
 		if (!m_GPUComputed) {
