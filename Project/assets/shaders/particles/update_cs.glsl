@@ -1,6 +1,6 @@
 #version 450
 
-layout (local_size_x=1,local_size_y=1) in;
+layout (local_size_x_id=1, local_size_y=1, local_size_z=1) in;
 
 #define TWO_PI 2.0 * 3.1415926535897932384626433832795
 
@@ -9,27 +9,27 @@ layout (push_constant) uniform Constants
 	float dt;
 } g_Time;
 
-layout(binding = 0) buffer Positions
+layout (binding = 0) buffer Positions
 {
 	vec4 positions[];
 } g_Positions;
 
-layout(binding = 1) buffer Velocities
+layout (binding = 1) buffer Velocities
 {
 	vec4 velocities[];
 } g_Velocities;
 
-layout(binding = 2) buffer Ages
+layout (binding = 2) buffer Ages
 {
 	float ages[];
 } g_Ages;
 
-layout(binding = 3) uniform EmitterProperties
+layout (binding = 3) uniform EmitterProperties
 {
 	mat4 centeringRotMatrix;
 	vec4 position, direction;
     vec2 particleSize;
-    float particleDuration, initialSpeed, spread;
+    float particleDuration, initialSpeed, spread, particleCount;
 } g_EmitterProperties;
 
 float rand1(float p, float minVal, float maxVal)
@@ -78,6 +78,10 @@ void createParticle(uint particleIdx, float particleAge)
 void main()
 {
     uint particleIdx = gl_GlobalInvocationID.x;
+    if (particleIdx >= g_EmitterProperties.particleCount) {
+        return;
+    }
+
 	float dt = g_Time.dt;
     float age = g_Ages.ages[particleIdx] + dt;
 

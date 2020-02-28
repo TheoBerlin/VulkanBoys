@@ -27,7 +27,7 @@ struct EmitterBuffer {
     glm::mat4x4 centeringRotMatrix;
     glm::vec4 position, direction;
     glm::vec2 particleSize;
-    float particleDuration, initialSpeed, spread;
+    float particleDuration, initialSpeed, spread, particleCount;
 };
 
 struct ParticleStorage {
@@ -75,8 +75,7 @@ public:
 private:
     bool createBuffers(IGraphicsContext* pGraphicsContext);
 
-    // Spawns particles before the emitter has created its maximum amount of particles
-    void spawnNewParticles();
+    void ageEmitter(float dt);
     void moveParticles(float dt);
     void respawnOldParticles();
     void createParticle(size_t particleIdx, float particleAge);

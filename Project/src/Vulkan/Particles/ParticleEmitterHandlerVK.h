@@ -67,5 +67,8 @@ private:
     PipelineLayoutVK* m_pPipelineLayout;
     PipelineVK* m_pPipeline;
 
+    // Work items per work group launched in a compute shader dispatch
+    uint32_t m_WorkGroupSize;
+
     uint32_t m_CurrentFrame;
 };

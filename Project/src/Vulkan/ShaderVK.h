@@ -22,7 +22,7 @@ public:
 	template <typename T> void setSpecializationConstant(uint32_t index, T data);
 	void setSpecializationConstant(uint32_t index, void* pData, uint32_t sizeInBytes);
 
-	const VkSpecializationInfo* getSpecializationInfo() const { return m_SpecializationInfo .dataSize > 0 ? &m_SpecializationInfo : nullptr; }
+	const VkSpecializationInfo* getSpecializationInfo() const { return m_SpecializationInfo.dataSize > 0 ? &m_SpecializationInfo : nullptr; }
 	VkShaderModule getShaderModule() const { return m_ShaderModule; }
 
 private:
@@ -35,7 +35,7 @@ private:
 	VkSpecializationInfo m_SpecializationInfo;
 	std::vector<VkSpecializationMapEntry> m_SpecializationEntries;
 	std::vector<uint8_t> m_SpecializationData;
-	
+
 };
 
 template<typename T>

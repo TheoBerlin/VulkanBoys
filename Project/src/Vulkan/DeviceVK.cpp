@@ -3,6 +3,7 @@
 #include "CopyHandlerVK.h"
 #include "CommandBufferVK.h"
 
+#include <cstring>
 #include <iostream>
 #include <map>
 #include <set>
@@ -16,6 +17,7 @@ DeviceVK::DeviceVK() :
 	m_ComputeQueue(VK_NULL_HANDLE),
 	m_TransferQueue(VK_NULL_HANDLE),
 	m_PresentQueue(VK_NULL_HANDLE),
+	m_DeviceLimits({}),
 	m_RayTracingProperties({}),
 	m_pCopyHandler()
 {
@@ -114,6 +116,11 @@ bool DeviceVK::hasUniqueQueueFamilyIndices() const
 	return familyIndices.size() == 4;
 }
 
+void DeviceVK::getMaxComputeWorkGroupSize(uint32_t pWorkGroupSize[3])
+{
+	std::memcpy(pWorkGroupSize, m_DeviceLimits.maxComputeWorkGroupSize, sizeof(uint32_t) * 3);
+}
+
 bool DeviceVK::initPhysicalDevice(InstanceVK* pInstance)
 {
 	uint32_t deviceCount = 0;
@@ -146,6 +153,11 @@ bool DeviceVK::initPhysicalDevice(InstanceVK* pInstance)
 	m_PhysicalDevice = physicalDeviceCandidates.rbegin()->second;
 	setEnabledExtensions();
 	m_DeviceQueueFamilyIndices = findQueueFamilies(m_PhysicalDevice);
+
+	// Save device's limits
+	VkPhysicalDeviceProperties deviceProperties;
+	vkGetPhysicalDeviceProperties(m_PhysicalDevice, &deviceProperties);
+	m_DeviceLimits = deviceProperties.limits;
 
 	return true;
 }

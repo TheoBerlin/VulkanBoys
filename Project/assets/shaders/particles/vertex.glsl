@@ -29,7 +29,7 @@ layout (binding = 3) uniform EmitterProperties
 	mat4 centeringRotMatrix;
 	vec4 position, direction;
     vec2 particleSize; // Only this variable is used in this shader
-    float particleDuration, initialSpeed, spread;
+    float particleDuration, initialSpeed, spread, particleCount;
 } g_EmitterProperties;
 
 layout (binding = 4) buffer ParticlePositions

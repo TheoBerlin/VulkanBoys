@@ -50,23 +50,14 @@ bool ParticleEmitter::initialize(IGraphicsContext* pGraphicsContext, const Camer
 
 void ParticleEmitter::update(float dt)
 {
-    if (m_EmitterAge < m_ParticleDuration) {
-        m_EmitterUpdated = true;
-        m_EmitterAge += dt;
-    }
-
+    ageEmitter(dt);
     moveParticles(dt);
-
     respawnOldParticles();
 }
 
 void ParticleEmitter::updateGPU(float dt)
 {
-    if (m_EmitterAge < m_ParticleDuration) {
-        m_EmitterUpdated = true;
-        m_EmitterAge += dt;
-    }
-
+    ageEmitter(dt);
     // The rest is performed by the particle emitter handler
 }
 
@@ -79,6 +70,7 @@ void ParticleEmitter::createEmitterBuffer(EmitterBuffer& emitterBuffer)
     emitterBuffer.particleDuration = m_ParticleDuration;
     emitterBuffer.initialSpeed = m_InitialSpeed;
     emitterBuffer.spread = m_Spread;
+    emitterBuffer.particleCount = getParticleCount();
 }
 
 uint32_t ParticleEmitter::getParticleCount() const
@@ -170,28 +162,16 @@ bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
     pGraphicsContext->updateBuffer(m_pEmitterBuffer, 0, &emitterBuffer, sizeof(EmitterBuffer));
 }
 
-void ParticleEmitter::spawnNewParticles()
+void ParticleEmitter::ageEmitter(float dt)
 {
-    size_t particleCount = m_ParticleStorage.positions.size();
-    size_t newParticleCount = getParticleCount();
-    size_t particlesToSpawn = newParticleCount - particleCount;
+    if (m_EmitterAge < m_ParticleDuration) {
+        uint32_t oldParticleCount = getParticleCount();
+        m_EmitterAge += dt;
+        uint32_t newParticleCount = getParticleCount();
 
-    if (particlesToSpawn == 0) {
-        return;
-    }
-
-    // Create uninitialized particles where createParticle() will fill in the data
-    m_ParticleStorage.positions.resize(newParticleCount);
-    m_ParticleStorage.velocities.resize(newParticleCount);
-    m_ParticleStorage.ages.resize(newParticleCount);
-
-    for (size_t i = 0; i < particlesToSpawn; i++) {
-        // Exact time when the particle should have spawned, relative to the creation of the emitter
-        float spawnTime = (particleCount + 1 + i) / m_ParticlesPerSecond;
-        float particleAge = m_EmitterAge - spawnTime;
-
-        size_t newParticleIdx = particleCount + i;
-        createParticle(newParticleIdx, particleAge);
+        if (newParticleCount > oldParticleCount) {
+            m_EmitterUpdated = true;
+        }
     }
 }
 
