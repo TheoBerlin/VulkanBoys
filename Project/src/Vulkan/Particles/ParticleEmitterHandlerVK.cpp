@@ -14,6 +14,7 @@
 #include "Vulkan/PipelineVK.h"
 #include "Vulkan/RenderingHandlerVK.h"
 #include "Vulkan/SamplerVK.h"
+#include "Vulkan/ShaderVK.h"
 
 ParticleEmitterHandlerVK::ParticleEmitterHandlerVK()
 	:m_pDescriptorPool(nullptr),
@@ -21,6 +22,7 @@ ParticleEmitterHandlerVK::ParticleEmitterHandlerVK()
 	m_pPipelineLayout(nullptr),
 	m_pPipeline(nullptr),
 	m_pCommandPoolGraphics(nullptr),
+	m_WorkGroupSize(0),
 	m_CurrentFrame(0)
 {
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -245,9 +247,6 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 		pTempCommandBufferCompute->reset();
 		pTempCommandBufferCompute->begin();
 
-		if (m_GPUComputed) {
-			releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), pTempCommandBufferGraphics);
-		}
 		releaseFromGraphics(pVelocitiesBuffer, pTempCommandBufferGraphics);
 		releaseFromGraphics(pAgesBuffer, pTempCommandBufferGraphics);
 
@@ -278,6 +277,7 @@ void ParticleEmitterHandlerVK::updateGPU(float dt)
 	const QueueFamilyIndices& queueFamilyIndices = pDevice->getQueueFamilyIndices();
 
 	bool transferOwnerships = queueFamilyIndices.graphicsFamily.value() != queueFamilyIndices.computeFamily.value();
+	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float), (const void*)&dt);
 
 	for (ParticleEmitter* pEmitter : m_ParticleEmitters) {
 		pEmitter->updateGPU(dt);
@@ -293,14 +293,13 @@ void ParticleEmitterHandlerVK::updateGPU(float dt)
 		}
 
 		// TODO: Use constant variables or define macros for binding indices
-		m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float), (const void*)&dt);
 		m_ppDescriptorSets[m_CurrentFrame]->writeStorageBufferDescriptor(pPositionsBuffer->getBuffer(), 0);
 		m_ppDescriptorSets[m_CurrentFrame]->writeStorageBufferDescriptor(pVelocitiesBuffer->getBuffer(), 1);
 		m_ppDescriptorSets[m_CurrentFrame]->writeStorageBufferDescriptor(pAgesBuffer->getBuffer(), 2);
 		m_ppDescriptorSets[m_CurrentFrame]->writeUniformBufferDescriptor(pEmitterBuffer->getBuffer(), 3);
 
 		uint32_t particleCount = pEmitter->getParticleCount();
-		glm::u32vec3 workGroupSize(particleCount, 1, 1);
+		glm::u32vec3 workGroupSize(1 + particleCount / m_WorkGroupSize, 1, 1);
 
 		m_ppCommandBuffers[m_CurrentFrame]->dispatch(workGroupSize);
 
@@ -439,8 +438,16 @@ bool ParticleEmitterHandlerVK::createPipeline()
 		return false;
 	}
 
+	// Maximize the work group size
 	GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
     DeviceVK* pDevice = pGraphicsContext->getDevice();
+
+	uint32_t pMaxWorkGroupSize[3];
+	pDevice->getMaxComputeWorkGroupSize(pMaxWorkGroupSize);
+	m_WorkGroupSize = pMaxWorkGroupSize[0];
+
+	ShaderVK* pComputeShaderVK = reinterpret_cast<ShaderVK*>(pComputeShader);
+	pComputeShaderVK->setSpecializationConstant(1, m_WorkGroupSize);
 
 	m_pPipeline = DBG_NEW PipelineVK(pDevice);
 	m_pPipeline->finalizeCompute(pComputeShader, m_pPipelineLayout);
