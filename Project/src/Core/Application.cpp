@@ -84,7 +84,7 @@ void Application::init()
 	//Create context
 	m_pContext = IGraphicsContext::create(m_pWindow, API::VULKAN);
 
-	bool forceRayTracingOff = true;
+	const bool forceRayTracingOff = true;
 	m_EnableRayTracing = m_pContext->supportsRayTracing() && !forceRayTracingOff;
 
 	//Setup Imgui
@@ -128,10 +128,12 @@ void Application::init()
 	// Setup renderers
 	m_pMeshRenderer = m_pContext->createMeshRenderer(m_pRenderingHandler);
 	m_pParticleRenderer = m_pContext->createParticleRenderer(m_pRenderingHandler);
-	m_pRayTracingRenderer = m_pContext->createRayTracingRenderer(m_pRenderingHandler);
+	if (m_EnableRayTracing) {
+		m_pRayTracingRenderer = m_pContext->createRayTracingRenderer(m_pRenderingHandler);
+		m_pRayTracingRenderer->init();
+	}
 	m_pMeshRenderer->init();
 	m_pParticleRenderer->init();
-	m_pRayTracingRenderer->init();
 
 	// TODO: Should the renderers themselves call these instead?
 	m_pRenderingHandler->setMeshRenderer(m_pMeshRenderer);
