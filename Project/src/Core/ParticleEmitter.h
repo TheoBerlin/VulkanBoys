@@ -29,7 +29,6 @@ struct EmitterBuffer {
     glm::vec2 particleSize;
     float particleDuration, initialSpeed, spread;
 };
-    // This padding gets the buffer size up to 128 bytes
 
 struct ParticleStorage {
     std::vector<glm::vec4> positions, velocities;
@@ -49,8 +48,20 @@ public:
 
     const ParticleStorage& getParticleStorage() const { return m_ParticleStorage; }
     void createEmitterBuffer(EmitterBuffer& emitterBuffer);
-    // TODO: Change this to use the emitter's age to calculate the particle count. Using the size doesn't work if particles only exist on the GPU.
+
     uint32_t getParticleCount() const;
+
+    glm::vec3 getPosition() const { return m_Position; }
+    glm::vec3 getDirection() const { return m_Direction; }
+    float getInitialSpeed() const { return m_InitialSpeed; }
+    float getParticlesPerSecond() const { return m_ParticlesPerSecond; }
+    float getParticleDuration() const { return m_ParticleDuration; }
+
+    void setPosition(const glm::vec3& position);
+    void setDirection(const glm::vec3& direction);
+    void setInitialSpeed(float initialSpeed);
+    void setParticlesPerSecond(float particlesPerSecond);
+    void setParticleDuration(float particleDuration);
 
     IBuffer* getPositionsBuffer() { return m_pPositionsBuffer; }
     IBuffer* getVelocitiesBuffer() { return m_pVelocitiesBuffer; }
@@ -69,6 +80,10 @@ private:
     void moveParticles(float dt);
     void respawnOldParticles();
     void createParticle(size_t particleIdx, float particleAge);
+
+    // Calculate rotation quaternion for spawning new particles in the desired direction
+    void createCenteringQuaternion();
+    void resizeParticleStorage(size_t newSize);
 
 private:
     glm::vec3 m_Position, m_Direction;

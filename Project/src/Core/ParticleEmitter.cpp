@@ -27,11 +27,7 @@ ParticleEmitter::ParticleEmitter(const ParticleEmitterInfo& emitterInfo)
     m_pAgesBuffer(nullptr),
     m_pEmitterBuffer(nullptr)
 {
-    // Calculate rotation quaternion
-    glm::vec3 axis = glm::normalize(glm::cross(m_ZVec, m_Direction));
-
-    float angle = glm::angle(m_ZVec, m_Direction);
-    m_CenteringRotQuat = glm::angleAxis(angle, axis);
+    createCenteringQuaternion();
 }
 
 ParticleEmitter::~ParticleEmitter()
@@ -47,17 +43,7 @@ bool ParticleEmitter::initialize(IGraphicsContext* pGraphicsContext, const Camer
     m_pCamera = pCamera;
 
     size_t particleCount = m_ParticlesPerSecond * m_ParticleDuration;
-    m_ParticleStorage.positions.resize(particleCount);
-    m_ParticleStorage.velocities.resize(particleCount);
-    m_ParticleStorage.ages.resize(particleCount);
-
-    // Set the particle ages so that the first particle will respawn after the first update
-    float spawnRateReciprocal = 1.0f / m_ParticlesPerSecond;
-    std::vector<float>& ages = m_ParticleStorage.ages;
-
-    for (size_t i = 0; i < particleCount; i++) {
-        ages[i] = m_ParticleDuration - i * spawnRateReciprocal;
-    }
+    resizeParticleStorage(particleCount);
 
     return createBuffers(pGraphicsContext);
 }
@@ -97,7 +83,44 @@ void ParticleEmitter::createEmitterBuffer(EmitterBuffer& emitterBuffer)
 
 uint32_t ParticleEmitter::getParticleCount() const
 {
-    return std::min((uint32_t)(m_ParticlesPerSecond * m_ParticleDuration), (uint32_t)(m_ParticlesPerSecond * m_EmitterAge));
+    return uint32_t(m_ParticlesPerSecond * std::min(m_ParticleDuration, m_EmitterAge));
+}
+
+void ParticleEmitter::setPosition(const glm::vec3& position)
+{
+    m_Position = position;
+    m_EmitterUpdated = true;
+}
+
+void ParticleEmitter::setDirection(const glm::vec3& direction)
+{
+    m_Direction = direction;
+    createCenteringQuaternion();
+    m_EmitterUpdated = true;
+}
+
+void ParticleEmitter::setInitialSpeed(float initialSpeed)
+{
+    m_InitialSpeed = initialSpeed;
+    m_EmitterUpdated = true;
+}
+
+void ParticleEmitter::setParticlesPerSecond(float particlesPerSecond)
+{
+    size_t newParticleCount = m_ParticlesPerSecond * m_ParticleDuration;
+    resizeParticleStorage(newParticleCount);
+
+    m_ParticlesPerSecond = particlesPerSecond;
+    m_EmitterUpdated = true;
+}
+
+void ParticleEmitter::setParticleDuration(float particleDuration)
+{
+    size_t newParticleCount = m_ParticlesPerSecond * m_ParticleDuration;
+    resizeParticleStorage(newParticleCount);
+
+    m_ParticleDuration = particleDuration;
+    m_EmitterUpdated = true;
 }
 
 bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
@@ -150,7 +173,7 @@ bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
 void ParticleEmitter::spawnNewParticles()
 {
     size_t particleCount = m_ParticleStorage.positions.size();
-    size_t newParticleCount = size_t(m_EmitterAge * m_ParticlesPerSecond);
+    size_t newParticleCount = getParticleCount();
     size_t particlesToSpawn = newParticleCount - particleCount;
 
     if (particlesToSpawn == 0) {
@@ -178,7 +201,9 @@ void ParticleEmitter::moveParticles(float dt)
     std::vector<glm::vec4>& velocities = m_ParticleStorage.velocities;
     std::vector<float>& ages = m_ParticleStorage.ages;
 
-    for (size_t particleIdx = 0; particleIdx < positions.size(); particleIdx++) {
+    size_t particleCount = getParticleCount();
+
+    for (size_t particleIdx = 0; particleIdx < particleCount; particleIdx++) {
         positions[particleIdx] += velocities[particleIdx] * dt;
         velocities[particleIdx].y -= 9.82f * dt;
         ages[particleIdx] += dt;
@@ -191,6 +216,8 @@ void ParticleEmitter::respawnOldParticles()
     std::vector<glm::vec4>& velocities = m_ParticleStorage.velocities;
     std::vector<float>& ages = m_ParticleStorage.ages;
 
+    size_t particleCount = getParticleCount();
+
     /*
         TODO: Optimize respawning, dead pixels are grouped up, no need to iterate through the entire particle storage
         Three cases of particles grouping up: (d=dead, a=alive)
@@ -198,7 +225,7 @@ void ParticleEmitter::respawnOldParticles()
         (front) aaaaaaddd (back)
         (front) dddaaaaaa (back)
     */
-    for (size_t particleIdx = 0; particleIdx < m_ParticleStorage.positions.size(); particleIdx++) {
+    for (size_t particleIdx = 0; particleIdx < particleCount; particleIdx++) {
         float newParticleAge = ages[particleIdx] - m_ParticleDuration;
         if (newParticleAge < 0.0f) {
             continue;
@@ -239,4 +266,29 @@ void ParticleEmitter::createParticle(size_t particleIdx, float particleAge)
     m_ParticleStorage.velocities[particleIdx] = glm::vec4(glm::vec3(0.0f, gt, 0.0f) + V0, 0.0f);
     m_ParticleStorage.positions[particleIdx] = glm::vec4(glm::vec3(0.0f, gt * particleAge * 0.5f, 0.0f) + V0 * particleAge + m_Position, 1.0f);
     m_ParticleStorage.ages[particleIdx] = particleAge;
+}
+
+void ParticleEmitter::createCenteringQuaternion()
+{
+    glm::vec3 axis = glm::normalize(glm::cross(m_ZVec, m_Direction));
+
+    float angle = glm::angle(m_ZVec, m_Direction);
+    m_CenteringRotQuat = glm::angleAxis(angle, axis);
+}
+
+void ParticleEmitter::resizeParticleStorage(size_t newSize)
+{
+    size_t oldSize = m_ParticleStorage.positions.size();
+
+    m_ParticleStorage.positions.resize(newSize);
+    m_ParticleStorage.velocities.resize(newSize);
+    m_ParticleStorage.ages.resize(newSize);
+
+    // Set the particle ages so that the first particle will respawn after the first update
+    float spawnRateReciprocal = 1.0f / m_ParticlesPerSecond;
+    std::vector<float>& ages = m_ParticleStorage.ages;
+
+    for (size_t i = oldSize; i < newSize; i++) {
+        ages[i] = m_ParticleDuration - i * spawnRateReciprocal;
+    }
 }

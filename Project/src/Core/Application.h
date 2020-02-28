@@ -65,6 +65,9 @@ private:
 	IParticleEmitterHandler* m_pParticleEmitterHandler;
 	ITexture2D* m_pParticleTexture;
 
+	// Resources for ImGui Particle window
+	size_t m_CurrentEmitterIdx;
+
 	bool m_IsRunning;
 	bool m_UpdateCamera;
 	bool m_EnableRayTracing;
