@@ -1,7 +1,8 @@
 #include "Application.h"
-#include "Input.h"
 #include "Camera.h"
+#include "Input.h"
 #include "TaskDispatcher.h"
+#include "Transform.h"
 
 #include "Common/IMesh.h"
 #include "Common/IImgui.h"
@@ -109,7 +110,7 @@ void Application::init()
 
 	ParticleEmitterInfo emitterInfo = {};
 	emitterInfo.position = glm::vec3(0.0f, 0.0f, 0.0f);
-	emitterInfo.direction = glm::vec3(0.0f, 1.0f, 0.0f);
+	emitterInfo.direction = glm::normalize(glm::vec3(0.0f, 0.9f, 0.1f));
 	emitterInfo.particleSize = glm::vec2(0.2f, 0.2f);
 	emitterInfo.initialSpeed = 5.5f;
 	emitterInfo.particleDuration = 3.0f;
@@ -135,7 +136,6 @@ void Application::init()
 	// TODO: Should the renderers themselves call these instead?
 	m_pRenderingHandler->setMeshRenderer(m_pMeshRenderer);
 	m_pRenderingHandler->setParticleRenderer(m_pParticleRenderer);
-	// TODO: Create separate ray tracer renderer class
 	if (m_EnableRayTracing) {
 		m_pRenderingHandler->setRayTracer(m_pRayTracingRenderer);
 	}
@@ -478,21 +478,42 @@ void Application::renderUI(double dt)
 			m_pParticleEmitterHandler->toggleComputationDevice();
 		}
 
-		// Get currently selected
+		// Get current emitter data
 		ParticleEmitter* pEmitter = m_pParticleEmitterHandler->getParticleEmitter(m_CurrentEmitterIdx);
 		glm::vec3 emitterPos = pEmitter->getPosition();
+
 		glm::vec3 emitterDirection = pEmitter->getDirection();
+		float yaw = getYaw(emitterDirection);
+		float oldYaw = yaw;
+		float pitch = getPitch(emitterDirection);
+		float oldPitch = pitch;
+
 		float emitterSpeed = pEmitter->getInitialSpeed();
 
 		if (ImGui::SliderFloat3("Position", glm::value_ptr(emitterPos), -10.0f, 10.0f)) {
 			pEmitter->setPosition(emitterPos);
-		} else if (ImGui::SliderFloat3("Direction", glm::value_ptr(emitterDirection), -1.0f, 1.0f)) {
+		}
+		if (ImGui::SliderFloat("Yaw", &yaw, 0.01f - glm::pi<float>(), glm::pi<float>() - 0.01f)) {
+			applyYaw(emitterDirection, yaw - oldYaw);
+			pEmitter->setDirection(emitterDirection);
+		}
+		if (ImGui::SliderFloat("Pitch", &pitch, 0.01f - glm::half_pi<float>(), glm::half_pi<float>() - 0.01f)) {
+			applyPitch(emitterDirection, pitch - oldPitch);
+			pEmitter->setDirection(emitterDirection);
+		}
+		if (ImGui::SliderFloat3("Direction", glm::value_ptr(emitterDirection), -1.0f, 1.0f)) {
 			pEmitter->setDirection(glm::normalize(emitterDirection));
-		} else if (ImGui::SliderFloat("Speed", &emitterSpeed, 0.0f, 20.0f)) {
+		}
+		if (ImGui::SliderFloat("Speed", &emitterSpeed, 0.0f, 20.0f)) {
 			pEmitter->setInitialSpeed(emitterSpeed);
 		}
 
 		ImGui::Text("Particles: %d", pEmitter->getParticleCount());
+		float particlesPerSecond = pEmitter->getParticlesPerSecond();
+		float particleDuration = pEmitter->getParticleDuration();
+
+		if (ImGui::SliderFloat("Particles per second", &particlesPerSecond, 0.0f, 1000.0f)) {
+		}
 	}
 	ImGui::End();
 

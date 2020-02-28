@@ -54,10 +54,14 @@ public:
     glm::vec3 getPosition() const { return m_Position; }
     glm::vec3 getDirection() const { return m_Direction; }
     float getInitialSpeed() const { return m_InitialSpeed; }
+    float getParticlesPerSecond() const { return m_ParticlesPerSecond; }
+    float getParticleDuration() const { return m_ParticleDuration; }
+
     void setPosition(const glm::vec3& position);
     void setDirection(const glm::vec3& direction);
     void setInitialSpeed(float initialSpeed);
     void setParticlesPerSecond(float particlesPerSecond);
+    void setParticleDuration(float particleDuration);
 
     IBuffer* getPositionsBuffer() { return m_pPositionsBuffer; }
     IBuffer* getVelocitiesBuffer() { return m_pVelocitiesBuffer; }
@@ -78,7 +82,8 @@ private:
     void createParticle(size_t particleIdx, float particleAge);
 
     // Calculate rotation quaternion for spawning new particles in the desired direction
-    void buildCenteringQuaternion();
+    void createCenteringQuaternion();
+    void resizeParticleStorage(size_t newSize);
 
 private:
     glm::vec3 m_Position, m_Direction;
