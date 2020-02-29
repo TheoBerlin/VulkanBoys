@@ -1,5 +1,7 @@
 #include "ParticleEmitterHandlerVK.h"
 
+#include "imgui/imgui.h"
+
 #include "Common/Debug.h"
 #include "Common/IGraphicsContext.h"
 #include "Common/IShader.h"
@@ -83,6 +85,19 @@ void ParticleEmitterHandlerVK::updateRenderingBuffers(IRenderingHandler* pRender
 			pCommandBuffer->updateBuffer(pPositionsBuffer, 0, particlePositions.data(), sizeof(glm::vec4) * particlePositions.size());
 		}
     }
+}
+
+void ParticleEmitterHandlerVK::drawProfileUI()
+{
+	if (m_GPUComputed) {
+		// The root profiler creates the profiler window
+        ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);
+	    if (ImGui::Begin("Profiler", NULL, ImGuiWindowFlags_NoResize)) {
+			m_pProfiler->drawResults();
+        }
+
+		ImGui::End();
+	}
 }
 
 bool ParticleEmitterHandlerVK::initializeGPUCompute()

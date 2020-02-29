@@ -32,6 +32,8 @@ public:
 
     virtual void update(float dt) override;
     virtual void updateRenderingBuffers(IRenderingHandler* pRenderingHandler) override;
+    virtual void drawProfileUI() override;
+
     virtual bool initializeGPUCompute() override;
 
     virtual void toggleComputationDevice() override;

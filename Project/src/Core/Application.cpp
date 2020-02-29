@@ -519,6 +519,8 @@ void Application::renderUI(double dt)
 	}
 	ImGui::End();
 
+	m_pParticleEmitterHandler->drawProfileUI();
+
 	m_pImgui->end();
 }
 

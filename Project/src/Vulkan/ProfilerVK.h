@@ -26,13 +26,12 @@ public:
     void beginFrame(size_t currentFrame);
     // Called to the root profiler
     void endFrame();
-
     void writeResults();
+    void drawResults(uint32_t indentLength = 0);
 
     ProfilerVK* createChildProfiler(const std::string& name);
 
     void initTimestamp(Timestamp* pTimestamp, const std::string name);
-
     void writeTimestamp(Timestamp* pTimestamp);
 
 private:
@@ -50,4 +49,7 @@ private:
 
     uint32_t m_CurrentFrame, m_NextQuery;
     std::vector<uint64_t> m_TimeResults;
+
+    // Multiplying factor used to convert a timestamp unit to milliseconds
+    static double m_TimestampToMillisec;
 };

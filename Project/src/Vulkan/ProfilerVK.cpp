@@ -1,10 +1,13 @@
 #include "ProfilerVK.h"
 
+#include "imgui/imgui.h"
 #include "vulkan/vulkan.h"
 
 #include "Core/Core.h"
 #include "Vulkan/CommandBufferVK.h"
 #include "Vulkan/DeviceVK.h"
+
+double ProfilerVK::m_TimestampToMillisec = 0.0;
 
 ProfilerVK::ProfilerVK(const std::string& name, DeviceVK* pDevice, ProfilerVK* pParentProfiler)
     :m_Name(name),
@@ -22,6 +25,13 @@ ProfilerVK::ProfilerVK(const std::string& name, DeviceVK* pDevice, ProfilerVK* p
             return;
         }
     }
+
+    // From Vulkan spec: The number of nanoseconds it takes for a timestamp value to be incremented by 1
+    float nanoSecPerTime = pDevice->getTimestampPeriod();
+    const float nanoSecond = std::pow(10.0f, -9.0f);
+    const float milliSecondInv = 1000.0f;
+
+    m_TimestampToMillisec = nanoSecPerTime * nanoSecond * milliSecondInv;
 }
 
 ProfilerVK::~ProfilerVK()
@@ -101,6 +111,20 @@ void ProfilerVK::writeResults()
     }
 }
 
+void ProfilerVK::drawResults(uint32_t indentLength)
+{
+    std::string indent("-", indentLength);
+
+    // Convert time to milliseconds
+    double timeMs = m_Time * m_TimestampToMillisec;
+    ImGui::Text("%s%s: %f ms", indent.c_str(), m_Name.c_str(), timeMs);
+
+    for (Timestamp* pTimestamp : m_Timestamps) {
+        timeMs = pTimestamp->time * m_TimestampToMillisec;
+        ImGui::Text("--%s%s: %f ms", indent.c_str(), pTimestamp->name.c_str(), timeMs);
+    }
+}
+
 ProfilerVK* ProfilerVK::createChildProfiler(const std::string& name)
 {
     ProfilerVK* pNewStage = DBG_NEW ProfilerVK(name, m_pDevice);
@@ -121,4 +145,3 @@ void ProfilerVK::writeTimestamp(Timestamp* pTimestamp)
     pTimestamp->queries.push_back(m_NextQuery);
     vkCmdWriteTimestamp(m_ppProfiledCommandBuffers[m_CurrentFrame]->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_ppQueryPools[m_CurrentFrame]->getQueryPool(), m_NextQuery++);
 }
-
