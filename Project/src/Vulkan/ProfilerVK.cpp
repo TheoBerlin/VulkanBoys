@@ -14,7 +14,8 @@ ProfilerVK::ProfilerVK(const std::string& name, DeviceVK* pDevice, ProfilerVK* p
     m_pParent(pParentProfiler),
     m_pDevice(pDevice),
     m_CurrentFrame(0),
-    m_NextQuery(0)
+    m_NextQuery(0),
+    m_TimeSinceMeasure(1.0f / g_MeasuresPerSecond)
 {
     // TODO: Put this in init
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -50,8 +51,13 @@ void ProfilerVK::init(CommandBufferVK* m_ppCommandBuffers[])
     m_ppProfiledCommandBuffers = m_ppCommandBuffers;
 }
 
-void ProfilerVK::beginFrame(size_t currentFrame)
+void ProfilerVK::beginFrame(size_t currentFrame, float dt)
 {
+    m_TimeSinceMeasure += dt;
+    if (m_TimeSinceMeasure < 1.0f / g_MeasuresPerSecond) {
+        return;
+    }
+
     m_CurrentFrame = currentFrame;
 
     QueryPoolVK* pCurrentQueryPool = m_ppQueryPools[currentFrame];
@@ -74,6 +80,10 @@ void ProfilerVK::beginFrame(size_t currentFrame)
 
 void ProfilerVK::endFrame()
 {
+    if (m_TimeSinceMeasure < 1.0f / g_MeasuresPerSecond) {
+        return;
+    }
+
     VkQueryPool currentQueryPool = m_ppQueryPools[m_CurrentFrame]->getQueryPool();
     vkCmdWriteTimestamp(m_ppProfiledCommandBuffers[m_CurrentFrame]->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, currentQueryPool, m_NextQuery++);
 
@@ -84,6 +94,12 @@ void ProfilerVK::endFrame()
 
 void ProfilerVK::writeResults()
 {
+    if (m_TimeSinceMeasure < 1.0f / g_MeasuresPerSecond) {
+        return;
+    }
+
+    m_TimeSinceMeasure = std::fmod(m_TimeSinceMeasure, 1.0f / g_MeasuresPerSecond);
+
     VkQueryPool currentQueryPool = m_ppQueryPools[m_CurrentFrame]->getQueryPool();
 
     if (vkGetQueryPoolResults(
@@ -142,6 +158,10 @@ void ProfilerVK::initTimestamp(Timestamp* pTimestamp, const std::string name)
 
 void ProfilerVK::writeTimestamp(Timestamp* pTimestamp)
 {
+    if (m_TimeSinceMeasure < 1.0f / g_MeasuresPerSecond) {
+        return;
+    }
+
     pTimestamp->queries.push_back(m_NextQuery);
     vkCmdWriteTimestamp(m_ppProfiledCommandBuffers[m_CurrentFrame]->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_ppQueryPools[m_CurrentFrame]->getQueryPool(), m_NextQuery++);
 }

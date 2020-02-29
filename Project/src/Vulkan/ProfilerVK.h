@@ -10,10 +10,11 @@ class DeviceVK;
 
 struct Timestamp {
     std::string name;
-    //float time;
     uint64_t time;
     std::vector<uint32_t> queries;
 };
+
+const float g_MeasuresPerSecond = 2.0f;
 
 class ProfilerVK
 {
@@ -23,7 +24,7 @@ public:
 
     void init(CommandBufferVK* m_ppCommandBuffers[]);
 
-    void beginFrame(size_t currentFrame);
+    void beginFrame(size_t currentFrame, float dt);
     // Called to the root profiler
     void endFrame();
     void writeResults();
@@ -40,7 +41,6 @@ private:
     std::vector<Timestamp*> m_Timestamps;
 
     std::string m_Name;
-    //float m_Time;
     uint64_t m_Time;
 
     QueryPoolVK* m_ppQueryPools[MAX_FRAMES_IN_FLIGHT];
@@ -52,4 +52,6 @@ private:
 
     // Multiplying factor used to convert a timestamp unit to milliseconds
     static double m_TimestampToMillisec;
+
+    float m_TimeSinceMeasure;
 };
