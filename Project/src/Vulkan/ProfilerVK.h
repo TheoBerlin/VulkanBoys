@@ -1,5 +1,7 @@
 #pragma once
 
+#define NOMINMAX
+
 #include "QueryPoolVK.h"
 
 #include <string>
@@ -14,8 +16,6 @@ struct Timestamp {
     std::vector<uint32_t> queries;
 };
 
-const float g_MeasuresPerSecond = 2.0f;
-
 class ProfilerVK
 {
 public:
@@ -28,15 +28,32 @@ public:
     // Called to the root profiler
     void endFrame();
     void writeResults();
-    void drawResults(uint32_t indentLength = 0);
+    void drawResults();
 
     ProfilerVK* createChildProfiler(const std::string& name);
 
     void initTimestamp(Timestamp* pTimestamp, const std::string name);
     void writeTimestamp(Timestamp* pTimestamp);
 
+    uint32_t getRecurseDepth() const { return m_RecurseDepth; }
+
+private:
+    void findWidestText();
+
+private:
+    static const float m_MeasuresPerSecond;
+
+    // Multiplying factor used to convert a timestamp unit to milliseconds
+    static double m_TimestampToMillisec;
+    static const uint32_t m_DashesPerRecurse;
+    // The widest string written when rendering profiler results, eg: "--Mesh" is 4 characters wide
+    static uint32_t m_MaxTextWidth;
+
 private:
     ProfilerVK* m_pParent;
+    // The amount of levels to the root-level profiler
+    uint32_t m_RecurseDepth;
+
     std::vector<ProfilerVK*> m_ChildProfilers;
     std::vector<Timestamp*> m_Timestamps;
 
@@ -49,9 +66,6 @@ private:
 
     uint32_t m_CurrentFrame, m_NextQuery;
     std::vector<uint64_t> m_TimeResults;
-
-    // Multiplying factor used to convert a timestamp unit to milliseconds
-    static double m_TimestampToMillisec;
 
     float m_TimeSinceMeasure;
 };

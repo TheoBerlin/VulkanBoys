@@ -7,7 +7,11 @@
 #include "Vulkan/CommandBufferVK.h"
 #include "Vulkan/DeviceVK.h"
 
+const float ProfilerVK::m_MeasuresPerSecond = 2.0f;
+
 double ProfilerVK::m_TimestampToMillisec = 0.0;
+const uint32_t ProfilerVK::m_DashesPerRecurse = 2;
+uint32_t ProfilerVK::m_MaxTextWidth = 0;
 
 ProfilerVK::ProfilerVK(const std::string& name, DeviceVK* pDevice, ProfilerVK* pParentProfiler)
     :m_Name(name),
@@ -15,9 +19,11 @@ ProfilerVK::ProfilerVK(const std::string& name, DeviceVK* pDevice, ProfilerVK* p
     m_pDevice(pDevice),
     m_CurrentFrame(0),
     m_NextQuery(0),
-    m_TimeSinceMeasure(1.0f / g_MeasuresPerSecond)
+    m_TimeSinceMeasure(1.0f / m_MeasuresPerSecond)
 {
-    // TODO: Put this in init
+    m_RecurseDepth = pParentProfiler == nullptr ? 0 : pParentProfiler->getRecurseDepth() + 1;
+    findWidestText();
+
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         m_ppQueryPools[i] = DBG_NEW QueryPoolVK(pDevice);
 
@@ -54,7 +60,7 @@ void ProfilerVK::init(CommandBufferVK* m_ppCommandBuffers[])
 void ProfilerVK::beginFrame(size_t currentFrame, float dt)
 {
     m_TimeSinceMeasure += dt;
-    if (m_TimeSinceMeasure < 1.0f / g_MeasuresPerSecond) {
+    if (m_TimeSinceMeasure < 1.0f / m_MeasuresPerSecond) {
         return;
     }
 
@@ -80,7 +86,7 @@ void ProfilerVK::beginFrame(size_t currentFrame, float dt)
 
 void ProfilerVK::endFrame()
 {
-    if (m_TimeSinceMeasure < 1.0f / g_MeasuresPerSecond) {
+    if (m_TimeSinceMeasure < 1.0f / m_MeasuresPerSecond) {
         return;
     }
 
@@ -94,11 +100,11 @@ void ProfilerVK::endFrame()
 
 void ProfilerVK::writeResults()
 {
-    if (m_TimeSinceMeasure < 1.0f / g_MeasuresPerSecond) {
+    if (m_TimeSinceMeasure < 1.0f / m_MeasuresPerSecond) {
         return;
     }
 
-    m_TimeSinceMeasure = std::fmod(m_TimeSinceMeasure, 1.0f / g_MeasuresPerSecond);
+    m_TimeSinceMeasure = std::fmod(m_TimeSinceMeasure, 1.0f / m_MeasuresPerSecond);
 
     VkQueryPool currentQueryPool = m_ppQueryPools[m_CurrentFrame]->getQueryPool();
 
@@ -127,17 +133,27 @@ void ProfilerVK::writeResults()
     }
 }
 
-void ProfilerVK::drawResults(uint32_t indentLength)
+void ProfilerVK::drawResults()
 {
-    std::string indent("-", indentLength);
+    std::string indent('-', m_RecurseDepth);
+
+    // Align the number across all timestamps and profilers by filling with whitespaces
+    uint32_t fillLength = m_MaxTextWidth - (m_RecurseDepth * m_DashesPerRecurse + (uint32_t)m_Name.size());
+    std::string whitespaceFill(fillLength, ' ');
 
     // Convert time to milliseconds
     double timeMs = m_Time * m_TimestampToMillisec;
-    ImGui::Text("%s%s: %f ms", indent.c_str(), m_Name.c_str(), timeMs);
+    ImGui::Text("%s%s:\t%s%f ms", indent.c_str(), m_Name.c_str(), whitespaceFill.c_str(), timeMs);
+
+    // Print timestamps
+    uint32_t timestampPrefixWidth = (m_RecurseDepth + 1) * m_DashesPerRecurse;
 
     for (Timestamp* pTimestamp : m_Timestamps) {
+        fillLength = m_MaxTextWidth - (timestampPrefixWidth + (uint32_t)pTimestamp->name.size());
+        whitespaceFill = std::string(fillLength, ' ');
+
         timeMs = pTimestamp->time * m_TimestampToMillisec;
-        ImGui::Text("--%s%s: %f ms", indent.c_str(), pTimestamp->name.c_str(), timeMs);
+        ImGui::Text("--%s%s:\t%s%f ms", indent.c_str(), pTimestamp->name.c_str(), whitespaceFill.c_str(), timeMs);
     }
 }
 
@@ -158,10 +174,26 @@ void ProfilerVK::initTimestamp(Timestamp* pTimestamp, const std::string name)
 
 void ProfilerVK::writeTimestamp(Timestamp* pTimestamp)
 {
-    if (m_TimeSinceMeasure < 1.0f / g_MeasuresPerSecond) {
+    if (m_TimeSinceMeasure < 1.0f / m_MeasuresPerSecond) {
         return;
     }
 
     pTimestamp->queries.push_back(m_NextQuery);
     vkCmdWriteTimestamp(m_ppProfiledCommandBuffers[m_CurrentFrame]->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_ppQueryPools[m_CurrentFrame]->getQueryPool(), m_NextQuery++);
+}
+
+void ProfilerVK::findWidestText()
+{
+    // Widest string among the profiler and its timestamps, includes the width of the dash-prefix and the name of the profiler/timestamp
+    uint32_t maxTextWidthLocal;
+    // Width of profiler's text
+    maxTextWidthLocal = m_RecurseDepth * m_DashesPerRecurse + m_Name.size();
+
+    uint32_t timestampPrefixWidth = (m_RecurseDepth + 1) * m_DashesPerRecurse;
+
+    for (Timestamp* pTimestamp : m_Timestamps) {
+        maxTextWidthLocal = std::max(timestampPrefixWidth + (uint32_t)pTimestamp->name.size(), maxTextWidthLocal);
+    }
+
+    m_MaxTextWidth = std::max(m_MaxTextWidth, maxTextWidthLocal);
 }
