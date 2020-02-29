@@ -4,16 +4,16 @@
 #include "TaskDispatcher.h"
 #include "Transform.h"
 
-#include "Common/IMesh.h"
+#include "Common/IGraphicsContext.h"
 #include "Common/IImgui.h"
-#include "Common/IWindow.h"
-#include "Common/IShader.h"
+#include "Common/IInputHandler.h"
+#include "Common/IMesh.h"
+#include "Common/IProfiler.h"
 #include "Common/IRenderer.h"
 #include "Common/IRenderingHandler.hpp"
-#include "Common/IGraphicsContext.h"
+#include "Common/IShader.h"
 #include "Common/ITexture2D.h"
-#include "Common/IInputHandler.h"
-#include "Common/IGraphicsContext.h"
+#include "Common/IWindow.h"
 
 #include "Vulkan/RenderPassVK.h"
 #include "Vulkan/CommandPoolVK.h"
@@ -390,6 +390,8 @@ static glm::mat4 g_Rotation = glm::mat4(1.0f);
 
 void Application::update(double dt)
 {
+	IProfiler::progressTimer(dt);
+
 	constexpr float speed = 0.75f;
 	if (Input::isKeyPressed(EKey::KEY_A))
 	{

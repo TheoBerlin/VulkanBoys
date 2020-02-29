@@ -290,7 +290,7 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 
 void ParticleEmitterHandlerVK::updateGPU(float dt)
 {
-	beginUpdateFrame(dt);
+	beginUpdateFrame();
 
 	GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
 	DeviceVK* pDevice = pGraphicsContext->getDevice();
@@ -333,13 +333,13 @@ void ParticleEmitterHandlerVK::updateGPU(float dt)
 	endUpdateFrame();
 }
 
-void ParticleEmitterHandlerVK::beginUpdateFrame(float dt)
+void ParticleEmitterHandlerVK::beginUpdateFrame()
 {
 	m_ppCommandBuffers[m_CurrentFrame]->reset(true);
 	m_ppCommandPools[m_CurrentFrame]->reset();
 
 	m_ppCommandBuffers[m_CurrentFrame]->begin(nullptr);
-	m_pProfiler->beginFrame(m_CurrentFrame, dt);
+	m_pProfiler->beginFrame(m_CurrentFrame);
 
 	m_ppCommandBuffers[m_CurrentFrame]->bindPipeline(m_pPipeline);
 	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, m_pPipelineLayout, 0, 1, &m_ppDescriptorSets[m_CurrentFrame], 0, nullptr);

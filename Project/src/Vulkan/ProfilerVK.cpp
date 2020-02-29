@@ -7,8 +7,6 @@
 #include "Vulkan/CommandBufferVK.h"
 #include "Vulkan/DeviceVK.h"
 
-const float ProfilerVK::m_MeasuresPerSecond = 2.0f;
-
 double ProfilerVK::m_TimestampToMillisec = 0.0;
 const uint32_t ProfilerVK::m_DashesPerRecurse = 2;
 uint32_t ProfilerVK::m_MaxTextWidth = 0;
@@ -18,8 +16,7 @@ ProfilerVK::ProfilerVK(const std::string& name, DeviceVK* pDevice, ProfilerVK* p
     m_pParent(pParentProfiler),
     m_pDevice(pDevice),
     m_CurrentFrame(0),
-    m_NextQuery(0),
-    m_TimeSinceMeasure(1.0f / m_MeasuresPerSecond)
+    m_NextQuery(0)
 {
     m_RecurseDepth = pParentProfiler == nullptr ? 0 : pParentProfiler->getRecurseDepth() + 1;
     findWidestText();
@@ -33,7 +30,7 @@ ProfilerVK::ProfilerVK(const std::string& name, DeviceVK* pDevice, ProfilerVK* p
         }
     }
 
-    // From Vulkan spec: The number of nanoseconds it takes for a timestamp value to be incremented by 1
+    // From Vulkan spec: "The number of nanoseconds it takes for a timestamp value to be incremented by 1"
     float nanoSecPerTime = pDevice->getTimestampPeriod();
     const float nanoSecond = std::pow(10.0f, -9.0f);
     const float milliSecondInv = 1000.0f;
@@ -57,10 +54,9 @@ void ProfilerVK::init(CommandBufferVK* m_ppCommandBuffers[])
     m_ppProfiledCommandBuffers = m_ppCommandBuffers;
 }
 
-void ProfilerVK::beginFrame(size_t currentFrame, float dt)
+void ProfilerVK::beginFrame(size_t currentFrame)
 {
-    m_TimeSinceMeasure += dt;
-    if (m_TimeSinceMeasure < 1.0f / m_MeasuresPerSecond) {
+    if (!m_ProfileFrame) {
         return;
     }
 
@@ -86,7 +82,7 @@ void ProfilerVK::beginFrame(size_t currentFrame, float dt)
 
 void ProfilerVK::endFrame()
 {
-    if (m_TimeSinceMeasure < 1.0f / m_MeasuresPerSecond) {
+    if (!m_ProfileFrame) {
         return;
     }
 
@@ -100,11 +96,9 @@ void ProfilerVK::endFrame()
 
 void ProfilerVK::writeResults()
 {
-    if (m_TimeSinceMeasure < 1.0f / m_MeasuresPerSecond) {
+    if (!m_ProfileFrame) {
         return;
     }
-
-    m_TimeSinceMeasure = std::fmod(m_TimeSinceMeasure, 1.0f / m_MeasuresPerSecond);
 
     VkQueryPool currentQueryPool = m_ppQueryPools[m_CurrentFrame]->getQueryPool();
 
@@ -174,7 +168,7 @@ void ProfilerVK::initTimestamp(Timestamp* pTimestamp, const std::string name)
 
 void ProfilerVK::writeTimestamp(Timestamp* pTimestamp)
 {
-    if (m_TimeSinceMeasure < 1.0f / m_MeasuresPerSecond) {
+    if (!m_ProfileFrame) {
         return;
     }
 

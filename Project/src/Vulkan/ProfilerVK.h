@@ -2,7 +2,8 @@
 
 #define NOMINMAX
 
-#include "QueryPoolVK.h"
+#include "Common/IProfiler.h"
+#include "Vulkan/QueryPoolVK.h"
 
 #include <string>
 #include <vector>
@@ -16,7 +17,7 @@ struct Timestamp {
     std::vector<uint32_t> queries;
 };
 
-class ProfilerVK
+class ProfilerVK : public IProfiler
 {
 public:
     ProfilerVK(const std::string& name, DeviceVK* pDevice, ProfilerVK* pParentProfiler = nullptr);
@@ -24,8 +25,7 @@ public:
 
     void init(CommandBufferVK* m_ppCommandBuffers[]);
 
-    void beginFrame(size_t currentFrame, float dt);
-    // Called to the root profiler
+    void beginFrame(size_t currentFrame);
     void endFrame();
     void writeResults();
     void drawResults();
@@ -41,8 +41,6 @@ private:
     void findWidestText();
 
 private:
-    static const float m_MeasuresPerSecond;
-
     // Multiplying factor used to convert a timestamp unit to milliseconds
     static double m_TimestampToMillisec;
     static const uint32_t m_DashesPerRecurse;
@@ -51,7 +49,7 @@ private:
 
 private:
     ProfilerVK* m_pParent;
-    // The amount of levels to the root-level profiler
+    // The amount of levels to root level in the profiler tree
     uint32_t m_RecurseDepth;
 
     std::vector<ProfilerVK*> m_ChildProfilers;
@@ -66,6 +64,4 @@ private:
 
     uint32_t m_CurrentFrame, m_NextQuery;
     std::vector<uint64_t> m_TimeResults;
-
-    float m_TimeSinceMeasure;
 };

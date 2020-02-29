@@ -49,7 +49,7 @@ private:
 
     void updateGPU(float dt);
 
-    void beginUpdateFrame(float dt);
+    void beginUpdateFrame();
     void endUpdateFrame();
 
     bool createCommandPoolAndBuffers();
