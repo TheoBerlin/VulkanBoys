@@ -123,8 +123,8 @@ void ProfilerVK::writeResults()
     for (Timestamp* pTimestamp : m_Timestamps) {
         const std::vector<uint32_t>& timestampQueries = pTimestamp->queries;
 
-        for (size_t queryIdx = 0; queryIdx < timestampQueries.size(); queryIdx += 2) {
-            pTimestamp->time += m_TimeResults[timestampQueries[queryIdx + 1]] - m_TimeResults[timestampQueries[queryIdx]];
+        for (uint32_t query : pTimestamp->queries) {
+            pTimestamp->time += m_TimeResults[query + 1] - m_TimeResults[query];
         }
     }
 
@@ -176,16 +176,28 @@ void ProfilerVK::initTimestamp(Timestamp* pTimestamp, const std::string name)
     m_Timestamps.push_back(pTimestamp);
 }
 
-void ProfilerVK::writeTimestamp(Timestamp* pTimestamp)
+void ProfilerVK::beginTimestamp(Timestamp* pTimestamp)
 {
     QueryPoolVK* pCurrentQueryPool = m_ppQueryPools[m_CurrentFrame];
-
     if (!m_ProfileFrame || m_NextQuery == pCurrentQueryPool->getQueryCount() - 1) {
         return;
     }
 
     pTimestamp->queries.push_back(m_NextQuery);
-    vkCmdWriteTimestamp(m_pProfiledCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, pCurrentQueryPool->getQueryPool(), m_NextQuery++);
+    vkCmdWriteTimestamp(m_pProfiledCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, pCurrentQueryPool->getQueryPool(), m_NextQuery);
+
+    // Advance by two, as the next query index will be used by the ending timestamp
+    m_NextQuery += 2;
+}
+
+void ProfilerVK::endTimestamp(Timestamp* pTimestamp)
+{
+    QueryPoolVK* pCurrentQueryPool = m_ppQueryPools[m_CurrentFrame];
+    if (!m_ProfileFrame || pTimestamp->queries.empty() || pTimestamp->queries.back() == pCurrentQueryPool->getQueryCount() - 1) {
+        return;
+    }
+
+    vkCmdWriteTimestamp(m_pProfiledCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, pCurrentQueryPool->getQueryPool(), pTimestamp->queries.back() + 1);
 }
 
 void ProfilerVK::findWidestText()

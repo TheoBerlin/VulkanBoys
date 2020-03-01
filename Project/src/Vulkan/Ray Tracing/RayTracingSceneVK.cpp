@@ -139,7 +139,7 @@ void RayTracingSceneVK::update()
 	m_pTempCommandBuffer->reset();
 	m_pTempCommandBuffer->begin();
 	m_pProfiler->beginFrame(0, m_pTempCommandBuffer, m_pTempCommandBuffer);
-	m_pProfiler->writeTimestamp(&m_TimestampBuildAccelStruct);
+	m_pProfiler->beginTimestamp(&m_TimestampBuildAccelStruct);
 
 	m_pDevice->vkCmdBuildAccelerationStructureNV(
 		m_pTempCommandBuffer->getCommandBuffer(),
@@ -152,7 +152,7 @@ void RayTracingSceneVK::update()
 		m_pScratchBuffer->getBuffer(),
 		0);
 
-	m_pProfiler->writeTimestamp(&m_TimestampBuildAccelStruct);
+	m_pProfiler->endTimestamp(&m_TimestampBuildAccelStruct);
 	vkCmdPipelineBarrier(m_pTempCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, 0, 1, &memoryBarrier, 0, 0, 0, 0);
 
 	m_pProfiler->endFrame();

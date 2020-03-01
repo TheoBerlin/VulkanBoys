@@ -448,9 +448,9 @@ void RayTracingRendererVK::endFrame()
 	vkCmdBindPipeline(m_ppComputeCommandBuffers[currentFrame]->getCommandBuffer(), VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipeline->getPipeline());
 
 	m_ppComputeCommandBuffers[currentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipelineLayout, 0, 1, &m_pRayTracingDescriptorSet, 0, nullptr);
-	m_pProfiler->writeTimestamp(&m_TimestampTraceRays);
+	m_pProfiler->beginTimestamp(&m_TimestampTraceRays);
 	m_ppComputeCommandBuffers[currentFrame]->traceRays(m_pRayTracingPipeline->getSBT(), m_pContext->getSwapChain()->getExtent().width, m_pContext->getSwapChain()->getExtent().height, 0);
-	m_pProfiler->writeTimestamp(&m_TimestampTraceRays);
+	m_pProfiler->endTimestamp(&m_TimestampTraceRays);
 
 	m_pProfiler->endFrame();
 	m_ppComputeCommandBuffers[currentFrame]->end();

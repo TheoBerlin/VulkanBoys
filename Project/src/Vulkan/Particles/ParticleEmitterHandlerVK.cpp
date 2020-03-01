@@ -315,9 +315,9 @@ void ParticleEmitterHandlerVK::updateGPU(float dt)
 		uint32_t particleCount = pEmitter->getParticleCount();
 		glm::u32vec3 workGroupSize(1 + particleCount / m_WorkGroupSize, 1, 1);
 
-		m_pProfiler->writeTimestamp(&m_TimestampDispatch);
+		m_pProfiler->beginTimestamp(&m_TimestampDispatch);
 		m_ppCommandBuffers[m_CurrentFrame]->dispatch(workGroupSize);
-		m_pProfiler->writeTimestamp(&m_TimestampDispatch);
+		m_pProfiler->endTimestamp(&m_TimestampDispatch);
 
 		if (transferOwnerships) {
 			releaseFromCompute(pPositionsBuffer, m_ppCommandBuffers[m_CurrentFrame]);
