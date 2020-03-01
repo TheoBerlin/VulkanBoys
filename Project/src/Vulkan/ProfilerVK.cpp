@@ -24,8 +24,8 @@ ProfilerVK::ProfilerVK(const std::string& name, DeviceVK* pDevice)
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         m_ppQueryPools[i] = DBG_NEW QueryPoolVK(pDevice);
 
-        if (!m_ppQueryPools[i]->init(VK_QUERY_TYPE_TIMESTAMP, 100)) {
-            LOG("Profiler %s: failed to initialize query pool");
+        if (!m_ppQueryPools[i]->init(VK_QUERY_TYPE_TIMESTAMP, 8)) {
+            LOG("Profiler %s: failed to initialize query pool", m_Name.c_str());
             return;
         }
     }
@@ -55,6 +55,11 @@ void ProfilerVK::beginFrame(size_t currentFrame, CommandBufferVK* pProfiledCmdBu
 {
     if (!m_ProfileFrame) {
         return;
+    }
+
+    if (m_NextQuery == m_ppQueryPools[m_CurrentFrame]->getQueryCount()) {
+        // Expand the previous query pool
+        expandQueryPools();
     }
 
     m_CurrentFrame = currentFrame;
@@ -173,12 +178,14 @@ void ProfilerVK::initTimestamp(Timestamp* pTimestamp, const std::string name)
 
 void ProfilerVK::writeTimestamp(Timestamp* pTimestamp)
 {
-    if (!m_ProfileFrame) {
+    QueryPoolVK* pCurrentQueryPool = m_ppQueryPools[m_CurrentFrame];
+
+    if (!m_ProfileFrame || m_NextQuery == pCurrentQueryPool->getQueryCount() - 1) {
         return;
     }
 
     pTimestamp->queries.push_back(m_NextQuery);
-    vkCmdWriteTimestamp(m_pProfiledCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_ppQueryPools[m_CurrentFrame]->getQueryPool(), m_NextQuery++);
+    vkCmdWriteTimestamp(m_pProfiledCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, pCurrentQueryPool->getQueryPool(), m_NextQuery++);
 }
 
 void ProfilerVK::findWidestText()
@@ -195,4 +202,23 @@ void ProfilerVK::findWidestText()
     }
 
     m_MaxTextWidth = std::max(m_MaxTextWidth, maxTextWidthLocal);
+}
+
+void ProfilerVK::expandQueryPools()
+{
+    uint32_t newQueryCount = m_ppQueryPools[m_CurrentFrame]->getQueryCount() * 2;
+
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        QueryPoolVK* pNewQueryPool = DBG_NEW QueryPoolVK(m_pDevice);
+
+        if (!pNewQueryPool->init(VK_QUERY_TYPE_TIMESTAMP, newQueryCount)) {
+            LOG("Profiler %s: failed to initialize query pool", m_Name.c_str());
+            return;
+        }
+
+        SAFEDELETE(m_ppQueryPools[i]);
+        m_ppQueryPools[i] = pNewQueryPool;
+    }
+
+    D_LOG("Profiler %s: expanded query pools to %d queries", m_Name.c_str(), newQueryCount);
 }

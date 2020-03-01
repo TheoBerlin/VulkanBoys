@@ -40,6 +40,7 @@ public:
 
 private:
     void findWidestText();
+    void expandQueryPools();
 
 private:
     // Multiplying factor used to convert a timestamp unit to milliseconds
