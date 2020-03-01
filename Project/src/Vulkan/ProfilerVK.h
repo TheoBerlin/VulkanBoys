@@ -14,6 +14,7 @@ class DeviceVK;
 struct Timestamp {
     std::string name;
     uint64_t time;
+    // Stores the query index of each beginning timestamp, the query index of the ending timestamp is always the sequent index
     std::vector<uint32_t> queries;
 };
 
@@ -34,7 +35,8 @@ public:
     void addChildProfiler(ProfilerVK* pChildProfiler);
 
     void initTimestamp(Timestamp* pTimestamp, const std::string name);
-    void writeTimestamp(Timestamp* pTimestamp);
+    void beginTimestamp(Timestamp* pTimestamp);
+    void endTimestamp(Timestamp* pTimestamp);
 
     uint32_t getRecurseDepth() const { return m_RecurseDepth; }
 

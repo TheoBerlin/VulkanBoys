@@ -270,9 +270,9 @@ void MeshRendererVK::submitMesh(IMesh* pMesh, const glm::vec4& color, const glm:
 	}
 	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSet, 0, nullptr);
 
-	m_pProfiler->writeTimestamp(&m_TimestampDrawIndexed);
+	m_pProfiler->beginTimestamp(&m_TimestampDrawIndexed);
 	m_ppCommandBuffers[m_CurrentFrame]->drawIndexInstanced(pMesh->getIndexCount(), 1, 0, 0, 0);
-	m_pProfiler->writeTimestamp(&m_TimestampDrawIndexed);
+	m_pProfiler->endTimestamp(&m_TimestampDrawIndexed);
 }
 
 bool MeshRendererVK::createSemaphores()
