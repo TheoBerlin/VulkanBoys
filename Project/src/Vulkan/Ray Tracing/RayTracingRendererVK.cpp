@@ -43,6 +43,8 @@ RayTracingRendererVK::RayTracingRendererVK(GraphicsContextVK* pContext, Renderin
 
 RayTracingRendererVK::~RayTracingRendererVK()
 {
+	SAFEDELETE(m_pProfiler);
+
 	//Ray Tracing Stuff
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
@@ -391,6 +393,8 @@ bool RayTracingRendererVK::init()
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(normalImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 7);
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(roughnessImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 8);
 
+	createProfiler();
+
 	return true;
 }
 
@@ -427,6 +431,7 @@ void RayTracingRendererVK::beginFrame(const Camera& camera)
 	inheritanceInfo.framebuffer = VK_NULL_HANDLE;
 
 	m_ppComputeCommandBuffers[currentFrame]->begin(&inheritanceInfo);
+	m_pProfiler->beginFrame(currentFrame, m_ppComputeCommandBuffers[currentFrame], m_ppComputeCommandBuffers[currentFrame]);
 
 	CameraMatricesBuffer cameraMatricesBuffer = {};
 	cameraMatricesBuffer.Projection = glm::inverse(camera.getProjectionMat());
@@ -443,8 +448,11 @@ void RayTracingRendererVK::endFrame()
 	vkCmdBindPipeline(m_ppComputeCommandBuffers[currentFrame]->getCommandBuffer(), VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipeline->getPipeline());
 
 	m_ppComputeCommandBuffers[currentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipelineLayout, 0, 1, &m_pRayTracingDescriptorSet, 0, nullptr);
+	m_pProfiler->writeTimestamp(&m_TimestampTraceRays);
 	m_ppComputeCommandBuffers[currentFrame]->traceRays(m_pRayTracingPipeline->getSBT(), m_pContext->getSwapChain()->getExtent().width, m_pContext->getSwapChain()->getExtent().height, 0);
+	m_pProfiler->writeTimestamp(&m_TimestampTraceRays);
 
+	m_pProfiler->endFrame();
 	m_ppComputeCommandBuffers[currentFrame]->end();
 
 	DeviceVK* pDevice = m_pContext->getDevice();
@@ -570,4 +578,13 @@ bool RayTracingRendererVK::createPipelineLayouts()
 	m_pRayTracingPipelineLayout->init(rayTracingDescriptorSetLayouts, rayTracingPushConstantRanges);
 
 	return true;
+}
+
+void RayTracingRendererVK::createProfiler()
+{
+	m_pProfiler = DBG_NEW ProfilerVK("Raytracer", m_pContext->getDevice());
+	m_pProfiler->initTimestamp(&m_TimestampTraceRays, "Trace Rays");
+
+	ProfilerVK* pSceneProfiler = m_pRayTracingScene->getProfiler();
+	pSceneProfiler->setParentProfiler(m_pProfiler);
 }

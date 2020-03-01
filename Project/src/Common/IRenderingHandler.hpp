@@ -24,6 +24,7 @@ public:
     virtual void endFrame() = 0;
     virtual void swapBuffers() = 0;
 
+    virtual void drawProfilerUI() = 0;
     virtual void drawImgui(IImgui* pImgui) = 0;
 
     virtual void setClearColor(float r, float g, float b) = 0;

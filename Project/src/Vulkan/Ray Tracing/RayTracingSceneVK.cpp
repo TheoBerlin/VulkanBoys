@@ -38,6 +38,8 @@ RayTracingSceneVK::RayTracingSceneVK(IGraphicsContext* pContext) :
 
 RayTracingSceneVK::~RayTracingSceneVK()
 {
+	SAFEDELETE(m_pProfiler);
+
 	if (m_pTempCommandBuffer != nullptr)
 	{
 		m_pTempCommandPool->freeCommandBuffer(&m_pTempCommandBuffer);
@@ -108,6 +110,8 @@ bool RayTracingSceneVK::finalize()
 		return false;
 	}
 
+	createProfiler();
+
 	LOG("--- RayTracingScene: Successfully initialized Acceleration Table!");
 	return true;
 }
@@ -134,6 +138,8 @@ void RayTracingSceneVK::update()
 
 	m_pTempCommandBuffer->reset();
 	m_pTempCommandBuffer->begin();
+	m_pProfiler->beginFrame(0, m_pTempCommandBuffer, m_pTempCommandBuffer);
+	m_pProfiler->writeTimestamp(&m_TimestampBuildAccelStruct);
 
 	m_pDevice->vkCmdBuildAccelerationStructureNV(
 		m_pTempCommandBuffer->getCommandBuffer(),
@@ -146,8 +152,10 @@ void RayTracingSceneVK::update()
 		m_pScratchBuffer->getBuffer(),
 		0);
 
+	m_pProfiler->writeTimestamp(&m_TimestampBuildAccelStruct);
 	vkCmdPipelineBarrier(m_pTempCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, 0, 1, &memoryBarrier, 0, 0, 0, 0);
 
+	m_pProfiler->endFrame();
 	m_pTempCommandBuffer->end();
 	m_pContext->getDevice()->executePrimaryCommandBuffer(m_pContext->getDevice()->getComputeQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 	m_pContext->getDevice()->wait();
@@ -241,7 +249,7 @@ uint32_t RayTracingSceneVK::addGraphicsObjectInstance(IMesh* pMesh, TempMaterial
 		LOG("--- RayTracingScene: addGraphicsObjectInstance failed, Mesh or Texture2D is nullptr!");
 		return false;
 	}
-	
+
 	auto& blasPerMesh = m_BottomLevelAccelerationStructures.find(pVulkanMesh);
 
 	if (blasPerMesh == m_BottomLevelAccelerationStructures.end())
@@ -498,6 +506,12 @@ bool RayTracingSceneVK::buildAccelerationTable()
 	m_pContext->getDevice()->wait();
 
 	return true;
+}
+
+void RayTracingSceneVK::createProfiler()
+{
+	m_pProfiler = DBG_NEW ProfilerVK("Raytracing Scene Update", m_pDevice);
+	m_pProfiler->initTimestamp(&m_TimestampBuildAccelStruct, "Build top-level acceleration structure");
 }
 
 void RayTracingSceneVK::cleanGarbage()

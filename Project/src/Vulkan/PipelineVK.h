@@ -36,7 +36,7 @@ private:
 private:
 	std::vector<VkVertexInputBindingDescription> m_VertexBindings;
 	std::vector<VkVertexInputAttributeDescription> m_VertexAttributes;
-	std::vector< VkPipelineColorBlendAttachmentState> m_ColorBlendAttachments;
+	std::vector<VkPipelineColorBlendAttachmentState> m_ColorBlendAttachments;
 	DeviceVK* m_pDevice;
 	VkPipeline m_Pipeline;
 	bool m_WireFrame;

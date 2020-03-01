@@ -56,6 +56,7 @@ public:
 	bool hasUniqueQueueFamilyIndices() const;
 
 	void getMaxComputeWorkGroupSize(uint32_t pWorkGroupSize[3]);
+	float getTimestampPeriod() const { return m_DeviceLimits.timestampPeriod; };
 
 	const VkPhysicalDeviceRayTracingPropertiesNV& getRayTracingProperties() const { return m_RayTracingProperties; }
 	bool supportsRayTracing() const { return m_ExtensionsStatus.at(VK_NV_RAY_TRACING_EXTENSION_NAME); }

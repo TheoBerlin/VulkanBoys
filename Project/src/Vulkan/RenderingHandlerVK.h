@@ -16,7 +16,7 @@ class IRenderer;
 class MeshRendererVK;
 class ParticleRendererVK;
 class PipelineVK;
-class RayTracerVK;
+class RayTracingRendererVK;
 class RenderPassVK;
 
 class RenderingHandlerVK : public IRenderingHandler
@@ -25,25 +25,26 @@ public:
     RenderingHandlerVK(GraphicsContextVK* pGraphicsContext);
     ~RenderingHandlerVK();
 
-    bool initialize();
+    virtual bool initialize() override;
 
-    void setMeshRenderer(IRenderer* pMeshRenderer) { m_pMeshRenderer = reinterpret_cast<MeshRendererVK*>(pMeshRenderer); }
-    void setRayTracer(IRenderer* pRayTracer) { m_pRayTracer = pRayTracer; }
-    void setParticleRenderer(IRenderer* pParticleRenderer) { m_pParticleRenderer = reinterpret_cast<ParticleRendererVK*>(pParticleRenderer); }
+    virtual void setMeshRenderer(IRenderer* pMeshRenderer) override { m_pMeshRenderer = reinterpret_cast<MeshRendererVK*>(pMeshRenderer); }
+    virtual void setRayTracer(IRenderer* pRayTracer) override { m_pRayTracer = reinterpret_cast<RayTracingRendererVK*>(pRayTracer); }
+    virtual void setParticleRenderer(IRenderer* pParticleRenderer) override { m_pParticleRenderer = reinterpret_cast<ParticleRendererVK*>(pParticleRenderer); }
 
-    void onWindowResize(uint32_t width, uint32_t height);
+    virtual void onWindowResize(uint32_t width, uint32_t height) override;
 
-    void beginFrame(const Camera& camera);
-    void endFrame();
-    void swapBuffers();
+    virtual void beginFrame(const Camera& camera) override;
+    virtual void endFrame() override;
+    virtual void swapBuffers() override;
 
-    void drawImgui(IImgui* pImgui);
+    virtual void drawProfilerUI() override;
+    virtual void drawImgui(IImgui* pImgui) override;
 
-    void setClearColor(float r, float g, float b);
-    void setClearColor(const glm::vec3& color);
-    void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY);
+    virtual void setClearColor(float r, float g, float b) override;
+    virtual void setClearColor(const glm::vec3& color) override;
+    virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
 
-    void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform);
+    virtual void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform) override;
 
     FrameBufferVK** getBackBuffers() { return m_ppBackbuffers; }
     RenderPassVK* getRenderPass() { return m_pRenderPass; }
@@ -76,8 +77,7 @@ private:
 
     MeshRendererVK* m_pMeshRenderer;
     ParticleRendererVK* m_pParticleRenderer;
-    // TODO: Implement renderer class for ray tracing
-    IRenderer* m_pRayTracer;
+    RayTracingRendererVK* m_pRayTracer;
 
     FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
@@ -91,7 +91,6 @@ private:
 
     CommandPoolVK* m_ppCommandPoolsSecondary[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppCommandBuffersSecondary[MAX_FRAMES_IN_FLIGHT];
-
 
     RenderPassVK* m_pRenderPass;
     PipelineVK* m_pPipeline;

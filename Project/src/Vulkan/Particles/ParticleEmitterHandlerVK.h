@@ -3,6 +3,7 @@
 #include "Common/IParticleEmitterHandler.h"
 #include "Common/ITexture2D.h"
 #include "Core/ParticleEmitter.h"
+#include "Vulkan/ProfilerVK.h"
 #include "Vulkan/VulkanCommon.h"
 
 class BufferVK;
@@ -31,6 +32,8 @@ public:
 
     virtual void update(float dt) override;
     virtual void updateRenderingBuffers(IRenderingHandler* pRenderingHandler) override;
+    virtual void drawProfilerUI() override;
+
     virtual bool initializeGPUCompute() override;
 
     virtual void toggleComputationDevice() override;
@@ -52,6 +55,7 @@ private:
     bool createCommandPoolAndBuffers();
     bool createPipelineLayout();
     bool createPipeline();
+    void createProfiler();
 
 private:
     CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
@@ -71,4 +75,7 @@ private:
     uint32_t m_WorkGroupSize;
 
     uint32_t m_CurrentFrame;
+
+    ProfilerVK* m_pProfiler;
+    Timestamp m_TimestampDispatch;
 };

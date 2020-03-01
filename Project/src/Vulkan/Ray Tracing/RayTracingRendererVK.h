@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common/IRenderer.h"
+#include "Vulkan/ProfilerVK.h"
 #include "Vulkan/VulkanCommon.h"
 
 class GraphicsContextVK;
@@ -36,13 +37,18 @@ public:
 
 	virtual void submitMesh(IMesh* pMesh, TempMaterial* pMaterial, const glm::mat4& transform);
 
+	ProfilerVK* getProfiler() { return m_pProfiler; }
+
 private:
 	bool createCommandPoolAndBuffers();
 	bool createPipelineLayouts();
+	void createProfiler();
 
 private:
 	GraphicsContextVK* m_pContext;
 	RenderingHandlerVK* m_pRenderingHandler;
+	ProfilerVK* m_pProfiler;
+	Timestamp m_TimestampTraceRays;
 
 	CommandPoolVK* m_ppGraphicsCommandPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppGraphicsCommandBuffers[MAX_FRAMES_IN_FLIGHT];
@@ -98,5 +104,4 @@ private:
 	TempMaterial* m_pPlaneMaterial;
 
 	float m_TempTimer;
-
 };

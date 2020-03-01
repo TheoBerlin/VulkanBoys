@@ -1,19 +1,21 @@
 #pragma once
+
 #include "Common/IRenderer.h"
+#include "ProfilerVK.h"
 #include "VulkanCommon.h"
 
 class BufferVK;
+class CommandPoolVK;
+class CommandBufferVK;
+class DescriptorPoolVK;
+class DescriptorSetLayoutVK;
+class DescriptorSetVK;
+class FrameBufferVK;
+class GraphicsContextVK;
+class PipelineLayoutVK;
 class PipelineVK;
 class RenderingHandlerVK;
 class RenderPassVK;
-class FrameBufferVK;
-class CommandPoolVK;
-class CommandBufferVK;
-class DescriptorSetVK;
-class DescriptorPoolVK;
-class PipelineLayoutVK;
-class GraphicsContextVK;
-class DescriptorSetLayoutVK;
 
 //Temp
 class RayTracingSceneVK;
@@ -46,12 +48,15 @@ public:
 
 	void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform);
 
+	ProfilerVK* getProfiler() { return m_pProfiler; }
+
 private:
 	bool createSemaphores();
 	bool createCommandPoolAndBuffers();
 	bool createPipelines();
 	bool createPipelineLayouts();
 	bool createRayTracingPipelineLayouts();
+	void createProfiler();
 
 private:
 	GraphicsContextVK* m_pContext;
@@ -66,6 +71,9 @@ private:
 	FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_RenderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
+
+	ProfilerVK* m_pProfiler;
+	Timestamp m_TimestampDrawIndexed;
 
 	// TEMPORARY MOVE TO MATERIAL or SOMETHING
 	PipelineVK* m_pPipeline;
