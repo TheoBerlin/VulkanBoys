@@ -14,6 +14,7 @@
 #include "Vulkan/Particles/ParticleEmitterHandlerVK.h"
 #include "Vulkan/Particles/ParticleRendererVK.h"
 #include "Vulkan/PipelineVK.h"
+#include "Vulkan/Ray Tracing/RayTracingRendererVK.h"
 #include "Vulkan/RenderPassVK.h"
 #include "Vulkan/SwapChainVK.h"
 
@@ -221,8 +222,13 @@ void RenderingHandlerVK::endFrame()
 	pDevice->executePrimaryCommandBuffer(pDevice->getGraphicsQueue(), m_ppGraphicsCommandBuffers[m_CurrentFrame], waitSemaphores, waitStages, 1, signalSemaphores, 1);
 
 	// Write profiler results
-	ProfilerVK* pMeshProfiler = m_pMeshRenderer->getProfiler();
-	pMeshProfiler->writeResults();
+	if (m_pRayTracer == nullptr) {
+		ProfilerVK* pMeshProfiler = m_pMeshRenderer->getProfiler();
+		pMeshProfiler->writeResults();
+	} else {
+		ProfilerVK* pRTProfiler = m_pRayTracer->getProfiler();
+		pRTProfiler->writeResults();
+	}
 }
 
 void RenderingHandlerVK::swapBuffers()
@@ -233,8 +239,13 @@ void RenderingHandlerVK::swapBuffers()
 
 void RenderingHandlerVK::drawProfilerUI()
 {
-	ProfilerVK* pMeshProfiler = m_pMeshRenderer->getProfiler();
-	pMeshProfiler->drawResults();
+	if (m_pRayTracer == nullptr) {
+		ProfilerVK* pMeshProfiler = m_pMeshRenderer->getProfiler();
+		pMeshProfiler->drawResults();
+	} else {
+		ProfilerVK* pRTProfiler = m_pRayTracer->getProfiler();
+		pRTProfiler->drawResults();
+	}
 }
 
 void RenderingHandlerVK::drawImgui(IImgui* pImgui)

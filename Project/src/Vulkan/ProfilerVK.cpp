@@ -11,14 +11,14 @@ double ProfilerVK::m_TimestampToMillisec = 0.0;
 const uint32_t ProfilerVK::m_DashesPerRecurse = 2;
 uint32_t ProfilerVK::m_MaxTextWidth = 0;
 
-ProfilerVK::ProfilerVK(const std::string& name, DeviceVK* pDevice, ProfilerVK* pParentProfiler)
+ProfilerVK::ProfilerVK(const std::string& name, DeviceVK* pDevice)
     :m_Name(name),
-    m_pParent(pParentProfiler),
     m_pDevice(pDevice),
-    m_CurrentFrame(0),
-    m_NextQuery(0)
+    m_pProfiledCommandBuffer(nullptr),
+    m_RecurseDepth(0),
+    m_NextQuery(0),
+    m_CurrentFrame(0)
 {
-    m_RecurseDepth = pParentProfiler == nullptr ? 0 : pParentProfiler->getRecurseDepth() + 1;
     findWidestText();
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -43,33 +43,30 @@ ProfilerVK::~ProfilerVK()
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         SAFEDELETE(m_ppQueryPools[i]);
     }
-
-    for (ProfilerVK* pSubStage : m_ChildProfilers) {
-        SAFEDELETE(pSubStage);
-    }
 }
 
-void ProfilerVK::init(CommandBufferVK* m_ppCommandBuffers[])
+void ProfilerVK::setParentProfiler(ProfilerVK* pParentProfiler)
 {
-    m_ppProfiledCommandBuffers = m_ppCommandBuffers;
+    m_RecurseDepth = pParentProfiler->getRecurseDepth() + 1;
+    findWidestText();
 }
 
-void ProfilerVK::beginFrame(size_t currentFrame, CommandBufferVK* pResetCmdBuffer)
+void ProfilerVK::beginFrame(size_t currentFrame, CommandBufferVK* pProfiledCmdBuffer, CommandBufferVK* pResetCmdBuffer)
 {
     if (!m_ProfileFrame) {
         return;
     }
 
     m_CurrentFrame = currentFrame;
+    m_pProfiledCommandBuffer = pProfiledCmdBuffer;
 
     QueryPoolVK* pCurrentQueryPool = m_ppQueryPools[currentFrame];
-    VkCommandBuffer currentCmdBuffer = m_ppProfiledCommandBuffers[currentFrame]->getCommandBuffer();
 
     vkCmdResetQueryPool(pResetCmdBuffer->getCommandBuffer(), pCurrentQueryPool->getQueryPool(), 0, pCurrentQueryPool->getQueryCount());
     m_NextQuery = 0;
 
     // Write a timestamp to measure the time elapsed for the entire scope of the profiler
-    vkCmdWriteTimestamp(currentCmdBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, pCurrentQueryPool->getQueryPool(), m_NextQuery++);
+    vkCmdWriteTimestamp(m_pProfiledCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, pCurrentQueryPool->getQueryPool(), m_NextQuery++);
 
     // Reset per-frame data
     m_TimeResults.clear();
@@ -87,7 +84,7 @@ void ProfilerVK::endFrame()
     }
 
     VkQueryPool currentQueryPool = m_ppQueryPools[m_CurrentFrame]->getQueryPool();
-    vkCmdWriteTimestamp(m_ppProfiledCommandBuffers[m_CurrentFrame]->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, currentQueryPool, m_NextQuery++);
+    vkCmdWriteTimestamp(m_pProfiledCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, currentQueryPool, m_NextQuery++);
 
     if (m_NextQuery > m_TimeResults.size()) {
         m_TimeResults.resize(m_NextQuery);
@@ -125,6 +122,11 @@ void ProfilerVK::writeResults()
             pTimestamp->time += m_TimeResults[timestampQueries[queryIdx + 1]] - m_TimeResults[timestampQueries[queryIdx]];
         }
     }
+
+    // Have the child profilers write their results
+    for (ProfilerVK* pChild : m_Children) {
+        pChild->writeResults();
+    }
 }
 
 void ProfilerVK::drawResults()
@@ -149,13 +151,16 @@ void ProfilerVK::drawResults()
         timeMs = pTimestamp->time * m_TimestampToMillisec;
         ImGui::Text("--%s%s:\t%s%f ms", indent.c_str(), pTimestamp->name.c_str(), whitespaceFill.c_str(), timeMs);
     }
+
+    // Draw the child profilers' results
+    for (ProfilerVK* pChild : m_Children) {
+        pChild->drawResults();
+    }
 }
 
-ProfilerVK* ProfilerVK::createChildProfiler(const std::string& name)
+void ProfilerVK::addChildProfiler(ProfilerVK* pChildProfiler)
 {
-    ProfilerVK* pNewStage = DBG_NEW ProfilerVK(name, m_pDevice);
-    m_ChildProfilers.push_back(pNewStage);
-    return pNewStage;
+    m_Children.push_back(pChildProfiler);
 }
 
 void ProfilerVK::initTimestamp(Timestamp* pTimestamp, const std::string name)
@@ -173,7 +178,7 @@ void ProfilerVK::writeTimestamp(Timestamp* pTimestamp)
     }
 
     pTimestamp->queries.push_back(m_NextQuery);
-    vkCmdWriteTimestamp(m_ppProfiledCommandBuffers[m_CurrentFrame]->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_ppQueryPools[m_CurrentFrame]->getQueryPool(), m_NextQuery++);
+    vkCmdWriteTimestamp(m_pProfiledCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_ppQueryPools[m_CurrentFrame]->getQueryPool(), m_NextQuery++);
 }
 
 void ProfilerVK::findWidestText()

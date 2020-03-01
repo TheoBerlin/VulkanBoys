@@ -1,5 +1,7 @@
 #pragma once
+
 #include "../VulkanCommon.h"
+#include "Vulkan/ProfilerVK.h"
 
 #include <vector>
 #include <unordered_map>
@@ -81,11 +83,13 @@ public:
 	BufferVK* getMeshIndexBuffer() { return m_pMeshIndexBuffer; }
 	const std::vector<TempMaterial*>& getAllMaterials() { return m_AllMaterials; }
 	const TopLevelAccelerationStructure& getTLAS() { return m_TopLevelAccelerationStructure; }
+	ProfilerVK* getProfiler() { return m_pProfiler; }
 	
 private:
 	bool initBLAS(MeshVK* pMesh, TempMaterial* pMaterial);
 	bool initTLAS();
 	bool buildAccelerationTable();
+	void createProfiler();
 
 	void cleanGarbage();
 	void updateScratchBuffer();
@@ -96,6 +100,8 @@ private:
 private:
 	GraphicsContextVK* m_pContext;
 	DeviceVK* m_pDevice;
+	ProfilerVK* m_pProfiler;
+	Timestamp m_TimestampBuildAccelStruct;
 
 	BufferVK* m_pScratchBuffer;
 	BufferVK* m_pInstanceBuffer;

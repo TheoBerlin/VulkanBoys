@@ -20,18 +20,18 @@ struct Timestamp {
 class ProfilerVK : public IProfiler
 {
 public:
-    ProfilerVK(const std::string& name, DeviceVK* pDevice, ProfilerVK* pParentProfiler = nullptr);
+    ProfilerVK(const std::string& name, DeviceVK* pDevice);
     ~ProfilerVK();
 
-    void init(CommandBufferVK* m_ppCommandBuffers[]);
+    void setParentProfiler(ProfilerVK* pParentProfiler);
 
-    // Among other things, resets the query pool using the given command buffer
-    void beginFrame(size_t currentFrame, CommandBufferVK* pResetCmdBuffer);
+    // The query pool is reset using pResetCmdBuffer
+    void beginFrame(size_t currentFrame, CommandBufferVK* pProfiledCmdBuffer, CommandBufferVK* pResetCmdBuffer);
     void endFrame();
     void writeResults();
     void drawResults();
 
-    ProfilerVK* createChildProfiler(const std::string& name);
+    void addChildProfiler(ProfilerVK* pChildProfiler);
 
     void initTimestamp(Timestamp* pTimestamp, const std::string name);
     void writeTimestamp(Timestamp* pTimestamp);
@@ -49,11 +49,11 @@ private:
     static uint32_t m_MaxTextWidth;
 
 private:
-    ProfilerVK* m_pParent;
+    std::vector<ProfilerVK*> m_Children;
+
     // The amount of levels to root level in the profiler tree
     uint32_t m_RecurseDepth;
 
-    std::vector<ProfilerVK*> m_ChildProfilers;
     std::vector<Timestamp*> m_Timestamps;
 
     std::string m_Name;
@@ -61,7 +61,7 @@ private:
 
     QueryPoolVK* m_ppQueryPools[MAX_FRAMES_IN_FLIGHT];
     DeviceVK* m_pDevice;
-    CommandBufferVK** m_ppProfiledCommandBuffers;
+    CommandBufferVK* m_pProfiledCommandBuffer;
 
     uint32_t m_CurrentFrame, m_NextQuery;
     std::vector<uint64_t> m_TimeResults;

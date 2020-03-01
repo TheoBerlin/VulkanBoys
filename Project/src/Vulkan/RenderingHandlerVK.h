@@ -16,7 +16,7 @@ class IRenderer;
 class MeshRendererVK;
 class ParticleRendererVK;
 class PipelineVK;
-class RayTracerVK;
+class RayTracingRendererVK;
 class RenderPassVK;
 
 class RenderingHandlerVK : public IRenderingHandler
@@ -28,7 +28,7 @@ public:
     virtual bool initialize() override;
 
     virtual void setMeshRenderer(IRenderer* pMeshRenderer) override { m_pMeshRenderer = reinterpret_cast<MeshRendererVK*>(pMeshRenderer); }
-    virtual void setRayTracer(IRenderer* pRayTracer) override { m_pRayTracer = pRayTracer; }
+    virtual void setRayTracer(IRenderer* pRayTracer) override { m_pRayTracer = reinterpret_cast<RayTracingRendererVK*>(pRayTracer); }
     virtual void setParticleRenderer(IRenderer* pParticleRenderer) override { m_pParticleRenderer = reinterpret_cast<ParticleRendererVK*>(pParticleRenderer); }
 
     virtual void onWindowResize(uint32_t width, uint32_t height) override;
@@ -77,8 +77,7 @@ private:
 
     MeshRendererVK* m_pMeshRenderer;
     ParticleRendererVK* m_pParticleRenderer;
-    // TODO: Implement renderer class for ray tracing
-    IRenderer* m_pRayTracer;
+    RayTracingRendererVK* m_pRayTracer;
 
     FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];

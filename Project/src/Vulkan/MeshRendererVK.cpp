@@ -163,7 +163,7 @@ void MeshRendererVK::beginFrame(const Camera& camera)
 	inheritanceInfo.framebuffer = m_ppBackbuffers[backBufferIndex]->getFrameBuffer();
 
 	m_ppCommandBuffers[m_CurrentFrame]->begin(&inheritanceInfo);
-	m_pProfiler->beginFrame(m_CurrentFrame, m_pRenderingHandler->getCurrentGraphicsCommandBuffer());
+	m_pProfiler->beginFrame(m_CurrentFrame, m_ppCommandBuffers[m_CurrentFrame], m_pRenderingHandler->getCurrentGraphicsCommandBuffer());
 
 	m_ppCommandBuffers[m_CurrentFrame]->setViewports(&m_Viewport, 1);
 	m_ppCommandBuffers[m_CurrentFrame]->setScissorRects(&m_ScissorRect, 1);
@@ -427,7 +427,6 @@ bool MeshRendererVK::createRayTracingPipelineLayouts()
 void MeshRendererVK::createProfiler()
 {
 	m_pProfiler = DBG_NEW ProfilerVK("Mesh Renderer", m_pContext->getDevice());
-	m_pProfiler->init(m_ppCommandBuffers);
 
 	m_pProfiler->initTimestamp(&m_TimestampDrawIndexed, "Draw indexed");
 }

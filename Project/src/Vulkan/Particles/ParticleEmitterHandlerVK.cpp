@@ -333,7 +333,7 @@ void ParticleEmitterHandlerVK::beginUpdateFrame()
 	m_ppCommandPools[m_CurrentFrame]->reset();
 
 	m_ppCommandBuffers[m_CurrentFrame]->begin(nullptr);
-	m_pProfiler->beginFrame(m_CurrentFrame, m_ppCommandBuffers[m_CurrentFrame]);
+	m_pProfiler->beginFrame(m_CurrentFrame, m_ppCommandBuffers[m_CurrentFrame], m_ppCommandBuffers[m_CurrentFrame]);
 
 	m_ppCommandBuffers[m_CurrentFrame]->bindPipeline(m_pPipeline);
 	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, m_pPipelineLayout, 0, 1, &m_ppDescriptorSets[m_CurrentFrame], 0, nullptr);
@@ -482,7 +482,6 @@ void ParticleEmitterHandlerVK::createProfiler()
     DeviceVK* pDevice = pGraphicsContext->getDevice();
 
 	m_pProfiler = DBG_NEW ProfilerVK("Particles Update", pDevice);
-	m_pProfiler->init(m_ppCommandBuffers);
 
 	m_pProfiler->initTimestamp(&m_TimestampDispatch, "Dispatch");
 }
