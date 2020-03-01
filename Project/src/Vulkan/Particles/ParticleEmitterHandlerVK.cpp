@@ -87,16 +87,10 @@ void ParticleEmitterHandlerVK::updateRenderingBuffers(IRenderingHandler* pRender
     }
 }
 
-void ParticleEmitterHandlerVK::drawProfileUI()
+void ParticleEmitterHandlerVK::drawProfilerUI()
 {
 	if (m_GPUComputed) {
-		// The root profiler creates the profiler window
-        ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);
-	    if (ImGui::Begin("Profiler", NULL, ImGuiWindowFlags_NoResize)) {
-			m_pProfiler->drawResults();
-        }
-
-		ImGui::End();
+		m_pProfiler->drawResults();
 	}
 }
 
@@ -339,7 +333,7 @@ void ParticleEmitterHandlerVK::beginUpdateFrame()
 	m_ppCommandPools[m_CurrentFrame]->reset();
 
 	m_ppCommandBuffers[m_CurrentFrame]->begin(nullptr);
-	m_pProfiler->beginFrame(m_CurrentFrame);
+	m_pProfiler->beginFrame(m_CurrentFrame, m_ppCommandBuffers[m_CurrentFrame]);
 
 	m_ppCommandBuffers[m_CurrentFrame]->bindPipeline(m_pPipeline);
 	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, m_pPipelineLayout, 0, 1, &m_ppDescriptorSets[m_CurrentFrame], 0, nullptr);

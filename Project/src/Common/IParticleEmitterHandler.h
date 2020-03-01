@@ -20,7 +20,7 @@ public:
 
     virtual void update(float dt) = 0;
     virtual void updateRenderingBuffers(IRenderingHandler* pRenderingHandler) = 0;
-    virtual void drawProfileUI() = 0;
+    virtual void drawProfilerUI() = 0;
 
     void initialize(IGraphicsContext* pGraphicsContext, const Camera* pCamera);
     // Initializes resources for GPU-side computing of particles

@@ -521,7 +521,14 @@ void Application::renderUI(double dt)
 	}
 	ImGui::End();
 
-	m_pParticleEmitterHandler->drawProfileUI();
+	// Draw profiler UI
+	ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);
+	if (ImGui::Begin("Profiler", NULL, ImGuiWindowFlags_NoResize)) {
+		m_pParticleEmitterHandler->drawProfilerUI();
+		m_pRenderingHandler->drawProfilerUI();
+	}
+
+	ImGui::End();
 
 	m_pImgui->end();
 }

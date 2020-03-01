@@ -25,7 +25,8 @@ public:
 
     void init(CommandBufferVK* m_ppCommandBuffers[]);
 
-    void beginFrame(size_t currentFrame);
+    // Among other things, resets the query pool using the given command buffer
+    void beginFrame(size_t currentFrame, CommandBufferVK* pResetCmdBuffer);
     void endFrame();
     void writeResults();
     void drawResults();

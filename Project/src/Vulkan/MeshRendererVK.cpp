@@ -44,6 +44,7 @@ MeshRendererVK::MeshRendererVK(GraphicsContextVK* pContext, RenderingHandlerVK* 
 	m_ScissorRect(),
 	m_CurrentFrame(0),
 	m_BackBufferIndex(0),
+	m_pProfiler(nullptr),
 	m_pRayTracingScene(nullptr),
 	m_pRayTracingPipeline(nullptr),
 	m_pRayTracingPipelineLayout(nullptr),
@@ -105,6 +106,8 @@ MeshRendererVK::~MeshRendererVK()
 
 	SAFEDELETE(m_pSampler);
 
+	SAFEDELETE(m_pProfiler);
+
 	m_pContext = nullptr;
 }
 
@@ -134,6 +137,8 @@ bool MeshRendererVK::init()
 		return false;
 	}
 
+	createProfiler();
+
 	// Last thing is to write the camera buffer to the descriptor set
 	BufferVK* pCameraBuffer = m_pRenderingHandler->getCameraMatricesBuffer();
 	m_pDescriptorSet->writeUniformBufferDescriptor(pCameraBuffer->getBuffer(), 0);
@@ -158,6 +163,8 @@ void MeshRendererVK::beginFrame(const Camera& camera)
 	inheritanceInfo.framebuffer = m_ppBackbuffers[backBufferIndex]->getFrameBuffer();
 
 	m_ppCommandBuffers[m_CurrentFrame]->begin(&inheritanceInfo);
+	m_pProfiler->beginFrame(m_CurrentFrame, m_pRenderingHandler->getCurrentGraphicsCommandBuffer());
+
 	m_ppCommandBuffers[m_CurrentFrame]->setViewports(&m_Viewport, 1);
 	m_ppCommandBuffers[m_CurrentFrame]->setScissorRects(&m_ScissorRect, 1);
 
@@ -166,6 +173,7 @@ void MeshRendererVK::beginFrame(const Camera& camera)
 
 void MeshRendererVK::endFrame()
 {
+	m_pProfiler->endFrame();
 	m_ppCommandBuffers[m_CurrentFrame]->end();
 
 	DeviceVK* pDevice = m_pContext->getDevice();
@@ -176,7 +184,6 @@ void MeshRendererVK::endFrame()
 
 void MeshRendererVK::endRayTraceFrame()
 {
-	//m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
 	m_ppComputeCommandBuffers[m_CurrentFrame]->end();
 
 	DeviceVK* pDevice = m_pContext->getDevice();
@@ -263,7 +270,9 @@ void MeshRendererVK::submitMesh(IMesh* pMesh, const glm::vec4& color, const glm:
 	}
 	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSet, 0, nullptr);
 
+	m_pProfiler->writeTimestamp(&m_TimestampDrawIndexed);
 	m_ppCommandBuffers[m_CurrentFrame]->drawIndexInstanced(pMesh->getIndexCount(), 1, 0, 0, 0);
+	m_pProfiler->writeTimestamp(&m_TimestampDrawIndexed);
 }
 
 bool MeshRendererVK::createSemaphores()
@@ -413,4 +422,12 @@ bool MeshRendererVK::createRayTracingPipelineLayouts()
 	m_pRayTracingPipelineLayout->init(rayTracingDescriptorSetLayouts, rayTracingPushConstantRanges);
 	
 	return true;
+}
+
+void MeshRendererVK::createProfiler()
+{
+	m_pProfiler = DBG_NEW ProfilerVK("Mesh Renderer", m_pContext->getDevice());
+	m_pProfiler->init(m_ppCommandBuffers);
+
+	m_pProfiler->initTimestamp(&m_TimestampDrawIndexed, "Draw indexed");
 }

@@ -54,7 +54,7 @@ void ProfilerVK::init(CommandBufferVK* m_ppCommandBuffers[])
     m_ppProfiledCommandBuffers = m_ppCommandBuffers;
 }
 
-void ProfilerVK::beginFrame(size_t currentFrame)
+void ProfilerVK::beginFrame(size_t currentFrame, CommandBufferVK* pResetCmdBuffer)
 {
     if (!m_ProfileFrame) {
         return;
@@ -65,7 +65,7 @@ void ProfilerVK::beginFrame(size_t currentFrame)
     QueryPoolVK* pCurrentQueryPool = m_ppQueryPools[currentFrame];
     VkCommandBuffer currentCmdBuffer = m_ppProfiledCommandBuffers[currentFrame]->getCommandBuffer();
 
-    vkCmdResetQueryPool(currentCmdBuffer, pCurrentQueryPool->getQueryPool(), 0, pCurrentQueryPool->getQueryCount());
+    vkCmdResetQueryPool(pResetCmdBuffer->getCommandBuffer(), pCurrentQueryPool->getQueryPool(), 0, pCurrentQueryPool->getQueryCount());
     m_NextQuery = 0;
 
     // Write a timestamp to measure the time elapsed for the entire scope of the profiler
