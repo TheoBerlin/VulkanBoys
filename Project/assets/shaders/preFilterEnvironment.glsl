@@ -12,7 +12,7 @@ layout (push_constant) uniform Constants
 	float   Roughness;
 } constants;
 
-const uint  SAMPLE_COUNT    = 1024;
+const uint  SAMPLE_COUNT    = 4096;
 const float PI              = 3.14159265359f;
 
 /*
