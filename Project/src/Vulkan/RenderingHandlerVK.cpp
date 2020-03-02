@@ -36,9 +36,9 @@ RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 	m_ClearDepth.depthStencil.stencil = 0;
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        m_ppGraphicsCommandPools[i] = VK_NULL_HANDLE;
-		m_ppComputeCommandPools[i] = VK_NULL_HANDLE;
-        m_ppGraphicsCommandBuffers[i] = VK_NULL_HANDLE;
+        m_ppGraphicsCommandPools[i]		= VK_NULL_HANDLE;
+		m_ppComputeCommandPools[i]		= VK_NULL_HANDLE;
+        m_ppGraphicsCommandBuffers[i]	= VK_NULL_HANDLE;
     }
 
 	m_EnableRayTracing = m_pGraphicsContext->supportsRayTracing();
@@ -122,10 +122,10 @@ void RenderingHandlerVK::beginFrame(const Camera& camera)
 
 	// Needed to begin a secondary buffer
 	VkCommandBufferInheritanceInfo inheritanceInfo = {};
-	inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
-	inheritanceInfo.pNext = nullptr;
-	inheritanceInfo.renderPass = m_pRenderPass->getRenderPass();
-	inheritanceInfo.subpass = 0; // TODO: Don't hardcode this :(
+	inheritanceInfo.sType		= VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+	inheritanceInfo.pNext		= nullptr;
+	inheritanceInfo.renderPass	= m_pRenderPass->getRenderPass();
+	inheritanceInfo.subpass		= 0; // TODO: Don't hardcode this :(
 	inheritanceInfo.framebuffer = m_ppBackbuffers[m_BackBufferIndex]->getFrameBuffer();
 	m_ppCommandBuffersSecondary[m_CurrentFrame]->begin(&inheritanceInfo);
 
@@ -133,63 +133,33 @@ void RenderingHandlerVK::beginFrame(const Camera& camera)
 
 	if (m_pRayTracer != nullptr) {
 		m_pRayTracer->beginFrame(camera);
-	} else {
-		//std::vector<std::thread> recordingThreads;
-
-		//if (m_pMeshRenderer != nullptr) {
-		//    recordingThreads.push_back(std::thread(&IRenderer::beginFrame, m_pMeshRenderer, camera));
-		//}
-
-		//if (m_pRaytracer != nullptr) {
-		//    recordingThreads.push_back(std::thread(&IRenderer::beginFrame, m_pRaytracer, camera));
-		//}
-
-		//if (m_pParticleRenderer != nullptr) {
-		//    recordingThreads.push_back(std::thread(&IRenderer::beginFrame, m_pParticleRenderer, camera));
-		//}
-
-		//for (std::thread& thread : recordingThreads) {
-		//    thread.join();
-		//}
-
-		if (m_pMeshRenderer != nullptr) {
-			m_pMeshRenderer->beginFrame(camera);
-		}
-
-		if (m_pParticleRenderer != nullptr) {
-			m_pParticleRenderer->beginFrame(camera);
-			submitParticles();
-		}		
-
-		startRenderPass();
+	} 
+	
+	if (m_pMeshRenderer != nullptr) {
+		m_pMeshRenderer->beginFrame(camera);
 	}
+
+	if (m_pParticleRenderer != nullptr) {
+		m_pParticleRenderer->beginFrame(camera);
+		submitParticles();
+	}		
+
+	startRenderPass();
 }
 
 void RenderingHandlerVK::endFrame()
 {
 	if (m_pRayTracer != nullptr) {
 		m_pRayTracer->endFrame();
-	} else {
-		if (m_pMeshRenderer != nullptr) {
-			m_pMeshRenderer->endFrame();
-		}
-
-		if (m_pParticleRenderer != nullptr) {
-			m_pParticleRenderer->endFrame();
-		}
 	}
 
-    // if (m_pMeshRenderer != nullptr) {
-    //     m_pMeshRenderer->endFrame();
-    // }
+	if (m_pMeshRenderer != nullptr) {
+		m_pMeshRenderer->endFrame();
+	}
 
-    //if (m_pRaytracer != nullptr) {
-    //    m_pRaytracer->endFrame();
-    //}
-
-    //if (m_pParticleRenderer != nullptr) {
-    //    m_pParticleRenderer->endFrame();
-    //}
+	if (m_pParticleRenderer != nullptr) {
+		m_pParticleRenderer->endFrame();
+	}
 
     // Submit the rendering handler's command buffer
 	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
@@ -214,9 +184,9 @@ void RenderingHandlerVK::endFrame()
 	m_ppComputeCommandBuffers[m_CurrentFrame]->end();
 
 	// Execute commandbuffer
-	VkSemaphore waitSemaphores[] = { m_ImageAvailableSemaphores[m_CurrentFrame] };
-	VkSemaphore signalSemaphores[] = { m_RenderFinishedSemaphores[m_CurrentFrame] };
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	VkSemaphore waitSemaphores[]		= { m_ImageAvailableSemaphores[m_CurrentFrame] };
+	VkSemaphore signalSemaphores[]		= { m_RenderFinishedSemaphores[m_CurrentFrame] };
+	VkPipelineStageFlags waitStages[]	= { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 	pDevice->executePrimaryCommandBuffer(pDevice->getComputeQueue(), m_ppComputeCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
 	pDevice->executePrimaryCommandBuffer(pDevice->getGraphicsQueue(), m_ppGraphicsCommandBuffers[m_CurrentFrame], waitSemaphores, waitStages, 1, signalSemaphores, 1);

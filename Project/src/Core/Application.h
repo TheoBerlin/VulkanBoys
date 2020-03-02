@@ -3,6 +3,7 @@
 #include "Common/IParticleEmitterHandler.h"
 
 #include "Camera.h"
+#include "Common/CommonEventHandler.h"
 
 class IGraphicsContext;
 class IImgui;
@@ -13,7 +14,7 @@ class IRenderingHandler;
 class ITexture2D;
 class IWindow;
 
-class Application : public IEventHandler
+class Application : public CommonEventHandler
 {
 public:
 	Application();
@@ -27,18 +28,11 @@ public:
 
 	virtual void onWindowClose() override;
 	virtual void onWindowResize(uint32_t width, uint32_t height) override;
-	virtual void onWindowFocusChanged(IWindow* pWindow, bool hasFocus) override;
 	
-	virtual void onMouseMove(uint32_t x, uint32_t y) override;
-	virtual void onMousePressed(int32_t button) override;
-	virtual void onMouseScroll(double x, double y) override;
-	virtual void onMouseReleased(int32_t button) override;
-
-	virtual void onKeyTyped(uint32_t character) override;
 	virtual void onKeyPressed(EKey key) override;
-	virtual void onKeyReleased(EKey key) override;
+	virtual void onMouseMove(uint32_t x, uint32_t y) override;
 
-	IWindow* getWindow() const { return m_pWindow; }
+	FORCEINLINE IWindow* getWindow() const { return m_pWindow; }
 
 	static Application* get();
 

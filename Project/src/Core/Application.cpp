@@ -307,9 +307,6 @@ void Application::onWindowResize(uint32_t width, uint32_t height)
 	}
 }
 
-void Application::onWindowFocusChanged(IWindow* pWindow, bool hasFocus)
-{}
-
 void Application::onMouseMove(uint32_t x, uint32_t y)
 {
 	if (m_UpdateCamera)
@@ -328,22 +325,6 @@ void Application::onMouseMove(uint32_t x, uint32_t y)
 
 		m_Camera.setRotation(rotation);
 	}
-}
-
-void Application::onMousePressed(int32_t button)
-{
-}
-
-void Application::onMouseScroll(double x, double y)
-{
-}
-
-void Application::onMouseReleased(int32_t button)
-{
-}
-
-void Application::onKeyTyped(uint32_t character)
-{
 }
 
 void Application::onKeyPressed(EKey key)
@@ -369,10 +350,6 @@ void Application::onKeyPressed(EKey key)
             Input::releaseMouse(m_pWindow);
         }
 	}
-}
-
-void Application::onKeyReleased(EKey key)
-{
 }
 
 void Application::onWindowClose()
