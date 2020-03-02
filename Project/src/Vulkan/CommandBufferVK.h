@@ -31,7 +31,7 @@ public:
 
 	void bindVertexBuffers(const BufferVK* const * ppVertexBuffers, uint32_t vertexBufferCount, const VkDeviceSize* pOffsets);
 	void bindIndexBuffer(const BufferVK* pIndexBuffer, VkDeviceSize offset, VkIndexType indexType);
-	void bindGraphicsPipeline(PipelineVK* pPipelineState);
+	void bindPipeline(PipelineVK* pPipelineState);
 	void bindDescriptorSet(VkPipelineBindPoint bindPoint, PipelineLayoutVK* pPipelineLayout, uint32_t firstSet, uint32_t count, const DescriptorSetVK* const * ppDescriptorSets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets);
 
 	void pushConstants(PipelineLayoutVK* pPipelineLayout, VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size, const void* pValues);
@@ -42,6 +42,9 @@ public:
 	void updateBuffer(BufferVK* pDestination, uint64_t destinationOffset, const void* pSource, uint64_t sizeInBytes);
 	void copyBuffer(BufferVK* pSource, uint64_t sourceOffset, BufferVK* pDestination, uint64_t destinationOffset, uint64_t sizeInBytes);
 
+	void releaseBufferOwnership(BufferVK* pBuffer, VkAccessFlags srcAccessMask, uint32_t srcQueueFamilyIndex, uint32_t dstQueueFamilyIndex, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask);
+	void acquireBufferOwnership(BufferVK* pBuffer, VkAccessFlags dstAccessMask, uint32_t srcQueueFamilyIndex, uint32_t dstQueueFamilyIndex, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask);
+
 	void updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height);
 	void copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffset, ImageVK* pImage, uint32_t width, uint32_t height);
 
@@ -51,7 +54,9 @@ public:
 	void drawIndexInstanced(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset, uint32_t firstInstance);
 
 	//Ray Tracing
-	void traceRays(ShaderBindingTableVK* pShaderBindingTable, uint32_t width, uint32_t height);
+	void traceRays(ShaderBindingTableVK* pShaderBindingTable, uint32_t width, uint32_t height, uint32_t raygenOffset);
+
+	void dispatch(const glm::u32vec3& groupSize);
 
 	//GETTERS
 	VkFence getFence() const { return m_Fence; }

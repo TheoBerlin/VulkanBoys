@@ -1,19 +1,21 @@
 #pragma once
+
 #include "Common/IRenderer.h"
+#include "ProfilerVK.h"
 #include "VulkanCommon.h"
 
 class BufferVK;
+class CommandPoolVK;
+class CommandBufferVK;
+class DescriptorPoolVK;
+class DescriptorSetLayoutVK;
+class DescriptorSetVK;
+class FrameBufferVK;
+class GraphicsContextVK;
+class PipelineLayoutVK;
 class PipelineVK;
 class RenderingHandlerVK;
 class RenderPassVK;
-class FrameBufferVK;
-class CommandPoolVK;
-class CommandBufferVK;
-class DescriptorSetVK;
-class DescriptorPoolVK;
-class PipelineLayoutVK;
-class GraphicsContextVK;
-class DescriptorSetLayoutVK;
 
 //Temp
 class RayTracingSceneVK;
@@ -46,14 +48,15 @@ public:
 
 	void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform);
 
+	ProfilerVK* getProfiler() { return m_pProfiler; }
+
 private:
 	bool createSemaphores();
 	bool createCommandPoolAndBuffers();
 	bool createPipelines();
 	bool createPipelineLayouts();
 	bool createRayTracingPipelineLayouts();
-
-	void initRayTracing();
+	void createProfiler();
 
 private:
 	GraphicsContextVK* m_pContext;
@@ -68,6 +71,9 @@ private:
 	FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_RenderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
+
+	ProfilerVK* m_pProfiler;
+	Timestamp m_TimestampDrawIndexed;
 
 	// TEMPORARY MOVE TO MATERIAL or SOMETHING
 	PipelineVK* m_pPipeline;
@@ -98,25 +104,35 @@ private:
 
 	IMesh* m_pMeshCube;
 	IMesh* m_pMeshGun;
+	IMesh* m_pMeshSphere;
+	IMesh* m_pMeshPlane;
 
 	glm::mat4 m_Matrix0;
 	glm::mat4 m_Matrix1;
 	glm::mat4 m_Matrix2;
 	glm::mat4 m_Matrix3;
+	glm::mat4 m_Matrix4;
+	glm::mat4 m_Matrix5;
 
 	uint32_t m_InstanceIndex0;
 	uint32_t m_InstanceIndex1;
 	uint32_t m_InstanceIndex2;
 	uint32_t m_InstanceIndex3;
+	uint32_t m_InstanceIndex4;
+	uint32_t m_InstanceIndex5;
 
 	ShaderVK* m_pRaygenShader;
 	ShaderVK* m_pClosestHitShader;
+	ShaderVK* m_pClosestHitShadowShader;
 	ShaderVK* m_pMissShader;
+	ShaderVK* m_pMissShadowShader;
 
 	SamplerVK* m_pSampler;
 	
 	TempMaterial* m_pCubeMaterial;
 	TempMaterial* m_pGunMaterial;
+	TempMaterial* m_pSphereMaterial;
+	TempMaterial* m_pPlaneMaterial;
 
 	float m_TempTimer;
 };

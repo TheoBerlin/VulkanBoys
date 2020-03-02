@@ -12,6 +12,7 @@
 #include "Vulkan/GraphicsContextVK.h"
 #include "Vulkan/ImageViewVK.h"
 #include "Vulkan/MeshVK.h"
+#include "Vulkan/Particles/ParticleEmitterHandlerVK.h"
 #include "Vulkan/PipelineLayoutVK.h"
 #include "Vulkan/PipelineVK.h"
 #include "Vulkan/RenderingHandlerVK.h"
@@ -99,7 +100,7 @@ void ParticleRendererVK::beginFrame(const Camera& camera)
 	BufferVK* pIndexBuffer = reinterpret_cast<BufferVK*>(m_pQuadMesh->getIndexBuffer());
 	m_ppCommandBuffers[frameIndex]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-	m_ppCommandBuffers[frameIndex]->bindGraphicsPipeline(m_pPipeline);
+	m_ppCommandBuffers[frameIndex]->bindPipeline(m_pPipeline);
 	m_ppCommandBuffers[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_ppDescriptorSets[frameIndex], 0, nullptr);
 }
 
@@ -109,7 +110,36 @@ void ParticleRendererVK::endFrame()
 	m_ppCommandBuffers[currentFrame]->end();
 
 	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
-	pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCurrentCommandBuffer(), m_ppCommandBuffers[currentFrame]);
+	pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCurrentGraphicsCommandBuffer(), m_ppCommandBuffers[currentFrame]);
+}
+
+void ParticleRendererVK::submitParticles(ParticleEmitterHandlerVK* pEmitterHandler)
+{
+	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
+
+	bool transferOwnerships = pEmitterHandler->gpuComputed();
+
+	for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters()) {
+		BufferVK* pEmitterBuffer = reinterpret_cast<BufferVK*>(pEmitter->getEmitterBuffer());
+		BufferVK* pPositionBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
+		Texture2DVK* pParticleTexture = reinterpret_cast<Texture2DVK*>(pEmitter->getParticleTexture());
+
+		if (transferOwnerships) {
+			pEmitterHandler->acquireForGraphics(pPositionBuffer,m_ppCommandBuffers[frameIndex]);
+		}
+
+		// TODO: Use constant variables or define macros for binding indices
+		m_ppDescriptorSets[frameIndex]->writeUniformBufferDescriptor(pEmitterBuffer->getBuffer(), 3);
+		m_ppDescriptorSets[frameIndex]->writeStorageBufferDescriptor(pPositionBuffer->getBuffer(), 4);
+		m_ppDescriptorSets[frameIndex]->writeCombinedImageDescriptor(pParticleTexture->getImageView()->getImageView(), m_pSampler->getSampler(), 5);
+
+		uint32_t particleCount = pEmitter->getParticleCount();
+		m_ppCommandBuffers[frameIndex]->drawIndexInstanced(m_pQuadMesh->getIndexCount(), particleCount, 0, 0, 0);
+
+		if (transferOwnerships) {
+			pEmitterHandler->releaseFromGraphics(pPositionBuffer,m_ppCommandBuffers[frameIndex]);
+		}
+	}
 }
 
 void ParticleRendererVK::submitParticles(ParticleEmitter* pEmitter)
@@ -117,12 +147,12 @@ void ParticleRendererVK::submitParticles(ParticleEmitter* pEmitter)
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
 
 	BufferVK* pEmitterBuffer = reinterpret_cast<BufferVK*>(pEmitter->getEmitterBuffer());
-	BufferVK* pParticleBuffer = reinterpret_cast<BufferVK*>(pEmitter->getParticleBuffer());
+	BufferVK* pPositionBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
 	Texture2DVK* pParticleTexture = reinterpret_cast<Texture2DVK*>(pEmitter->getParticleTexture());
 
 	// TODO: Use constant variables or define macros for binding indices
 	m_ppDescriptorSets[frameIndex]->writeUniformBufferDescriptor(pEmitterBuffer->getBuffer(), 3);
-	m_ppDescriptorSets[frameIndex]->writeStorageBufferDescriptor(pParticleBuffer->getBuffer(), 4);
+	m_ppDescriptorSets[frameIndex]->writeStorageBufferDescriptor(pPositionBuffer->getBuffer(), 4);
 	m_ppDescriptorSets[frameIndex]->writeCombinedImageDescriptor(pParticleTexture->getImageView()->getImageView(), m_pSampler->getSampler(), 5);
 
 	uint32_t particleCount = pEmitter->getParticleCount();
@@ -231,14 +261,14 @@ bool ParticleRendererVK::createPipeline()
 	IShader* pVertexShader = m_pGraphicsContext->createShader();
 	pVertexShader->initFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/particles/vertex.spv");
 	if (!pVertexShader->finalize()) {
-        LOG("Failed to create vertex shader for particle emitter handler");
+        LOG("Failed to create vertex shader for particle renderer");
 		return false;
 	}
 
 	IShader* pPixelShader = m_pGraphicsContext->createShader();
 	pPixelShader->initFromFile(EShader::PIXEL_SHADER, "main", "assets/shaders/particles/fragment.spv");
 	if (!pPixelShader->finalize()) {
-		LOG("Failed to create pixel shader for particle emitter handler");
+		LOG("Failed to create pixel shader for particle renderer");
 		return false;
 	}
 
@@ -246,9 +276,10 @@ bool ParticleRendererVK::createPipeline()
 	m_pPipeline = DBG_NEW PipelineVK(m_pGraphicsContext->getDevice());
 	m_pPipeline->addColorBlendAttachment(true, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
 	m_pPipeline->setCulling(false);
-	m_pPipeline->setDepthTest(false);
+	m_pPipeline->setDepthTest(true);
+	m_pPipeline->setDepthWrite(false);
 	m_pPipeline->setWireFrame(false);
-	m_pPipeline->finalize(shaders, m_pRenderingHandler->getRenderPass(), m_pPipelineLayout);
+	m_pPipeline->finalizeGraphics(shaders, m_pRenderingHandler->getRenderPass(), m_pPipelineLayout);
 
 	SAFEDELETE(pVertexShader);
 	SAFEDELETE(pPixelShader);

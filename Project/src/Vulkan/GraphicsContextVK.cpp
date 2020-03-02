@@ -7,6 +7,7 @@
 #include "MeshRendererVK.h"
 #include "Particles/ParticleEmitterHandlerVK.h"
 #include "Particles/ParticleRendererVK.h"
+#include "Ray Tracing/RayTracingRendererVK.h"
 #include "RenderingHandlerVK.h"
 #include "ShaderVK.h"
 #include "SwapChainVK.h"
@@ -82,6 +83,11 @@ IRenderer* GraphicsContextVK::createMeshRenderer(IRenderingHandler* pRenderingHa
 IRenderer* GraphicsContextVK::createParticleRenderer(IRenderingHandler* pRenderingHandler)
 {
 	return DBG_NEW ParticleRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler));
+}
+
+IRenderer* GraphicsContextVK::createRayTracingRenderer(IRenderingHandler* pRenderingHandler)
+{
+	return DBG_NEW RayTracingRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler));
 }
 
 IParticleEmitterHandler* GraphicsContextVK::createParticleEmitterHandler()

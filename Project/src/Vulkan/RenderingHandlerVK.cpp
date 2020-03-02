@@ -11,8 +11,10 @@
 #include "Vulkan/FrameBufferVK.h"
 #include "Vulkan/GraphicsContextVK.h"
 #include "Vulkan/MeshRendererVK.h"
+#include "Vulkan/Particles/ParticleEmitterHandlerVK.h"
 #include "Vulkan/Particles/ParticleRendererVK.h"
 #include "Vulkan/PipelineVK.h"
+#include "Vulkan/Ray Tracing/RayTracingRendererVK.h"
 #include "Vulkan/RenderPassVK.h"
 #include "Vulkan/SwapChainVK.h"
 
@@ -34,8 +36,9 @@ RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 	m_ClearDepth.depthStencil.stencil = 0;
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        m_ppCommandPools[i] = VK_NULL_HANDLE;
-        m_ppCommandBuffers[i] = VK_NULL_HANDLE;
+        m_ppGraphicsCommandPools[i] = VK_NULL_HANDLE;
+		m_ppComputeCommandPools[i] = VK_NULL_HANDLE;
+        m_ppGraphicsCommandBuffers[i] = VK_NULL_HANDLE;
     }
 
 	m_EnableRayTracing = m_pGraphicsContext->supportsRayTracing();
@@ -50,7 +53,8 @@ RenderingHandlerVK::~RenderingHandlerVK()
 
 	VkDevice device = m_pGraphicsContext->getDevice()->getDevice();
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		SAFEDELETE(m_ppCommandPools[i]);
+		SAFEDELETE(m_ppGraphicsCommandPools[i]);
+		SAFEDELETE(m_ppComputeCommandPools[i]);
 		SAFEDELETE(m_ppCommandPoolsSecondary[i]);
 
 		if (m_ImageAvailableSemaphores[i] != VK_NULL_HANDLE) {
@@ -105,9 +109,13 @@ void RenderingHandlerVK::beginFrame(const Camera& camera)
 	m_BackBufferIndex = pSwapChain->getImageIndex();
 
 	// Prepare for frame
-	m_ppCommandBuffers[m_CurrentFrame]->reset();
-	m_ppCommandPools[m_CurrentFrame]->reset();
-	m_ppCommandBuffers[m_CurrentFrame]->begin(nullptr);
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->reset();
+	m_ppGraphicsCommandPools[m_CurrentFrame]->reset();
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->begin(nullptr);
+
+	m_ppComputeCommandBuffers[m_CurrentFrame]->reset();
+	m_ppComputeCommandPools[m_CurrentFrame]->reset();
+	m_ppComputeCommandBuffers[m_CurrentFrame]->begin(nullptr);
 
 	m_ppCommandBuffersSecondary[m_CurrentFrame]->reset(false);
 	m_ppCommandPoolsSecondary[m_CurrentFrame]->reset();
@@ -124,8 +132,7 @@ void RenderingHandlerVK::beginFrame(const Camera& camera)
 	updateBuffers(camera);
 
 	if (m_pRayTracer != nullptr) {
-		//m_pRayTracer->beginRayTraceFrame(camera);
-		//m_pRayTracer->traceRays();
+		m_pRayTracer->beginFrame(camera);
 	} else {
 		//std::vector<std::thread> recordingThreads;
 
@@ -152,7 +159,7 @@ void RenderingHandlerVK::beginFrame(const Camera& camera)
 		if (m_pParticleRenderer != nullptr) {
 			m_pParticleRenderer->beginFrame(camera);
 			submitParticles();
-		}
+		}		
 
 		startRenderPass();
 	}
@@ -161,7 +168,7 @@ void RenderingHandlerVK::beginFrame(const Camera& camera)
 void RenderingHandlerVK::endFrame()
 {
 	if (m_pRayTracer != nullptr) {
-		//m_pRayTracer->endRayTraceFrame();
+		m_pRayTracer->endFrame();
 	} else {
 		if (m_pMeshRenderer != nullptr) {
 			m_pMeshRenderer->endFrame();
@@ -184,24 +191,44 @@ void RenderingHandlerVK::endFrame()
     //    m_pParticleRenderer->endFrame();
     //}
 
-	// Execute renderers' secondary command buffers
-	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
-	m_ppCommandBuffersSecondary[m_CurrentFrame]->end();
-	pDevice->executeSecondaryCommandBuffer(m_ppCommandBuffers[m_CurrentFrame], m_ppCommandBuffersSecondary[m_CurrentFrame]);
-
     // Submit the rendering handler's command buffer
-	if (m_pRayTracer == nullptr) {
-    	m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
+	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
+
+	if (m_pRayTracer == nullptr) 
+	{
+		// Execute renderers' secondary command buffers
+		m_ppCommandBuffersSecondary[m_CurrentFrame]->end();
+		pDevice->executeSecondaryCommandBuffer(m_ppGraphicsCommandBuffers[m_CurrentFrame], m_ppCommandBuffersSecondary[m_CurrentFrame]);
+
+    	m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
+
+		ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
+		if (pEmitterHandler->gpuComputed()) {
+			for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters()) {
+				pEmitterHandler->releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
+			}
+		}
 	}
 
-	m_ppCommandBuffers[m_CurrentFrame]->end();
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->end();
+	m_ppComputeCommandBuffers[m_CurrentFrame]->end();
 
 	// Execute commandbuffer
 	VkSemaphore waitSemaphores[] = { m_ImageAvailableSemaphores[m_CurrentFrame] };
 	VkSemaphore signalSemaphores[] = { m_RenderFinishedSemaphores[m_CurrentFrame] };
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
-	pDevice->executePrimaryCommandBuffer(pDevice->getGraphicsQueue(), m_ppCommandBuffers[m_CurrentFrame], waitSemaphores, waitStages, 1, signalSemaphores, 1);
+	pDevice->executePrimaryCommandBuffer(pDevice->getComputeQueue(), m_ppComputeCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
+	pDevice->executePrimaryCommandBuffer(pDevice->getGraphicsQueue(), m_ppGraphicsCommandBuffers[m_CurrentFrame], waitSemaphores, waitStages, 1, signalSemaphores, 1);
+
+	// Write profiler results
+	if (m_pRayTracer == nullptr) {
+		ProfilerVK* pMeshProfiler = m_pMeshRenderer->getProfiler();
+		pMeshProfiler->writeResults();
+	} else {
+		ProfilerVK* pRTProfiler = m_pRayTracer->getProfiler();
+		pRTProfiler->writeResults();
+	}
 }
 
 void RenderingHandlerVK::swapBuffers()
@@ -210,9 +237,20 @@ void RenderingHandlerVK::swapBuffers()
 	m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
+void RenderingHandlerVK::drawProfilerUI()
+{
+	if (m_pRayTracer == nullptr) {
+		ProfilerVK* pMeshProfiler = m_pMeshRenderer->getProfiler();
+		pMeshProfiler->drawResults();
+	} else {
+		ProfilerVK* pRTProfiler = m_pRayTracer->getProfiler();
+		pRTProfiler->drawResults();
+	}
+}
+
 void RenderingHandlerVK::drawImgui(IImgui* pImgui)
 {
-    pImgui->render(m_ppCommandBuffersSecondary[m_CurrentFrame]); // TODO: Get this running
+    pImgui->render(m_ppCommandBuffersSecondary[m_CurrentFrame]);
 }
 
 void RenderingHandlerVK::setClearColor(float r, float g, float b)
@@ -273,20 +311,31 @@ bool RenderingHandlerVK::createBackBuffers()
 bool RenderingHandlerVK::createCommandPoolAndBuffers()
 {
     DeviceVK* pDevice = m_pGraphicsContext->getDevice();
-    const uint32_t queueFamilyIndices = pDevice->getQueueFamilyIndices().graphicsFamily.value();
+    const uint32_t graphicsQueueFamilyIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
+	const uint32_t gcomputeQueueFamilyIndex = pDevice->getQueueFamilyIndices().computeFamily.value();
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        m_ppCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, queueFamilyIndices);
-		if (!m_ppCommandPools[i]->init()) {
+        m_ppGraphicsCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, graphicsQueueFamilyIndex);
+		if (!m_ppGraphicsCommandPools[i]->init()) {
 			return false;
 		}
 
-        m_ppCommandBuffers[i] = m_ppCommandPools[i]->allocateCommandBuffer();
-        if (m_ppCommandBuffers[i] == nullptr) {
+        m_ppGraphicsCommandBuffers[i] = m_ppGraphicsCommandPools[i]->allocateCommandBuffer();
+        if (m_ppGraphicsCommandBuffers[i] == nullptr) {
             return false;
         }
 
-        m_ppCommandPoolsSecondary[i] = DBG_NEW CommandPoolVK(pDevice, queueFamilyIndices);
+		m_ppComputeCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, gcomputeQueueFamilyIndex);
+		if (!m_ppComputeCommandPools[i]->init()) {
+			return false;
+		}
+
+		m_ppComputeCommandBuffers[i] = m_ppComputeCommandPools[i]->allocateCommandBuffer();
+		if (m_ppComputeCommandBuffers[i] == nullptr) {
+			return false;
+		}
+
+        m_ppCommandPoolsSecondary[i] = DBG_NEW CommandPoolVK(pDevice, graphicsQueueFamilyIndex);
 		if (!m_ppCommandPoolsSecondary[i]->init()) {
 			return false;
 		}
@@ -368,30 +417,35 @@ void RenderingHandlerVK::updateBuffers(const Camera& camera)
 	CameraMatricesBuffer cameraMatricesBuffer = {};
 	cameraMatricesBuffer.Projection = camera.getProjectionMat();
 	cameraMatricesBuffer.View = camera.getViewMat();
-	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraMatricesBuffer, 0, (const void*)&cameraMatricesBuffer, sizeof(CameraMatricesBuffer));
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraMatricesBuffer, 0, (const void*)&cameraMatricesBuffer, sizeof(CameraMatricesBuffer));
 
 	CameraDirectionsBuffer cameraDirectionsBuffer = {};
 	cameraDirectionsBuffer.Right = glm::vec4(camera.getRightVec(), 0.0f);
 	cameraDirectionsBuffer.Up = glm::vec4(camera.getUpVec(), 0.0f);
-	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraDirectionsBuffer, 0, (const void*)&cameraDirectionsBuffer, sizeof(CameraDirectionsBuffer));
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraDirectionsBuffer, 0, (const void*)&cameraDirectionsBuffer, sizeof(CameraDirectionsBuffer));
 
 	// Update particle buffers
-	m_pParticleEmitterHandler->updateBuffers(this);
+	m_pParticleEmitterHandler->updateRenderingBuffers(this);
 }
 
 void RenderingHandlerVK::startRenderPass()
 {
 	// Start renderpass
 	VkClearValue clearValues[] = { m_ClearColor, m_ClearDepth };
-	m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pRenderPass, m_ppBackbuffers[m_BackBufferIndex], m_Viewport.width, m_Viewport.height, clearValues, 2);
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pRenderPass, m_ppBackbuffers[m_BackBufferIndex], m_Viewport.width, m_Viewport.height, clearValues, 2);
 }
 
 void RenderingHandlerVK::submitParticles()
 {
-	std::vector<ParticleEmitter*>& particleEmitters = m_pParticleEmitterHandler->getParticleEmitters();
+	ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
 
-	for (ParticleEmitter* pParticleEmitter : particleEmitters) {
-		m_pParticleRenderer->submitParticles(pParticleEmitter);
+	// Transfer buffer ownerships to the graphics queue
+	for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters()) {
+		if (pEmitterHandler->gpuComputed()) {
+			pEmitterHandler->acquireForGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
+		}
+
+		m_pParticleRenderer->submitParticles(pEmitter);
 	}
 }
 

@@ -29,13 +29,17 @@ RayTracingSceneVK::RayTracingSceneVK(IGraphicsContext* pContext) :
 	m_NumBottomLevelAccelerationStructures(0),
 	m_pTempCommandPool(nullptr),
 	m_pTempCommandBuffer(nullptr),
-	m_Finalized(false)
+	m_Finalized(false),
+	m_pVeryTempMaterial(nullptr),
+	m_pLightProbeMesh(nullptr)
 {
 	m_pDevice = reinterpret_cast<DeviceVK*>(m_pContext->getDevice());
 }
 
 RayTracingSceneVK::~RayTracingSceneVK()
 {
+	SAFEDELETE(m_pProfiler);
+
 	if (m_pTempCommandBuffer != nullptr)
 	{
 		m_pTempCommandPool->freeCommandBuffer(&m_pTempCommandBuffer);
@@ -50,6 +54,7 @@ RayTracingSceneVK::~RayTracingSceneVK()
 	SAFEDELETE(m_pCombinedVertexBuffer);
 	SAFEDELETE(m_pCombinedIndexBuffer);
 	SAFEDELETE(m_pMeshIndexBuffer);
+	SAFEDELETE(m_pLightProbeMesh);
 
 	for (auto& bottomLevelAccelerationStructurePerMesh : m_BottomLevelAccelerationStructures)
 	{
@@ -105,6 +110,8 @@ bool RayTracingSceneVK::finalize()
 		return false;
 	}
 
+	createProfiler();
+
 	LOG("--- RayTracingScene: Successfully initialized Acceleration Table!");
 	return true;
 }
@@ -131,6 +138,8 @@ void RayTracingSceneVK::update()
 
 	m_pTempCommandBuffer->reset();
 	m_pTempCommandBuffer->begin();
+	m_pProfiler->beginFrame(0, m_pTempCommandBuffer, m_pTempCommandBuffer);
+	m_pProfiler->beginTimestamp(&m_TimestampBuildAccelStruct);
 
 	m_pDevice->vkCmdBuildAccelerationStructureNV(
 		m_pTempCommandBuffer->getCommandBuffer(),
@@ -143,15 +152,93 @@ void RayTracingSceneVK::update()
 		m_pScratchBuffer->getBuffer(),
 		0);
 
+	m_pProfiler->endTimestamp(&m_TimestampBuildAccelStruct);
 	vkCmdPipelineBarrier(m_pTempCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, 0, 1, &memoryBarrier, 0, 0, 0, 0);
 
+	m_pProfiler->endFrame();
 	m_pTempCommandBuffer->end();
 	m_pContext->getDevice()->executePrimaryCommandBuffer(m_pContext->getDevice()->getComputeQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 	m_pContext->getDevice()->wait();
 }
 
-uint32_t RayTracingSceneVK::addGraphicsObjectInstance(IMesh* pMesh, TempMaterial* pMaterial, const glm::mat3x4& transform)
+void RayTracingSceneVK::generateLightProbeGeometry(uint32_t worldSizeX, uint32_t worldSizeY, uint32_t worldSizeZ, uint32_t samplesPerProbe, uint32_t numProbesPerDimension)
 {
+	/*float sqrt5 = glm::sqrt(5.0f);
+
+	std::vector<Vertex> lightProbeVertices;
+	std::vector<uint32_t> lightProbeIndices;
+
+	for (uint32_t n = 0; n < samplesPerProbe; n += 4)
+	{
+		float index0 = float(n) + 0.5f;
+		float phi0 = glm::acos(1.0f - 2.0f * index0 / samplesPerProbe);
+		float theta0 = glm::pi<float>() * index0 * (1.0f + sqrt5);
+
+		float index1 = float(n + 1) + 0.5f;
+		float phi1 = glm::acos(1.0f - 2.0f * index1 / samplesPerProbe);
+		float theta1 = glm::pi<float>() * index1 * (1.0f + sqrt5);
+
+		float index2 = float(n + 2) + 0.5f;
+		float phi2 = glm::acos(1.0f - 2.0f * index2 / samplesPerProbe);
+		float theta2 = glm::pi<float>() * index2 * (1.0f + sqrt5);
+
+		float index3 = float(n + 3) + 0.5f;
+		float phi3 = glm::acos(1.0f - 2.0f * index3 / samplesPerProbe);
+		float theta3 = glm::pi<float>() * index3 * (1.0f + sqrt5);
+
+		glm::vec3 posAndNormal0(glm::cos(theta0) * glm::sin(phi0), glm::sin(theta0) * glm::sin(phi0), glm::cos(phi0));
+		glm::vec3 posAndNormal1(glm::cos(theta1) * glm::sin(phi1), glm::sin(theta1) * glm::sin(phi1), glm::cos(phi1));
+		glm::vec3 posAndNormal2(glm::cos(theta2) * glm::sin(phi2), glm::sin(theta2) * glm::sin(phi2), glm::cos(phi2));
+		glm::vec3 posAndNormal3(glm::cos(theta3) * glm::sin(phi3), glm::sin(theta3) * glm::sin(phi3), glm::cos(phi3));
+		std::cout << "Vertex 0: " << glm::to_string(posAndNormal0) << std::endl;
+		std::cout << "Vertex 1: " << glm::to_string(posAndNormal1) << std::endl;
+		std::cout << "Vertex 2: " << glm::to_string(posAndNormal2) << std::endl;
+		std::cout << "Vertex 3: " << glm::to_string(posAndNormal3) << std::endl << std::endl;
+
+
+		lightProbeVertices.push_back({ glm::vec4(posAndNormal0, 1.0f), glm::vec4(posAndNormal0, 0.0f), glm::vec4(0.0f), glm::vec4(0.0f) });
+		lightProbeVertices.push_back({ glm::vec4(posAndNormal1, 1.0f), glm::vec4(posAndNormal1, 0.0f), glm::vec4(0.0f), glm::vec4(0.0f) });
+		lightProbeVertices.push_back({ glm::vec4(posAndNormal2, 1.0f), glm::vec4(posAndNormal2, 0.0f), glm::vec4(0.0f), glm::vec4(0.0f) });
+		lightProbeVertices.push_back({ glm::vec4(posAndNormal3, 1.0f), glm::vec4(posAndNormal3, 0.0f), glm::vec4(0.0f), glm::vec4(0.0f) });
+
+		lightProbeIndices.push_back(lightProbeVertices.size() - 4);
+		lightProbeIndices.push_back(lightProbeVertices.size() - 3);
+		lightProbeIndices.push_back(lightProbeVertices.size() - 2);
+
+		lightProbeIndices.push_back(lightProbeVertices.size() - 3);
+		lightProbeIndices.push_back(lightProbeVertices.size() - 2);
+		lightProbeIndices.push_back(lightProbeVertices.size() - 1);
+	}*/
+
+	m_pLightProbeMesh = new MeshVK(m_pDevice);
+	m_pLightProbeMesh->initAsSphere(3);
+
+	for (uint32_t x = 0; x < numProbesPerDimension; x++)
+	{
+		for (uint32_t y = 0; y < numProbesPerDimension; y++)
+		{
+			for (uint32_t z = 0; z < numProbesPerDimension; z++)
+			{
+				float xPosition = (float(x) / float(numProbesPerDimension - 1)) * float(worldSizeX) - float(worldSizeX) / 2.0f;
+				float yPosition = (float(y) / float(numProbesPerDimension - 1)) * float(worldSizeY) - float(worldSizeY) / 2.0f;
+				float zPosition = (float(z) / float(numProbesPerDimension - 1)) * float(worldSizeZ) - float(worldSizeZ) / 2.0f;
+
+				std::cout << "Position: " << glm::to_string(glm::vec3(xPosition, yPosition, zPosition)) << std::endl;
+
+				glm::mat4 transform = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(xPosition, yPosition, zPosition)));
+				addGraphicsObjectInstance(m_pLightProbeMesh, m_pVeryTempMaterial, transform, 0x40);
+			}
+		}
+	}
+}
+
+uint32_t RayTracingSceneVK::addGraphicsObjectInstance(IMesh* pMesh, TempMaterial* pMaterial, const glm::mat3x4& transform, uint8_t customMask)
+{
+	if (m_pVeryTempMaterial == nullptr)
+	{
+		m_pVeryTempMaterial = pMaterial;
+	}
+
 	//Todo: Same mesh but different textures => different geometry instance instanceId
 
 	MeshVK* pVulkanMesh = reinterpret_cast<MeshVK*>(pMesh);
@@ -162,7 +249,7 @@ uint32_t RayTracingSceneVK::addGraphicsObjectInstance(IMesh* pMesh, TempMaterial
 		LOG("--- RayTracingScene: addGraphicsObjectInstance failed, Mesh or Texture2D is nullptr!");
 		return false;
 	}
-	
+
 	auto& blasPerMesh = m_BottomLevelAccelerationStructures.find(pVulkanMesh);
 
 	if (blasPerMesh == m_BottomLevelAccelerationStructures.end())
@@ -199,7 +286,7 @@ uint32_t RayTracingSceneVK::addGraphicsObjectInstance(IMesh* pMesh, TempMaterial
 	GeometryInstance geometryInstance = {};
 	geometryInstance.transform = transform;
 	geometryInstance.instanceId = bottomLevelAccelerationStructure.index; //This is not really used anymore, Todo: remove this
-	geometryInstance.mask = 0xff;
+	geometryInstance.mask = customMask;
 	geometryInstance.instanceOffset = 0;
 	geometryInstance.flags = 0;// VK_GEOMETRY_INSTANCE_TRIANGLE_CULL_DISABLE_BIT_NV;
 	geometryInstance.accelerationStructureHandle = bottomLevelAccelerationStructure.handle;
@@ -208,7 +295,7 @@ uint32_t RayTracingSceneVK::addGraphicsObjectInstance(IMesh* pMesh, TempMaterial
 	return m_AllGeometryInstances.size() - 1;
 }
 
-void RayTracingSceneVK::updateMeshInstance(uint32_t index, const glm::mat3x4& transform)
+void RayTracingSceneVK::updateGraphicsObject(uint32_t index, const glm::mat3x4& transform)
 {
 	m_AllGeometryInstances[index].transform = transform;
 }
@@ -419,6 +506,12 @@ bool RayTracingSceneVK::buildAccelerationTable()
 	m_pContext->getDevice()->wait();
 
 	return true;
+}
+
+void RayTracingSceneVK::createProfiler()
+{
+	m_pProfiler = DBG_NEW ProfilerVK("Raytracing Scene Update", m_pDevice);
+	m_pProfiler->initTimestamp(&m_TimestampBuildAccelStruct, "Build top-level acceleration structure");
 }
 
 void RayTracingSceneVK::cleanGarbage()

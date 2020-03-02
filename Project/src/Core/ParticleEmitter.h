@@ -1,5 +1,7 @@
 #pragma once
 
+#define NOMINMAX
+
 #include "glm/glm.hpp"
 
 #include "Common/IGraphicsContext.h"
@@ -21,26 +23,20 @@ struct ParticleEmitterInfo {
     ITexture2D* pTexture;
 };
 
-struct ParticleBuffer {
-    const glm::vec4* positions;
+struct EmitterBuffer {
+    glm::mat4x4 centeringRotMatrix;
+    glm::vec4 position, direction;
+    glm::vec2 particleSize;
+    float particleDuration, initialSpeed, spread, particleCount;
 };
 
-struct EmitterBuffer {
-    glm::vec2 particleSize;
+struct ParticleStorage {
+    std::vector<glm::vec4> positions, velocities;
+    std::vector<float> ages;
 };
 
 class ParticleEmitter
 {
-    struct Particle {
-        glm::vec4* position, *velocity;
-        float* age;
-    };
-
-    struct ParticleStorage {
-        std::vector<glm::vec4> positions, velocities;
-        std::vector<float> ages, cameraDistances;
-    };
-
 public:
     ParticleEmitter(const ParticleEmitterInfo& emitterInfo);
     ~ParticleEmitter();
@@ -48,26 +44,45 @@ public:
     bool initialize(IGraphicsContext* pGraphicsContext, const Camera* pCamera);
 
     void update(float dt);
+    void updateGPU(float dt);
 
     const ParticleStorage& getParticleStorage() const { return m_ParticleStorage; }
-    glm::vec2 getParticleSize() const { return m_ParticleSize; }
-    uint32_t getParticleCount() const { return (uint32_t)m_ParticleStorage.positions.size(); }
+    void createEmitterBuffer(EmitterBuffer& emitterBuffer);
 
-    IBuffer* getParticleBuffer() { return m_pParticleBuffer; }
+    uint32_t getParticleCount() const;
+
+    glm::vec3 getPosition() const { return m_Position; }
+    glm::vec3 getDirection() const { return m_Direction; }
+    float getInitialSpeed() const { return m_InitialSpeed; }
+    float getParticlesPerSecond() const { return m_ParticlesPerSecond; }
+    float getParticleDuration() const { return m_ParticleDuration; }
+
+    void setPosition(const glm::vec3& position);
+    void setDirection(const glm::vec3& direction);
+    void setInitialSpeed(float initialSpeed);
+    void setParticlesPerSecond(float particlesPerSecond);
+    void setParticleDuration(float particleDuration);
+
+    IBuffer* getPositionsBuffer() { return m_pPositionsBuffer; }
+    IBuffer* getVelocitiesBuffer() { return m_pVelocitiesBuffer; }
+    IBuffer* getAgesBuffer() { return m_pAgesBuffer; }
     IBuffer* getEmitterBuffer() { return m_pEmitterBuffer; }
     ITexture2D* getParticleTexture() { return m_pTexture; }
+
+    // Whether or not the emitter's settings (above) have been changed during the current frame
+    bool m_EmitterUpdated;
 
 private:
     bool createBuffers(IGraphicsContext* pGraphicsContext);
 
-    // Spawns particles before the emitter has created its maximum amount of particles
-    void spawnNewParticles();
+    void ageEmitter(float dt);
     void moveParticles(float dt);
-    void calculateCameraDistances();
-    // Sort particles by their distance to the camera
-    void sortParticles();
     void respawnOldParticles();
     void createParticle(size_t particleIdx, float particleAge);
+
+    // Calculate rotation quaternion for spawning new particles in the desired direction
+    void createCenteringQuaternion();
+    void resizeParticleStorage(size_t newSize);
 
 private:
     glm::vec3 m_Position, m_Direction;
@@ -82,7 +97,6 @@ private:
     const glm::vec3 m_ZVec = glm::vec3(0.0f, 0.0f, 1.0f);
     // Random directions for particle are centered around (0,0,1), this quaternion centers them around the emitter's direction
     glm::quat m_CenteringRotQuat;
-    
 
     ParticleStorage m_ParticleStorage;
     ITexture2D* m_pTexture;
@@ -90,8 +104,11 @@ private:
     // The amount of time since the emitter started emitting particles. Used for spawning particles.
     float m_EmitterAge;
 
-    // Contains particle positions
-    IBuffer* m_pParticleBuffer;
+    // GPU-side particle data
+    IBuffer* m_pPositionsBuffer;
+    IBuffer* m_pVelocitiesBuffer;
+    IBuffer* m_pAgesBuffer;
+
     // Contains particle size
     IBuffer* m_pEmitterBuffer;
 

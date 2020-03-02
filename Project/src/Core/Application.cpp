@@ -1,18 +1,19 @@
 #include "Application.h"
-#include "Input.h"
 #include "Camera.h"
+#include "Input.h"
 #include "TaskDispatcher.h"
+#include "Transform.h"
 
-#include "Common/IMesh.h"
+#include "Common/IGraphicsContext.h"
 #include "Common/IImgui.h"
-#include "Common/IWindow.h"
-#include "Common/IShader.h"
+#include "Common/IInputHandler.h"
+#include "Common/IMesh.h"
+#include "Common/IProfiler.h"
 #include "Common/IRenderer.h"
 #include "Common/IRenderingHandler.hpp"
-#include "Common/IGraphicsContext.h"
+#include "Common/IShader.h"
 #include "Common/ITexture2D.h"
-#include "Common/IInputHandler.h"
-#include "Common/IGraphicsContext.h"
+#include "Common/IWindow.h"
 
 #include "Vulkan/RenderPassVK.h"
 #include "Vulkan/CommandPoolVK.h"
@@ -40,6 +41,7 @@ Application::Application()
 	m_pContext(nullptr),
 	m_pRenderingHandler(nullptr),
 	m_pMeshRenderer(nullptr),
+	m_pRayTracingRenderer(nullptr),
 	m_pImgui(nullptr),
 	m_pMesh(nullptr),
 	m_pAlbedo(nullptr),
@@ -48,7 +50,8 @@ Application::Application()
 	m_IsRunning(false),
 	m_UpdateCamera(false),
 	m_pParticleTexture(nullptr),
-	m_pParticleEmitterHandler(nullptr)
+	m_pParticleEmitterHandler(nullptr),
+	m_CurrentEmitterIdx(0)
 {
 	ASSERT(s_pInstance == nullptr);
 	s_pInstance = this;
@@ -80,7 +83,9 @@ void Application::init()
 
 	//Create context
 	m_pContext = IGraphicsContext::create(m_pWindow, API::VULKAN);
-	m_EnableRayTracing = false;//m_pContext->supportsRayTracing();
+
+	const bool forceRayTracingOff = true;
+	m_EnableRayTracing = m_pContext->supportsRayTracing() && !forceRayTracingOff;
 
 	//Setup Imgui
 	m_pImgui = m_pContext->createImgui();
@@ -105,11 +110,11 @@ void Application::init()
 
 	ParticleEmitterInfo emitterInfo = {};
 	emitterInfo.position = glm::vec3(0.0f, 0.0f, 0.0f);
-	emitterInfo.direction = glm::vec3(0.0f, 1.0f, 0.0f);
+	emitterInfo.direction = glm::normalize(glm::vec3(0.0f, 0.9f, 0.1f));
 	emitterInfo.particleSize = glm::vec2(0.2f, 0.2f);
 	emitterInfo.initialSpeed = 5.5f;
 	emitterInfo.particleDuration = 3.0f;
-	emitterInfo.particlesPerSecond = 15.0f;
+	emitterInfo.particlesPerSecond = 40.0f;
 	emitterInfo.spread = glm::quarter_pi<float>() / 1.3f;
 	emitterInfo.pTexture = m_pParticleTexture;
 	m_pParticleEmitterHandler->createEmitter(emitterInfo);
@@ -123,15 +128,18 @@ void Application::init()
 	// Setup renderers
 	m_pMeshRenderer = m_pContext->createMeshRenderer(m_pRenderingHandler);
 	m_pParticleRenderer = m_pContext->createParticleRenderer(m_pRenderingHandler);
+	if (m_EnableRayTracing) {
+		m_pRayTracingRenderer = m_pContext->createRayTracingRenderer(m_pRenderingHandler);
+		m_pRayTracingRenderer->init();
+	}
 	m_pMeshRenderer->init();
 	m_pParticleRenderer->init();
 
 	// TODO: Should the renderers themselves call these instead?
 	m_pRenderingHandler->setMeshRenderer(m_pMeshRenderer);
 	m_pRenderingHandler->setParticleRenderer(m_pParticleRenderer);
-	// TODO: Create separate ray tracer renderer class
 	if (m_EnableRayTracing) {
-		m_pRenderingHandler->setRayTracer(m_pMeshRenderer);
+		m_pRenderingHandler->setRayTracer(m_pRayTracingRenderer);
 	}
 
 	m_pRenderingHandler->setViewport(m_pWindow->getWidth(), m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
@@ -267,6 +275,7 @@ void Application::release()
 	SAFEDELETE(m_pMesh);
 	SAFEDELETE(m_pRenderingHandler);
 	SAFEDELETE(m_pMeshRenderer);
+	SAFEDELETE(m_pRayTracingRenderer);
 	SAFEDELETE(m_pParticleRenderer);
 	SAFEDELETE(m_pParticleTexture);
 	SAFEDELETE(m_pParticleEmitterHandler);
@@ -381,6 +390,8 @@ static glm::mat4 g_Rotation = glm::mat4(1.0f);
 
 void Application::update(double dt)
 {
+	IProfiler::progressTimer(dt);
+
 	constexpr float speed = 0.75f;
 	if (Input::isKeyPressed(EKey::KEY_A))
 	{
@@ -453,10 +464,68 @@ void Application::renderUI(double dt)
 {
 	m_pImgui->begin(dt);
 
+	// Color picker for mesh
 	ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);
 	if (ImGui::Begin("Color", NULL, ImGuiWindowFlags_NoResize))
 	{
 		ImGui::ColorPicker4("##picker", glm::value_ptr(g_Color), ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview);
+	}
+	ImGui::End();
+
+	// Particle control panel
+	ImGui::SetNextWindowSize(ImVec2(320, 210), ImGuiCond_Always);
+	if (ImGui::Begin("Particles", NULL, ImGuiWindowFlags_NoResize))
+	{
+		ImGui::Text("Toggle Computation Device");
+		const char* btnLabel = m_pParticleEmitterHandler->gpuComputed() ? "GPU" : "CPU";
+		if (ImGui::Button(btnLabel, ImVec2(40, 25))) {
+			m_pParticleEmitterHandler->toggleComputationDevice();
+		}
+
+		// Get current emitter data
+		ParticleEmitter* pEmitter = m_pParticleEmitterHandler->getParticleEmitter(m_CurrentEmitterIdx);
+		glm::vec3 emitterPos = pEmitter->getPosition();
+
+		glm::vec3 emitterDirection = pEmitter->getDirection();
+		float yaw = getYaw(emitterDirection);
+		float oldYaw = yaw;
+		float pitch = getPitch(emitterDirection);
+		float oldPitch = pitch;
+
+		float emitterSpeed = pEmitter->getInitialSpeed();
+
+		if (ImGui::SliderFloat3("Position", glm::value_ptr(emitterPos), -10.0f, 10.0f)) {
+			pEmitter->setPosition(emitterPos);
+		}
+		if (ImGui::SliderFloat("Yaw", &yaw, 0.01f - glm::pi<float>(), glm::pi<float>() - 0.01f)) {
+			applyYaw(emitterDirection, yaw - oldYaw);
+			pEmitter->setDirection(emitterDirection);
+		}
+		if (ImGui::SliderFloat("Pitch", &pitch, 0.01f - glm::half_pi<float>(), glm::half_pi<float>() - 0.01f)) {
+			applyPitch(emitterDirection, pitch - oldPitch);
+			pEmitter->setDirection(emitterDirection);
+		}
+		if (ImGui::SliderFloat3("Direction", glm::value_ptr(emitterDirection), -1.0f, 1.0f)) {
+			pEmitter->setDirection(glm::normalize(emitterDirection));
+		}
+		if (ImGui::SliderFloat("Speed", &emitterSpeed, 0.0f, 20.0f)) {
+			pEmitter->setInitialSpeed(emitterSpeed);
+		}
+
+		ImGui::Text("Particles: %d", pEmitter->getParticleCount());
+		float particlesPerSecond = pEmitter->getParticlesPerSecond();
+		float particleDuration = pEmitter->getParticleDuration();
+
+		if (ImGui::SliderFloat("Particles per second", &particlesPerSecond, 0.0f, 1000.0f)) {
+		}
+	}
+	ImGui::End();
+
+	// Draw profiler UI
+	ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);
+	if (ImGui::Begin("Profiler", NULL, ImGuiWindowFlags_NoResize)) {
+		m_pParticleEmitterHandler->drawProfilerUI();
+		m_pRenderingHandler->drawProfilerUI();
 	}
 	ImGui::End();
 

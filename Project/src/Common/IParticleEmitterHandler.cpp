@@ -5,7 +5,8 @@
 #include "Common/IShader.h"
 
 IParticleEmitterHandler::IParticleEmitterHandler()
-    :m_pGraphicsContext(nullptr)
+    :m_pGraphicsContext(nullptr),
+    m_GPUComputed(false)
 {}
 
 IParticleEmitterHandler::~IParticleEmitterHandler()
@@ -15,20 +16,18 @@ IParticleEmitterHandler::~IParticleEmitterHandler()
 	}
 }
 
-void IParticleEmitterHandler::update(float dt)
-{
-    for (ParticleEmitter* particleEmitter : m_ParticleEmitters) {
-        particleEmitter->update(dt);
-    }
-}
-
 void IParticleEmitterHandler::initialize(IGraphicsContext* pGraphicsContext, const Camera* pCamera)
 {
     m_pGraphicsContext = pGraphicsContext;
 
+    if (!initializeGPUCompute()) {
+        LOG("Failed to initialize Particle Emitter Handler GPU compute resources");
+        return;
+    }
+
     // Initialize all emitters
     for (ParticleEmitter* particleEmitter : m_ParticleEmitters) {
-        particleEmitter->initialize(m_pGraphicsContext, pCamera);
+        initializeEmitter(particleEmitter);
     }
 }
 
@@ -37,7 +36,7 @@ ParticleEmitter* IParticleEmitterHandler::createEmitter(const ParticleEmitterInf
 	ParticleEmitter* pNewEmitter = DBG_NEW ParticleEmitter(emitterInfo);
     m_ParticleEmitters.push_back(pNewEmitter);
     if (m_pGraphicsContext != nullptr) {
-        pNewEmitter->initialize(m_pGraphicsContext, m_pCamera);
+        initializeEmitter(pNewEmitter);
     }
 
 	return pNewEmitter;

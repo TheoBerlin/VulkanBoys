@@ -54,6 +54,7 @@ private:
 	IGraphicsContext* m_pContext;
 	IRenderingHandler* m_pRenderingHandler;
 	IRenderer* m_pMeshRenderer, *m_pParticleRenderer;
+	IRenderer* m_pRayTracingRenderer;
 	IImgui* m_pImgui;
 	IInputHandler* m_pInputHandler;
 
@@ -63,6 +64,9 @@ private:
 
 	IParticleEmitterHandler* m_pParticleEmitterHandler;
 	ITexture2D* m_pParticleTexture;
+
+	// Resources for ImGui Particle window
+	size_t m_CurrentEmitterIdx;
 
 	bool m_IsRunning;
 	bool m_UpdateCamera;
