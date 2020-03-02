@@ -26,9 +26,10 @@ public:
 
     void setParentProfiler(ProfilerVK* pParentProfiler);
 
-    // The query pool is reset using pResetCmdBuffer
+    // pResetCmdBuffer is used to reset the query pool
     void beginFrame(size_t currentFrame, CommandBufferVK* pProfiledCmdBuffer, CommandBufferVK* pResetCmdBuffer);
     void endFrame();
+    // Fetches timestamp data from Vulkan and writes it to timestamp objects
     void writeResults();
     void drawResults();
 

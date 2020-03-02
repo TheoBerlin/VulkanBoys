@@ -68,10 +68,12 @@ void ProfilerVK::beginFrame(size_t currentFrame, CommandBufferVK* pProfiledCmdBu
     QueryPoolVK* pCurrentQueryPool = m_ppQueryPools[currentFrame];
 
     vkCmdResetQueryPool(pResetCmdBuffer->getCommandBuffer(), pCurrentQueryPool->getQueryPool(), 0, pCurrentQueryPool->getQueryCount());
-    m_NextQuery = 0;
 
     // Write a timestamp to measure the time elapsed for the entire scope of the profiler
-    vkCmdWriteTimestamp(m_pProfiledCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, pCurrentQueryPool->getQueryPool(), m_NextQuery++);
+    vkCmdWriteTimestamp(m_pProfiledCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, pCurrentQueryPool->getQueryPool(), 0);
+
+    // Queries 0 and 1 are reserved for the profiler, the rest are used by timestamp objects
+    m_NextQuery = 2;
 
     // Reset per-frame data
     m_TimeResults.clear();
@@ -89,7 +91,7 @@ void ProfilerVK::endFrame()
     }
 
     VkQueryPool currentQueryPool = m_ppQueryPools[m_CurrentFrame]->getQueryPool();
-    vkCmdWriteTimestamp(m_pProfiledCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, currentQueryPool, m_NextQuery++);
+    vkCmdWriteTimestamp(m_pProfiledCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, currentQueryPool, 1);
 
     if (m_NextQuery > m_TimeResults.size()) {
         m_TimeResults.resize(m_NextQuery);
@@ -118,7 +120,7 @@ void ProfilerVK::writeResults()
     }
 
     // Write the profiler's time first
-    m_Time = m_TimeResults.back() - m_TimeResults.front();
+    m_Time = m_TimeResults[1] - m_TimeResults[0];
 
     for (Timestamp* pTimestamp : m_Timestamps) {
         const std::vector<uint32_t>& timestampQueries = pTimestamp->queries;
