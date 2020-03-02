@@ -32,9 +32,6 @@ public:
 private:
 	glm::vec3 calculateTangent(const Vertex& v0, const Vertex& v1, const Vertex& v2);
 
-private:
-	glm::vec4 calculateTangent(const Vertex& v0, const Vertex& v1, const Vertex& v2);
-
 	uint32_t vertexForEdge(std::map<std::pair<uint32_t, uint32_t>, uint32_t>& lookup, std::vector<glm::vec3>& vertices, uint32_t first, uint32_t second);
 	std::vector<Triangle> subdivide(std::vector<glm::vec3>& vertices, std::vector<Triangle>& triangles);
 
