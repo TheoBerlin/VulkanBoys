@@ -208,11 +208,30 @@ bool PipelineVK::finalize(const std::vector<IShader*>& shaders, RenderPassVK* pR
 
     VK_CHECK_RESULT_RETURN_FALSE(vkCreateGraphicsPipelines(m_pDevice->getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_Pipeline), "vkCreateGraphicsPipelines failed");
 
-    D_LOG("--- Pipeline: Vulkan pipeline created successfully");
+    m_BindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    D_LOG("--- Pipeline: Vulkan graphics pipeline created successfully");
 
     m_VertexAttributes.clear();
     m_VertexBindings.clear();
 
+    return true;
+}
+
+bool PipelineVK::finalizeCompute(IShader* shader, PipelineLayoutVK* pPipelineLayout)
+{
+    VkComputePipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.pNext = nullptr;
+    pipelineInfo.flags = 0;
+    createShaderStageInfo(pipelineInfo.stage, shader);
+    pipelineInfo.layout = pPipelineLayout->getPipelineLayout();
+    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+    pipelineInfo.basePipelineIndex = -1;
+
+    VK_CHECK_RESULT_RETURN_FALSE(vkCreateComputePipelines(m_pDevice->getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_Pipeline), "vkCreateComputePipelines failed");
+
+    m_BindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
+    D_LOG("--- Pipeline: Vulkan graphics pipeline created successfully");
     return true;
 }
 
@@ -221,12 +240,11 @@ void PipelineVK::createShaderStageInfo(VkPipelineShaderStageCreateInfo& shaderSt
     shaderStageInfo = {};
 
     const ShaderVK* shaderVK  = reinterpret_cast<const ShaderVK*>(shader);
-    shaderStageInfo.stage     = convertShaderType(shaderVK->getShaderType());
     shaderStageInfo.sType     = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     shaderStageInfo.pNext     = nullptr;
     shaderStageInfo.flags     = 0;
     shaderStageInfo.stage     = convertShaderType(shader->getShaderType());
     shaderStageInfo.module    = shaderVK->getShaderModule();
     shaderStageInfo.pName     = shader->getEntryPoint().c_str();
-    shaderStageInfo.pSpecializationInfo = nullptr;
+    shaderStageInfo.pSpecializationInfo = reinterpret_cast<const ShaderVK*>(shader)->getSpecializationInfo();
 }

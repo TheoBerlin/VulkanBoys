@@ -4,7 +4,8 @@
 
 QueryPoolVK::QueryPoolVK(DeviceVK* pDevice) :
 	m_pDevice(pDevice),
-	m_QueryPool(VK_NULL_HANDLE)
+	m_QueryPool(VK_NULL_HANDLE),
+	m_QueryCount(0)
 {
 }
 
@@ -28,6 +29,7 @@ bool QueryPoolVK::init(VkQueryType queryType, uint32_t queryCount, VkQueryPipeli
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateQueryPool(m_pDevice->getDevice(), &createInfo, nullptr, &m_QueryPool), "--- QueryPoolVK: vkCreateQueryPool failed!");
 
+	m_QueryCount = queryCount;
 	D_LOG("--- QueryPoolVK: QueryPool created successfully!");
 	return true;
 }

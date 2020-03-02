@@ -9,16 +9,16 @@ public:
 
 	DECL_NO_COPY(CommonEventHandler);
 
-	virtual void onWindowClose() {}
-	virtual void onWindowResize(uint32_t, uint32_t) {}
-	virtual void onWindowFocusChanged(IWindow*, bool) {}
+	virtual void onWindowClose() override {}
+	virtual void onWindowResize(uint32_t, uint32_t) override {}
+	virtual void onWindowFocusChanged(IWindow*, bool) override {}
 
-	virtual void onMouseMove(uint32_t, uint32_t) {}
-	virtual void onMousePressed(int32_t) {}
-	virtual void onMouseScroll(double, double) {}
-	virtual void onMouseReleased(int32_t) {}
+	virtual void onMouseMove(uint32_t, uint32_t) override {}
+	virtual void onMousePressed(int32_t) override {}
+	virtual void onMouseScroll(double, double) override {}
+	virtual void onMouseReleased(int32_t) override {}
 
-	virtual void onKeyTyped(uint32_t) {}
-	virtual void onKeyPressed(EKey) {}
-	virtual void onKeyReleased(EKey) {}
+	virtual void onKeyTyped(uint32_t) override {}
+	virtual void onKeyPressed(EKey) override {}
+	virtual void onKeyReleased(EKey) override {}
 };

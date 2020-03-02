@@ -23,8 +23,8 @@ layout (push_constant) uniform Constants
 
 layout (binding = 0) uniform PerFrameBuffer
 {
-	mat4 Projection;
 	mat4 View;
+	mat4 Projection;
 } g_PerFrame;
 
 layout(binding = 1) buffer vertexBuffer

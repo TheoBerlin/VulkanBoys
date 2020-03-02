@@ -20,16 +20,21 @@ public:
 	void init();
 
 	//OVERRIDE
-	virtual IRenderer* createRenderer() override;
+	virtual IRenderingHandler* createRenderingHandler() override;
+	virtual IRenderer* createMeshRenderer(IRenderingHandler* pRenderingHandler) override;
+	virtual IRenderer* createParticleRenderer(IRenderingHandler* pRenderingHandler) override;
+	virtual IRenderer* createRayTracingRenderer(IRenderingHandler* pRenderingHandler) override;
+	virtual IParticleEmitterHandler* createParticleEmitterHandler() override;
 	virtual IImgui* createImgui() override;
-    
+
     virtual IMesh* createMesh() override;
 
 	virtual IShader* createShader() override;
-	
+
 	virtual IBuffer* createBuffer() override;
+	virtual void updateBuffer(IBuffer* pDestination, uint64_t destinationOffset, const void* pSource, uint64_t sizeInBytes) override;
 	virtual IFrameBuffer* createFrameBuffer() override;
-	
+
 	virtual IImage* createImage() override;
 	virtual IImageView* createImageView() override;
 	virtual ITexture2D* createTexture2D() override;
@@ -38,6 +43,8 @@ public:
 	virtual void sync() override;
 
 	void swapBuffers(VkSemaphore renderSemaphore);
+
+	bool supportsRayTracing() const;
 
 	DeviceVK* getDevice() { return &m_Device; } //Const function?
 	SwapChainVK* getSwapChain() const { return m_pSwapChain; }

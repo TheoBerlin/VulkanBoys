@@ -1,0 +1,4 @@
+Files: sun.png
+Author: Mystik Mike (Mike Hosker)
+Licences: GPL v2, CC-BY-SA 3.0
+URLs: https://opengameart.org/content/sun-0

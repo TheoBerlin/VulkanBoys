@@ -3,18 +3,20 @@
 #include "Material.h"
 #include "LightSetup.h"
 
-#include "Common/IEventHandler.h"
+#include "Common/CommonEventHandler.h"
+#include "Common/IParticleEmitterHandler.h"
 
-class IMesh;
+class IGraphicsContext;
 class IImgui;
-class IWindow;
+class IInputHandler;
+class IMesh;
 class IRenderer;
+class IRenderingHandler;
 class ITexture2D;
 class ITextureCube;
-class IInputHandler;
-class IGraphicsContext;
+class IWindow;
 
-class Application : public IEventHandler
+class Application : public CommonEventHandler
 {
 public:
 	Application();
@@ -28,18 +30,11 @@ public:
 
 	virtual void onWindowClose() override;
 	virtual void onWindowResize(uint32_t width, uint32_t height) override;
-	virtual void onWindowFocusChanged(IWindow* pWindow, bool hasFocus) override;
 	
-	virtual void onMouseMove(uint32_t x, uint32_t y) override;
-	virtual void onMousePressed(int32_t button) override;
-	virtual void onMouseScroll(double x, double y) override;
-	virtual void onMouseReleased(int32_t button) override;
-
-	virtual void onKeyTyped(uint32_t character) override;
 	virtual void onKeyPressed(EKey key) override;
-	virtual void onKeyReleased(EKey key) override;
+	virtual void onMouseMove(uint32_t x, uint32_t y) override;
 
-	IWindow* getWindow() const { return m_pWindow; }
+	FORCEINLINE IWindow* getWindow() const { return m_pWindow; }
 
 	static Application* get();
 
@@ -54,7 +49,9 @@ private:
 	LightSetup m_LightSetup;
 	IWindow* m_pWindow;
 	IGraphicsContext* m_pContext;
-	IRenderer* m_pRenderer;
+	IRenderingHandler* m_pRenderingHandler;
+	IRenderer* m_pMeshRenderer, *m_pParticleRenderer;
+	IRenderer* m_pRayTracingRenderer;
 	IImgui* m_pImgui;
 	IInputHandler* m_pInputHandler;
 
@@ -69,8 +66,15 @@ private:
 	Material m_GunMaterial;
 	Material m_RedMaterial;
 
+	IParticleEmitterHandler* m_pParticleEmitterHandler;
+	ITexture2D* m_pParticleTexture;
+
+	// Resources for ImGui Particle window
+	size_t m_CurrentEmitterIdx;
+
 	bool m_IsRunning;
 	bool m_UpdateCamera;
+	bool m_EnableRayTracing;
 
 	static Application* s_pInstance;
 };

@@ -1,13 +1,16 @@
 #include "RayTracingPipelineVK.h"
 
+#include "Vulkan/Ray Tracing/ShaderBindingTableVK.h"
+#include "Vulkan/GraphicsContextVK.h"
 #include "Vulkan/DeviceVK.h"
 #include "Vulkan/ShaderVK.h"
 #include "Vulkan/PipelineLayoutVK.h"
 
-RayTracingPipelineVK::RayTracingPipelineVK(DeviceVK* pDevice) :
-	m_pDevice(pDevice),
-	m_MaxRecursionDepth(1),
-	m_Pipeline(VK_NULL_HANDLE)
+RayTracingPipelineVK::RayTracingPipelineVK(GraphicsContextVK* pGraphicsContext) :
+	m_pGraphicsContext(pGraphicsContext),
+	m_MaxRecursionDepth(m_pGraphicsContext->getDevice()->getRayTracingProperties().maxRecursionDepth),
+	m_Pipeline(VK_NULL_HANDLE),
+	m_pSBT(nullptr)
 {
 }
 
@@ -15,48 +18,57 @@ RayTracingPipelineVK::~RayTracingPipelineVK()
 {
 	if (m_Pipeline != VK_NULL_HANDLE)
 	{
-		vkDestroyPipeline(m_pDevice->getDevice(), m_Pipeline, nullptr);
+		vkDestroyPipeline(m_pGraphicsContext->getDevice()->getDevice(), m_Pipeline, nullptr);
 		m_Pipeline = VK_NULL_HANDLE;
 	}
+
+	SAFEDELETE(m_pSBT);
 }
 
 void RayTracingPipelineVK::addRaygenShaderGroup(const RaygenGroupParams& params)
 {
-	if (m_IntersectShaderGroups.size() > 0)
-	{
-		std::cerr << "--- RayTracingPipeline: Failed to add Raygen Shader Group, currently a maximum of one shader group per type is allowed!" << std::endl;
-		return;
-	}
-	
 	m_Shaders.push_back(params.pRaygenShader);
-	
+
 	VkRayTracingShaderGroupCreateInfoNV shaderGroupCreateInfo = {};
+	shaderGroupCreateInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_NV;
 	shaderGroupCreateInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_NV;
 	shaderGroupCreateInfo.generalShader = m_Shaders.size() - 1;
-	m_IntersectShaderGroups.push_back(shaderGroupCreateInfo);
+	shaderGroupCreateInfo.intersectionShader = VK_SHADER_UNUSED_NV;
+	shaderGroupCreateInfo.anyHitShader = VK_SHADER_UNUSED_NV;
+	shaderGroupCreateInfo.closestHitShader = VK_SHADER_UNUSED_NV;
+	m_RaygenShaderGroups.push_back(shaderGroupCreateInfo);
 }
 
-void RayTracingPipelineVK::addIntersectShaderGroup(const IntersectGroupParams& params)
+void RayTracingPipelineVK::addMissShaderGroup(const MissGroupParams& params)
 {
-	if (m_IntersectShaderGroups.size() > 0)
-	{
-		LOG("--- RayTracingPipeline: Failed to add Intersect Shader Group, currently a maximum of one shader group per type is allowed!");
-		return;
-	}
-	
-	VkRayTracingShaderGroupCreateInfoNV shaderGroupCreateInfo = {};
-	shaderGroupCreateInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_NV;
-	
-	if (params.pIntersectShader != nullptr)
-	{
-		m_Shaders.push_back(params.pIntersectShader);
-		shaderGroupCreateInfo.intersectionShader = m_Shaders.size() - 1;
-	}
+	m_Shaders.push_back(params.pMissShader);
 
+	VkRayTracingShaderGroupCreateInfoNV shaderGroupCreateInfo = {};
+	shaderGroupCreateInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_NV;
+	shaderGroupCreateInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_NV;
+	shaderGroupCreateInfo.generalShader = m_Shaders.size() - 1;
+	shaderGroupCreateInfo.intersectionShader = VK_SHADER_UNUSED_NV;
+	shaderGroupCreateInfo.anyHitShader = VK_SHADER_UNUSED_NV;
+	shaderGroupCreateInfo.closestHitShader = VK_SHADER_UNUSED_NV;
+	m_MissShaderGroups.push_back(shaderGroupCreateInfo);
+}
+
+void RayTracingPipelineVK::addHitShaderGroup(const HitGroupParams& params)
+{
+	VkRayTracingShaderGroupCreateInfoNV shaderGroupCreateInfo = {};
+	shaderGroupCreateInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_NV;
+	shaderGroupCreateInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_NV;
+	shaderGroupCreateInfo.generalShader = VK_SHADER_UNUSED_NV;
+	shaderGroupCreateInfo.intersectionShader = VK_SHADER_UNUSED_NV;
+	
 	if (params.pAnyHitShader != nullptr)
 	{
 		m_Shaders.push_back(params.pAnyHitShader);
 		shaderGroupCreateInfo.anyHitShader = m_Shaders.size() - 1;
+	}
+	else
+	{
+		shaderGroupCreateInfo.anyHitShader = VK_SHADER_UNUSED_NV;
 	}
 
 	if (params.pClosestHitShader != nullptr)
@@ -66,65 +78,67 @@ void RayTracingPipelineVK::addIntersectShaderGroup(const IntersectGroupParams& p
 	}
 	else
 	{
-		LOG("--- RayTracingPipeline: Failed to add Intersect Shader Group, Closest Hit Shader must be valid!");
+		LOG("--- RayTracingPipeline: Failed to add Hit Shader Group, Closest Hit Shader must be valid!");
 		return;
 	}
 	
-	m_IntersectShaderGroups.push_back(shaderGroupCreateInfo);
-}
-
-void RayTracingPipelineVK::addMissShaderGroup(const MissGroupParams& params)
-{
-	if (m_IntersectShaderGroups.size() > 0)
-	{
-		LOG("--- RayTracingPipeline: Failed to add Miss Shader Group, currently a maximum of one shader group per type is allowed!");
-		return;
-	}
-	
-	m_Shaders.push_back(params.pMissShader);
-
-	VkRayTracingShaderGroupCreateInfoNV shaderGroupCreateInfo = {};
-	shaderGroupCreateInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_NV;
-	shaderGroupCreateInfo.generalShader = m_Shaders.size() - 1;
-	m_IntersectShaderGroups.push_back(shaderGroupCreateInfo);
+	m_HitShaderGroups.push_back(shaderGroupCreateInfo);
 }
 
 bool RayTracingPipelineVK::finalize(PipelineLayoutVK* pPipelineLayout)
 {
 	// Define shader stage create infos
-	std::vector<VkPipelineShaderStageCreateInfo> shaderStagesInfos;
-	shaderStagesInfos.reserve(m_Shaders.size());
+	m_ShaderStagesInfos.reserve(m_Shaders.size());
 
 	for (ShaderVK* pShader : m_Shaders)
 	{
 		VkPipelineShaderStageCreateInfo shaderStageInfo;
 		createShaderStageInfo(shaderStageInfo, pShader);
-		shaderStagesInfos.push_back(shaderStageInfo);
+		m_ShaderStagesInfos.push_back(shaderStageInfo);
 	}
 
-	uint32_t numGroups = m_RaygenShaderGroups.size() + m_IntersectShaderGroups.size() + m_MissShaderGroups.size();
-	m_AllShaderGroups.reserve(numGroups);
+	for (auto& raygenShaderGroup : m_RaygenShaderGroups)
+	{
+		m_AllShaderGroups.push_back(raygenShaderGroup);
+	}
+
+	for (auto& missShaderGroup : m_MissShaderGroups)
+	{
+		m_AllShaderGroups.push_back(missShaderGroup);
+	}
+
+	for (auto& hitShaderGroup : m_HitShaderGroups)
+	{
+		m_AllShaderGroups.push_back(hitShaderGroup);
+	}
+
+	/*uint32_t numGroups = m_RaygenShaderGroups.size() + m_IntersectShaderGroups.size() + m_MissShaderGroups.size();
+	m_AllShaderGroups.resize(numGroups);
 
 	size_t rayGenDst = (size_t)m_AllShaderGroups.data();
-	size_t intersectDst = rayGenDst + m_RaygenShaderGroups.size() * sizeof(VkRayTracingShaderGroupCreateInfoNV);
-	size_t missDst = intersectDst + m_IntersectShaderGroups.size() * sizeof(VkRayTracingShaderGroupCreateInfoNV);
+	size_t missDst = rayGenDst + m_RaygenShaderGroups.size() * sizeof(VkRayTracingShaderGroupCreateInfoNV);
+	size_t intersectDst = missDst + m_MissShaderGroups.size() * sizeof(VkRayTracingShaderGroupCreateInfoNV);
 	
 	memcpy((void*)rayGenDst, m_RaygenShaderGroups.data(), m_RaygenShaderGroups.size() * sizeof(VkRayTracingShaderGroupCreateInfoNV));
-	memcpy((void*)intersectDst, m_IntersectShaderGroups.data(), m_IntersectShaderGroups.size() * sizeof(VkRayTracingShaderGroupCreateInfoNV));
 	memcpy((void*)missDst, m_MissShaderGroups.data(), m_MissShaderGroups.size() * sizeof(VkRayTracingShaderGroupCreateInfoNV));
+	memcpy((void*)intersectDst, m_IntersectShaderGroups.data(), m_IntersectShaderGroups.size() * sizeof(VkRayTracingShaderGroupCreateInfoNV));*/
 
 	VkRayTracingPipelineCreateInfoNV rayPipelineInfo{};
 	rayPipelineInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_NV;
-	rayPipelineInfo.stageCount = shaderStagesInfos.size();
-	rayPipelineInfo.pStages = shaderStagesInfos.data();
-	rayPipelineInfo.groupCount = numGroups;
+	rayPipelineInfo.stageCount = m_ShaderStagesInfos.size();
+	rayPipelineInfo.pStages = m_ShaderStagesInfos.data();
+	rayPipelineInfo.groupCount = m_AllShaderGroups.size();
 	rayPipelineInfo.pGroups = m_AllShaderGroups.data();
-	rayPipelineInfo.maxRecursionDepth = 1;
+	rayPipelineInfo.maxRecursionDepth = m_MaxRecursionDepth;
 	rayPipelineInfo.layout = pPipelineLayout->getPipelineLayout();
 	
-	VK_CHECK_RESULT_RETURN_FALSE(m_pDevice->vkCreateRayTracingPipelinesNV(m_pDevice->getDevice(), VK_NULL_HANDLE, 1, &rayPipelineInfo, nullptr, &m_Pipeline), "--- RayTracingPipeline: Failed to create RayTracingPipeline!");
+	VK_CHECK_RESULT_RETURN_FALSE(m_pGraphicsContext->getDevice()->vkCreateRayTracingPipelinesNV(m_pGraphicsContext->getDevice()->getDevice(), VK_NULL_HANDLE, 1, &rayPipelineInfo, nullptr, &m_Pipeline), "--- RayTracingPipeline: Failed to create RayTracingPipeline!");
 
 	LOG("--- RayTracingPipeline: Successfully created RayTracingPipeline!");
+
+	m_pSBT = new ShaderBindingTableVK(m_pGraphicsContext);
+	m_pSBT->init(this);
+
 	return true;
 }
 
@@ -139,5 +153,5 @@ void RayTracingPipelineVK::createShaderStageInfo(VkPipelineShaderStageCreateInfo
 	shaderStageInfo.stage = convertShaderType(pShader->getShaderType());
 	shaderStageInfo.module = pShader->getShaderModule();
 	shaderStageInfo.pName = pShader->getEntryPoint().c_str();
-	shaderStageInfo.pSpecializationInfo = nullptr;
+	shaderStageInfo.pSpecializationInfo = pShader->getSpecializationInfo();
 }

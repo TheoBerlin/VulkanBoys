@@ -16,17 +16,19 @@ public:
 
     void init(VkDescriptorSet descriptorSetHandle, DeviceVK* pDevice, DescriptorPoolVK* pDescriptorPool, const DescriptorCounts& descriptorCounts);
 
-    void writeUniformBufferDescriptor(BufferVK* pBuffer, uint32_t binding);
-    void writeStorageBufferDescriptor(BufferVK* pBuffer, uint32_t binding);
-    void writeCombinedImageDescriptor(ImageViewVK* pImageView, SamplerVK* pSampler, uint32_t binding);
-    void writeSampledImageDescriptor(ImageViewVK* pImageView, uint32_t binding);
-    
+    void writeUniformBufferDescriptor(const BufferVK* pBuffer, uint32_t binding);
+    void writeStorageBufferDescriptor(const BufferVK* pBuffer, uint32_t binding);
+	void writeCombinedImageDescriptors(const ImageViewVK* const * ppImageViews, const SamplerVK* const * ppSamplers, uint32_t count, uint32_t binding);
+    void writeSampledImageDescriptor(const ImageViewVK* pImageView, uint32_t binding);
+	void writeStorageImageDescriptor(const ImageViewVK* pImageView, uint32_t binding);
+	void writeAccelerationStructureDescriptor(VkAccelerationStructureNV accelerationStructure, uint32_t binding);
+	
     VkDescriptorSet getDescriptorSet() const { return m_DescriptorSet; }
     const DescriptorCounts& getDescriptorCounts() const { return m_DescriptorCounts; }
 
 private:
-    void writeBufferDescriptor(BufferVK* pBufferr, uint32_t binding, VkDescriptorType bufferType);
-    void writeImageDescriptor(ImageViewVK* pImageView, SamplerVK* pSampler, uint32_t binding, VkImageLayout layout, VkDescriptorType descriptorType);
+    void writeBufferDescriptor(const BufferVK* pBuffer, uint32_t binding, VkDescriptorType descriptorType);
+    void writeImageDescriptors(const ImageViewVK* const * ppImageViews, const SamplerVK* const * ppSamplers, uint32_t count, uint32_t binding, VkImageLayout layout, VkDescriptorType descriptorType);
 
 private:
     DescriptorCounts m_DescriptorCounts;

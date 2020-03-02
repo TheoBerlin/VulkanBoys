@@ -1,6 +1,8 @@
 #pragma once
 #include "Common/IInputHandler.h"
 
+#include <vector>
+
 class InputHandler : public IInputHandler
 {
 public:
@@ -14,6 +16,7 @@ public:
 	virtual void onKeyReleased(EKey keycode) override;
 
 private:
-	bool m_KeyStates[EKey::KEY_COUNT];
+	//May be implemented as a bitset (Implementation defined)
+	std::vector<bool> m_KeyStates;
 };
 

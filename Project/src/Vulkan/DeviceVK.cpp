@@ -3,6 +3,7 @@
 #include "CopyHandlerVK.h"
 #include "CommandBufferVK.h"
 
+#include <cstring>
 #include <iostream>
 #include <map>
 #include <set>
@@ -16,6 +17,7 @@ DeviceVK::DeviceVK() :
 	m_ComputeQueue(VK_NULL_HANDLE),
 	m_TransferQueue(VK_NULL_HANDLE),
 	m_PresentQueue(VK_NULL_HANDLE),
+	m_DeviceLimits({}),
 	m_RayTracingProperties({}),
 	m_pCopyHandler()
 {
@@ -66,7 +68,7 @@ void DeviceVK::addOptionalExtension(const char* extensionName)
 	m_RequestedOptionalExtensions.push_back(extensionName);
 }
 
-void DeviceVK::executeCommandBuffer(VkQueue queue, CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages, 
+void DeviceVK::executePrimaryCommandBuffer(VkQueue queue, CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages, 
 	uint32_t waitSemaphoreCount, const VkSemaphore* pSignalSemaphores, uint32_t signalSemaphoreCount)
 {
 	//Submit
@@ -83,12 +85,40 @@ void DeviceVK::executeCommandBuffer(VkQueue queue, CommandBufferVK* pCommandBuff
 	submitInfo.signalSemaphoreCount = signalSemaphoreCount;
 	submitInfo.pSignalSemaphores	= pSignalSemaphores;
 
-	VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, pCommandBuffer->getFence()), "vkQueueSubmit failed");
+	VkResult result = vkQueueSubmit(queue, 1, &submitInfo, pCommandBuffer->getFence());
+	VK_CHECK_RESULT(result, "vkQueueSubmit failed");
+}
+
+void DeviceVK::executeSecondaryCommandBuffer(CommandBufferVK* pPrimaryCommandBuffer, CommandBufferVK* pSecondaryCommandBuffer)
+{
+	VkCommandBuffer secondaryBuffer = pSecondaryCommandBuffer->getCommandBuffer();
+	vkCmdExecuteCommands(pPrimaryCommandBuffer->getCommandBuffer(), 1, &secondaryBuffer);
 }
 
 void DeviceVK::wait()
 {
-	vkDeviceWaitIdle(m_Device);
+	VkResult result = vkDeviceWaitIdle(m_Device);
+	if (result != VK_SUCCESS) 
+	{ 
+		LOG("vkDeviceWaitIdle failed");
+	}
+}
+
+bool DeviceVK::hasUniqueQueueFamilyIndices() const
+{
+	std::set<uint32_t> familyIndices = {
+		m_DeviceQueueFamilyIndices.computeFamily.value(),
+		m_DeviceQueueFamilyIndices.graphicsFamily.value(),
+		m_DeviceQueueFamilyIndices.presentFamily.value(),
+		m_DeviceQueueFamilyIndices.transferFamily.value()
+	};
+
+	return familyIndices.size() == 4;
+}
+
+void DeviceVK::getMaxComputeWorkGroupSize(uint32_t pWorkGroupSize[3])
+{
+	std::memcpy(pWorkGroupSize, m_DeviceLimits.maxComputeWorkGroupSize, sizeof(uint32_t) * 3);
 }
 
 bool DeviceVK::initPhysicalDevice(InstanceVK* pInstance)
@@ -123,6 +153,11 @@ bool DeviceVK::initPhysicalDevice(InstanceVK* pInstance)
 	m_PhysicalDevice = physicalDeviceCandidates.rbegin()->second;
 	setEnabledExtensions();
 	m_DeviceQueueFamilyIndices = findQueueFamilies(m_PhysicalDevice);
+
+	// Save device's limits
+	VkPhysicalDeviceProperties deviceProperties;
+	vkGetPhysicalDeviceProperties(m_PhysicalDevice, &deviceProperties);
+	m_DeviceLimits = deviceProperties.limits;
 
 	return true;
 }
@@ -238,6 +273,11 @@ void DeviceVK::checkExtensionsSupport(VkPhysicalDevice physicalDevice, bool& req
 void DeviceVK::setEnabledExtensions()
 {
 	m_EnabledExtensions = std::vector<const char*>(m_RequestedRequiredExtensions.begin(), m_RequestedRequiredExtensions.end());
+
+	for (auto& requiredExtensions : m_RequestedRequiredExtensions)
+	{
+		m_ExtensionsStatus[requiredExtensions] = true;
+	}
 	
 	uint32_t extensionCount = 0;
 	vkEnumerateDeviceExtensionProperties(m_PhysicalDevice, nullptr, &extensionCount, nullptr);
@@ -252,7 +292,7 @@ void DeviceVK::setEnabledExtensions()
 		if (optionalExtensions.erase(extension.extensionName) > 0)
 		{
 			m_EnabledExtensions.push_back(extension.extensionName);
-			m_OptionalRequestedExtensionsStatus[extension.extensionName] = true;
+			m_ExtensionsStatus[extension.extensionName] = true;
 		}
 	}
 
@@ -261,7 +301,7 @@ void DeviceVK::setEnabledExtensions()
 		for (const auto& extension : optionalExtensions)
 		{
 			std::cerr << "--- Device: Optional Extension [ " << extension << " ] not supported!" << std::endl;
-			m_OptionalRequestedExtensionsStatus[extension.c_str()] = false;
+			m_ExtensionsStatus[extension.c_str()] = false;
 		}
 	}
 }
@@ -286,7 +326,7 @@ QueueFamilyIndices DeviceVK::findQueueFamilies(VkPhysicalDevice physicalDevice)
 
 void DeviceVK::registerExtensionFunctions()
 {
-	if (m_OptionalRequestedExtensionsStatus["VK_NV_ray_tracing"])
+	if (m_ExtensionsStatus["VK_NV_ray_tracing"])
 	{
 		// Get VK_NV_ray_tracing related function pointers
 		GET_DEVICE_PROC_ADDR(m_Device, vkCreateAccelerationStructureNV);

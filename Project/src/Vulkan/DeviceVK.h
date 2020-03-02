@@ -36,14 +36,15 @@ public:
 	void addRequiredExtension(const char* extensionName);
 	void addOptionalExtension(const char* extensionName);
 
-	void executeCommandBuffer(VkQueue queue, CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages,
+	void executePrimaryCommandBuffer(VkQueue queue, CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages,
 		uint32_t waitSemaphoreCount, const VkSemaphore* pSignalSemaphores, uint32_t signalSemaphoreCount);
+	void executeSecondaryCommandBuffer(CommandBufferVK* pPrimaryCommandBuffer, CommandBufferVK* pSecondaryCommandBuffer);
 	void wait();
 
 	//GETTERS
 	VkPhysicalDevice getPhysicalDevice() { return m_PhysicalDevice; };
 	VkDevice getDevice() { return m_Device; }
-	
+
 	VkQueue getGraphicsQueue() { return m_GraphicsQueue; }
 	VkQueue getComputeQueue() { return m_ComputeQueue; }
 	VkQueue getTransferQueue() { return m_TransferQueue; }
@@ -52,8 +53,13 @@ public:
 	CopyHandlerVK* getCopyHandler() const { return m_pCopyHandler; }
 
 	const QueueFamilyIndices& getQueueFamilyIndices() const { return m_DeviceQueueFamilyIndices; }
-	
+	bool hasUniqueQueueFamilyIndices() const;
+
+	void getMaxComputeWorkGroupSize(uint32_t pWorkGroupSize[3]);
+	float getTimestampPeriod() const { return m_DeviceLimits.timestampPeriod; };
+
 	const VkPhysicalDeviceRayTracingPropertiesNV& getRayTracingProperties() const { return m_RayTracingProperties; }
+	bool supportsRayTracing() const { return m_ExtensionsStatus.at(VK_NV_RAY_TRACING_EXTENSION_NAME); }
 
 private:
 	bool initPhysicalDevice(InstanceVK* pInstance);
@@ -65,7 +71,7 @@ private:
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice physicalDevice);
 
 	void registerExtensionFunctions();
-	
+
 private:
 	static uint32_t getQueueFamilyIndex(VkQueueFlagBits queueFlags, const std::vector<VkQueueFamilyProperties>& queueFamilies);
 	
@@ -83,10 +89,12 @@ private:
 	std::vector<const char*> m_RequestedRequiredExtensions;
 	std::vector<const char*> m_RequestedOptionalExtensions;
 	std::vector<const char*> m_EnabledExtensions;
-	std::unordered_map<std::string, bool> m_OptionalRequestedExtensionsStatus;
+	std::unordered_map<std::string, bool> m_ExtensionsStatus;
 	std::vector<VkExtensionProperties> m_AvailabeExtensions;
 
 	CopyHandlerVK* m_pCopyHandler;
+
+	VkPhysicalDeviceLimits m_DeviceLimits;
 
 	//Extensions
 	VkPhysicalDeviceRayTracingPropertiesNV m_RayTracingProperties;

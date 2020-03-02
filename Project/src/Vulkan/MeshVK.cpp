@@ -6,6 +6,7 @@
 #include "CommandBufferVK.h"
 
 #include <tinyobjloader/tiny_obj_loader.h>
+#include <array>
 
 uint32_t MeshVK::s_ID = 0;
 
@@ -52,11 +53,13 @@ bool MeshVK::initFromFile(const std::string& filepath)
 
 			//Normals and texcoords are optional, while positions are required
 			ASSERT(index.vertex_index >= 0);
+			
 			vertex.Position = 
 			{
 				attributes.vertices[3 * index.vertex_index + 0],
 				attributes.vertices[3 * index.vertex_index + 1],
-				attributes.vertices[3 * index.vertex_index + 2]
+				attributes.vertices[3 * index.vertex_index + 2],
+				1.0f
 			};
 
 			if (index.normal_index >= 0)
@@ -65,7 +68,8 @@ bool MeshVK::initFromFile(const std::string& filepath)
 				{
 					attributes.normals[3 * index.normal_index + 0],
 					attributes.normals[3 * index.normal_index + 1],
-					attributes.normals[3 * index.normal_index + 2]
+					attributes.normals[3 * index.normal_index + 2],
+					0.0f
 				};
 			}
 			
@@ -103,14 +107,14 @@ bool MeshVK::initFromFile(const std::string& filepath)
 	//TODO: Calculate normals
 
 	LOG("-- LOADED MESH: %s", filepath.c_str());
-	return initFromMemory(vertices.data(), uint32_t(vertices.size()), indices.data(), uint32_t(indices.size()));
+	return initFromMemory(vertices.data(), sizeof(Vertex), uint32_t(vertices.size()), indices.data(), uint32_t(indices.size()));
 }
 
-bool MeshVK::initFromMemory(const Vertex* pVertices, uint32_t vertexCount, const uint32_t* pIndices, uint32_t indexCount)
+bool MeshVK::initFromMemory(const void* pVertices, size_t vertexSize, uint32_t vertexCount, const uint32_t* pIndices, uint32_t indexCount)
 {
 	BufferParams vertexBufferParams = {};
-	vertexBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	vertexBufferParams.SizeInBytes = sizeof(Vertex) * vertexCount;
+	vertexBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	vertexBufferParams.SizeInBytes = vertexSize * vertexCount;
 	vertexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 	m_pVertexBuffer = DBG_NEW BufferVK(m_pDevice);
@@ -120,7 +124,7 @@ bool MeshVK::initFromMemory(const Vertex* pVertices, uint32_t vertexCount, const
 	}
 
 	BufferParams indexBufferParams = {};
-	indexBufferParams.Usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	indexBufferParams.Usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	indexBufferParams.SizeInBytes = sizeof(uint32_t) * indexCount;
 	indexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
@@ -139,22 +143,54 @@ bool MeshVK::initFromMemory(const Vertex* pVertices, uint32_t vertexCount, const
 	return true;
 }
 
-glm::vec3 MeshVK::calculateTangent(const Vertex& v0, const Vertex& v1, const Vertex& v2)
+bool MeshVK::initAsSphere(uint32_t subDivisions)
 {
-	glm::vec3 edge1 = v1.Position - v0.Position;
-	glm::vec3 edge2 = v2.Position - v0.Position;
-	glm::vec2 deltaUV1 = v1.TexCoord - v0.TexCoord;
-	glm::vec2 deltaUV2 = v2.TexCoord - v0.TexCoord;
+	const float X = 0.525731112119133606f;
+	const float Z = 0.850650808352039932f;
+	const float N = 0.0f;
 
-	float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+	static const std::vector<glm::vec3> icosahedronVertices =
+	{
+		{-X,N,Z}, {X,N,Z}, {-X,N,-Z}, {X,N,-Z},
+		{N,Z,X}, {N,Z,-X}, {N,-Z,X}, {N,-Z,-X},
+		{Z,X,N}, {-Z,X, N}, {Z,-X,N}, {-Z,-X, N}
+	};
 
-	glm::vec3 tangent;
-	tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
-	tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
-	tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
-	tangent = glm::normalize(tangent);
+	static const std::vector<Triangle> icosahedronTriangles =
+	{
+		{0,4,1},{0,9,4},{9,5,4},{4,5,8},{4,8,1},
+		{8,10,1},{8,3,10},{5,3,8},{5,2,3},{2,7,3},
+		{7,10,3},{7,6,10},{7,11,6},{11,0,6},{0,1,6},
+		{6,1,10},{9,0,11},{9,11,2},{9,2,5},{7,2,11}
+	};
 
-	return tangent;
+	std::vector<glm::vec3> vertices = icosahedronVertices;
+	std::vector<Triangle> triangles = icosahedronTriangles;
+
+	for (int i = 0; i < subDivisions; ++i)
+	{
+		triangles = subdivide(vertices, triangles);
+	}
+
+	std::vector<Vertex> finalVertices;
+	finalVertices.reserve(vertices.size());
+	std::vector<uint32_t> finalIndices;
+	finalIndices.reserve(triangles.size() * 3);
+	
+	for (uint32_t v = 0; v < vertices.size(); v++)
+	{
+		finalVertices.push_back({ glm::vec4(vertices[v], 1.0f), glm::vec4(vertices[v], 0.0f), glm::vec4(0.0f), glm::vec4(0.0f) });
+	}
+
+	for (uint32_t i = 0; i < triangles.size(); i++)
+	{
+		finalIndices.push_back(triangles[i].indices[0]);
+		finalIndices.push_back(triangles[i].indices[1]);
+		finalIndices.push_back(triangles[i].indices[2]);
+	}
+
+	initFromMemory(finalVertices.data(), sizeof(Vertex), finalVertices.size(), finalIndices.data(), finalIndices.size());
+	return true;
 }
 
 IBuffer* MeshVK::getVertexBuffer() const
@@ -180,4 +216,62 @@ uint32_t MeshVK::getVertexCount() const
 uint32_t MeshVK::getMeshID() const
 {
 	return m_ID;
+}
+
+glm::vec3 MeshVK::calculateTangent(const Vertex& v0, const Vertex& v1, const Vertex& v2)
+{
+	glm::vec3 edge1 = v1.Position - v0.Position;
+	glm::vec3 edge2 = v2.Position - v0.Position;
+	glm::vec2 deltaUV1 = v1.TexCoord - v0.TexCoord;
+	glm::vec2 deltaUV2 = v2.TexCoord - v0.TexCoord;
+
+	float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+	glm::vec3 tangent;
+	tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+	tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+	tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+	tangent = glm::normalize(tangent);
+
+	return tangent;
+}
+
+uint32_t MeshVK::vertexForEdge(std::map<std::pair<uint32_t, uint32_t>, uint32_t>& lookup, std::vector<glm::vec3>& vertices, uint32_t first, uint32_t second)
+{
+	std::map<std::pair<uint32_t, uint32_t>, uint32_t>::key_type key(first, second);
+	if (key.first > key.second)
+		std::swap(key.first, key.second);
+
+	auto inserted = lookup.insert({ key, vertices.size() });
+	if (inserted.second)
+	{
+		auto& edge0 = vertices[first];
+		auto& edge1 = vertices[second];
+		auto point = glm::normalize(edge0 + edge1);
+		vertices.push_back(point);
+	}
+
+	return inserted.first->second;
+}
+
+std::vector<MeshVK::Triangle> MeshVK::subdivide(std::vector<glm::vec3>& vertices, std::vector<Triangle>& triangles)
+{
+	std::map<std::pair<uint32_t, uint32_t>, uint32_t> lookup;
+	std::vector<Triangle> result;
+
+	for (auto&& each : triangles)
+	{
+		std::array<uint32_t, 3> mid;
+		for (int edge = 0; edge < 3; ++edge)
+		{
+			mid[edge] = vertexForEdge(lookup, vertices, each.indices[edge], each.indices[(edge + 1) % 3]);
+		}
+
+		result.push_back({ each.indices[0], mid[0], mid[2] });
+		result.push_back({ each.indices[1], mid[1], mid[0] });
+		result.push_back({ each.indices[2], mid[2], mid[1] });
+		result.push_back({ mid[0], mid[1], mid[2] });
+	}
+
+	return result;
 }

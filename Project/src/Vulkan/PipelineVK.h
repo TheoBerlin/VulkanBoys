@@ -22,9 +22,11 @@ public:
 	void setDepthStencilState(const VkPipelineDepthStencilStateCreateInfo& depthStencilState);
 	void setBlendState(VkLogicOp logicOp, bool logicOpEnable, float blendConstants[4]);
 
-	bool finalize(const std::vector<IShader*>& shaders, RenderPassVK* pRenderPass, PipelineLayoutVK* pPipelineLayout);
+	bool finalizeGraphics(const std::vector<const IShader*>& shaders, const RenderPassVK* pRenderPass, const PipelineLayoutVK* pPipelineLayout);
+	bool finalizeCompute(const IShader* shader, const PipelineLayoutVK* pPipelineLayout);
 
 	VkPipeline getPipeline() const { return m_Pipeline; }
+	VkPipelineBindPoint getBindPoint() const { return m_BindPoint; }
 
 private:
     void createShaderStageInfo(VkPipelineShaderStageCreateInfo& shaderStageInfo, const IShader* shader);
@@ -40,4 +42,5 @@ private:
 	VkPipelineDepthStencilStateCreateInfo m_DepthStencilState;
 	DeviceVK* m_pDevice;
 	VkPipeline m_Pipeline;
+	VkPipelineBindPoint m_BindPoint;
 };

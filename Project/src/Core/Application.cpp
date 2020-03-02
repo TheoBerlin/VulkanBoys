@@ -1,14 +1,18 @@
 #include "Application.h"
-#include "Input.h"
 #include "Camera.h"
+#include "Input.h"
 #include "TaskDispatcher.h"
+#include "Transform.h"
 
-#include "Common/IMesh.h"
 #include "Common/IImgui.h"
 #include "Common/IWindow.h"
 #include "Common/IShader.h"
 #include "Common/ISampler.h"
+#include "Common/IMesh.h"
+#include "Common/IProfiler.h"
 #include "Common/IRenderer.h"
+#include "Common/IRenderingHandler.hpp"
+#include "Common/IShader.h"
 #include "Common/ITexture2D.h"
 #include "Common/ITextureCube.h"
 #include "Common/IInputHandler.h"
@@ -38,14 +42,19 @@ Application* Application::s_pInstance = nullptr;
 Application::Application()
 	: m_pWindow(nullptr),
 	m_pContext(nullptr),
-	m_pRenderer(nullptr),
+	m_pRenderingHandler(nullptr),
+	m_pMeshRenderer(nullptr),
+	m_pRayTracingRenderer(nullptr),
 	m_pImgui(nullptr),
 	m_pMesh(nullptr),
 	m_pAlbedo(nullptr),
 	m_pInputHandler(nullptr),
 	m_Camera(),
 	m_IsRunning(false),
-	m_UpdateCamera(false)
+	m_UpdateCamera(false),
+	m_pParticleTexture(nullptr),
+	m_pParticleEmitterHandler(nullptr),
+	m_CurrentEmitterIdx(0)
 {
 	ASSERT(s_pInstance == nullptr);
 	s_pInstance = this;
@@ -77,7 +86,10 @@ void Application::init()
 
 	//Create context
 	m_pContext = IGraphicsContext::create(m_pWindow, API::VULKAN);
-	
+
+	const bool forceRayTracingOff = true;
+	m_EnableRayTracing = m_pContext->supportsRayTracing() && !forceRayTracingOff;
+
 	//Setup Imgui
 	m_pImgui = m_pContext->createImgui();
 	m_pImgui->init();
@@ -114,6 +126,55 @@ void Application::init()
 		{
 			m_pSphere->initFromFile("assets/meshes/sphere.obj");
 		});
+	// Setup particles
+	m_pParticleEmitterHandler = m_pContext->createParticleEmitterHandler();
+	m_pParticleEmitterHandler->initialize(m_pContext, &m_Camera);
+
+	m_pParticleTexture = m_pContext->createTexture2D();
+	if (!m_pParticleTexture->initFromFile("assets/textures/sun.png")) {
+		LOG("Failed to create particle texture");
+		SAFEDELETE(m_pParticleTexture);
+	}
+
+	ParticleEmitterInfo emitterInfo = {};
+	emitterInfo.position = glm::vec3(0.0f, 0.0f, 0.0f);
+	emitterInfo.direction = glm::normalize(glm::vec3(0.0f, 0.9f, 0.1f));
+	emitterInfo.particleSize = glm::vec2(0.2f, 0.2f);
+	emitterInfo.initialSpeed = 5.5f;
+	emitterInfo.particleDuration = 3.0f;
+	emitterInfo.particlesPerSecond = 40.0f;
+	emitterInfo.spread = glm::quarter_pi<float>() / 1.3f;
+	emitterInfo.pTexture = m_pParticleTexture;
+	m_pParticleEmitterHandler->createEmitter(emitterInfo);
+
+	// Setup rendering handler
+	m_pRenderingHandler = m_pContext->createRenderingHandler();
+	m_pRenderingHandler->initialize();
+	m_pRenderingHandler->setClearColor(0.0f, 0.0f, 0.0f);
+	m_pRenderingHandler->setParticleEmitterHandler(m_pParticleEmitterHandler);
+
+	// Setup renderers
+	m_pMeshRenderer = m_pContext->createMeshRenderer(m_pRenderingHandler);
+	m_pParticleRenderer = m_pContext->createParticleRenderer(m_pRenderingHandler);
+	if (m_EnableRayTracing) {
+		m_pRayTracingRenderer = m_pContext->createRayTracingRenderer(m_pRenderingHandler);
+		m_pRayTracingRenderer->init();
+	}
+	m_pMeshRenderer->init();
+	m_pParticleRenderer->init();
+
+	// TODO: Should the renderers themselves call these instead?
+	m_pRenderingHandler->setMeshRenderer(m_pMeshRenderer);
+	m_pRenderingHandler->setParticleRenderer(m_pParticleRenderer);
+	if (m_EnableRayTracing) {
+		m_pRenderingHandler->setRayTracer(m_pRayTracingRenderer);
+	}
+
+	m_pRenderingHandler->setViewport(m_pWindow->getWidth(), m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
+
+	//Load mesh
+	{
+		using namespace glm;
 
 	m_pAlbedo = m_pContext->createTexture2D();
 	TaskDispatcher::execute([this]
@@ -123,6 +184,44 @@ void Application::init()
 
 	m_pNormal = m_pContext->createTexture2D();
 	TaskDispatcher::execute([this]
+			//FRONT FACE
+			{ glm::vec4(-0.5,  0.5, -0.5, 1.0f), glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
+			{ glm::vec4(0.5,  0.5, -0.5, 1.0f),  glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
+			{ glm::vec4(-0.5, -0.5, -0.5, 1.0f), glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
+			{ glm::vec4(0.5, -0.5, -0.5, 1.0f),  glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
+
+			//BACK FACE
+			{ glm::vec4(0.5,  0.5,  0.5, 1.0f),  glm::vec4(0.0f,  0.0f,  1.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
+			{ glm::vec4(-0.5,  0.5,  0.5, 1.0f), glm::vec4(0.0f,  0.0f,  1.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
+			{ glm::vec4(0.5, -0.5,  0.5, 1.0f),  glm::vec4(0.0f,  0.0f,  1.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
+			{ glm::vec4(-0.5, -0.5,  0.5, 1.0f), glm::vec4(0.0f,  0.0f,  1.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
+
+			//RIGHT FACE
+			{ glm::vec4(0.5,  0.5, -0.5, 1.0f),  glm::vec4(1.0f,  0.0f,  0.0f, 0.0f), glm::vec4(0.0f,  0.0f, 1.0f,  0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
+			{ glm::vec4(0.5,  0.5,  0.5, 1.0f),  glm::vec4(1.0f,  0.0f,  0.0f, 0.0f), glm::vec4(0.0f,  0.0f, 1.0f,  0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
+			{ glm::vec4(0.5, -0.5, -0.5, 1.0f),  glm::vec4(1.0f,  0.0f,  0.0f, 0.0f), glm::vec4(0.0f,  0.0f, 1.0f,  0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
+			{ glm::vec4(0.5, -0.5,  0.5, 1.0f),  glm::vec4(1.0f,  0.0f,  0.0f, 0.0f), glm::vec4(0.0f,  0.0f, 1.0f,  0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
+
+			//LEFT FACE
+			{ glm::vec4(-0.5,  0.5, -0.5, 1.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
+			{ glm::vec4(-0.5,  0.5,  0.5, 1.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
+			{ glm::vec4(-0.5, -0.5, -0.5, 1.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
+			{ glm::vec4(-0.5, -0.5,  0.5, 1.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
+
+			//TOP FACE
+			{ glm::vec4(-0.5,  0.5,  0.5, 1.0f), glm::vec4(0.0f,  1.0f,  0.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
+			{ glm::vec4(0.5,  0.5,  0.5, 1.0f),  glm::vec4(0.0f,  1.0f,  0.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
+			{ glm::vec4(-0.5,  0.5, -0.5, 1.0f), glm::vec4(0.0f,  1.0f,  0.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
+			{ glm::vec4(0.5,  0.5, -0.5, 1.0f),  glm::vec4(0.0f,  1.0f,  0.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
+
+			//BOTTOM FACE
+			{ glm::vec4(-0.5, -0.5, -0.5, 1.0f), glm::vec4(0.0f, -1.0f,  0.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
+			{ glm::vec4(0.5, -0.5, -0.5, 1.0f),  glm::vec4(0.0f, -1.0f,  0.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
+			{ glm::vec4(-0.5, -0.5,  0.5, 1.0f), glm::vec4(0.0f, -1.0f,  0.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
+			{ glm::vec4(0.5, -0.5,  0.5, 1.0f),  glm::vec4(0.0f, -1.0f,  0.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
+		};
+
+		uint32_t indices[] =
 		{
 			m_pNormal->initFromFile("assets/textures/normal.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
 		});
@@ -223,7 +322,12 @@ void Application::release()
 	SAFEDELETE(m_pNormal);
 	SAFEDELETE(m_pAlbedo);
 	SAFEDELETE(m_pMesh);
-	SAFEDELETE(m_pRenderer);
+	SAFEDELETE(m_pRenderingHandler);
+	SAFEDELETE(m_pMeshRenderer);
+	SAFEDELETE(m_pRayTracingRenderer);
+	SAFEDELETE(m_pParticleRenderer);
+	SAFEDELETE(m_pParticleTexture);
+	SAFEDELETE(m_pParticleEmitterHandler);
 	SAFEDELETE(m_pImgui);
 	SAFEDELETE(m_pContext);
 
@@ -243,18 +347,13 @@ void Application::onWindowResize(uint32_t width, uint32_t height)
 
 	if (width != 0 && height != 0)
 	{
-		if (m_pRenderer)
-		{
-			m_pRenderer->setViewport(width, height, 0.0f, 1.0f, 0.0f, 0.0f);
-			m_pRenderer->onWindowResize(width, height);
+		if (m_pRenderingHandler) {
+			m_pRenderingHandler->setViewport(width, height, 0.0f, 1.0f, 0.0f, 0.0f);
+			m_pRenderingHandler->onWindowResize(width, height);
 		}
 
 		m_Camera.setProjection(90.0f, float(width), float(height), 0.1f, 100.0f);
 	}
-}
-
-void Application::onWindowFocusChanged(IWindow* pWindow, bool hasFocus)
-{
 }
 
 void Application::onMouseMove(uint32_t x, uint32_t y)
@@ -275,22 +374,6 @@ void Application::onMouseMove(uint32_t x, uint32_t y)
 
 		m_Camera.setRotation(rotation);
 	}
-}
-
-void Application::onMousePressed(int32_t button)
-{
-}
-
-void Application::onMouseScroll(double x, double y)
-{
-}
-
-void Application::onMouseReleased(int32_t button)
-{
-}
-
-void Application::onKeyTyped(uint32_t character)
-{
 }
 
 void Application::onKeyPressed(EKey key)
@@ -318,10 +401,6 @@ void Application::onKeyPressed(EKey key)
 	}
 }
 
-void Application::onKeyReleased(EKey key)
-{
-}
-
 void Application::onWindowClose()
 {
 	D_LOG("Window Closed");
@@ -337,6 +416,8 @@ static glm::mat4 g_Rotation = glm::mat4(1.0f);
 
 void Application::update(double dt)
 {
+	IProfiler::progressTimer(dt);
+
 	constexpr float speed = 0.75f;
 	if (Input::isKeyPressed(EKey::KEY_A))
 	{
@@ -399,6 +480,8 @@ void Application::update(double dt)
 	{
 		Input::setMousePosition(m_pWindow, glm::vec2(m_pWindow->getClientWidth() / 2.0f, m_pWindow->getClientHeight() / 2.0f));
 	}
+
+	m_pParticleEmitterHandler->update(dt);
 }
 
 static glm::vec4 g_Color = glm::vec4(0.5f, 0.0f, 0.0f, 1.0f);
@@ -407,10 +490,68 @@ void Application::renderUI(double dt)
 {
 	m_pImgui->begin(dt);
 
+	// Color picker for mesh
 	ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);
 	if (ImGui::Begin("Color", NULL, ImGuiWindowFlags_NoResize))
 	{
 		ImGui::ColorPicker4("##picker", glm::value_ptr(g_Color), ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview);
+	}
+	ImGui::End();
+
+	// Particle control panel
+	ImGui::SetNextWindowSize(ImVec2(320, 210), ImGuiCond_Always);
+	if (ImGui::Begin("Particles", NULL, ImGuiWindowFlags_NoResize))
+	{
+		ImGui::Text("Toggle Computation Device");
+		const char* btnLabel = m_pParticleEmitterHandler->gpuComputed() ? "GPU" : "CPU";
+		if (ImGui::Button(btnLabel, ImVec2(40, 25))) {
+			m_pParticleEmitterHandler->toggleComputationDevice();
+		}
+
+		// Get current emitter data
+		ParticleEmitter* pEmitter = m_pParticleEmitterHandler->getParticleEmitter(m_CurrentEmitterIdx);
+		glm::vec3 emitterPos = pEmitter->getPosition();
+
+		glm::vec3 emitterDirection = pEmitter->getDirection();
+		float yaw = getYaw(emitterDirection);
+		float oldYaw = yaw;
+		float pitch = getPitch(emitterDirection);
+		float oldPitch = pitch;
+
+		float emitterSpeed = pEmitter->getInitialSpeed();
+
+		if (ImGui::SliderFloat3("Position", glm::value_ptr(emitterPos), -10.0f, 10.0f)) {
+			pEmitter->setPosition(emitterPos);
+		}
+		if (ImGui::SliderFloat("Yaw", &yaw, 0.01f - glm::pi<float>(), glm::pi<float>() - 0.01f)) {
+			applyYaw(emitterDirection, yaw - oldYaw);
+			pEmitter->setDirection(emitterDirection);
+		}
+		if (ImGui::SliderFloat("Pitch", &pitch, 0.01f - glm::half_pi<float>(), glm::half_pi<float>() - 0.01f)) {
+			applyPitch(emitterDirection, pitch - oldPitch);
+			pEmitter->setDirection(emitterDirection);
+		}
+		if (ImGui::SliderFloat3("Direction", glm::value_ptr(emitterDirection), -1.0f, 1.0f)) {
+			pEmitter->setDirection(glm::normalize(emitterDirection));
+		}
+		if (ImGui::SliderFloat("Speed", &emitterSpeed, 0.0f, 20.0f)) {
+			pEmitter->setInitialSpeed(emitterSpeed);
+		}
+
+		ImGui::Text("Particles: %d", pEmitter->getParticleCount());
+		float particlesPerSecond = pEmitter->getParticlesPerSecond();
+		float particleDuration = pEmitter->getParticleDuration();
+
+		if (ImGui::SliderFloat("Particles per second", &particlesPerSecond, 0.0f, 1000.0f)) {
+		}
+	}
+	ImGui::End();
+
+	// Draw profiler UI
+	ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);
+	if (ImGui::Begin("Profiler", NULL, ImGuiWindowFlags_NoResize)) {
+		m_pParticleEmitterHandler->drawProfilerUI();
+		m_pRenderingHandler->drawProfilerUI();
 	}
 	ImGui::End();
 
@@ -448,6 +589,14 @@ void Application::render(double dt)
 	//m_pRenderer->drawImgui(m_pImgui);
 
 	m_pRenderer->endFrame();
+	m_pRenderingHandler->beginFrame(m_Camera);
 
-	m_pRenderer->swapBuffers();
+	if (!m_EnableRayTracing) {
+		g_Rotation = glm::rotate(g_Rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
+		m_pRenderingHandler->submitMesh(m_pMesh, g_Color, glm::mat4(1.0f) * g_Rotation);
+	}
+
+	m_pRenderingHandler->drawImgui(m_pImgui);
+	m_pRenderingHandler->endFrame();
+	m_pRenderingHandler->swapBuffers();
 }

@@ -263,7 +263,7 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 	}
 
 	//Setup pipelinestate
-	pCommandBuffer->bindGraphicsPipeline(m_pPipeline);
+	pCommandBuffer->bindPipeline(m_pPipeline);
 	//Set shader variable list
 	pCommandBuffer->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSet, 0, nullptr);
 
@@ -572,7 +572,7 @@ bool ImguiVK::createPipeline()
 	depthStencilState.stencilTestEnable = VK_FALSE;
 	m_pPipeline->setDepthStencilState(depthStencilState);
 
-	m_pPipeline->finalize(shaders, m_pRenderPass, m_pPipelineLayout);
+	m_pPipeline->finalizeGraphics(shaders, m_pRenderPass, m_pPipelineLayout);
 
 	SAFEDELETE(pVertexShader);
 	SAFEDELETE(pPixelShader);
@@ -610,6 +610,8 @@ bool ImguiVK::createPipelineLayout()
 	counts.m_SampledImages	= 1;
 	counts.m_StorageBuffers = 1;
 	counts.m_UniformBuffers = 1;
+	counts.m_StorageImages = 1;
+	counts.m_AccelerationStructures = 1;
 
 	m_pDescriptorPool = DBG_NEW DescriptorPoolVK(m_pContext->getDevice());
 	m_pDescriptorPool->init(counts, 1);
