@@ -377,7 +377,6 @@ void ParticleEmitterHandlerVK::endUpdateFrame()
     DeviceVK* pDevice = pGraphicsContext->getDevice();
 
 	pDevice->executePrimaryCommandBuffer(pDevice->getComputeQueue(), m_ppCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
-	m_pProfiler->writeResults();
 
 	m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }

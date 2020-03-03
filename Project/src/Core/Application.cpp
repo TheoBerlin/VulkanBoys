@@ -119,6 +119,11 @@ void Application::init()
 	emitterInfo.pTexture = m_pParticleTexture;
 	m_pParticleEmitterHandler->createEmitter(emitterInfo);
 
+	for (size_t i = 0; i < 2; i++) {
+		emitterInfo.position.x = 1.0f + (float)i;
+		m_pParticleEmitterHandler->createEmitter(emitterInfo);
+	}
+
 	// Setup rendering handler
 	m_pRenderingHandler = m_pContext->createRenderingHandler();
 	m_pRenderingHandler->initialize();

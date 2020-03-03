@@ -190,15 +190,6 @@ void RenderingHandlerVK::endFrame()
 
 	pDevice->executePrimaryCommandBuffer(pDevice->getComputeQueue(), m_ppComputeCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
 	pDevice->executePrimaryCommandBuffer(pDevice->getGraphicsQueue(), m_ppGraphicsCommandBuffers[m_CurrentFrame], waitSemaphores, waitStages, 1, signalSemaphores, 1);
-
-	// Write profiler results
-	if (m_pRayTracer == nullptr) {
-		ProfilerVK* pMeshProfiler = m_pMeshRenderer->getProfiler();
-		pMeshProfiler->writeResults();
-	} else {
-		ProfilerVK* pRTProfiler = m_pRayTracer->getProfiler();
-		pRTProfiler->writeResults();
-	}
 }
 
 void RenderingHandlerVK::swapBuffers()
