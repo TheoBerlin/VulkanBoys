@@ -118,7 +118,9 @@ void ParticleRendererVK::submitParticles(ParticleEmitter* pEmitter)
 	BufferVK* pPositionBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
 	Texture2DVK* pParticleTexture = reinterpret_cast<Texture2DVK*>(pEmitter->getParticleTexture());
 
-	bindDescriptorSet(pEmitter);
+	if (!bindDescriptorSet(pEmitter)) {
+		return;
+	}
 
 	uint32_t particleCount = pEmitter->getParticleCount();
 	m_ppCommandBuffers[frameIndex]->drawIndexInstanced(m_pQuadMesh->getIndexCount(), particleCount, 0, 0, 0);
