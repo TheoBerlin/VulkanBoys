@@ -118,5 +118,6 @@ void main()
 		energyPreservation,
 		normalBias);
 
-	rayPayload.color = lambertianIndirect * albedoColor.rgb / M_PI;
+	//rayPayload.color = lambertianIndirect * albedoColor.rgb / M_PI;
+	rayPayload.color = lambertianIndirect * 2.0f / M_PI;
 }

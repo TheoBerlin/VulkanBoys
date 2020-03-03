@@ -2,6 +2,8 @@
 #extension GL_NV_ray_tracing : require
 #extension GL_EXT_nonuniform_qualifier : enable
 
+#define M_PI 3.1415926535897932384626433832795f
+
 struct RayPayload
 {
 	vec3 color;

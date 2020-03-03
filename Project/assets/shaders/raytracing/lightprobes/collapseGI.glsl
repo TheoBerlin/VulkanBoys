@@ -32,7 +32,7 @@ void main()
     ivec2 dstTextureOffset = ivec2((SAMPLES_PER_PROBE_DIMENSION_COLLAPSED_GI + 2) * probeIndex, 0);
     vec2 srcTextureOffset = vec2((SAMPLES_PER_PROBE_DIMENSION_GLOSSY_SOURCE + 2) * probeIndex + 1.0f, 1.0f);
 
-    vec3 irradiance = vec3(0.0f);
+    vec3 newIrradiance = vec3(0.0f);
     float meanDepth = 0.0f;
 
     float denominator = 0.0f;
@@ -53,17 +53,20 @@ void main()
             vec3 radiance = texture(glossySourceRadianceAtlas, srcIrradianceTexelCoordsAdjusted).rgb;
             float depth = texture(glossySourceDepthAtlas, srcDepthTexelCoordsAdjusted).x;
 
-            irradiance += radiance/* * weight */;
+            newIrradiance += radiance/* * weight */;
             meanDepth += depth/* * weight */;
             denominator += 1.0f;
         }
     }
 
-    irradiance /= denominator;
+    newIrradiance /= denominator;
     //meanDepth /= denominator;
     meanDepth = texture(glossySourceDepthAtlas, vec2(dstTexelCoordX, dstTexelCoordY) + srcTextureOffset).r;
+    
+    vec3 oldIrradiance = imageLoad(collapsedGIIrradianceAtlas, dstTexelCoordsAdjusted + dstTextureOffset).rgb;
 
-    vec4 collapsedIrradiance = vec4(irradiance, 1.0f);
+    float hysteresis = 0.90f;
+    vec4 collapsedIrradiance = vec4(mix(oldIrradiance, newIrradiance, hysteresis), 1.0f);
     vec4 colapsedMeanDepths = vec4(meanDepth, meanDepth * meanDepth, 1.0f, 1.0f);
 
     imageStore(collapsedGIIrradianceAtlas, dstTexelCoordsAdjusted + dstTextureOffset, collapsedIrradiance);
