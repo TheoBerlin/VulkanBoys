@@ -2,8 +2,6 @@
 #extension GL_NV_ray_tracing : require
 #extension GL_EXT_nonuniform_qualifier : enable
 
-#define M_PI 3.1415926535897932384626433832795f
-
 struct RayPayload
 {
 	vec3 color;
@@ -88,30 +86,30 @@ void main()
 	vec4 albedoColor = texture(albedoMaps[textureIndex], texCoords);
 	float roughness = texture(roughnessMaps[textureIndex], texCoords).r;
 
-	if (recursionIndex < MAX_RECURSIONS && roughness < 0.985f)
-	{
-		vec3 hitPos = gl_WorldRayOriginNV + normalize(gl_WorldRayDirectionNV) * gl_HitTNV;
-		uint rayFlags = gl_RayFlagsOpaqueNV;
-		uint cullMask = 0x80;
-		float tmin = 0.001f;
-		float tmax = 10000.0f;
+	// if (recursionIndex < MAX_RECURSIONS && roughness < 0.985f)
+	// {
+	// 	vec3 hitPos = gl_WorldRayOriginNV + normalize(gl_WorldRayDirectionNV) * gl_HitTNV;
+	// 	uint rayFlags = gl_RayFlagsOpaqueNV;
+	// 	uint cullMask = 0x80;
+	// 	float tmin = 0.001f;
+	// 	float tmax = 10000.0f;
 
-		// vec3 shadowOrigin = hitPos + worldNormal * 0.001f;
-		// vec3 shadowDirection = normalize(lightPos - shadowOrigin);
-		// traceNV(topLevelAS, rayFlags, cullMask, 1, sbtStride, 1, shadowOrigin, tmin, shadowDirection, tmax, 1);
+	// 	// vec3 shadowOrigin = hitPos + worldNormal * 0.001f;
+	// 	// vec3 shadowDirection = normalize(lightPos - shadowOrigin);
+	// 	// traceNV(topLevelAS, rayFlags, cullMask, 1, sbtStride, 1, shadowOrigin, tmin, shadowDirection, tmax, 1);
 
-		// float shadowDarkness = 0.8f;
-		// float shadow = 1.0f - shadowRayPayload.occluderFactor * shadowDarkness;
+	// 	// float shadowDarkness = 0.8f;
+	// 	// float shadow = 1.0f - shadowRayPayload.occluderFactor * shadowDarkness;
 
-		vec3 origin = hitPos + normal * 0.001f;
-		vec3 reflectionDirection = reflect(gl_WorldRayDirectionNV, normal);
-		rayPayload.recursion = recursionIndex + 1;
+	// 	vec3 origin = hitPos + normal * 0.001f;
+	// 	vec3 reflectionDirection = reflect(gl_WorldRayDirectionNV, normal);
+	// 	rayPayload.recursion = recursionIndex + 1;
 
-		traceNV(topLevelAS, rayFlags, cullMask, 0, 0, 0, origin, tmin, reflectionDirection, tmax, 0);
-		rayPayload.color = (1.0f - roughness) * rayPayload.color + roughness * albedoColor.rgb;
-		//rayPayload.color = shadow * (reflectiveness * rayPayload.color + (1.0f - reflectiveness) * albedoColor.rgb);
-	}
-	else
+	// 	traceNV(topLevelAS, rayFlags, cullMask, 0, 0, 0, origin, tmin, reflectionDirection, tmax, 0);
+	// 	rayPayload.color = (1.0f - roughness) * rayPayload.color + roughness * albedoColor.rgb;
+	// 	//rayPayload.color = shadow * (reflectiveness * rayPayload.color + (1.0f - reflectiveness) * albedoColor.rgb);
+	// }
+	// else
 	{
 		rayPayload.color = albedoColor.rgb; 
 	}

@@ -1,6 +1,8 @@
 #version 460
 #extension GL_NV_ray_tracing : require
 
+#include "helpers.glsl"
+
 struct RayPayload 
 {
 	vec3 color;
@@ -8,10 +10,10 @@ struct RayPayload
 	uint recursion;
 };
 
-layout (constant_id = 0) const uint WORLD_SIZE_X = 10;
-layout (constant_id = 1) const uint WORLD_SIZE_Y = 10;
-layout (constant_id = 2) const uint WORLD_SIZE_Z = 10;
-layout (constant_id = 3) const uint NUM_PROBES_PER_DIMENSION = 3;
+layout (constant_id = 0) const float PROBE_STEP_X = 1.0f;
+layout (constant_id = 1) const float PROBE_STEP_Y = 1.0f;
+layout (constant_id = 2) const float PROBE_STEP_Z = 1.0f;
+layout (constant_id = 3) const uint NUM_PROBES_PER_DIMENSION = 2;
 layout (constant_id = 4) const uint SAMPLES_PER_PROBE_DIMENSION = 8;
 layout (constant_id = 5) const uint SAMPLES_PER_PROBE = 64;
 
@@ -19,25 +21,11 @@ layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
 layout(binding = 9, set = 0, r11f_g11f_b10f) uniform image2D glossySourceRadianceAtlas;
 layout(binding = 10, set = 0, r32f) uniform image2D glossySourceDepthAtlas;
 
-
 layout(location = 0) rayPayloadNV RayPayload rayPayload;
-
-// Returns ±1
-vec2 signNotZero(vec2 v) 
-{
-	return vec2((v.x >= 0.0) ? +1.0 : -1.0, (v.y >= 0.0) ? +1.0 : -1.0);
-}
-
-vec3 oct_to_float32x3(vec2 e)
-{
-	vec3 v = vec3(e.xy, 1.0 - abs(e.x) - abs(e.y));
-	if (v.z < 0) v.xy = (1.0 - abs(v.yx)) * signNotZero(v.xy);
-	return normalize(v);
-}
 
 void main() 
 {
-	vec3 worldSize = vec3(WORLD_SIZE_X, WORLD_SIZE_Y, WORLD_SIZE_Z);
+	vec3 worldSize = vec3(PROBE_STEP_X, PROBE_STEP_Y, PROBE_STEP_Z) * (NUM_PROBES_PER_DIMENSION - 1);
 	vec3 lightProbeCenter = (gl_LaunchIDNV / vec3(NUM_PROBES_PER_DIMENSION - 1)) * worldSize - worldSize / 2.0f;
 	
 	float sqrt5 = sqrt(5.0f);
@@ -75,29 +63,32 @@ void main()
 		rayPayload.recursion = 0;
 		traceNV(topLevelAS, rayFlags, cullMask, 0, 0, 0, lightProbeCenter, tmin, rayDirection, tmax, 0);
 		
-		imageStore(glossySourceRadianceAtlas, texelCoords + adjustedTextureOffset, vec4(rayPayload.color, 1.0f));
-		imageStore(glossySourceDepthAtlas, texelCoords + adjustedTextureOffset, vec4(rayPayload.distance, 1.0, 1.0f, 1.0f));
+		vec3 radiance = rayPayload.color;
+		float depth = rayPayload.distance;
+
+		imageStore(glossySourceRadianceAtlas, texelCoords + adjustedTextureOffset, vec4(radiance, 1.0f));
+		imageStore(glossySourceDepthAtlas, texelCoords + adjustedTextureOffset, vec4(depth, 1.0, 1.0f, 1.0f));
 
 		if (texelCoords.x == 0)
 		{
-			leftDiffuseIrradianceEdge[texelCoords.y] = vec4(rayPayload.color, 1.0f);
-			leftDepthEdge[texelCoords.y] = vec4(rayPayload.distance, 1.0, 1.0f, 1.0f);
+			leftDiffuseIrradianceEdge[texelCoords.y] = vec4(radiance, 1.0f);
+			leftDepthEdge[texelCoords.y] = vec4(depth, 1.0, 1.0f, 1.0f);
 		}
 		else if (texelCoords.x == SAMPLES_PER_DIMENSION - 1)
 		{
-			rightDiffuseIrradianceEdge[texelCoords.y] = vec4(rayPayload.color, 1.0f);
-			rightDepthEdge[texelCoords.y] = vec4(rayPayload.distance, 1.0, 1.0f, 1.0f);
+			rightDiffuseIrradianceEdge[texelCoords.y] = vec4(radiance, 1.0f);
+			rightDepthEdge[texelCoords.y] = vec4(depth, 1.0, 1.0f, 1.0f);
 		}
 
 		if (texelCoords.y == 0)
 		{
-			bottomDiffuseIrradianceEdge[texelCoords.x] = vec4(rayPayload.color, 1.0f);
-			bottomDepthEdge[texelCoords.x] = vec4(rayPayload.distance, 1.0, 1.0f, 1.0f);
+			bottomDiffuseIrradianceEdge[texelCoords.x] = vec4(radiance, 1.0f);
+			bottomDepthEdge[texelCoords.x] = vec4(depth, 1.0, 1.0f, 1.0f);
 		}
 		else if (texelCoords.y == SAMPLES_PER_DIMENSION - 1)
 		{
-			topDiffuseIrradianceEdge[texelCoords.x] = vec4(rayPayload.color, 1.0f);
-			topDepthEdge[texelCoords.x] = vec4(rayPayload.distance, 1.0, 1.0f, 1.0f);
+			topDiffuseIrradianceEdge[texelCoords.x] = vec4(radiance, 1.0f);
+			topDepthEdge[texelCoords.x] = vec4(depth, 1.0, 1.0f, 1.0f);
 		}
 	}
 

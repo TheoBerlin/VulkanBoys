@@ -29,10 +29,10 @@
 #include "ImageViewVK.h"
 
 constexpr uint32_t MAX_RECURSIONS = 2;
-constexpr uint32_t WORLD_SIZE_X = 10;
-constexpr uint32_t WORLD_SIZE_Y = 10;
-constexpr uint32_t WORLD_SIZE_Z = 10;
-constexpr uint32_t NUM_PROBES_PER_DIMENSION = 5;
+constexpr float PROBE_STEP_X = 1.0f;
+constexpr float PROBE_STEP_Y = 1.0f;
+constexpr float PROBE_STEP_Z = 1.0f;
+constexpr uint32_t NUM_PROBES_PER_DIMENSION = 1 << 3;
 constexpr uint32_t SAMPLES_PER_PROBE_DIMENSION_GLOSSY_SOURCE = 32;
 constexpr uint32_t SAMPLES_PER_PROBE_GLOSSY_SOURCE = SAMPLES_PER_PROBE_DIMENSION_GLOSSY_SOURCE * SAMPLES_PER_PROBE_DIMENSION_GLOSSY_SOURCE;
 constexpr uint32_t SAMPLES_PER_PROBE_DIMENSION_COLLAPSED_GI = 16;
@@ -262,22 +262,6 @@ bool RendererVK::init()
 		22, 23, 21
 	};
 
-	Vertex planeVertices[] =
-	{
-		//TOP FACE
-		{ glm::vec4(-0.5, 0.5, 0.5, 1.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
-		{ glm::vec4(0.5,  0.5,  0.5, 1.0f),  glm::vec4(0.0f,  1.0f,  0.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
-		{ glm::vec4(-0.5,  0.5, -0.5, 1.0f), glm::vec4(0.0f,  1.0f,  0.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
-		{ glm::vec4(0.5,  0.5, -0.5, 1.0f),  glm::vec4(0.0f,  1.0f,  0.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
-	};
-
-	uint32_t planeIndices[] =
-	{
-		//TOP FACE
-		2, 1, 0,
-		2, 3, 1,
-	};
-
 	m_pGunMaterial = new TempMaterial();
 	m_pGunMaterial->pAlbedo = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
 	m_pGunMaterial->pAlbedo->initFromFile("assets/textures/gunAlbedo.tga");
@@ -328,15 +312,15 @@ bool RendererVK::init()
 	m_pMeshSphere->initFromFile("assets/meshes/sphere.obj");
 
 	m_pMeshPlane = m_pContext->createMesh();
-	m_pMeshPlane->initFromMemory(planeVertices, 4, planeIndices, 6);
+	m_pMeshPlane->initFromMemory(cubeVertices, 24, cubeIndices, 36);
 
 	m_Matrix0 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 3.0f)));
 	m_Matrix1 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
 	m_Matrix2 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, 0.0f)));
 	m_Matrix3 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 2.0f, 0.0f)));
 	m_Matrix4 = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 0.0f)));
-	m_Matrix5 = glm::transpose(glm::scale(glm::mat4(1.0f), glm::vec3(20.0f, 1.0f, 20.0f)));
-	m_Matrix5 = glm::transpose(glm::translate(m_Matrix5, glm::vec3(0.0f, -1.0f, 0.0f)));
+	m_Matrix5 = glm::scale(glm::mat4(1.0f), glm::vec3(20.0f, 0.0625f, 20.0f));
+	m_Matrix5 = glm::transpose(glm::translate(m_Matrix5, glm::vec3(0.0f, -5.0f, 0.0f)));
 
 	m_pRayTracingScene = new RayTracingSceneVK(m_pContext);
 	m_InstanceIndex0 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshGun, m_pGunMaterial, m_Matrix0);
@@ -345,7 +329,7 @@ bool RendererVK::init()
 	m_InstanceIndex3 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshCube, m_pCubeMaterial, m_Matrix3);
 	m_InstanceIndex4 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshSphere, m_pSphereMaterial, m_Matrix4);
 	m_InstanceIndex5 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshPlane, m_pPlaneMaterial, m_Matrix5);
-	m_pRayTracingScene->generateLightProbeGeometry(WORLD_SIZE_X, WORLD_SIZE_Y, WORLD_SIZE_Z, SAMPLES_PER_PROBE_GLOSSY_SOURCE, NUM_PROBES_PER_DIMENSION);
+	m_pRayTracingScene->generateLightProbeGeometry(PROBE_STEP_X, PROBE_STEP_Y, PROBE_STEP_Z, SAMPLES_PER_PROBE_GLOSSY_SOURCE, NUM_PROBES_PER_DIMENSION);
 	m_pRayTracingScene->finalize();
 
 	m_RayTraceRenderMode = 0;
@@ -999,12 +983,12 @@ bool RendererVK::createRayTracingPipelines()
 			m_pRaygenLightProbeShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
 			m_pRaygenLightProbeShader->initFromFile(EShader::RAYGEN_SHADER, "main", "assets/shaders/raytracing/lightprobes/raygenLPGlossy.spv");
 			m_pRaygenLightProbeShader->finalize();
-			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(0, WORLD_SIZE_X);
-			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(1, WORLD_SIZE_Y);
-			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(2, WORLD_SIZE_Z);
-			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(3, NUM_PROBES_PER_DIMENSION);
-			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(4, SAMPLES_PER_PROBE_DIMENSION_GLOSSY_SOURCE);
-			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(5, SAMPLES_PER_PROBE_GLOSSY_SOURCE);
+			m_pRaygenLightProbeShader->setSpecializationConstant<float>(0, PROBE_STEP_X);
+			m_pRaygenLightProbeShader->setSpecializationConstant<float>(1, PROBE_STEP_Y);
+			m_pRaygenLightProbeShader->setSpecializationConstant<float>(2, PROBE_STEP_Z);
+			m_pRaygenLightProbeShader->setSpecializationConstant<int32_t>(3, NUM_PROBES_PER_DIMENSION);
+			m_pRaygenLightProbeShader->setSpecializationConstant<int32_t>(4, SAMPLES_PER_PROBE_DIMENSION_GLOSSY_SOURCE);
+			m_pRaygenLightProbeShader->setSpecializationConstant<int32_t>(5, SAMPLES_PER_PROBE_GLOSSY_SOURCE);
 			raygenGroupLightProbeParams.pRaygenShader = m_pRaygenLightProbeShader;
 
 			m_pClosestHitLightProbeShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
@@ -1016,6 +1000,10 @@ bool RendererVK::createRayTracingPipelines()
 			m_pMissLightProbeShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
 			m_pMissLightProbeShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/lightprobes/missLPGlossy.spv");
 			m_pMissLightProbeShader->finalize();
+			m_pMissLightProbeShader->setSpecializationConstant<float>(0, PROBE_STEP_X);
+			m_pMissLightProbeShader->setSpecializationConstant<float>(1, PROBE_STEP_Y);
+			m_pMissLightProbeShader->setSpecializationConstant<float>(2, PROBE_STEP_Z);
+			m_pMissLightProbeShader->setSpecializationConstant<int32_t>(3, NUM_PROBES_PER_DIMENSION);
 			missGroupLightProbeParams.pMissShader = m_pMissLightProbeShader;
 		}
 
@@ -1029,13 +1017,13 @@ bool RendererVK::createRayTracingPipelines()
 			m_pClosestHitFinalShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
 			m_pClosestHitFinalShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/lightprobes/closesthit.spv");
 			m_pClosestHitFinalShader->finalize();
-			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(0, WORLD_SIZE_X);
-			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(1, WORLD_SIZE_Y);
-			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(2, WORLD_SIZE_Z);
-			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(3, NUM_PROBES_PER_DIMENSION);
-			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(4, SAMPLES_PER_PROBE_DIMENSION_GLOSSY_SOURCE /*SAMPLES_PER_PROBE_DIMENSION_COLLAPSED_GI*/);
-			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(5, SAMPLES_PER_PROBE_GLOSSY_SOURCE /*SAMPLES_PER_PROBE_COLLAPSED_GI*/);
-			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(6, MAX_RECURSIONS);
+			m_pClosestHitFinalShader->setSpecializationConstant<float>(0, PROBE_STEP_X);
+			m_pClosestHitFinalShader->setSpecializationConstant<float>(1, PROBE_STEP_Y);
+			m_pClosestHitFinalShader->setSpecializationConstant<float>(2, PROBE_STEP_Z);
+			m_pClosestHitFinalShader->setSpecializationConstant<int32_t>(3, NUM_PROBES_PER_DIMENSION);
+			m_pClosestHitFinalShader->setSpecializationConstant<int32_t>(4, SAMPLES_PER_PROBE_DIMENSION_COLLAPSED_GI);
+			m_pClosestHitFinalShader->setSpecializationConstant<int32_t>(5, SAMPLES_PER_PROBE_COLLAPSED_GI);
+			m_pClosestHitFinalShader->setSpecializationConstant<int32_t>(6, MAX_RECURSIONS);
 			hitGroupFinalParams.pClosestHitShader = m_pClosestHitFinalShader;
 
 			m_pClosestHitShadowShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
@@ -1064,12 +1052,12 @@ bool RendererVK::createRayTracingPipelines()
 			m_pClosestHitLightProbeVisualizerShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
 			m_pClosestHitLightProbeVisualizerShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/lightprobes/closesthitVisualizer.spv");
 			m_pClosestHitLightProbeVisualizerShader->finalize();
-			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(0, WORLD_SIZE_X);
-			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(1, WORLD_SIZE_Y);
-			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(2, WORLD_SIZE_Z);
-			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(3, NUM_PROBES_PER_DIMENSION);
-			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(4, SAMPLES_PER_PROBE_DIMENSION_COLLAPSED_GI);
-			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(5, SAMPLES_PER_PROBE_COLLAPSED_GI);
+			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<float>(0, PROBE_STEP_X);
+			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<float>(1, PROBE_STEP_Y);
+			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<float>(2, PROBE_STEP_Z);
+			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<int32_t>(3, NUM_PROBES_PER_DIMENSION);
+			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<int32_t>(4, SAMPLES_PER_PROBE_DIMENSION_COLLAPSED_GI);
+			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<int32_t>(5, SAMPLES_PER_PROBE_COLLAPSED_GI);
 			hitGroupLightProbeVisualizerParams.pClosestHitShader = m_pClosestHitLightProbeVisualizerShader;
 
 			m_pMissLightProbeVisualizerShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
@@ -1121,12 +1109,12 @@ bool RendererVK::createComputePipeline()
 	pDevice->getMaxComputeWorkGroupSize(m_WorkGroupSize);
 
 	ShaderVK* pComputeShaderVK = reinterpret_cast<ShaderVK*>(pComputeShader);
-	pComputeShaderVK->setSpecializationConstant<uint32_t>(0, m_WorkGroupSize[0]);
-	pComputeShaderVK->setSpecializationConstant<uint32_t>(1, NUM_PROBES_PER_DIMENSION);
-	pComputeShaderVK->setSpecializationConstant<uint32_t>(2, SAMPLES_PER_PROBE_DIMENSION_GLOSSY_SOURCE);
-	pComputeShaderVK->setSpecializationConstant<uint32_t>(3, SAMPLES_PER_PROBE_GLOSSY_SOURCE);
-	pComputeShaderVK->setSpecializationConstant<uint32_t>(4, SAMPLES_PER_PROBE_DIMENSION_COLLAPSED_GI);
-	pComputeShaderVK->setSpecializationConstant<uint32_t>(5, SAMPLES_PER_PROBE_COLLAPSED_GI);
+	pComputeShaderVK->setSpecializationConstant<int32_t>(0, m_WorkGroupSize[0]);
+	pComputeShaderVK->setSpecializationConstant<int32_t>(1, NUM_PROBES_PER_DIMENSION);
+	pComputeShaderVK->setSpecializationConstant<int32_t>(2, SAMPLES_PER_PROBE_DIMENSION_GLOSSY_SOURCE);
+	pComputeShaderVK->setSpecializationConstant<int32_t>(3, SAMPLES_PER_PROBE_GLOSSY_SOURCE);
+	pComputeShaderVK->setSpecializationConstant<int32_t>(4, SAMPLES_PER_PROBE_DIMENSION_COLLAPSED_GI);
+	pComputeShaderVK->setSpecializationConstant<int32_t>(5, SAMPLES_PER_PROBE_COLLAPSED_GI);
 	//Todo: One for depth as well
 
 	m_pComputePipeline = DBG_NEW PipelineVK(pDevice);

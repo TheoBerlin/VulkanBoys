@@ -153,7 +153,7 @@ void RayTracingSceneVK::update()
 	m_pContext->getDevice()->wait();
 }
 
-void RayTracingSceneVK::generateLightProbeGeometry(uint32_t worldSizeX, uint32_t worldSizeY, uint32_t worldSizeZ, uint32_t samplesPerProbe, uint32_t numProbesPerDimension)
+void RayTracingSceneVK::generateLightProbeGeometry(float probeStepX, float probeStepY, float probeStepZ, uint32_t samplesPerProbe, uint32_t numProbesPerDimension)
 {
 	/*float sqrt5 = glm::sqrt(5.0f);
 
@@ -202,6 +202,8 @@ void RayTracingSceneVK::generateLightProbeGeometry(uint32_t worldSizeX, uint32_t
 		lightProbeIndices.push_back(lightProbeVertices.size() - 1);
 	}*/
 
+	glm::vec3 worldSize = glm::vec3(probeStepX, probeStepY, probeStepZ) * (float)(numProbesPerDimension - 1);
+
 	m_pLightProbeMesh = new MeshVK(m_pDevice);
 	m_pLightProbeMesh->initAsSphere(3);
 
@@ -211,14 +213,19 @@ void RayTracingSceneVK::generateLightProbeGeometry(uint32_t worldSizeX, uint32_t
 		{
 			for (uint32_t z = 0; z < numProbesPerDimension; z++)
 			{
-				float xPosition = (float(x) / float(numProbesPerDimension - 1)) * float(worldSizeX) - float(worldSizeX) / 2.0f;
-				float yPosition = (float(y) / float(numProbesPerDimension - 1)) * float(worldSizeY) - float(worldSizeY) / 2.0f;
-				float zPosition = (float(z) / float(numProbesPerDimension - 1)) * float(worldSizeZ) - float(worldSizeZ) / 2.0f;
+				float xPosition = (float(x) / float(numProbesPerDimension - 1)) * worldSize.x - worldSize.x / 2.0f;
+				float yPosition = (float(y) / float(numProbesPerDimension - 1)) * worldSize.y - worldSize.y / 2.0f;
+				float zPosition = (float(z) / float(numProbesPerDimension - 1)) * worldSize.z - worldSize.z / 2.0f;
 				
 				glm::mat4 transform(1.0f);
-				transform = glm::translate(transform, glm::vec3(xPosition, yPosition, zPosition));
-				transform = glm::scale(transform, glm::vec3(0.2f, 0.2f, 0.2f));
+				float diameter = 0.2f;
+				glm::vec3 finalPosition = glm::vec3(xPosition, yPosition, zPosition);
+				transform = glm::translate(transform, finalPosition);
+				transform = glm::scale(transform, glm::vec3(diameter));
 				transform = glm::transpose(transform);
+
+				std::cout << "Probe Position: " << glm::to_string(glm::vec3(xPosition, yPosition, zPosition)) << std::endl;
+
 				addGraphicsObjectInstance(m_pLightProbeMesh, m_pVeryTempMaterial, transform, 0x40);
 			}
 		}

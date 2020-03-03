@@ -74,7 +74,7 @@ public:
 
 	void update();
 
-	void generateLightProbeGeometry(uint32_t worldSizeX, uint32_t worldSizeY, uint32_t worldSizeZ, uint32_t samplesPerProbe, uint32_t numProbesPerDimension);
+	void generateLightProbeGeometry(float probeStepX, float probeStepY, float probeStepZ, uint32_t samplesPerProbe, uint32_t numProbesPerDimension);
 
 	BufferVK* getCombinedVertexBuffer() { return m_pCombinedVertexBuffer; }
 	BufferVK* getCombinedIndexBuffer() { return m_pCombinedIndexBuffer; }

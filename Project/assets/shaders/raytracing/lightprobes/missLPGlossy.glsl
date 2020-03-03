@@ -8,6 +8,11 @@ struct RayPayload
 	uint recursion;
 };
 
+layout (constant_id = 0) const float PROBE_STEP_X = 1.0f;
+layout (constant_id = 1) const float PROBE_STEP_Y = 1.0f;
+layout (constant_id = 2) const float PROBE_STEP_Z = 1.0f;
+layout (constant_id = 3) const uint NUM_PROBES_PER_DIMENSION = 2;
+
 layout(location = 0) rayPayloadInNV RayPayload rayPayload;
 
 void main()
@@ -18,6 +23,9 @@ void main()
 	vec3 unitDir = normalize(gl_WorldRayDirectionNV);
 	float t = 0.5f * (unitDir.y + 1.0f);
 	rayPayload.color = (1.0f-t) * gradientStart + t * gradientEnd;
-	rayPayload.distance = gl_RayTmaxNV;
+	
+	vec3 worldSize = vec3(PROBE_STEP_X, PROBE_STEP_Y, PROBE_STEP_Z) * (NUM_PROBES_PER_DIMENSION - 1);
+
+	rayPayload.distance = length(worldSize);
 	rayPayload.recursion = rayPayload.recursion + 1;
 }
