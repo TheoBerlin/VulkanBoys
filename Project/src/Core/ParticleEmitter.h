@@ -10,6 +10,7 @@
 
 class Camera;
 class IBuffer;
+class IDescriptorSet;
 class IGraphicsContext;
 class IMesh;
 class ITexture2D;
@@ -63,6 +64,11 @@ public:
     void setParticlesPerSecond(float particlesPerSecond);
     void setParticleDuration(float particleDuration);
 
+    IDescriptorSet* getDescriptorSetCompute() { return m_pDescriptorSetCompute; }
+    IDescriptorSet* getDescriptorSetRender() { return m_pDescriptorSetRender; }
+    void setDescriptorSetCompute(IDescriptorSet* pDescriptorSet) { m_pDescriptorSetCompute = pDescriptorSet; }
+    void setDescriptorSetRender(IDescriptorSet* pDescriptorSet) { m_pDescriptorSetRender = pDescriptorSet; }
+
     IBuffer* getPositionsBuffer() { return m_pPositionsBuffer; }
     IBuffer* getVelocitiesBuffer() { return m_pVelocitiesBuffer; }
     IBuffer* getAgesBuffer() { return m_pAgesBuffer; }
@@ -104,12 +110,13 @@ private:
     // The amount of time since the emitter started emitting particles. Used for spawning particles.
     float m_EmitterAge;
 
+    IDescriptorSet* m_pDescriptorSetCompute;
+    IDescriptorSet* m_pDescriptorSetRender;
+
     // GPU-side particle data
     IBuffer* m_pPositionsBuffer;
     IBuffer* m_pVelocitiesBuffer;
     IBuffer* m_pAgesBuffer;
-
-    // Contains particle size
     IBuffer* m_pEmitterBuffer;
 
     const Camera* m_pCamera;

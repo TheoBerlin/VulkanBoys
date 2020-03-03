@@ -16,18 +16,13 @@
 #include "SamplerVK.h"
 #include "SwapChainVK.h"
 #include "Texture2DVK.h"
+#include "ImageVK.h"
+#include "ShaderVK.h"
+#include "ImageViewVK.h"
 
 #include "Core/Camera.h"
 
 #include <glm/gtc/type_ptr.hpp>
-
-//TEMP
-#include "Ray Tracing/ShaderBindingTableVK.h"
-#include "Ray Tracing/RayTracingPipelineVK.h"
-#include "Ray Tracing/RayTracingSceneVK.h"
-#include "ShaderVK.h"
-#include "ImageVK.h"
-#include "ImageViewVK.h"
 
 MeshRendererVK::MeshRendererVK(GraphicsContextVK* pContext, RenderingHandlerVK* pRenderingHandler)
 	: m_pContext(pContext),
@@ -44,20 +39,7 @@ MeshRendererVK::MeshRendererVK(GraphicsContextVK* pContext, RenderingHandlerVK* 
 	m_ScissorRect(),
 	m_CurrentFrame(0),
 	m_BackBufferIndex(0),
-	m_pProfiler(nullptr),
-	m_pRayTracingScene(nullptr),
-	m_pRayTracingPipeline(nullptr),
-	m_pRayTracingPipelineLayout(nullptr),
-	m_pSBT(nullptr),
-	m_pRayTracingStorageImage(nullptr),
-	m_pRayTracingStorageImageView(nullptr),
-	m_pRayTracingDescriptorPool(nullptr),
-	m_pRayTracingDescriptorSetLayout(nullptr),
-	m_pRayTracingUniformBuffer(nullptr),
-	m_pRaygenShader(nullptr),
-	m_pClosestHitShader(nullptr),
-	m_pMissShader(nullptr),
-	m_pSampler(nullptr)
+	m_pProfiler(nullptr)
 {
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		m_ppComputeCommandPools[i] = nullptr;
@@ -81,31 +63,6 @@ MeshRendererVK::~MeshRendererVK()
 	SAFEDELETE(m_pPipeline);
 	SAFEDELETE(m_pDescriptorPool);
 	SAFEDELETE(m_pDescriptorSetLayout);
-
-	//Ray Tracing Stuff
-	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-	{
-		SAFEDELETE(m_ppComputeCommandPools[i]);
-	}
-
-	SAFEDELETE(m_pRayTracingScene);
-	SAFEDELETE(m_pRayTracingPipeline);
-	SAFEDELETE(m_pRayTracingPipelineLayout);
-	SAFEDELETE(m_pSBT);
-	SAFEDELETE(m_pRayTracingStorageImage);
-	SAFEDELETE(m_pRayTracingStorageImageView);
-
-	SAFEDELETE(m_pRayTracingDescriptorPool);
-	SAFEDELETE(m_pRayTracingDescriptorSetLayout);
-
-	SAFEDELETE(m_pRayTracingUniformBuffer);
-
-	SAFEDELETE(m_pRaygenShader);
-	SAFEDELETE(m_pClosestHitShader);
-	SAFEDELETE(m_pMissShader);
-
-	SAFEDELETE(m_pSampler);
-
 	SAFEDELETE(m_pProfiler);
 
 	m_pContext = nullptr;
@@ -180,57 +137,6 @@ void MeshRendererVK::endFrame()
 	pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCurrentGraphicsCommandBuffer(), m_ppCommandBuffers[m_CurrentFrame]);
 
 	m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-}
-
-void MeshRendererVK::endRayTraceFrame()
-{
-	m_ppComputeCommandBuffers[m_CurrentFrame]->end();
-
-	DeviceVK* pDevice = m_pContext->getDevice();
-	pDevice->executePrimaryCommandBuffer(pDevice->getComputeQueue(), m_ppComputeCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
-
-	m_pContext->getDevice()->wait();
-
-	//Prepare for frame
-	m_pContext->getSwapChain()->acquireNextImage(m_ImageAvailableSemaphores[m_CurrentFrame]);
-
-	m_ppCommandBuffers[m_CurrentFrame]->reset();
-	m_ppCommandPools[m_CurrentFrame]->reset();
-
-	m_ppCommandBuffers[m_CurrentFrame]->begin();
-
-	ImageVK* pCurrentImage = m_pContext->getSwapChain()->getImage(m_pContext->getSwapChain()->getImageIndex());
-	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(pCurrentImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pRayTracingStorageImage, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
-	VkImageCopy copyRegion{};
-	copyRegion.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
-	copyRegion.srcOffset = { 0, 0, 0 };
-	copyRegion.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
-	copyRegion.dstOffset = { 0, 0, 0 };
-	copyRegion.extent = { m_pContext->getSwapChain()->getExtent().width, m_pContext->getSwapChain()->getExtent().height, 1 };
-	vkCmdCopyImage(m_ppCommandBuffers[m_CurrentFrame]->getCommandBuffer(), m_pRayTracingStorageImage->getImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pCurrentImage->getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
-
-	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(pCurrentImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pRayTracingStorageImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
-
-	m_ppCommandBuffers[m_CurrentFrame]->end();
-
-	//Execute commandbuffer
-	VkSemaphore waitSemaphores[] = { m_ImageAvailableSemaphores[m_CurrentFrame] };
-	VkSemaphore signalSemaphores[] = { m_RenderFinishedSemaphores[m_CurrentFrame] };
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-
-	pDevice->executePrimaryCommandBuffer(pDevice->getGraphicsQueue(), m_ppCommandBuffers[m_CurrentFrame], waitSemaphores, waitStages, 1, signalSemaphores, 1);
-}
-
-void MeshRendererVK::traceRays()
-{
-	vkCmdBindPipeline(m_ppComputeCommandBuffers[m_CurrentFrame]->getCommandBuffer(), VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipeline->getPipeline());
-
-	m_ppComputeCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipelineLayout, 0, 1, &m_pRayTracingDescriptorSet, 0, nullptr);
-
-	m_ppComputeCommandBuffers[m_CurrentFrame]->traceRays(m_pSBT, m_pContext->getSwapChain()->getExtent().width, m_pContext->getSwapChain()->getExtent().height, 0);
 }
 
 void MeshRendererVK::setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY)
@@ -378,49 +284,10 @@ bool MeshRendererVK::createPipelineLayouts()
 	std::vector<VkPushConstantRange> pushConstantRanges = { pushConstantRange };
 
 	m_pPipelineLayout = DBG_NEW PipelineLayoutVK(m_pContext->getDevice());
-	
+
 	//TODO: Return bool
 	m_pPipelineLayout->init(descriptorSetLayouts, pushConstantRanges);
 
-	return true;
-}
-
-bool MeshRendererVK::createRayTracingPipelineLayouts()
-{
-	m_pRayTracingDescriptorSetLayout = new DescriptorSetLayoutVK(m_pContext->getDevice());
-	m_pRayTracingDescriptorSetLayout->addBindingAccelerationStructure(VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, 0, 1);
-	m_pRayTracingDescriptorSetLayout->addBindingStorageImage(VK_SHADER_STAGE_RAYGEN_BIT_NV, 1, 1);
-	m_pRayTracingDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV | VK_SHADER_STAGE_MISS_BIT_NV, 2, 1);
-	m_pRayTracingDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, 3, 1);
-	m_pRayTracingDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, 4, 1);
-	m_pRayTracingDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, 5, 1);
-	m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, nullptr, 6, MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
-	m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, nullptr, 7, MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
-	m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, nullptr, 8, MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
-	m_pRayTracingDescriptorSetLayout->finalize();
-
-	std::vector<const DescriptorSetLayoutVK*> rayTracingDescriptorSetLayouts = { m_pRayTracingDescriptorSetLayout };
-	std::vector<VkPushConstantRange> rayTracingPushConstantRanges;
-
-	//Descriptorpool
-	DescriptorCounts descriptorCounts = {};
-	descriptorCounts.m_SampledImages = 256;
-	descriptorCounts.m_StorageBuffers = 16;
-	descriptorCounts.m_UniformBuffers = 16;
-	descriptorCounts.m_StorageImages = 1;
-	descriptorCounts.m_AccelerationStructures = 1;
-
-	m_pRayTracingDescriptorPool = new DescriptorPoolVK(m_pContext->getDevice());
-	m_pRayTracingDescriptorPool->init(descriptorCounts, 16);
-	m_pRayTracingDescriptorSet = m_pRayTracingDescriptorPool->allocDescriptorSet(m_pRayTracingDescriptorSetLayout);
-	if (m_pRayTracingDescriptorSet == nullptr)
-	{
-		return false;
-	}
-	
-	m_pRayTracingPipelineLayout = new PipelineLayoutVK(m_pContext->getDevice());
-	m_pRayTracingPipelineLayout->init(rayTracingDescriptorSetLayouts, rayTracingPushConstantRanges);
-	
 	return true;
 }
 

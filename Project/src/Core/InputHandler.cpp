@@ -3,25 +3,47 @@
 InputHandler::InputHandler()
 	: m_KeyStates()
 {
-	memset(m_KeyStates, 0, sizeof(m_KeyStates));
+	m_KeyStates.resize(EKey::KEY_COUNT, false);
 }
 
 bool InputHandler::isKeyReleased(EKey keycode)
 {
-	return (m_KeyStates[keycode] == false);
+	if (keycode == EKey::KEY_UNKNOWN)
+	{
+		return false;
+	}
+	else
+	{
+		return (m_KeyStates[keycode] == false);
+	}
 }
 
 bool InputHandler::isKeyPressed(EKey keycode)
 {
-	return (m_KeyStates[keycode] == true);
+	if (keycode == EKey::KEY_UNKNOWN)
+	{
+		return false;
+	}
+	else
+	{
+		return (m_KeyStates[keycode] == true);
+	}
 }
 
 void InputHandler::onKeyPressed(EKey keycode)
 {
-	m_KeyStates[keycode] = true;
+	if (keycode != EKey::KEY_UNKNOWN)
+	{
+		ASSERT(keycode < EKey::KEY_COUNT);
+		m_KeyStates[keycode] = true;
+	}
 }
 
 void InputHandler::onKeyReleased(EKey keycode)
 {
-	m_KeyStates[keycode] = false;
+	if (keycode != EKey::KEY_UNKNOWN)
+	{
+		ASSERT(keycode < EKey::KEY_COUNT);
+		m_KeyStates[keycode] = false;
+	}
 }
