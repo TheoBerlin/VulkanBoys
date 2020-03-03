@@ -33,7 +33,6 @@ public:
 	virtual void beginFrame(const Camera& camera) override;
 	virtual void endFrame() override;
 
-	void submitParticles(ParticleEmitterHandlerVK* pEmitterHandler);
 	void submitParticles(ParticleEmitter* pEmitter);
 
 	void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY);
@@ -43,7 +42,8 @@ private:
 	bool createPipelineLayout();
 	bool createPipeline();
 	bool createQuadMesh();
-	void writeBufferDescriptors();
+
+	bool bindDescriptorSet(ParticleEmitter* pEmitter);
 
 private:
 	GraphicsContextVK* m_pGraphicsContext;
@@ -54,7 +54,6 @@ private:
 
 	DescriptorSetLayoutVK* m_pDescriptorSetLayout;
 	DescriptorPoolVK* m_pDescriptorPool;
-	DescriptorSetVK* m_ppDescriptorSets[MAX_FRAMES_IN_FLIGHT];
 
 	PipelineLayoutVK* m_pPipelineLayout;
 	PipelineVK* m_pPipeline;

@@ -35,7 +35,6 @@ ParticleRendererVK::ParticleRendererVK(GraphicsContextVK* pGraphicsContext, Rend
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		m_ppCommandPools[i] = nullptr;
 		m_ppCommandBuffers[i] = nullptr;
-		m_ppDescriptorSets[i] = nullptr;
 	}
 }
 
@@ -71,7 +70,6 @@ bool ParticleRendererVK::init()
 		return false;
 	}
 
-	writeBufferDescriptors();
 	return true;
 }
 
@@ -101,7 +99,6 @@ void ParticleRendererVK::beginFrame(const Camera& camera)
 	m_ppCommandBuffers[frameIndex]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
 	m_ppCommandBuffers[frameIndex]->bindPipeline(m_pPipeline);
-	m_ppCommandBuffers[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_ppDescriptorSets[frameIndex], 0, nullptr);
 }
 
 void ParticleRendererVK::endFrame()
@@ -113,35 +110,6 @@ void ParticleRendererVK::endFrame()
 	pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCurrentGraphicsCommandBuffer(), m_ppCommandBuffers[currentFrame]);
 }
 
-void ParticleRendererVK::submitParticles(ParticleEmitterHandlerVK* pEmitterHandler)
-{
-	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
-
-	bool transferOwnerships = pEmitterHandler->gpuComputed();
-
-	for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters()) {
-		BufferVK* pEmitterBuffer = reinterpret_cast<BufferVK*>(pEmitter->getEmitterBuffer());
-		BufferVK* pPositionBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
-		Texture2DVK* pParticleTexture = reinterpret_cast<Texture2DVK*>(pEmitter->getParticleTexture());
-
-		if (transferOwnerships) {
-			pEmitterHandler->acquireForGraphics(pPositionBuffer,m_ppCommandBuffers[frameIndex]);
-		}
-
-		// TODO: Use constant variables or define macros for binding indices
-		m_ppDescriptorSets[frameIndex]->writeUniformBufferDescriptor(pEmitterBuffer->getBuffer(), 3);
-		m_ppDescriptorSets[frameIndex]->writeStorageBufferDescriptor(pPositionBuffer->getBuffer(), 4);
-		m_ppDescriptorSets[frameIndex]->writeCombinedImageDescriptor(pParticleTexture->getImageView()->getImageView(), m_pSampler->getSampler(), 5);
-
-		uint32_t particleCount = pEmitter->getParticleCount();
-		m_ppCommandBuffers[frameIndex]->drawIndexInstanced(m_pQuadMesh->getIndexCount(), particleCount, 0, 0, 0);
-
-		if (transferOwnerships) {
-			pEmitterHandler->releaseFromGraphics(pPositionBuffer,m_ppCommandBuffers[frameIndex]);
-		}
-	}
-}
-
 void ParticleRendererVK::submitParticles(ParticleEmitter* pEmitter)
 {
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
@@ -150,10 +118,9 @@ void ParticleRendererVK::submitParticles(ParticleEmitter* pEmitter)
 	BufferVK* pPositionBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
 	Texture2DVK* pParticleTexture = reinterpret_cast<Texture2DVK*>(pEmitter->getParticleTexture());
 
-	// TODO: Use constant variables or define macros for binding indices
-	m_ppDescriptorSets[frameIndex]->writeUniformBufferDescriptor(pEmitterBuffer->getBuffer(), 3);
-	m_ppDescriptorSets[frameIndex]->writeStorageBufferDescriptor(pPositionBuffer->getBuffer(), 4);
-	m_ppDescriptorSets[frameIndex]->writeCombinedImageDescriptor(pParticleTexture->getImageView()->getImageView(), m_pSampler->getSampler(), 5);
+	if (!bindDescriptorSet(pEmitter)) {
+		return;
+	}
 
 	uint32_t particleCount = pEmitter->getParticleCount();
 	m_ppCommandBuffers[frameIndex]->drawIndexInstanced(m_pQuadMesh->getIndexCount(), particleCount, 0, 0, 0);
@@ -243,14 +210,6 @@ bool ParticleRendererVK::createPipelineLayout()
 		return false;
 	}
 
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		m_ppDescriptorSets[i] = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
-		if (m_ppDescriptorSets[i] == nullptr) {
-			LOG("Failed to create descriptor set for particle renderer");
-			return false;
-		}
-	}
-
 	m_pPipelineLayout = DBG_NEW PipelineLayoutVK(pDevice);
 	return m_pPipelineLayout->init(descriptorSetLayouts, {});
 }
@@ -307,34 +266,46 @@ bool ParticleRendererVK::createQuadMesh()
 	const std::array<uint32_t, 6> pQuadIndices = {0, 1, 2, 2, 3, 0};
 
 	m_pQuadMesh = DBG_NEW MeshVK(m_pGraphicsContext->getDevice());
-	if (!m_pQuadMesh->initFromMemory(pQuadVertices.data(), sizeof(QuadVertex), pQuadVertices.size(), pQuadIndices.data(), pQuadIndices.size())) {
-		return false;
-	}
-
-	// Write descriptor and bind quad
-	BufferVK* pVertBuffer = reinterpret_cast<BufferVK*>(m_pQuadMesh->getVertexBuffer());
-	VkDeviceSize offsets = 0;
-
-	for (DescriptorSetVK* pDescriptorSet : m_ppDescriptorSets) {
-		pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer->getBuffer(), 0);
-	}
-
-	return true;
+	return m_pQuadMesh->initFromMemory(pQuadVertices.data(), sizeof(QuadVertex), pQuadVertices.size(), pQuadIndices.data(), pQuadIndices.size());
 }
 
-void ParticleRendererVK::writeBufferDescriptors()
+bool ParticleRendererVK::bindDescriptorSet(ParticleEmitter* pEmitter)
 {
-	// Storage buffer for quad vertices
-	BufferVK* pVertBuffer = reinterpret_cast<BufferVK*>(m_pQuadMesh->getVertexBuffer());
+	if (pEmitter->getDescriptorSetRender() == nullptr) {
+		// Create a descriptor set for the emitter
+		DescriptorSetVK* pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
+		if (pDescriptorSet == nullptr) {
+			LOG("Failed to create descriptor set for particle renderer");
+			return false;
+		}
 
-	// Camera buffers
-	BufferVK* pCameraMatricesBuffer = m_pRenderingHandler->getCameraMatricesBuffer();
-	BufferVK* pCameraDirectionsBuffer = m_pRenderingHandler->getCameraDirectionsBuffer();
+		BufferVK* pEmitterBuffer = reinterpret_cast<BufferVK*>(pEmitter->getEmitterBuffer());
+		BufferVK* pPositionsBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
+		Texture2DVK* pParticleTexture = reinterpret_cast<Texture2DVK*>(pEmitter->getParticleTexture());
 
-	for (DescriptorSetVK* pDescriptorSet : m_ppDescriptorSets) {
+		// Storage buffer for quad vertices
+		BufferVK* pVertBuffer = reinterpret_cast<BufferVK*>(m_pQuadMesh->getVertexBuffer());
+
+		// Camera buffers
+		BufferVK* pCameraMatricesBuffer = m_pRenderingHandler->getCameraMatricesBuffer();
+		BufferVK* pCameraDirectionsBuffer = m_pRenderingHandler->getCameraDirectionsBuffer();
+
+		// TODO: Use constant variables or define macros for binding indices
 		pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer->getBuffer(), 0);
-
 		pDescriptorSet->writeUniformBufferDescriptor(pCameraMatricesBuffer->getBuffer(), 1);
 		pDescriptorSet->writeUniformBufferDescriptor(pCameraDirectionsBuffer->getBuffer(), 2);
+		pDescriptorSet->writeUniformBufferDescriptor(pEmitterBuffer->getBuffer(), 3);
+		pDescriptorSet->writeStorageBufferDescriptor(pPositionsBuffer->getBuffer(), 4);
+		pDescriptorSet->writeCombinedImageDescriptor(pParticleTexture->getImageView()->getImageView(), m_pSampler->getSampler(), 5);
+
+		pEmitter->setDescriptorSetRender(pDescriptorSet);
 	}
+
+	// Bind descriptor set
+	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
+
+	DescriptorSetVK* pDescriptorSet = reinterpret_cast<DescriptorSetVK*>(pEmitter->getDescriptorSetRender());
+	m_ppCommandBuffers[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
+
+	return true;
 }
