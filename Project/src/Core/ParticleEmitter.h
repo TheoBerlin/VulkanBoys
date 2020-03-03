@@ -64,8 +64,11 @@ public:
     void setParticlesPerSecond(float particlesPerSecond);
     void setParticleDuration(float particleDuration);
 
-    IDescriptorSet* getDescriptorSet() { return m_pDescriptorSet; }
-    void setDescriptorSet(IDescriptorSet* pDescriptorSet) { m_pDescriptorSet = pDescriptorSet; }
+    IDescriptorSet* getDescriptorSetCompute() { return m_pDescriptorSetCompute; }
+    IDescriptorSet* getDescriptorSetRender() { return m_pDescriptorSetRender; }
+    void setDescriptorSetCompute(IDescriptorSet* pDescriptorSet) { m_pDescriptorSetCompute = pDescriptorSet; }
+    void setDescriptorSetRender(IDescriptorSet* pDescriptorSet) { m_pDescriptorSetRender = pDescriptorSet; }
+
     IBuffer* getPositionsBuffer() { return m_pPositionsBuffer; }
     IBuffer* getVelocitiesBuffer() { return m_pVelocitiesBuffer; }
     IBuffer* getAgesBuffer() { return m_pAgesBuffer; }
@@ -107,8 +110,10 @@ private:
     // The amount of time since the emitter started emitting particles. Used for spawning particles.
     float m_EmitterAge;
 
+    IDescriptorSet* m_pDescriptorSetCompute;
+    IDescriptorSet* m_pDescriptorSetRender;
+
     // GPU-side particle data
-    IDescriptorSet* m_pDescriptorSet;
     IBuffer* m_pPositionsBuffer;
     IBuffer* m_pVelocitiesBuffer;
     IBuffer* m_pAgesBuffer;
