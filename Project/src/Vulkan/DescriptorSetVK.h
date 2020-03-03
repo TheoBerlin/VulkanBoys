@@ -1,11 +1,13 @@
 #pragma once
+
+#include "Common/IDescriptorSet.h"
 #include "VulkanCommon.h"
 #include "DescriptorCounts.h"
 
 class DescriptorPoolVK;
 class DeviceVK;
 
-class DescriptorSetVK
+class DescriptorSetVK : public IDescriptorSet
 {
 public:
     DescriptorSetVK();

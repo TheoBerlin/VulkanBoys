@@ -10,6 +10,7 @@
 
 class Camera;
 class IBuffer;
+class IDescriptorSet;
 class IGraphicsContext;
 class IMesh;
 class ITexture2D;
@@ -63,6 +64,8 @@ public:
     void setParticlesPerSecond(float particlesPerSecond);
     void setParticleDuration(float particleDuration);
 
+    IDescriptorSet* getDescriptorSet() { return m_pDescriptorSet; }
+    void setDescriptorSet(IDescriptorSet* pDescriptorSet) { m_pDescriptorSet = pDescriptorSet; }
     IBuffer* getPositionsBuffer() { return m_pPositionsBuffer; }
     IBuffer* getVelocitiesBuffer() { return m_pVelocitiesBuffer; }
     IBuffer* getAgesBuffer() { return m_pAgesBuffer; }
@@ -105,11 +108,10 @@ private:
     float m_EmitterAge;
 
     // GPU-side particle data
+    IDescriptorSet* m_pDescriptorSet;
     IBuffer* m_pPositionsBuffer;
     IBuffer* m_pVelocitiesBuffer;
     IBuffer* m_pAgesBuffer;
-
-    // Contains particle size
     IBuffer* m_pEmitterBuffer;
 
     const Camera* m_pCamera;
