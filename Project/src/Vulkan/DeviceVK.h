@@ -43,6 +43,7 @@ public:
 	//GETTERS
 	VkPhysicalDevice getPhysicalDevice() { return m_PhysicalDevice; };
 	VkDevice getDevice() { return m_Device; }
+	void getMaxComputeWorkGroupSize(uint32_t pWorkGroupSize[3]);
 	
 	VkQueue getGraphicsQueue() { return m_GraphicsQueue; }
 	VkQueue getComputeQueue() { return m_ComputeQueue; }
@@ -72,6 +73,7 @@ private:
 private:	
 	VkPhysicalDevice m_PhysicalDevice;
 	VkDevice m_Device;
+	VkPhysicalDeviceLimits m_DeviceLimits;
 
 	QueueFamilyIndices m_DeviceQueueFamilyIndices;
 	

@@ -69,6 +69,10 @@ private:
 	bool createBuffers();
 
 	bool createRayTracingPipelineLayouts();
+	bool createRayTracingPipelines();
+	bool createComputePipeline();
+	bool createGlossySourceOctMaps();
+	bool createCollapsedGIOctMaps();
 	
 private:
 	GraphicsContextVK* m_pContext;
@@ -101,9 +105,10 @@ private:
 
 	//Temp Ray Tracing Stuff
 	RayTracingSceneVK* m_pRayTracingScene;
-	RayTracingPipelineVK* m_pRayTracingPipeline;
 	RayTracingPipelineVK* m_pRayTracingPrePassPipeline;
+	RayTracingPipelineVK* m_pRayTracingPipeline;
 	RayTracingPipelineVK* m_pRayTracingLightProbeVisualizerPipeline;
+	PipelineVK* m_pComputePipeline;
 	PipelineLayoutVK* m_pRayTracingPipelineLayout;
 	ImageVK* m_pRayTracingStorageImage;
 	ImageViewVK* m_pRayTracingStorageImageView;
@@ -156,9 +161,23 @@ private:
 	TempMaterial* m_pSphereMaterial;
 	TempMaterial* m_pPlaneMaterial;
 
-	BufferVK* m_pLightProbeBuffer;
+	//Glossy Source
+	ImageVK* m_pLightProbeGlossySourceRadianceAtlas;
+	ImageVK* m_pLightProbeGlossySourceDepthAtlas;
+
+	ImageViewVK* m_pLightProbeGlossySourceRadianceAtlasView;
+	ImageViewVK* m_pLightProbeGlossySourceDepthAtlasView;
+
+	//Collapsed GI
+	ImageVK* m_pLightProbeCollapsedGIIrradianceAtlas;
+	ImageVK* m_pLightProbeCollapsedGIDepthAtlas;
+
+	ImageViewVK* m_pLightProbeCollapsedGIIrradianceAtlasView;
+	ImageViewVK* m_pLightProbeCollapsedGIDepthAtlasView;
 
 	uint32_t m_RayTraceRenderMode;
+
+	uint32_t m_WorkGroupSize[3];
 
 	float m_TempTimer;
 };

@@ -175,6 +175,23 @@ bool PipelineVK::finalize(const std::vector<IShader*>& shaders, RenderPassVK* pR
     return true;
 }
 
+bool PipelineVK::finalizeCompute(IShader* shader, PipelineLayoutVK* pPipelineLayout)
+{
+	VkComputePipelineCreateInfo pipelineInfo = {};
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+	pipelineInfo.pNext = nullptr;
+	pipelineInfo.flags = 0;
+	createShaderStageInfo(pipelineInfo.stage, shader);
+	pipelineInfo.layout = pPipelineLayout->getPipelineLayout();
+	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+	pipelineInfo.basePipelineIndex = -1;
+
+	VK_CHECK_RESULT_RETURN_FALSE(vkCreateComputePipelines(m_pDevice->getDevice(), VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_Pipeline), "vkCreateComputePipelines failed");
+
+	D_LOG("--- Pipeline: Vulkan graphics pipeline created successfully");
+	return true;
+}
+
 void PipelineVK::createShaderStageInfo(VkPipelineShaderStageCreateInfo& shaderStageInfo, const IShader* shader)
 {
     shaderStageInfo = {};

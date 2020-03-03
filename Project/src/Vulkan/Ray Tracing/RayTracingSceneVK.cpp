@@ -214,10 +214,11 @@ void RayTracingSceneVK::generateLightProbeGeometry(uint32_t worldSizeX, uint32_t
 				float xPosition = (float(x) / float(numProbesPerDimension - 1)) * float(worldSizeX) - float(worldSizeX) / 2.0f;
 				float yPosition = (float(y) / float(numProbesPerDimension - 1)) * float(worldSizeY) - float(worldSizeY) / 2.0f;
 				float zPosition = (float(z) / float(numProbesPerDimension - 1)) * float(worldSizeZ) - float(worldSizeZ) / 2.0f;
-
-				std::cout << "Position: " << glm::to_string(glm::vec3(xPosition, yPosition, zPosition)) << std::endl;
-
-				glm::mat4 transform = glm::transpose(glm::translate(glm::mat4(1.0f), glm::vec3(xPosition, yPosition, zPosition)));
+				
+				glm::mat4 transform(1.0f);
+				transform = glm::translate(transform, glm::vec3(xPosition, yPosition, zPosition));
+				transform = glm::scale(transform, glm::vec3(0.2f, 0.2f, 0.2f));
+				transform = glm::transpose(transform);
 				addGraphicsObjectInstance(m_pLightProbeMesh, m_pVeryTempMaterial, transform, 0x40);
 			}
 		}

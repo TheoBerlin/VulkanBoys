@@ -32,8 +32,11 @@ constexpr uint32_t MAX_RECURSIONS = 2;
 constexpr uint32_t WORLD_SIZE_X = 10;
 constexpr uint32_t WORLD_SIZE_Y = 10;
 constexpr uint32_t WORLD_SIZE_Z = 10;
-constexpr uint32_t SAMPLES_PER_PROBE = 256;
-constexpr uint32_t NUM_PROBES_PER_DIMENSION = 3;
+constexpr uint32_t NUM_PROBES_PER_DIMENSION = 5;
+constexpr uint32_t SAMPLES_PER_PROBE_DIMENSION_GLOSSY_SOURCE = 32;
+constexpr uint32_t SAMPLES_PER_PROBE_GLOSSY_SOURCE = SAMPLES_PER_PROBE_DIMENSION_GLOSSY_SOURCE * SAMPLES_PER_PROBE_DIMENSION_GLOSSY_SOURCE;
+constexpr uint32_t SAMPLES_PER_PROBE_DIMENSION_COLLAPSED_GI = 16;
+constexpr uint32_t SAMPLES_PER_PROBE_COLLAPSED_GI = SAMPLES_PER_PROBE_DIMENSION_COLLAPSED_GI * SAMPLES_PER_PROBE_DIMENSION_COLLAPSED_GI;
 
 RendererVK::RendererVK(GraphicsContextVK* pContext)
 	: m_pContext(pContext),
@@ -126,7 +129,15 @@ RendererVK::~RendererVK()
 	SAFEDELETE(m_pSphereMaterial);
 	SAFEDELETE(m_pPlaneMaterial);
 
-	SAFEDELETE(m_pLightProbeBuffer);
+	SAFEDELETE(m_pLightProbeGlossySourceRadianceAtlas);
+	SAFEDELETE(m_pLightProbeGlossySourceDepthAtlas);
+	SAFEDELETE(m_pLightProbeGlossySourceRadianceAtlasView);
+	SAFEDELETE(m_pLightProbeGlossySourceDepthAtlasView);
+
+	SAFEDELETE(m_pLightProbeCollapsedGIIrradianceAtlas);
+	SAFEDELETE(m_pLightProbeCollapsedGIDepthAtlas);
+	SAFEDELETE(m_pLightProbeCollapsedGIIrradianceAtlasView);
+	SAFEDELETE(m_pLightProbeCollapsedGIDepthAtlasView);
 
 	m_pContext = nullptr;
 }
@@ -334,142 +345,16 @@ bool RendererVK::init()
 	m_InstanceIndex3 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshCube, m_pCubeMaterial, m_Matrix3);
 	m_InstanceIndex4 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshSphere, m_pSphereMaterial, m_Matrix4);
 	m_InstanceIndex5 = m_pRayTracingScene->addGraphicsObjectInstance(m_pMeshPlane, m_pPlaneMaterial, m_Matrix5);
-	m_pRayTracingScene->generateLightProbeGeometry(WORLD_SIZE_X, WORLD_SIZE_Y, WORLD_SIZE_Z, SAMPLES_PER_PROBE, NUM_PROBES_PER_DIMENSION);
+	m_pRayTracingScene->generateLightProbeGeometry(WORLD_SIZE_X, WORLD_SIZE_Y, WORLD_SIZE_Z, SAMPLES_PER_PROBE_GLOSSY_SOURCE, NUM_PROBES_PER_DIMENSION);
 	m_pRayTracingScene->finalize();
 
 	m_RayTraceRenderMode = 0;
 
 	m_TempTimer = 0;
 
-	RaygenGroupParams raygenGroupLightProbeParams = {};
-
-	HitGroupParams hitGroupLightProbeParams = {};
-	HitGroupParams hitGroupShadowParams = {};
-
-	MissGroupParams missGroupLightProbeParams = {};
-	MissGroupParams missGroupShadowParams = {};
-
-	RaygenGroupParams raygenGroupFinalParams = {};
-	HitGroupParams hitGroupFinalParams = {};
-	MissGroupParams missGroupFinalParams = {};
-
-	RaygenGroupParams raygenGroupLightProbeVisualizerParams = {};
-	HitGroupParams hitGroupLightProbeVisualizerParams = {};
-	MissGroupParams missGroupLightProbeVisualizerParams = {};
-
-	{
-		{
-			//Pre Pass
-			m_pRaygenLightProbeShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-			m_pRaygenLightProbeShader->initFromFile(EShader::RAYGEN_SHADER, "main", "assets/shaders/raytracing/lightprobes/raygenLightProbe.spv");
-			m_pRaygenLightProbeShader->finalize();
-			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(0, WORLD_SIZE_X);
-			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(1, WORLD_SIZE_Y);
-			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(2, WORLD_SIZE_Z);
-			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(3, SAMPLES_PER_PROBE);
-			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(4, NUM_PROBES_PER_DIMENSION);
-			raygenGroupLightProbeParams.pRaygenShader = m_pRaygenLightProbeShader;
-
-			m_pClosestHitLightProbeShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-			m_pClosestHitLightProbeShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/lightprobes/closesthitLightProbe.spv");
-			m_pClosestHitLightProbeShader->finalize();
-			m_pClosestHitLightProbeShader->setSpecializationConstant<uint32_t>(0, MAX_RECURSIONS);
-			hitGroupLightProbeParams.pClosestHitShader = m_pClosestHitLightProbeShader;
-
-			m_pMissLightProbeShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-			m_pMissLightProbeShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/lightprobes/missLightProbe.spv");
-			m_pMissLightProbeShader->finalize();
-			missGroupLightProbeParams.pMissShader = m_pMissLightProbeShader;
-		}
-
-		{
-			//Final
-			m_pRaygenFinalShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-			m_pRaygenFinalShader->initFromFile(EShader::RAYGEN_SHADER, "main", "assets/shaders/raytracing/lightprobes/raygen.spv");
-			m_pRaygenFinalShader->finalize();
-			raygenGroupFinalParams.pRaygenShader = m_pRaygenFinalShader;
-
-			m_pClosestHitFinalShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-			m_pClosestHitFinalShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/lightprobes/closesthit.spv");
-			m_pClosestHitFinalShader->finalize();
-			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(0, WORLD_SIZE_X);
-			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(1, WORLD_SIZE_Y);
-			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(2, WORLD_SIZE_Z);
-			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(3, SAMPLES_PER_PROBE);
-			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(4, NUM_PROBES_PER_DIMENSION);
-			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(5, MAX_RECURSIONS);
-			hitGroupFinalParams.pClosestHitShader = m_pClosestHitFinalShader;
-
-			m_pClosestHitShadowShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-			m_pClosestHitShadowShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/lightprobes/closesthitShadow.spv");
-			m_pClosestHitShadowShader->finalize();
-			hitGroupShadowParams.pClosestHitShader = m_pClosestHitShadowShader;
-
-			m_pMissFinalShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-			m_pMissFinalShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/lightprobes/miss.spv");
-			m_pMissFinalShader->finalize();
-			missGroupFinalParams.pMissShader = m_pMissFinalShader;
-
-			m_pMissShadowShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-			m_pMissShadowShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/lightprobes/missShadow.spv");
-			m_pMissShadowShader->finalize();
-			missGroupShadowParams.pMissShader = m_pMissShadowShader;
-		}
-
-		{
-			//Light Probe Visualizer
-			m_pRaygenLightProbeVisualizerShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-			m_pRaygenLightProbeVisualizerShader->initFromFile(EShader::RAYGEN_SHADER, "main", "assets/shaders/raytracing/lightprobes/raygenVisualizer.spv");
-			m_pRaygenLightProbeVisualizerShader->finalize();
-			raygenGroupLightProbeVisualizerParams.pRaygenShader = m_pRaygenLightProbeVisualizerShader;
-
-			m_pClosestHitLightProbeVisualizerShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-			m_pClosestHitLightProbeVisualizerShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/lightprobes/closesthitVisualizer.spv");
-			m_pClosestHitLightProbeVisualizerShader->finalize();
-			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(0, WORLD_SIZE_X);
-			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(1, WORLD_SIZE_Y);
-			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(2, WORLD_SIZE_Z);
-			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(3, SAMPLES_PER_PROBE);
-			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(4, NUM_PROBES_PER_DIMENSION);
-			hitGroupLightProbeVisualizerParams.pClosestHitShader = m_pClosestHitLightProbeVisualizerShader;
-
-			m_pMissLightProbeVisualizerShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
-			m_pMissLightProbeVisualizerShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/lightprobes/missVisualizer.spv");
-			m_pMissLightProbeVisualizerShader->finalize();
-			missGroupLightProbeVisualizerParams.pMissShader = m_pMissLightProbeVisualizerShader;
-		}
-	}
-
-	std::cout << "Creating RTX Pipeline Layout" << std::endl;
 	createRayTracingPipelineLayouts();
-
-	m_pRayTracingPrePassPipeline = new RayTracingPipelineVK(m_pContext);
-	m_pRayTracingPrePassPipeline->addRaygenShaderGroup(raygenGroupLightProbeParams);
-
-	m_pRayTracingPrePassPipeline->addMissShaderGroup(missGroupLightProbeParams);
-
-	m_pRayTracingPrePassPipeline->addHitShaderGroup(hitGroupLightProbeParams);
-	m_pRayTracingPrePassPipeline->finalize(m_pRayTracingPipelineLayout);
-
-	m_pRayTracingPipeline = new RayTracingPipelineVK(m_pContext);
-	m_pRayTracingPipeline->addRaygenShaderGroup(raygenGroupFinalParams);
-
-	m_pRayTracingPipeline->addMissShaderGroup(missGroupFinalParams);
-	m_pRayTracingPipeline->addMissShaderGroup(missGroupShadowParams);
-
-	m_pRayTracingPipeline->addHitShaderGroup(hitGroupFinalParams);
-	m_pRayTracingPipeline->addHitShaderGroup(hitGroupShadowParams);
-
-	m_pRayTracingPipeline->finalize(m_pRayTracingPipelineLayout);
-
-	m_pRayTracingLightProbeVisualizerPipeline = new RayTracingPipelineVK(m_pContext);
-	m_pRayTracingLightProbeVisualizerPipeline->addRaygenShaderGroup(raygenGroupLightProbeVisualizerParams);
-
-	m_pRayTracingLightProbeVisualizerPipeline->addMissShaderGroup(missGroupLightProbeVisualizerParams);
-
-	m_pRayTracingLightProbeVisualizerPipeline->addHitShaderGroup(hitGroupLightProbeVisualizerParams);
-
-	m_pRayTracingLightProbeVisualizerPipeline->finalize(m_pRayTracingPipelineLayout);
+	createRayTracingPipelines();
+	createComputePipeline();
 
 	ImageParams imageParams = {};
 	imageParams.Type = VK_IMAGE_TYPE_2D;
@@ -564,14 +449,8 @@ bool RendererVK::init()
 		}
 	}
 
-	m_pLightProbeBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
-
-	BufferParams lightProbeBufferParams = {};
-	lightProbeBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-	lightProbeBufferParams.SizeInBytes = sizeof(float) * 4 * SAMPLES_PER_PROBE * NUM_PROBES_PER_DIMENSION * NUM_PROBES_PER_DIMENSION * NUM_PROBES_PER_DIMENSION;
-	lightProbeBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-	m_pLightProbeBuffer->init(lightProbeBufferParams);
+	createGlossySourceOctMaps();
+	createCollapsedGIOctMaps();
 
 	m_pRayTracingDescriptorSet->writeAccelerationStructureDescriptor(m_pRayTracingScene->getTLAS().accelerationStructure, 0);
 	m_pRayTracingDescriptorSet->writeStorageImageDescriptor(m_pRayTracingStorageImageView->getImageView(), 1);
@@ -582,8 +461,20 @@ bool RendererVK::init()
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(albedoImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 6);
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(normalImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 7);
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(roughnessImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 8);
-	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pLightProbeBuffer->getBuffer(), 9);
-	
+
+	//Glossy Source
+	m_pRayTracingDescriptorSet->writeStorageImageDescriptor(m_pLightProbeGlossySourceRadianceAtlasView->getImageView(), 9);
+	m_pRayTracingDescriptorSet->writeStorageImageDescriptor(m_pLightProbeGlossySourceDepthAtlasView->getImageView(), 10);
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptor(m_pLightProbeGlossySourceRadianceAtlasView->getImageView(), m_pSampler->getSampler(), 11);
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptor(m_pLightProbeGlossySourceDepthAtlasView->getImageView(), m_pSampler->getSampler(), 12);
+
+	//Collapsed GI
+	m_pRayTracingDescriptorSet->writeStorageImageDescriptor(m_pLightProbeCollapsedGIIrradianceAtlasView->getImageView(), 13);
+	m_pRayTracingDescriptorSet->writeStorageImageDescriptor(m_pLightProbeCollapsedGIDepthAtlasView->getImageView(), 14);
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptor(m_pLightProbeCollapsedGIIrradianceAtlasView->getImageView(), m_pSampler->getSampler(), 15);
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptor(m_pLightProbeCollapsedGIDepthAtlasView->getImageView(), m_pSampler->getSampler(), 16);
+
+
 	return true;
 }
 
@@ -772,20 +663,52 @@ void RendererVK::submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat
 
 void RendererVK::traceRays()
 {
-	m_ppComputeCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipelineLayout, 0, 1, &m_pRayTracingDescriptorSet, 0, nullptr);
-
-	vkCmdBindPipeline(m_ppComputeCommandBuffers[m_CurrentFrame]->getCommandBuffer(), VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPrePassPipeline->getPipeline());
-	m_ppComputeCommandBuffers[m_CurrentFrame]->traceRays(m_pRayTracingPrePassPipeline->getSBT(), NUM_PROBES_PER_DIMENSION, NUM_PROBES_PER_DIMENSION, NUM_PROBES_PER_DIMENSION, 0);
-
-	if (m_RayTraceRenderMode == 0)
+	//Light Probe Glossy Source Pass
 	{
-		vkCmdBindPipeline(m_ppComputeCommandBuffers[m_CurrentFrame]->getCommandBuffer(), VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipeline->getPipeline());
-		m_ppComputeCommandBuffers[m_CurrentFrame]->traceRays(m_pRayTracingPipeline->getSBT(), m_pContext->getSwapChain()->getExtent().width, m_pContext->getSwapChain()->getExtent().height, 1, 0);
+		m_ppComputeCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipelineLayout, 0, 1, &m_pRayTracingDescriptorSet, 0, nullptr);
+		vkCmdBindPipeline(m_ppComputeCommandBuffers[m_CurrentFrame]->getCommandBuffer(), VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPrePassPipeline->getPipeline());
+
+		//Transition Glossy Source for Write
+		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pLightProbeGlossySourceRadianceAtlas, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pLightProbeGlossySourceDepthAtlas, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+
+		m_ppComputeCommandBuffers[m_CurrentFrame]->traceRays(m_pRayTracingPrePassPipeline->getSBT(), NUM_PROBES_PER_DIMENSION, NUM_PROBES_PER_DIMENSION, NUM_PROBES_PER_DIMENSION, 0);
 	}
-	else if (m_RayTraceRenderMode == 1)
+
+	//Light Probe Collapse to Indirect GI Pass
 	{
-		vkCmdBindPipeline(m_ppComputeCommandBuffers[m_CurrentFrame]->getCommandBuffer(), VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingLightProbeVisualizerPipeline->getPipeline());
-		m_ppComputeCommandBuffers[m_CurrentFrame]->traceRays(m_pRayTracingLightProbeVisualizerPipeline->getSBT(), m_pContext->getSwapChain()->getExtent().width, m_pContext->getSwapChain()->getExtent().height, 1, 0);
+		m_ppComputeCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, m_pRayTracingPipelineLayout, 0, 1, &m_pRayTracingDescriptorSet, 0, nullptr);
+		vkCmdBindPipeline(m_ppComputeCommandBuffers[m_CurrentFrame]->getCommandBuffer(), VK_PIPELINE_BIND_POINT_COMPUTE, m_pComputePipeline->getPipeline());
+
+		//Transition Glossy Source for Read
+		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pLightProbeGlossySourceRadianceAtlas, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pLightProbeGlossySourceDepthAtlas, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+		//Transition Collapsed GI for Write
+		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pLightProbeCollapsedGIIrradianceAtlas, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pLightProbeCollapsedGIDepthAtlas, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+
+		glm::u32vec3 workGroupSize(1 + SAMPLES_PER_PROBE_COLLAPSED_GI * NUM_PROBES_PER_DIMENSION * NUM_PROBES_PER_DIMENSION * NUM_PROBES_PER_DIMENSION / m_WorkGroupSize[0], 1, 1);
+		m_ppComputeCommandBuffers[m_CurrentFrame]->dispatch(workGroupSize);
+	}
+
+	//Render Scene (Deferred Light Pass)
+	{
+		//Transition Collapsed GI for Read
+		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pLightProbeCollapsedGIIrradianceAtlas, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pLightProbeCollapsedGIDepthAtlas, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+		if (m_RayTraceRenderMode == 0)
+		{
+			vkCmdBindPipeline(m_ppComputeCommandBuffers[m_CurrentFrame]->getCommandBuffer(), VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipeline->getPipeline());
+			m_ppComputeCommandBuffers[m_CurrentFrame]->traceRays(m_pRayTracingPipeline->getSBT(), m_pContext->getSwapChain()->getExtent().width, m_pContext->getSwapChain()->getExtent().height, 1, 0);
+		}
+		else if (m_RayTraceRenderMode == 1)
+		{
+			vkCmdBindPipeline(m_ppComputeCommandBuffers[m_CurrentFrame]->getCommandBuffer(), VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingLightProbeVisualizerPipeline->getPipeline());
+			m_ppComputeCommandBuffers[m_CurrentFrame]->traceRays(m_pRayTracingLightProbeVisualizerPipeline->getSBT(), m_pContext->getSwapChain()->getExtent().width, m_pContext->getSwapChain()->getExtent().height, 1, 0);
+		}
+
 	}
 }
 
@@ -1015,7 +938,16 @@ bool RendererVK::createRayTracingPipelineLayouts()
 	m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, nullptr, 6, MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
 	m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, nullptr, 7, MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
 	m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, nullptr, 8, MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
-	m_pRayTracingDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, 9, 1);
+	//Glossy Source
+	m_pRayTracingDescriptorSetLayout->addBindingStorageImage(VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV | VK_SHADER_STAGE_COMPUTE_BIT, 9, 1);
+	m_pRayTracingDescriptorSetLayout->addBindingStorageImage(VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV | VK_SHADER_STAGE_COMPUTE_BIT, 10, 1);
+	m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV | VK_SHADER_STAGE_COMPUTE_BIT, nullptr, 11, 1);
+	m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV | VK_SHADER_STAGE_COMPUTE_BIT, nullptr, 12, 1);
+	//Collapsed GI
+	m_pRayTracingDescriptorSetLayout->addBindingStorageImage(VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV | VK_SHADER_STAGE_COMPUTE_BIT, 13, 1);
+	m_pRayTracingDescriptorSetLayout->addBindingStorageImage(VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV | VK_SHADER_STAGE_COMPUTE_BIT, 14, 1);
+	m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV | VK_SHADER_STAGE_COMPUTE_BIT, nullptr, 15, 1);
+	m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV | VK_SHADER_STAGE_COMPUTE_BIT, nullptr, 16, 1);
 	m_pRayTracingDescriptorSetLayout->finalize();
 
 	std::vector<const DescriptorSetLayoutVK*> rayTracingDescriptorSetLayouts = { m_pRayTracingDescriptorSetLayout };
@@ -1026,7 +958,7 @@ bool RendererVK::createRayTracingPipelineLayouts()
 	descriptorCounts.m_SampledImages = 256;
 	descriptorCounts.m_StorageBuffers = 16;
 	descriptorCounts.m_UniformBuffers = 16;
-	descriptorCounts.m_StorageImages = 1;
+	descriptorCounts.m_StorageImages = 128;
 	descriptorCounts.m_AccelerationStructures = 1;
 
 	m_pRayTracingDescriptorPool = new DescriptorPoolVK(m_pContext->getDevice());
@@ -1040,6 +972,364 @@ bool RendererVK::createRayTracingPipelineLayouts()
 	m_pRayTracingPipelineLayout = new PipelineLayoutVK(m_pContext->getDevice());
 	m_pRayTracingPipelineLayout->init(rayTracingDescriptorSetLayouts, rayTracingPushConstantRanges);
 	
+	return true;
+}
+
+bool RendererVK::createRayTracingPipelines()
+{
+	RaygenGroupParams raygenGroupLightProbeParams = {};
+
+	HitGroupParams hitGroupLightProbeParams = {};
+	HitGroupParams hitGroupShadowParams = {};
+
+	MissGroupParams missGroupLightProbeParams = {};
+	MissGroupParams missGroupShadowParams = {};
+
+	RaygenGroupParams raygenGroupFinalParams = {};
+	HitGroupParams hitGroupFinalParams = {};
+	MissGroupParams missGroupFinalParams = {};
+
+	RaygenGroupParams raygenGroupLightProbeVisualizerParams = {};
+	HitGroupParams hitGroupLightProbeVisualizerParams = {};
+	MissGroupParams missGroupLightProbeVisualizerParams = {};
+
+	{
+		{
+			//Pre Pass
+			m_pRaygenLightProbeShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pRaygenLightProbeShader->initFromFile(EShader::RAYGEN_SHADER, "main", "assets/shaders/raytracing/lightprobes/raygenLPGlossy.spv");
+			m_pRaygenLightProbeShader->finalize();
+			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(0, WORLD_SIZE_X);
+			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(1, WORLD_SIZE_Y);
+			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(2, WORLD_SIZE_Z);
+			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(3, NUM_PROBES_PER_DIMENSION);
+			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(4, SAMPLES_PER_PROBE_DIMENSION_GLOSSY_SOURCE);
+			m_pRaygenLightProbeShader->setSpecializationConstant<uint32_t>(5, SAMPLES_PER_PROBE_GLOSSY_SOURCE);
+			raygenGroupLightProbeParams.pRaygenShader = m_pRaygenLightProbeShader;
+
+			m_pClosestHitLightProbeShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pClosestHitLightProbeShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/lightprobes/closesthitLPGlossy.spv");
+			m_pClosestHitLightProbeShader->finalize();
+			m_pClosestHitLightProbeShader->setSpecializationConstant<uint32_t>(6, MAX_RECURSIONS);
+			hitGroupLightProbeParams.pClosestHitShader = m_pClosestHitLightProbeShader;
+
+			m_pMissLightProbeShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pMissLightProbeShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/lightprobes/missLPGlossy.spv");
+			m_pMissLightProbeShader->finalize();
+			missGroupLightProbeParams.pMissShader = m_pMissLightProbeShader;
+		}
+
+		{
+			//Final
+			m_pRaygenFinalShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pRaygenFinalShader->initFromFile(EShader::RAYGEN_SHADER, "main", "assets/shaders/raytracing/lightprobes/raygen.spv");
+			m_pRaygenFinalShader->finalize();
+			raygenGroupFinalParams.pRaygenShader = m_pRaygenFinalShader;
+
+			m_pClosestHitFinalShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pClosestHitFinalShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/lightprobes/closesthit.spv");
+			m_pClosestHitFinalShader->finalize();
+			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(0, WORLD_SIZE_X);
+			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(1, WORLD_SIZE_Y);
+			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(2, WORLD_SIZE_Z);
+			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(3, NUM_PROBES_PER_DIMENSION);
+			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(4, SAMPLES_PER_PROBE_DIMENSION_GLOSSY_SOURCE /*SAMPLES_PER_PROBE_DIMENSION_COLLAPSED_GI*/);
+			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(5, SAMPLES_PER_PROBE_GLOSSY_SOURCE /*SAMPLES_PER_PROBE_COLLAPSED_GI*/);
+			m_pClosestHitFinalShader->setSpecializationConstant<uint32_t>(6, MAX_RECURSIONS);
+			hitGroupFinalParams.pClosestHitShader = m_pClosestHitFinalShader;
+
+			m_pClosestHitShadowShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pClosestHitShadowShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/lightprobes/closesthitShadow.spv");
+			m_pClosestHitShadowShader->finalize();
+			hitGroupShadowParams.pClosestHitShader = m_pClosestHitShadowShader;
+
+			m_pMissFinalShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pMissFinalShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/lightprobes/miss.spv");
+			m_pMissFinalShader->finalize();
+			missGroupFinalParams.pMissShader = m_pMissFinalShader;
+
+			m_pMissShadowShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pMissShadowShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/lightprobes/missShadow.spv");
+			m_pMissShadowShader->finalize();
+			missGroupShadowParams.pMissShader = m_pMissShadowShader;
+		}
+
+		{
+			//Light Probe Visualizer
+			m_pRaygenLightProbeVisualizerShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pRaygenLightProbeVisualizerShader->initFromFile(EShader::RAYGEN_SHADER, "main", "assets/shaders/raytracing/lightprobes/raygenVisualizer.spv");
+			m_pRaygenLightProbeVisualizerShader->finalize();
+			raygenGroupLightProbeVisualizerParams.pRaygenShader = m_pRaygenLightProbeVisualizerShader;
+
+			m_pClosestHitLightProbeVisualizerShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pClosestHitLightProbeVisualizerShader->initFromFile(EShader::CLOSEST_HIT_SHADER, "main", "assets/shaders/raytracing/lightprobes/closesthitVisualizer.spv");
+			m_pClosestHitLightProbeVisualizerShader->finalize();
+			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(0, WORLD_SIZE_X);
+			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(1, WORLD_SIZE_Y);
+			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(2, WORLD_SIZE_Z);
+			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(3, NUM_PROBES_PER_DIMENSION);
+			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(4, SAMPLES_PER_PROBE_DIMENSION_COLLAPSED_GI);
+			m_pClosestHitLightProbeVisualizerShader->setSpecializationConstant<uint32_t>(5, SAMPLES_PER_PROBE_COLLAPSED_GI);
+			hitGroupLightProbeVisualizerParams.pClosestHitShader = m_pClosestHitLightProbeVisualizerShader;
+
+			m_pMissLightProbeVisualizerShader = reinterpret_cast<ShaderVK*>(m_pContext->createShader());
+			m_pMissLightProbeVisualizerShader->initFromFile(EShader::MISS_SHADER, "main", "assets/shaders/raytracing/lightprobes/missVisualizer.spv");
+			m_pMissLightProbeVisualizerShader->finalize();
+			missGroupLightProbeVisualizerParams.pMissShader = m_pMissLightProbeVisualizerShader;
+		}
+	}
+
+	m_pRayTracingPrePassPipeline = new RayTracingPipelineVK(m_pContext);
+	m_pRayTracingPrePassPipeline->addRaygenShaderGroup(raygenGroupLightProbeParams);
+
+	m_pRayTracingPrePassPipeline->addMissShaderGroup(missGroupLightProbeParams);
+
+	m_pRayTracingPrePassPipeline->addHitShaderGroup(hitGroupLightProbeParams);
+	m_pRayTracingPrePassPipeline->finalize(m_pRayTracingPipelineLayout);
+
+	m_pRayTracingPipeline = new RayTracingPipelineVK(m_pContext);
+	m_pRayTracingPipeline->addRaygenShaderGroup(raygenGroupFinalParams);
+
+	m_pRayTracingPipeline->addMissShaderGroup(missGroupFinalParams);
+	m_pRayTracingPipeline->addMissShaderGroup(missGroupShadowParams);
+
+	m_pRayTracingPipeline->addHitShaderGroup(hitGroupFinalParams);
+	m_pRayTracingPipeline->addHitShaderGroup(hitGroupShadowParams);
+
+	m_pRayTracingPipeline->finalize(m_pRayTracingPipelineLayout);
+
+	m_pRayTracingLightProbeVisualizerPipeline = new RayTracingPipelineVK(m_pContext);
+	m_pRayTracingLightProbeVisualizerPipeline->addRaygenShaderGroup(raygenGroupLightProbeVisualizerParams);
+
+	m_pRayTracingLightProbeVisualizerPipeline->addMissShaderGroup(missGroupLightProbeVisualizerParams);
+
+	m_pRayTracingLightProbeVisualizerPipeline->addHitShaderGroup(hitGroupLightProbeVisualizerParams);
+
+	m_pRayTracingLightProbeVisualizerPipeline->finalize(m_pRayTracingPipelineLayout);
+
+	return false;
+}
+
+bool RendererVK::createComputePipeline()
+{
+	IShader* pComputeShader = m_pContext->createShader();
+	pComputeShader->initFromFile(EShader::COMPUTE_SHADER, "main", "assets/shaders/raytracing/lightprobes/collapseGI.spv");
+	pComputeShader->finalize();
+
+	DeviceVK* pDevice = m_pContext->getDevice();
+
+	pDevice->getMaxComputeWorkGroupSize(m_WorkGroupSize);
+
+	ShaderVK* pComputeShaderVK = reinterpret_cast<ShaderVK*>(pComputeShader);
+	pComputeShaderVK->setSpecializationConstant<uint32_t>(0, m_WorkGroupSize[0]);
+	pComputeShaderVK->setSpecializationConstant<uint32_t>(1, NUM_PROBES_PER_DIMENSION);
+	pComputeShaderVK->setSpecializationConstant<uint32_t>(2, SAMPLES_PER_PROBE_DIMENSION_GLOSSY_SOURCE);
+	pComputeShaderVK->setSpecializationConstant<uint32_t>(3, SAMPLES_PER_PROBE_GLOSSY_SOURCE);
+	pComputeShaderVK->setSpecializationConstant<uint32_t>(4, SAMPLES_PER_PROBE_DIMENSION_COLLAPSED_GI);
+	pComputeShaderVK->setSpecializationConstant<uint32_t>(5, SAMPLES_PER_PROBE_COLLAPSED_GI);
+	//Todo: One for depth as well
+
+	m_pComputePipeline = DBG_NEW PipelineVK(pDevice);
+	m_pComputePipeline->finalizeCompute(pComputeShader, m_pRayTracingPipelineLayout);
+
+	SAFEDELETE(pComputeShader);
+	return true;
+}
+
+bool RendererVK::createGlossySourceOctMaps()
+{
+	//Todo: Make this into a texture atlas instead
+	uint32_t atlasDimensionX = (SAMPLES_PER_PROBE_DIMENSION_GLOSSY_SOURCE + 2) * NUM_PROBES_PER_DIMENSION * NUM_PROBES_PER_DIMENSION * NUM_PROBES_PER_DIMENSION;
+	uint32_t atlasDimensionY = SAMPLES_PER_PROBE_DIMENSION_GLOSSY_SOURCE + 2;
+
+	ImageParams radianceImageParams = {};
+	radianceImageParams.Type = VK_IMAGE_TYPE_2D;
+	radianceImageParams.Format = VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+	radianceImageParams.Extent.width = atlasDimensionX;
+	radianceImageParams.Extent.height = atlasDimensionY;
+	radianceImageParams.Extent.depth = 1;
+	radianceImageParams.MipLevels = 1;
+	radianceImageParams.ArrayLayers = 1;
+	radianceImageParams.Samples = VK_SAMPLE_COUNT_1_BIT;
+	radianceImageParams.Usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	radianceImageParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+	ImageParams depthImageParams = {};
+	depthImageParams.Type = VK_IMAGE_TYPE_2D;
+	depthImageParams.Format = VK_FORMAT_R32_SFLOAT;
+	depthImageParams.Extent.width = atlasDimensionX;
+	depthImageParams.Extent.height = atlasDimensionY;
+	depthImageParams.Extent.depth = 1;
+	depthImageParams.MipLevels = 1;
+	depthImageParams.ArrayLayers = 1;
+	depthImageParams.Samples = VK_SAMPLE_COUNT_1_BIT;
+	depthImageParams.Usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	depthImageParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+	ImageViewParams imageViewParams = {};
+	imageViewParams.Type = VK_IMAGE_VIEW_TYPE_2D;
+	imageViewParams.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+	imageViewParams.FirstMipLevel = 0;
+	imageViewParams.MipLevels = 1;
+	imageViewParams.FirstLayer = 0;
+	imageViewParams.LayerCount = 1;
+
+	CommandBufferVK* pTempCommandBuffer = m_ppCommandPools[0]->allocateCommandBuffer();
+	pTempCommandBuffer->reset();
+	pTempCommandBuffer->begin();
+
+	{
+		m_pLightProbeGlossySourceRadianceAtlas = new ImageVK(m_pContext->getDevice());
+		m_pLightProbeGlossySourceRadianceAtlas->init(radianceImageParams);
+
+		m_pLightProbeGlossySourceDepthAtlas = new ImageVK(m_pContext->getDevice());
+		m_pLightProbeGlossySourceDepthAtlas->init(depthImageParams);
+
+		m_pLightProbeGlossySourceRadianceAtlasView = new ImageViewVK(m_pContext->getDevice(), m_pLightProbeGlossySourceRadianceAtlas);
+		m_pLightProbeGlossySourceRadianceAtlasView->init(imageViewParams);
+
+		m_pLightProbeGlossySourceDepthAtlasView = new ImageViewVK(m_pContext->getDevice(), m_pLightProbeGlossySourceDepthAtlas);
+		m_pLightProbeGlossySourceDepthAtlasView->init(imageViewParams);
+
+		VkImageMemoryBarrier diffuseIrradianceMapMemoryBarrier = {};
+		diffuseIrradianceMapMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		diffuseIrradianceMapMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		diffuseIrradianceMapMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		diffuseIrradianceMapMemoryBarrier.image = m_pLightProbeGlossySourceRadianceAtlas->getImage();
+		diffuseIrradianceMapMemoryBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+		diffuseIrradianceMapMemoryBarrier.srcAccessMask = 0;
+
+		VkImageMemoryBarrier depthMapMemoryBarrier = {};
+		depthMapMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		depthMapMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		depthMapMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		depthMapMemoryBarrier.image = m_pLightProbeGlossySourceDepthAtlas->getImage();
+		depthMapMemoryBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+		depthMapMemoryBarrier.srcAccessMask = 0;
+
+		vkCmdPipelineBarrier(
+			pTempCommandBuffer->getCommandBuffer(),
+			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+			0,
+			0, nullptr,
+			0, nullptr,
+			1, &diffuseIrradianceMapMemoryBarrier);
+
+		vkCmdPipelineBarrier(
+			pTempCommandBuffer->getCommandBuffer(),
+			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+			0,
+			0, nullptr,
+			0, nullptr,
+			1, &depthMapMemoryBarrier);
+	}
+	
+	pTempCommandBuffer->end();
+	m_pContext->getDevice()->executeCommandBuffer(m_pContext->getDevice()->getGraphicsQueue(), pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_pContext->getDevice()->wait();
+
+	m_ppCommandPools[0]->freeCommandBuffer(&pTempCommandBuffer);
+
+	return true;
+}
+
+bool RendererVK::createCollapsedGIOctMaps()
+{
+	uint32_t atlasDimensionX = (SAMPLES_PER_PROBE_DIMENSION_COLLAPSED_GI + 2) * NUM_PROBES_PER_DIMENSION * NUM_PROBES_PER_DIMENSION * NUM_PROBES_PER_DIMENSION;
+	uint32_t atlasDimensionY = SAMPLES_PER_PROBE_DIMENSION_COLLAPSED_GI + 2;
+
+	ImageParams irradianceImageParams = {};
+	irradianceImageParams.Type = VK_IMAGE_TYPE_2D;
+	irradianceImageParams.Format = VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+	irradianceImageParams.Extent.width = atlasDimensionX;
+	irradianceImageParams.Extent.height = atlasDimensionY;
+	irradianceImageParams.Extent.depth = 1;
+	irradianceImageParams.MipLevels = 1;
+	irradianceImageParams.ArrayLayers = 1;
+	irradianceImageParams.Samples = VK_SAMPLE_COUNT_1_BIT;
+	irradianceImageParams.Usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	irradianceImageParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+	ImageParams depthImageParams = {};
+	depthImageParams.Type = VK_IMAGE_TYPE_2D;
+	depthImageParams.Format = VK_FORMAT_R16G16_SFLOAT;
+	depthImageParams.Extent.width = atlasDimensionX;
+	depthImageParams.Extent.height = atlasDimensionY;
+	depthImageParams.Extent.depth = 1;
+	depthImageParams.MipLevels = 1;
+	depthImageParams.ArrayLayers = 1;
+	depthImageParams.Samples = VK_SAMPLE_COUNT_1_BIT;
+	depthImageParams.Usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	depthImageParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+	ImageViewParams imageViewParams = {};
+	imageViewParams.Type = VK_IMAGE_VIEW_TYPE_2D;
+	imageViewParams.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
+	imageViewParams.FirstMipLevel = 0;
+	imageViewParams.MipLevels = 1;
+	imageViewParams.FirstLayer = 0;
+	imageViewParams.LayerCount = 1;
+
+	CommandBufferVK* pTempCommandBuffer = m_ppCommandPools[0]->allocateCommandBuffer();
+	pTempCommandBuffer->reset();
+	pTempCommandBuffer->begin();
+
+	{
+		m_pLightProbeCollapsedGIIrradianceAtlas = new ImageVK(m_pContext->getDevice());
+		m_pLightProbeCollapsedGIIrradianceAtlas->init(irradianceImageParams);
+
+		m_pLightProbeCollapsedGIDepthAtlas = new ImageVK(m_pContext->getDevice());
+		m_pLightProbeCollapsedGIDepthAtlas->init(depthImageParams);
+
+		m_pLightProbeCollapsedGIIrradianceAtlasView = new ImageViewVK(m_pContext->getDevice(), m_pLightProbeCollapsedGIIrradianceAtlas);
+		m_pLightProbeCollapsedGIIrradianceAtlasView->init(imageViewParams);
+
+		m_pLightProbeCollapsedGIDepthAtlasView = new ImageViewVK(m_pContext->getDevice(), m_pLightProbeCollapsedGIDepthAtlas);
+		m_pLightProbeCollapsedGIDepthAtlasView->init(imageViewParams);
+
+		VkImageMemoryBarrier diffuseIrradianceMapMemoryBarrier = {};
+		diffuseIrradianceMapMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		diffuseIrradianceMapMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		diffuseIrradianceMapMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		diffuseIrradianceMapMemoryBarrier.image = m_pLightProbeCollapsedGIIrradianceAtlas->getImage();
+		diffuseIrradianceMapMemoryBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+		diffuseIrradianceMapMemoryBarrier.srcAccessMask = 0;
+
+		VkImageMemoryBarrier depthMapMemoryBarrier = {};
+		depthMapMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		depthMapMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		depthMapMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		depthMapMemoryBarrier.image = m_pLightProbeCollapsedGIDepthAtlas->getImage();
+		depthMapMemoryBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+		depthMapMemoryBarrier.srcAccessMask = 0;
+
+		vkCmdPipelineBarrier(
+			pTempCommandBuffer->getCommandBuffer(),
+			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+			0,
+			0, nullptr,
+			0, nullptr,
+			1, &diffuseIrradianceMapMemoryBarrier);
+
+		vkCmdPipelineBarrier(
+			pTempCommandBuffer->getCommandBuffer(),
+			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+			VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+			0,
+			0, nullptr,
+			0, nullptr,
+			1, &depthMapMemoryBarrier);
+	}
+
+	pTempCommandBuffer->end();
+	m_pContext->getDevice()->executeCommandBuffer(m_pContext->getDevice()->getGraphicsQueue(), pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_pContext->getDevice()->wait();
+
+	m_ppCommandPools[0]->freeCommandBuffer(&pTempCommandBuffer);
+
 	return true;
 }
 

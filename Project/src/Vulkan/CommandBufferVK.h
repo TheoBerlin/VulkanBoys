@@ -53,6 +53,8 @@ public:
 	//Ray Tracing
 	void traceRays(ShaderBindingTableVK* pShaderBindingTable, uint32_t width, uint32_t height, uint32_t depth, uint32_t raygenOffset);
 
+	void dispatch(const glm::u32vec3& groupSize);
+
 	//GETTERS
 	VkFence getFence() const { return m_Fence; }
 	VkCommandBuffer getCommandBuffer() const { return m_CommandBuffer; }

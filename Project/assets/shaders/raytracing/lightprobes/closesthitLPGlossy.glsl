@@ -3,18 +3,18 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 
 #define M_PI 3.1415926535897932384626433832795f
-//#define M_PHI 1.61803398875f
 
 struct RayPayload
 {
 	vec3 color;
+	float distance;
 	uint recursion;
 };
 
-struct ShadowRayPayload
-{
-	float lightIntensity;
-};
+// struct ShadowRayPayload
+// {
+// 	float lightIntensity;
+// };
 
 struct Vertex
 {
@@ -24,17 +24,14 @@ struct Vertex
 	vec4 TexCoord;
 };
 
+layout (constant_id = 6) const uint MAX_RECURSIONS = 3;
+
 layout(location = 0) rayPayloadInNV RayPayload rayPayload;
-layout(location = 1) rayPayloadNV ShadowRayPayload shadowRayPayload;
+//layout(location = 1) rayPayloadNV ShadowRayPayload shadowRayPayload;
 
 hitAttributeNV vec3 attribs;
 
-layout (constant_id = 0) const uint WORLD_SIZE_X = 10;
-layout (constant_id = 1) const uint WORLD_SIZE_Y = 10;
-layout (constant_id = 2) const uint WORLD_SIZE_Z = 10;
-layout (constant_id = 3) const uint NUM_PROBES_PER_DIMENSION = 3;
-layout (constant_id = 4) const uint SAMPLES_PER_PROBE_DIMENSION = 8;
-layout (constant_id = 5) const uint SAMPLES_PER_PROBE = 64;
+layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
 
 layout(binding = 3, set = 0) buffer Vertices { Vertex v[]; } vertices;
 layout(binding = 4, set = 0) buffer Indices { uint i[]; } indices;
@@ -42,30 +39,6 @@ layout(binding = 5, set = 0) buffer MeshIndices { uint mi[]; } meshIndices;
 layout(binding = 6, set = 0) uniform sampler2D albedoMaps[16];
 layout(binding = 7, set = 0) uniform sampler2D normalMaps[16];
 layout(binding = 8, set = 0) uniform sampler2D roughnessMaps[16];
-layout(binding = 15, set = 0) uniform sampler2D collapsedGIIrradianceAtlas;
-layout(binding = 16, set = 0) uniform sampler2D collapsedGIDepthAtlas;
-
-
-vec3 findBestLightProbe(vec3 hitPos)
-{
-	vec3 worldSize = vec3(WORLD_SIZE_X, WORLD_SIZE_Y, WORLD_SIZE_Z);
-	return round(hitPos * vec3(NUM_PROBES_PER_DIMENSION - 1) / worldSize);
-}
-
-// Returns ±1
-vec2 signNotZero(vec2 v) 
-{
-	return vec2((v.x >= 0.0) ? +1.0 : -1.0, (v.y >= 0.0) ? +1.0 : -1.0);
-}
-
-// Assume normalized input. Output is on [-1, 1] for each component.
-vec2 float32x3_to_oct(in vec3 v)
-{
-	// Project the sphere onto the octahedron, and then onto the xy plane
-	vec2 p = v.xy * (1.0 / (abs(v.x) + abs(v.y) + abs(v.z)));
-	// Reflect the folds of the lower hemisphere over the diagonals
-	return (v.z <= 0.0) ? ((1.0 - abs(p.yx)) * signNotZero(p)) : p;
-}
 
 void calculateTriangleData(out uint textureIndex, out vec2 texCoords, out vec3 normal)
 {
@@ -113,18 +86,35 @@ void main()
 	uint recursionIndex = rayPayload.recursion;
 
 	vec4 albedoColor = texture(albedoMaps[textureIndex], texCoords);
+	float roughness = texture(roughnessMaps[textureIndex], texCoords).r;
 
-	vec3 hitPos = gl_WorldRayOriginNV + normalize(gl_WorldRayDirectionNV) * gl_HitTNV;
+	if (recursionIndex < MAX_RECURSIONS && roughness < 0.985f)
+	{
+		vec3 hitPos = gl_WorldRayOriginNV + normalize(gl_WorldRayDirectionNV) * gl_HitTNV;
+		uint rayFlags = gl_RayFlagsOpaqueNV;
+		uint cullMask = 0x80;
+		float tmin = 0.001f;
+		float tmax = 10000.0f;
 
-	vec3 worldSize = vec3(WORLD_SIZE_X, WORLD_SIZE_Y, WORLD_SIZE_Z);
-	vec3 bestLightProbe = findBestLightProbe(hitPos);
-	vec3 bestLightProbeWorldPos = bestLightProbe * worldSize / 2.0f;
-	uvec3 bestLightProbe3DIndex = uvec3(bestLightProbe + vec3(NUM_PROBES_PER_DIMENSION - 1) / 2.0f);
-	uint baseLightProbeIndex = (bestLightProbe3DIndex.x + NUM_PROBES_PER_DIMENSION * (bestLightProbe3DIndex.y + NUM_PROBES_PER_DIMENSION * bestLightProbe3DIndex.z));
+		// vec3 shadowOrigin = hitPos + worldNormal * 0.001f;
+		// vec3 shadowDirection = normalize(lightPos - shadowOrigin);
+		// traceNV(topLevelAS, rayFlags, cullMask, 1, sbtStride, 1, shadowOrigin, tmin, shadowDirection, tmax, 1);
 
-	vec3 realNormal = normalize(hitPos - bestLightProbeWorldPos);
+		// float shadowDarkness = 0.8f;
+		// float shadow = 1.0f - shadowRayPayload.occluderFactor * shadowDarkness;
 
-	vec2 atlasOffset = vec2((SAMPLES_PER_PROBE_DIMENSION + 2) * baseLightProbeIndex + 1.0f, 1.0f);
-	vec2 uvCoords = ((float32x3_to_oct(realNormal) * 0.5f + 0.5f) * float(SAMPLES_PER_PROBE_DIMENSION) + atlasOffset) / textureSize(collapsedGIIrradianceAtlas, 0);
-	rayPayload.color = texture(collapsedGIIrradianceAtlas, uvCoords).rgb;
+		vec3 origin = hitPos + normal * 0.001f;
+		vec3 reflectionDirection = reflect(gl_WorldRayDirectionNV, normal);
+		rayPayload.recursion = recursionIndex + 1;
+
+		traceNV(topLevelAS, rayFlags, cullMask, 0, 0, 0, origin, tmin, reflectionDirection, tmax, 0);
+		rayPayload.color = (1.0f - roughness) * rayPayload.color + roughness * albedoColor.rgb;
+		//rayPayload.color = shadow * (reflectiveness * rayPayload.color + (1.0f - reflectiveness) * albedoColor.rgb);
+	}
+	else
+	{
+		rayPayload.color = albedoColor.rgb; 
+	}
+
+	rayPayload.distance = gl_HitTNV;
 }

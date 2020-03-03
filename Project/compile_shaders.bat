@@ -6,9 +6,10 @@
 "tools/glslc.exe" -fshader-stage=rmiss assets/shaders/raytracing/missShadow.glsl -o assets/shaders/raytracing/missShadow.spv 
 "tools/glslc.exe" -fshader-stage=rchit assets/shaders/raytracing/closesthitShadow.glsl -o assets/shaders/raytracing/closesthitShadow.spv 
 
-"tools/glslc.exe" -fshader-stage=rgen  assets/shaders/raytracing/lightprobes/raygenLightProbe.glsl 		-o assets/shaders/raytracing/lightprobes/raygenLightProbe.spv
-"tools/glslc.exe" -fshader-stage=rmiss assets/shaders/raytracing/lightprobes/missLightProbe.glsl 		-o assets/shaders/raytracing/lightprobes/missLightProbe.spv 
-"tools/glslc.exe" -fshader-stage=rchit assets/shaders/raytracing/lightprobes/closesthitLightProbe.glsl 	-o assets/shaders/raytracing/lightprobes/closesthitLightProbe.spv 
+"tools/glslc.exe" -fshader-stage=rgen  assets/shaders/raytracing/lightprobes/raygenLPGlossy.glsl 		-o assets/shaders/raytracing/lightprobes/raygenLPGlossy.spv
+"tools/glslc.exe" -fshader-stage=rmiss assets/shaders/raytracing/lightprobes/missLPGlossy.glsl 		-o assets/shaders/raytracing/lightprobes/missLPGlossy.spv 
+"tools/glslc.exe" -fshader-stage=rchit assets/shaders/raytracing/lightprobes/closesthitLPGlossy.glsl 	-o assets/shaders/raytracing/lightprobes/closesthitLPGlossy.spv 
+
 "tools/glslc.exe" -fshader-stage=rmiss assets/shaders/raytracing/lightprobes/missShadow.glsl 			-o assets/shaders/raytracing/lightprobes/missShadow.spv 
 "tools/glslc.exe" -fshader-stage=rchit assets/shaders/raytracing/lightprobes/closesthitShadow.glsl 		-o assets/shaders/raytracing/lightprobes/closesthitShadow.spv 
 
@@ -19,4 +20,6 @@
 "tools/glslc.exe" -fshader-stage=rgen  assets/shaders/raytracing/lightprobes/raygenVisualizer.glsl 				-o assets/shaders/raytracing/lightprobes/raygenVisualizer.spv
 "tools/glslc.exe" -fshader-stage=rmiss assets/shaders/raytracing/lightprobes/missVisualizer.glsl 				-o assets/shaders/raytracing/lightprobes/missVisualizer.spv 
 "tools/glslc.exe" -fshader-stage=rchit assets/shaders/raytracing/lightprobes/closesthitVisualizer.glsl 			-o assets/shaders/raytracing/lightprobes/closesthitVisualizer.spv 
+
+"tools/glslc.exe" -fshader-stage=compute assets/shaders/raytracing/lightprobes/collapseGI.glsl 			-o assets/shaders/raytracing/lightprobes/collapseGI.spv 
 pause

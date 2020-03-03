@@ -4,6 +4,7 @@
 struct RayPayload 
 {
 	vec3 color;
+	float distance;
 	uint recursion;
 };
 
@@ -17,6 +18,6 @@ void main()
 	vec3 unitDir = normalize(gl_WorldRayDirectionNV);
 	float t = 0.5f * (unitDir.y + 1.0f);
 	rayPayload.color = (1.0f-t) * gradientStart + t * gradientEnd;
-	//rayPayload.color = vec3(0.0f, 1.0f, 0.0f);
+	rayPayload.distance = gl_RayTmaxNV;
 	rayPayload.recursion = rayPayload.recursion + 1;
 }

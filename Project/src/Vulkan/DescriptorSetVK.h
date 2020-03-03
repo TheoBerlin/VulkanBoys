@@ -19,6 +19,7 @@ public:
 	void writeCombinedImageDescriptors(VkImageView imageViews[], VkSampler samplers[], uint32_t count, uint32_t binding);
     void writeSampledImageDescriptor(VkImageView imageView, uint32_t binding);
 	void writeStorageImageDescriptor(VkImageView imageView, uint32_t binding);
+	void writeStorageImageDescriptors(VkImageView imageViews[], uint32_t count, uint32_t binding);
 	void writeAccelerationStructureDescriptor(VkAccelerationStructureNV accelerationStructure, uint32_t binding);
 	
     VkDescriptorSet getDescriptorSet() const { return m_DescriptorSet; }
@@ -26,7 +27,7 @@ public:
 
 private:
     void writeBufferDescriptor(VkBuffer buffer, uint32_t binding, VkDescriptorType bufferType);
-    void writeImageDescriptors(VkImageView imageView[], VkSampler sampler[], uint32_t count, uint32_t binding, VkImageLayout layout, VkDescriptorType descriptorType);
+    void writeImageDescriptors(VkImageView imageViews[], VkSampler samplers[], uint32_t count, uint32_t binding, VkImageLayout layout, VkDescriptorType descriptorType);
 
 private:
     DescriptorCounts m_DescriptorCounts;

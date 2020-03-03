@@ -257,6 +257,20 @@ void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLa
 		sourceStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 		destinationStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_GENERAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+	{
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+		sourceStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+		destinationStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_GENERAL)
+	{
+		barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+		sourceStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+		destinationStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+	}
 	else 
 	{
 		LOG("Unsupported layout transition");
@@ -288,4 +302,9 @@ void CommandBufferVK::traceRays(ShaderBindingTableVK* pShaderBindingTable, uint3
 		bufferSBT, intersectOffset, pShaderBindingTable->getBindingStride(),
 		VK_NULL_HANDLE, 0, 0,
 		width, height, depth);
+}
+
+void CommandBufferVK::dispatch(const glm::u32vec3& groupSize)
+{
+	vkCmdDispatch(m_CommandBuffer, groupSize.x, groupSize.y, groupSize.z);
 }

@@ -43,15 +43,19 @@ void DescriptorSetVK::writeCombinedImageDescriptors(VkImageView imageViews[], Vk
 
 void DescriptorSetVK::writeSampledImageDescriptor(VkImageView imageView, uint32_t binding)
 {
-	VkSampler sampler[1] = { nullptr };
-    writeImageDescriptors(&imageView, sampler, 1, binding, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+    writeImageDescriptors(&imageView, nullptr, 1, binding, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
 }
 
 void DescriptorSetVK::writeStorageImageDescriptor(VkImageView imageView, uint32_t binding)
 {
-	VkSampler sampler[1] = { nullptr };
-	writeImageDescriptors(&imageView, sampler, 1, binding, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+	writeImageDescriptors(&imageView, nullptr, 1, binding, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
 }
+
+void DescriptorSetVK::writeStorageImageDescriptors(VkImageView imageViews[], uint32_t count, uint32_t binding)
+{
+	writeImageDescriptors(imageViews, nullptr, count, binding, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+}
+
 
 void DescriptorSetVK::writeAccelerationStructureDescriptor(VkAccelerationStructureNV accelerationStructure, uint32_t binding)
 {
@@ -96,7 +100,7 @@ void DescriptorSetVK::writeBufferDescriptor(VkBuffer buffer, uint32_t binding, V
     vkUpdateDescriptorSets(m_pDevice->getDevice(), 1, &descriptorBufferWrite, 0, nullptr);
 }
 
-void DescriptorSetVK::writeImageDescriptors(VkImageView imageView[], VkSampler sampler[], uint32_t count, uint32_t binding, VkImageLayout layout, VkDescriptorType descriptorType)
+void DescriptorSetVK::writeImageDescriptors(VkImageView imageViews[], VkSampler samplers[], uint32_t count, uint32_t binding, VkImageLayout layout, VkDescriptorType descriptorType)
 {
 	std::vector<VkDescriptorImageInfo> imageInfos;
 	imageInfos.reserve(count);
@@ -104,8 +108,8 @@ void DescriptorSetVK::writeImageDescriptors(VkImageView imageView[], VkSampler s
 	for (uint32_t i = 0; i < count; i++)
 	{
 		VkDescriptorImageInfo imageInfo = {};
-		imageInfo.imageView = imageView[i];
-		imageInfo.sampler = sampler[i];
+		imageInfo.imageView = imageViews[i];
+		imageInfo.sampler = samplers != nullptr ? samplers[i] : nullptr;
 		imageInfo.imageLayout = layout;
 		imageInfos.push_back(imageInfo);
 	}

@@ -22,6 +22,7 @@ public:
 	void setWireFrame(bool wireframe) { m_WireFrame = wireframe; }
 
 	bool finalize(const std::vector<IShader*>& shaders, RenderPassVK* pRenderPass, PipelineLayoutVK* pPipelineLayout);
+	bool finalizeCompute(IShader* shader, PipelineLayoutVK* pPipelineLayout);
 
 	VkPipeline getPipeline() const { return m_Pipeline; }
 
