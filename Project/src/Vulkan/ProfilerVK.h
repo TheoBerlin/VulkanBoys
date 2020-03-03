@@ -26,10 +26,9 @@ public:
 
     void setParentProfiler(ProfilerVK* pParentProfiler);
 
-    // The query pool is reset using pResetCmdBuffer
+    // pResetCmdBuffer is used to reset the query pool
     void beginFrame(size_t currentFrame, CommandBufferVK* pProfiledCmdBuffer, CommandBufferVK* pResetCmdBuffer);
     void endFrame();
-    void writeResults();
     void drawResults();
 
     void addChildProfiler(ProfilerVK* pChildProfiler);
@@ -41,8 +40,10 @@ public:
     uint32_t getRecurseDepth() const { return m_RecurseDepth; }
 
 private:
+    // Fetches timestamp data from Vulkan and writes it to timestamp objects
+    void writeResults();
     void findWidestText();
-    void expandQueryPools();
+    void expandQueryPools(CommandBufferVK* pCommandBuffer);
 
 private:
     // Multiplying factor used to convert a timestamp unit to milliseconds
@@ -67,5 +68,6 @@ private:
     CommandBufferVK* m_pProfiledCommandBuffer;
 
     uint32_t m_CurrentFrame, m_NextQuery;
+    bool m_OutOfQueries;
     std::vector<uint64_t> m_TimeResults;
 };
