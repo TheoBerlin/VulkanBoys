@@ -260,7 +260,7 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 	pEmitterDescriptorSet->writeStorageBufferDescriptor(pAgesBuffer->getBuffer(), 2);
 	pEmitterDescriptorSet->writeUniformBufferDescriptor(pEmitterBuffer->getBuffer(), 3);
 
-	pEmitter->setDescriptorSet(pEmitterDescriptorSet);
+	pEmitter->setDescriptorSetCompute(pEmitterDescriptorSet);
 
 	GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
 	DeviceVK* pDevice = pGraphicsContext->getDevice();
@@ -325,7 +325,7 @@ void ParticleEmitterHandlerVK::updateGPU(float dt)
 		}
 
 		// TODO: Use constant variables or define macros for binding indices
-		DescriptorSetVK* pDescriptorSet = reinterpret_cast<DescriptorSetVK*>(pEmitter->getDescriptorSet());
+		DescriptorSetVK* pDescriptorSet = reinterpret_cast<DescriptorSetVK*>(pEmitter->getDescriptorSetCompute());
 		m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, m_pPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
 
 		uint32_t particleCount = pEmitter->getParticleCount();

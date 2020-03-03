@@ -284,7 +284,7 @@ bool MeshRendererVK::createPipelineLayouts()
 	std::vector<VkPushConstantRange> pushConstantRanges = { pushConstantRange };
 
 	m_pPipelineLayout = DBG_NEW PipelineLayoutVK(m_pContext->getDevice());
-	
+
 	//TODO: Return bool
 	m_pPipelineLayout->init(descriptorSetLayouts, pushConstantRanges);
 
