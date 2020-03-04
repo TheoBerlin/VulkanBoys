@@ -13,7 +13,7 @@ public:
 
 	virtual bool init(const SamplerParams& params) override;
 
-	VkSampler getSampler() { return m_Sampler; }
+	VkSampler getSampler() const { return m_Sampler; }
 
 private:
 	DeviceVK* m_pDevice;

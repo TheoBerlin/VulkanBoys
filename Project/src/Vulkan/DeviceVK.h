@@ -36,19 +36,17 @@ public:
 	void addRequiredExtension(const char* extensionName);
 	void addOptionalExtension(const char* extensionName);
 
-	void executePrimaryCommandBuffer(VkQueue queue, CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages,
+	void executeCommandBuffer(VkQueue queue, CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages,
 		uint32_t waitSemaphoreCount, const VkSemaphore* pSignalSemaphores, uint32_t signalSemaphoreCount);
-	void executeSecondaryCommandBuffer(CommandBufferVK* pPrimaryCommandBuffer, CommandBufferVK* pSecondaryCommandBuffer);
+	
 	void wait();
 
-	//GETTERS
-	VkPhysicalDevice getPhysicalDevice() { return m_PhysicalDevice; };
-	VkDevice getDevice() { return m_Device; }
-
-	VkQueue getGraphicsQueue() { return m_GraphicsQueue; }
-	VkQueue getComputeQueue() { return m_ComputeQueue; }
-	VkQueue getTransferQueue() { return m_TransferQueue; }
-	VkQueue getPresentQueue() { return m_PresentQueue; }
+	VkPhysicalDevice	getPhysicalDevice() { return m_PhysicalDevice; };
+	VkDevice			getDevice()			{ return m_Device; }
+	VkQueue				getGraphicsQueue()	{ return m_GraphicsQueue; }
+	VkQueue				getComputeQueue()	{ return m_ComputeQueue; }
+	VkQueue				getTransferQueue()	{ return m_TransferQueue; }
+	VkQueue				getPresentQueue()	{ return m_PresentQueue; }
 
 	CopyHandlerVK* getCopyHandler() const { return m_pCopyHandler; }
 

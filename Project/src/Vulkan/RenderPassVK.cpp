@@ -45,9 +45,9 @@ void RenderPassVK::addSubpassDependency(const VkSubpassDependency& dependency)
 bool RenderPassVK::finalize()
 {
 	VkRenderPassCreateInfo renderPassInfo = {};
-	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassInfo.pNext = nullptr;
-	renderPassInfo.flags = 0;
+	renderPassInfo.sType			= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassInfo.pNext			= nullptr;
+	renderPassInfo.flags			= 0;
 	renderPassInfo.attachmentCount	= uint32_t(m_Attachments.size());
 	renderPassInfo.pAttachments		= (m_Attachments.data()) ? m_Attachments.data() : nullptr;
 	renderPassInfo.subpassCount		= uint32_t(m_Subpasses.size());

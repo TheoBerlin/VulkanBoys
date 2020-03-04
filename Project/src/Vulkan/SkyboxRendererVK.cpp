@@ -147,20 +147,22 @@ void SkyboxRendererVK::generateCubemapFromPanorama(TextureCubeVK* pCubemap, Text
 
 	//Setup panorama image
 	m_pPanoramaDescriptorSet->writeUniformBufferDescriptor(m_pCubeFilterBuffer, 0);
-	m_pPanoramaDescriptorSet->writeCombinedImageDescriptor(pPanorama->getImageView(), m_pCubeFilterSampler, 1);
+
+	ImageViewVK* pPanoramaView = pPanorama->getImageView();
+	m_pPanoramaDescriptorSet->writeCombinedImageDescriptors(&pPanoramaView, &m_pCubeFilterSampler, 1, 1);
 
 	//Draw
-	m_ppCommandBuffers[m_CurrentFrame]->reset();
+	m_ppCommandBuffers[m_CurrentFrame]->reset(true);
 	m_ppCommandPools[m_CurrentFrame]->reset();
 
-	m_ppCommandBuffers[m_CurrentFrame]->begin();
+	m_ppCommandBuffers[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCubeFilterBuffer, 0, (const void*)glm::value_ptr(captureProjection), sizeof(glm::mat4));
 
 	m_ppCommandBuffers[m_CurrentFrame]->setViewports(&viewport, 1);
 	m_ppCommandBuffers[m_CurrentFrame]->setScissorRects(&scissorRect, 1);
 
-	m_ppCommandBuffers[m_CurrentFrame]->bindGraphicsPipeline(m_pPanoramaPipeline);
+	m_ppCommandBuffers[m_CurrentFrame]->bindPipeline(m_pPanoramaPipeline);
 	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pFilterCubePipelineLayout, 0, 1, &m_pPanoramaDescriptorSet, 0, nullptr);
 
 	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(pCubemap->getImage(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, pCubemap->getMiplevels(), 0, 6);
@@ -170,7 +172,7 @@ void SkyboxRendererVK::generateCubemapFromPanorama(TextureCubeVK* pCubemap, Text
 	{
 		FrameBufferVK* pFramebuffer = pReflectionProbe->getFrameBuffer(i, 0);
 
-		m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pFilterCubeRenderpass, pFramebuffer, width, width, &clearValue, 1);
+		m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pFilterCubeRenderpass, pFramebuffer, width, width, &clearValue, 1, VK_SUBPASS_CONTENTS_INLINE);
 
 		m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pFilterCubePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(captureViews[i]));
 		m_ppCommandBuffers[m_CurrentFrame]->drawInstanced(36, 1, 0, 0);
@@ -223,20 +225,22 @@ void SkyboxRendererVK::generateIrradiance(TextureCubeVK* pCubemap, TextureCubeVK
 
 	//Setup panorama image
 	m_pIrradianceDescriptorSet->writeUniformBufferDescriptor(m_pCubeFilterBuffer, 0);
-	m_pIrradianceDescriptorSet->writeCombinedImageDescriptor(pCubemap->getImageView(), m_pCubeFilterSampler, 1);
+
+	ImageViewVK* pCubemapView = pCubemap->getImageView();
+	m_pIrradianceDescriptorSet->writeCombinedImageDescriptors(&pCubemapView, &m_pCubeFilterSampler, 1, 1);
 
 	//Draw
-	m_ppCommandBuffers[m_CurrentFrame]->reset();
+	m_ppCommandBuffers[m_CurrentFrame]->reset(true);
 	m_ppCommandPools[m_CurrentFrame]->reset();
 
-	m_ppCommandBuffers[m_CurrentFrame]->begin();
+	m_ppCommandBuffers[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCubeFilterBuffer, 0, (const void*)glm::value_ptr(captureProjection), sizeof(glm::mat4));
 
 	m_ppCommandBuffers[m_CurrentFrame]->setViewports(&viewport, 1);
 	m_ppCommandBuffers[m_CurrentFrame]->setScissorRects(&scissorRect, 1);
 
-	m_ppCommandBuffers[m_CurrentFrame]->bindGraphicsPipeline(m_pIrradiancePipeline);
+	m_ppCommandBuffers[m_CurrentFrame]->bindPipeline(m_pIrradiancePipeline);
 	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pFilterCubePipelineLayout, 0, 1, &m_pIrradianceDescriptorSet, 0, nullptr);
 
 	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(pIrradianceMap->getImage(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, pIrradianceMap->getMiplevels(), 0, 6);
@@ -246,7 +250,7 @@ void SkyboxRendererVK::generateIrradiance(TextureCubeVK* pCubemap, TextureCubeVK
 	{
 		FrameBufferVK* pFramebuffer = pReflectionProbe->getFrameBuffer(i, 0);
 
-		m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pFilterCubeRenderpass, pFramebuffer, width, width, &clearValue, 1);
+		m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pFilterCubeRenderpass, pFramebuffer, width, width, &clearValue, 1, VK_SUBPASS_CONTENTS_INLINE);
 
 		m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pFilterCubePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(captureViews[i]));
 		m_ppCommandBuffers[m_CurrentFrame]->drawInstanced(36, 1, 0, 0);
@@ -288,17 +292,19 @@ void SkyboxRendererVK::prefilterEnvironmentMap(TextureCubeVK* pCubemap, TextureC
 
 	//Setup panorama image
 	m_pPreFilterDescriptorSet->writeUniformBufferDescriptor(m_pCubeFilterBuffer, 0);
-	m_pPreFilterDescriptorSet->writeCombinedImageDescriptor(pCubemap->getImageView(), m_pCubeFilterSampler, 1);
+
+	ImageViewVK* pCubemapView = pCubemap->getImageView();
+	m_pPreFilterDescriptorSet->writeCombinedImageDescriptors(&pCubemapView, &m_pCubeFilterSampler, 1, 1);
 
 	//Draw
-	m_ppCommandBuffers[m_CurrentFrame]->reset();
+	m_ppCommandBuffers[m_CurrentFrame]->reset(true);
 	m_ppCommandPools[m_CurrentFrame]->reset();
 
-	m_ppCommandBuffers[m_CurrentFrame]->begin();
+	m_ppCommandBuffers[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCubeFilterBuffer, 0, (const void*)glm::value_ptr(captureProjection), sizeof(glm::mat4));
 
-	m_ppCommandBuffers[m_CurrentFrame]->bindGraphicsPipeline(m_pPreFilterPipeline);
+	m_ppCommandBuffers[m_CurrentFrame]->bindPipeline(m_pPreFilterPipeline);
 	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pFilterCubePipelineLayout, 0, 1, &m_pPreFilterDescriptorSet, 0, nullptr);
 
 	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(pEnvironmentMap->getImage(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, pEnvironmentMap->getMiplevels(), 0, 6);
@@ -328,7 +334,7 @@ void SkyboxRendererVK::prefilterEnvironmentMap(TextureCubeVK* pCubemap, TextureC
 		{
 			FrameBufferVK* pFramebuffer = pReflectionProbe->getFrameBuffer(i, mip);
 
-			m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pFilterCubeRenderpass, pFramebuffer, scissorRect.extent.width, scissorRect.extent.height, &clearValue, 1);
+			m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pFilterCubeRenderpass, pFramebuffer, scissorRect.extent.width, scissorRect.extent.height, &clearValue, 1, VK_SUBPASS_CONTENTS_INLINE);
 
 			m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pFilterCubePipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(captureViews[i]));
 			m_ppCommandBuffers[m_CurrentFrame]->drawInstanced(36, 1, 0, 0);
@@ -362,7 +368,7 @@ bool SkyboxRendererVK::createCommandpoolsAndBuffers()
 			return false;
 		}
 
-		m_ppCommandBuffers[i] = m_ppCommandPools[i]->allocateCommandBuffer();
+		m_ppCommandBuffers[i] = m_ppCommandPools[i]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 		if (m_ppCommandBuffers[i] == nullptr)
 		{
 			return false;
@@ -465,8 +471,8 @@ bool SkyboxRendererVK::createPipelines()
 	depthStencilState.stencilTestEnable = VK_FALSE;
 	m_pPanoramaPipeline->setDepthStencilState(depthStencilState);
 
-	std::vector<IShader*> shaders = { pVertexShader, pPixelShader };
-	if (!m_pPanoramaPipeline->finalize(shaders, m_pFilterCubeRenderpass, m_pFilterCubePipelineLayout))
+	std::vector<const IShader*> shaders = { pVertexShader, pPixelShader };
+	if (!m_pPanoramaPipeline->finalizeGraphics(shaders, m_pFilterCubeRenderpass, m_pFilterCubePipelineLayout))
 	{
 		return false;
 	}
@@ -487,7 +493,7 @@ bool SkyboxRendererVK::createPipelines()
 	m_pIrradiancePipeline->setDepthStencilState(depthStencilState);
 
 	shaders = { pVertexShader, pPixelShader };
-	if (!m_pIrradiancePipeline->finalize(shaders, m_pFilterCubeRenderpass, m_pFilterCubePipelineLayout))
+	if (!m_pIrradiancePipeline->finalizeGraphics(shaders, m_pFilterCubeRenderpass, m_pFilterCubePipelineLayout))
 	{
 		return false;
 	}
@@ -508,7 +514,7 @@ bool SkyboxRendererVK::createPipelines()
 	m_pPreFilterPipeline->setDepthStencilState(depthStencilState);
 
 	shaders = { pVertexShader, pPixelShader };
-	if (!m_pPreFilterPipeline->finalize(shaders, m_pFilterCubeRenderpass, m_pFilterCubePipelineLayout))
+	if (!m_pPreFilterPipeline->finalizeGraphics(shaders, m_pFilterCubeRenderpass, m_pFilterCubePipelineLayout))
 	{
 		return false;
 	}

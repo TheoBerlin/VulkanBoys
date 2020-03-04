@@ -25,8 +25,8 @@ public:
 	bool finalizeGraphics(const std::vector<const IShader*>& shaders, const RenderPassVK* pRenderPass, const PipelineLayoutVK* pPipelineLayout);
 	bool finalizeCompute(const IShader* shader, const PipelineLayoutVK* pPipelineLayout);
 
-	VkPipeline getPipeline() const { return m_Pipeline; }
-	VkPipelineBindPoint getBindPoint() const { return m_BindPoint; }
+	VkPipeline				getPipeline() const		{ return m_Pipeline; }
+	VkPipelineBindPoint		getBindPoint() const	{ return m_BindPoint; }
 
 private:
     void createShaderStageInfo(VkPipelineShaderStageCreateInfo& shaderStageInfo, const IShader* shader);

@@ -75,7 +75,7 @@ bool ParticleRendererVK::init()
 	return true;
 }
 
-void ParticleRendererVK::beginFrame(const Camera& camera)
+void ParticleRendererVK::beginFrame(const Camera& camera, const LightSetup& lightSetup)
 {
 	// Prepare for frame
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
@@ -85,13 +85,13 @@ void ParticleRendererVK::beginFrame(const Camera& camera)
 
 	// Needed to begin a secondary buffer
 	VkCommandBufferInheritanceInfo inheritanceInfo = {};
-	inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
-	inheritanceInfo.pNext = nullptr;
-	inheritanceInfo.renderPass = m_pRenderingHandler->getRenderPass()->getRenderPass();
-	inheritanceInfo.subpass = 0; // TODO: Don't hardcode this :(
+	inheritanceInfo.sType		= VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+	inheritanceInfo.pNext		= nullptr;
+	inheritanceInfo.renderPass	= m_pRenderingHandler->getRenderPass()->getRenderPass();
+	inheritanceInfo.subpass		= 0; // TODO: Don't hardcode this :(
 	inheritanceInfo.framebuffer = m_pRenderingHandler->getCurrentBackBuffer()->getFrameBuffer();
 
-	m_ppCommandBuffers[frameIndex]->begin(&inheritanceInfo);
+	m_ppCommandBuffers[frameIndex]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
 
 	m_ppCommandBuffers[frameIndex]->setViewports(&m_Viewport, 1);
 	m_ppCommandBuffers[frameIndex]->setScissorRects(&m_ScissorRect, 1);
@@ -109,8 +109,8 @@ void ParticleRendererVK::endFrame()
 	uint32_t currentFrame = m_pRenderingHandler->getCurrentFrameIndex();
 	m_ppCommandBuffers[currentFrame]->end();
 
-	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
-	pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCurrentGraphicsCommandBuffer(), m_ppCommandBuffers[currentFrame]);
+	//DeviceVK* pDevice = m_pGraphicsContext->getDevice();
+	//pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCurrentGraphicsCommandBuffer(), m_ppCommandBuffers[currentFrame]);
 }
 
 void ParticleRendererVK::submitParticles(ParticleEmitterHandlerVK* pEmitterHandler)
@@ -129,9 +129,10 @@ void ParticleRendererVK::submitParticles(ParticleEmitterHandlerVK* pEmitterHandl
 		}
 
 		// TODO: Use constant variables or define macros for binding indices
-		m_ppDescriptorSets[frameIndex]->writeUniformBufferDescriptor(pEmitterBuffer->getBuffer(), 3);
-		m_ppDescriptorSets[frameIndex]->writeStorageBufferDescriptor(pPositionBuffer->getBuffer(), 4);
-		m_ppDescriptorSets[frameIndex]->writeCombinedImageDescriptor(pParticleTexture->getImageView()->getImageView(), m_pSampler->getSampler(), 5);
+		m_ppDescriptorSets[frameIndex]->writeUniformBufferDescriptor(pEmitterBuffer, 3);
+		m_ppDescriptorSets[frameIndex]->writeStorageBufferDescriptor(pPositionBuffer, 4);
+		ImageViewVK* pParticleTextureView = pParticleTexture->getImageView();
+		m_ppDescriptorSets[frameIndex]->writeCombinedImageDescriptors(&pParticleTextureView, &m_pSampler, 1, 5);
 
 		uint32_t particleCount = pEmitter->getParticleCount();
 		m_ppCommandBuffers[frameIndex]->drawIndexInstanced(m_pQuadMesh->getIndexCount(), particleCount, 0, 0, 0);
@@ -151,9 +152,10 @@ void ParticleRendererVK::submitParticles(ParticleEmitter* pEmitter)
 	Texture2DVK* pParticleTexture = reinterpret_cast<Texture2DVK*>(pEmitter->getParticleTexture());
 
 	// TODO: Use constant variables or define macros for binding indices
-	m_ppDescriptorSets[frameIndex]->writeUniformBufferDescriptor(pEmitterBuffer->getBuffer(), 3);
-	m_ppDescriptorSets[frameIndex]->writeStorageBufferDescriptor(pPositionBuffer->getBuffer(), 4);
-	m_ppDescriptorSets[frameIndex]->writeCombinedImageDescriptor(pParticleTexture->getImageView()->getImageView(), m_pSampler->getSampler(), 5);
+	m_ppDescriptorSets[frameIndex]->writeUniformBufferDescriptor(pEmitterBuffer, 3);
+	m_ppDescriptorSets[frameIndex]->writeStorageBufferDescriptor(pPositionBuffer, 4);
+	ImageViewVK* pParticleTextureView = pParticleTexture->getImageView();
+	m_ppDescriptorSets[frameIndex]->writeCombinedImageDescriptors(&pParticleTextureView, &m_pSampler, 1, 5);
 
 	uint32_t particleCount = pEmitter->getParticleCount();
 	m_ppCommandBuffers[frameIndex]->drawIndexInstanced(m_pQuadMesh->getIndexCount(), particleCount, 0, 0, 0);
@@ -161,17 +163,17 @@ void ParticleRendererVK::submitParticles(ParticleEmitter* pEmitter)
 
 void ParticleRendererVK::setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY)
 {
-	m_Viewport.x = topX;
-	m_Viewport.y = topY;
+	m_Viewport.x		= topX;
+	m_Viewport.y		= topY;
 	m_Viewport.width	= width;
 	m_Viewport.height	= height;
 	m_Viewport.minDepth = minDepth;
 	m_Viewport.maxDepth = maxDepth;
 
-	m_ScissorRect.extent.width = width;
-	m_ScissorRect.extent.height = height;
-	m_ScissorRect.offset.x = 0;
-	m_ScissorRect.offset.y = 0;
+	m_ScissorRect.extent.width	= (uint32_t)width;
+	m_ScissorRect.extent.height = (uint32_t)height;
+	m_ScissorRect.offset.x		= 0;
+	m_ScissorRect.offset.y		= 0;
 }
 
 bool ParticleRendererVK::createCommandPoolAndBuffers()
@@ -219,9 +221,16 @@ bool ParticleRendererVK::createPipelineLayout()
 
 	// Particle Texture
 	m_pSampler = new SamplerVK(pDevice);
-	m_pSampler->init(VkFilter::VK_FILTER_LINEAR, VkFilter::VK_FILTER_LINEAR, VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT, VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT);
-	VkSampler sampler = m_pSampler->getSampler();
+	
+	SamplerParams samplerParams = {};
+	samplerParams.MinFilter = VkFilter::VK_FILTER_LINEAR;
+	samplerParams.MagFilter = VkFilter::VK_FILTER_LINEAR;
+	samplerParams.WrapModeU = VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerParams.WrapModeV = samplerParams.WrapModeU;
+	samplerParams.WrapModeW = samplerParams.WrapModeU;
+	m_pSampler->init(samplerParams);
 
+	VkSampler sampler = m_pSampler->getSampler();
 	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, &sampler, 5, 1);
 
 	if (!m_pDescriptorSetLayout->finalize()) {
@@ -272,13 +281,28 @@ bool ParticleRendererVK::createPipeline()
 		return false;
 	}
 
-	std::vector<IShader*> shaders = { pVertexShader, pPixelShader };
+	std::vector<const IShader*> shaders = { pVertexShader, pPixelShader };
 	m_pPipeline = DBG_NEW PipelineVK(m_pGraphicsContext->getDevice());
-	m_pPipeline->addColorBlendAttachment(true, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
-	m_pPipeline->setCulling(false);
-	m_pPipeline->setDepthTest(true);
-	m_pPipeline->setDepthWrite(false);
-	m_pPipeline->setWireFrame(false);
+
+	VkPipelineColorBlendAttachmentState blendAttachment = {};
+	blendAttachment.blendEnable		= VK_TRUE;
+	blendAttachment.colorWriteMask	= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	m_pPipeline->addColorBlendAttachment(blendAttachment);
+
+	VkPipelineRasterizationStateCreateInfo rasterizerState = {};
+	rasterizerState.cullMode	= VK_CULL_MODE_NONE;
+	rasterizerState.frontFace	= VK_FRONT_FACE_CLOCKWISE;
+	rasterizerState.polygonMode = VK_POLYGON_MODE_FILL;
+	rasterizerState.lineWidth	= 1.0f;
+	m_pPipeline->setRasterizerState(rasterizerState);
+
+	VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
+	depthStencilState.depthTestEnable	= VK_TRUE;
+	depthStencilState.depthWriteEnable	= VK_FALSE;
+	depthStencilState.depthCompareOp	= VK_COMPARE_OP_LESS;
+	depthStencilState.stencilTestEnable	= VK_FALSE;
+	m_pPipeline->setDepthStencilState(depthStencilState);
+
 	m_pPipeline->finalizeGraphics(shaders, m_pRenderingHandler->getRenderPass(), m_pPipelineLayout);
 
 	SAFEDELETE(pVertexShader);
@@ -316,7 +340,7 @@ bool ParticleRendererVK::createQuadMesh()
 	VkDeviceSize offsets = 0;
 
 	for (DescriptorSetVK* pDescriptorSet : m_ppDescriptorSets) {
-		pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer->getBuffer(), 0);
+		pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer, 0);
 	}
 
 	return true;
@@ -332,9 +356,9 @@ void ParticleRendererVK::writeBufferDescriptors()
 	BufferVK* pCameraDirectionsBuffer = m_pRenderingHandler->getCameraDirectionsBuffer();
 
 	for (DescriptorSetVK* pDescriptorSet : m_ppDescriptorSets) {
-		pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer->getBuffer(), 0);
+		pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer, 0);
 
-		pDescriptorSet->writeUniformBufferDescriptor(pCameraMatricesBuffer->getBuffer(), 1);
-		pDescriptorSet->writeUniformBufferDescriptor(pCameraDirectionsBuffer->getBuffer(), 2);
+		pDescriptorSet->writeUniformBufferDescriptor(pCameraMatricesBuffer, 1);
+		pDescriptorSet->writeUniformBufferDescriptor(pCameraDirectionsBuffer, 2);
 	}
 }

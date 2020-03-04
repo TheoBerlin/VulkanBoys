@@ -1,10 +1,8 @@
 #pragma once
-
-#include "Common/IRenderingHandler.hpp"
+#include "Common/RenderingHandler.hpp"
 #include "Core/Camera.h"
-#include "Vulkan/VulkanCommon.h"
 
-#include <thread>
+#include "Vulkan/VulkanCommon.h"
 
 class BufferVK;
 class CommandBufferVK;
@@ -18,8 +16,9 @@ class ParticleRendererVK;
 class PipelineVK;
 class RayTracingRendererVK;
 class RenderPassVK;
+class SkyboxRendererVK;
 
-class RenderingHandlerVK : public IRenderingHandler
+class RenderingHandlerVK : public RenderingHandler
 {
 public:
     RenderingHandlerVK(GraphicsContextVK* pGraphicsContext);
@@ -27,36 +26,37 @@ public:
 
     virtual bool initialize() override;
 
-    virtual void setMeshRenderer(IRenderer* pMeshRenderer) override { m_pMeshRenderer = reinterpret_cast<MeshRendererVK*>(pMeshRenderer); }
-    virtual void setRayTracer(IRenderer* pRayTracer) override { m_pRayTracer = reinterpret_cast<RayTracingRendererVK*>(pRayTracer); }
-    virtual void setParticleRenderer(IRenderer* pParticleRenderer) override { m_pParticleRenderer = reinterpret_cast<ParticleRendererVK*>(pParticleRenderer); }
+    virtual ITextureCube* generateTextureCube(ITexture2D* pPanorama, ETextureFormat format, uint32_t width, uint32_t miplevels) override;
 
-    virtual void onWindowResize(uint32_t width, uint32_t height) override;
-
-    virtual void beginFrame(const Camera& camera) override;
+    virtual void beginFrame(const Camera& camera, const LightSetup& lightsetup) override;
     virtual void endFrame() override;
+
     virtual void swapBuffers() override;
+
+    virtual void submitMesh(IMesh* pMesh, const Material& material, const glm::mat4& transform) override;
 
     virtual void drawProfilerUI() override;
     virtual void drawImgui(IImgui* pImgui) override;
 
+    virtual void setRayTracer(IRenderer* pRayTracer) override { m_pRayTracer = reinterpret_cast<RayTracingRendererVK*>(pRayTracer); }
+    virtual void setMeshRenderer(IRenderer* pMeshRenderer) override { m_pMeshRenderer = reinterpret_cast<MeshRendererVK*>(pMeshRenderer); }
+    virtual void setParticleRenderer(IRenderer* pParticleRenderer) override { m_pParticleRenderer = reinterpret_cast<ParticleRendererVK*>(pParticleRenderer); }
+ 
     virtual void setClearColor(float r, float g, float b) override;
     virtual void setClearColor(const glm::vec3& color) override;
     virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
+    virtual void setSkybox(ITextureCube* pSkybox) override;
 
-    virtual void submitMesh(IMesh* pMesh, const glm::vec4& color, const glm::mat4& transform) override;
-
-    FrameBufferVK** getBackBuffers() { return m_ppBackbuffers; }
-    RenderPassVK* getRenderPass() { return m_pRenderPass; }
-    BufferVK* getCameraMatricesBuffer() { return m_pCameraMatricesBuffer; }
-    BufferVK* getCameraDirectionsBuffer() { return m_pCameraDirectionsBuffer; }
-
-    // Used by renderers to execute their secondary command buffers
-    CommandBufferVK* getCurrentGraphicsCommandBuffer() { return m_ppGraphicsCommandBuffers[m_CurrentFrame]; }
-	CommandBufferVK* getCurrentComputeCommandBuffer() { return m_ppComputeCommandBuffers[m_CurrentFrame]; }
-
-    uint32_t getCurrentFrameIndex() const { return m_CurrentFrame; }
-    FrameBufferVK* getCurrentBackBuffer() const { return m_ppBackbuffers[m_BackBufferIndex]; }
+    virtual void onWindowResize(uint32_t width, uint32_t height) override;
+    
+    uint32_t                getCurrentFrameIndex() const                { return m_CurrentFrame; }
+    FrameBufferVK* const*   getBackBuffers() const                      { return m_ppBackbuffers; }
+    RenderPassVK*           getRenderPass() const                       { return m_pRenderPass; }
+    BufferVK*               getCameraMatricesBuffer() const             { return m_pCameraMatricesBuffer; }
+    BufferVK*               getCameraDirectionsBuffer() const           { return m_pCameraDirectionsBuffer; }
+    FrameBufferVK*          getCurrentBackBuffer() const                { return m_ppBackbuffers[m_BackBufferIndex]; }
+    CommandBufferVK*        getCurrentGraphicsCommandBuffer() const     { return m_ppGraphicsCommandBuffers[m_CurrentFrame]; }
+	CommandBufferVK*        getCurrentComputeCommandBuffer() const      { return m_ppComputeCommandBuffers[m_CurrentFrame]; }
 
 private:
     bool createBackBuffers();
@@ -75,6 +75,7 @@ private:
 private:
     GraphicsContextVK* m_pGraphicsContext;
 
+    SkyboxRendererVK* m_pSkyboxRenderer;
     MeshRendererVK* m_pMeshRenderer;
     ParticleRendererVK* m_pParticleRenderer;
     RayTracingRendererVK* m_pRayTracer;
@@ -95,7 +96,8 @@ private:
     RenderPassVK* m_pRenderPass;
     PipelineVK* m_pPipeline;
 
-    uint32_t m_CurrentFrame, m_BackBufferIndex;
+    uint32_t m_CurrentFrame;
+    uint32_t m_BackBufferIndex;
 
     VkClearValue m_ClearColor;
 	VkClearValue m_ClearDepth;

@@ -139,13 +139,13 @@ void PipelineVK::setBlendState(VkLogicOp logicOp, bool logicOpEnable, float blen
     memcpy(m_BlendState.blendConstants, blendConstants, sizeof(float) * 4);
 }
 
-bool PipelineVK::finalize(const std::vector<IShader*>& shaders, RenderPassVK* pRenderPass, PipelineLayoutVK* pPipelineLayout)
+bool PipelineVK::finalizeGraphics(const std::vector<const IShader*>& shaders, const RenderPassVK* pRenderPass, const PipelineLayoutVK* pPipelineLayout)
 {
     // Define shader stage create infos
     std::vector<VkPipelineShaderStageCreateInfo> shaderStagesInfos;
     shaderStagesInfos.reserve(shaders.size());
 
-    for (IShader* shader : shaders) 
+    for (const IShader* shader : shaders) 
     {
         VkPipelineShaderStageCreateInfo shaderStageInfo;
         createShaderStageInfo(shaderStageInfo, shader);
@@ -217,7 +217,7 @@ bool PipelineVK::finalize(const std::vector<IShader*>& shaders, RenderPassVK* pR
     return true;
 }
 
-bool PipelineVK::finalizeCompute(IShader* shader, PipelineLayoutVK* pPipelineLayout)
+bool PipelineVK::finalizeCompute(const IShader* shader, const PipelineLayoutVK* pPipelineLayout)
 {
     VkComputePipelineCreateInfo pipelineInfo = {};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;

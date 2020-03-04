@@ -3,16 +3,17 @@
 #include "CopyHandlerVK.h"
 #include "ImguiVK.h"
 #include "MeshVK.h"
-#include "MeshRendererVK.h"
-#include "Particles/ParticleEmitterHandlerVK.h"
-#include "Particles/ParticleRendererVK.h"
-#include "Ray Tracing/RayTracingRendererVK.h"
-#include "RenderingHandlerVK.h"
 #include "ShaderVK.h"
-#include "RendererVK.h"
 #include "SamplerVK.h"
 #include "SwapChainVK.h"
 #include "Texture2DVK.h"
+#include "MeshRendererVK.h"
+#include "RenderingHandlerVK.h"
+
+#include "Particles/ParticleRendererVK.h"
+#include "Particles/ParticleEmitterHandlerVK.h"
+
+#include "Ray Tracing/RayTracingRendererVK.h"
 
 #include "Core/GLFWWindow.h"
 
@@ -38,8 +39,6 @@ void GraphicsContextVK::init()
 #if VALIDATION_LAYERS_ENABLED
 	m_Instance.addRequiredExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif
-
-	GLFWwindow* pNativeWindow = reinterpret_cast<GLFWwindow*>(m_pWindow->getNativeHandle());
 
 	uint32_t count = 0;
 	const char** ppExtensions = glfwGetRequiredInstanceExtensions(&count);
@@ -71,27 +70,27 @@ void GraphicsContextVK::init()
 	m_pSwapChain->init(m_pWindow, VK_FORMAT_B8G8R8A8_UNORM, MAX_FRAMES_IN_FLIGHT, true);
 }
 
-IRenderingHandler* GraphicsContextVK::createRenderingHandler()
+RenderingHandler* GraphicsContextVK::createRenderingHandler()
 {
 	return DBG_NEW RenderingHandlerVK(this);
 }
 
-IRenderer* GraphicsContextVK::createMeshRenderer(IRenderingHandler* pRenderingHandler)
+IRenderer* GraphicsContextVK::createMeshRenderer(RenderingHandler* pRenderingHandler)
 {
 	return DBG_NEW MeshRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler));
 }
 
-IRenderer* GraphicsContextVK::createParticleRenderer(IRenderingHandler* pRenderingHandler)
+IRenderer* GraphicsContextVK::createParticleRenderer(RenderingHandler* pRenderingHandler)
 {
 	return DBG_NEW ParticleRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler));
 }
 
-IRenderer* GraphicsContextVK::createRayTracingRenderer(IRenderingHandler* pRenderingHandler)
+IRenderer* GraphicsContextVK::createRayTracingRenderer(RenderingHandler* pRenderingHandler)
 {
 	return DBG_NEW RayTracingRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler));
 }
 
-IParticleEmitterHandler* GraphicsContextVK::createParticleEmitterHandler()
+ParticleEmitterHandler* GraphicsContextVK::createParticleEmitterHandler()
 {
 	return DBG_NEW ParticleEmitterHandlerVK();
 }

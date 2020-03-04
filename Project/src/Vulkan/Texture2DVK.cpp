@@ -65,10 +65,10 @@ bool Texture2DVK::initFromFile(const std::string& filename, ETextureFormat forma
 
 bool Texture2DVK::initFromMemory(const void* pData, uint32_t width, uint32_t height, ETextureFormat format, uint32_t usageFlags, bool generateMips)
 {
-	uint32_t miplevels = 1U;
+	uint32_t miplevels = 1u;
 	if (generateMips)
 	{
-		miplevels = std::floor(std::log2(std::max(width, height))) + 1U;
+		miplevels = uint32_t(std::floor(std::log2(std::max(width, height)))) + 1u;
 	}
 
 	ImageParams imageParams = {};

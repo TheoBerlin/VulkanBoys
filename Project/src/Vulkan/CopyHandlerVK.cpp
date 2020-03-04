@@ -53,13 +53,13 @@ bool CopyHandlerVK::init()
 
 	for (uint32_t i = 0; i < MAX_COMMAND_BUFFERS; i++)
 	{
-		m_pTransferBuffers[i] = m_pTransferPool->allocateCommandBuffer();
+		m_pTransferBuffers[i] = m_pTransferPool->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 		if (!m_pTransferBuffers[i])
 		{
 			return false;
 		}
 
-		m_pGraphicsBuffers[i] = m_pGraphicsPool->allocateCommandBuffer();
+		m_pGraphicsBuffers[i] = m_pGraphicsPool->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 		if (!m_pGraphicsBuffers[i])
 		{
 			return false;
@@ -74,8 +74,8 @@ bool CopyHandlerVK::init()
 void CopyHandlerVK::updateBuffer(BufferVK* pDestination, uint64_t destinationOffset, const void* pSource, uint64_t sizeInBytes)
 {
 	CommandBufferVK* pCommandBuffer = getNextTransferBuffer();
-	pCommandBuffer->reset();
-	pCommandBuffer->begin();
+	pCommandBuffer->reset(true);
+	pCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	pCommandBuffer->updateBuffer(pDestination, destinationOffset, pSource, sizeInBytes);
 	pCommandBuffer->end();
 
@@ -85,8 +85,8 @@ void CopyHandlerVK::updateBuffer(BufferVK* pDestination, uint64_t destinationOff
 void CopyHandlerVK::copyBuffer(BufferVK* pSource, uint64_t sourceOffset, BufferVK* pDestination, uint64_t destinationOffset, uint64_t sizeInBytes)
 {
 	CommandBufferVK* pCommandBuffer = getNextTransferBuffer();
-	pCommandBuffer->reset();
-	pCommandBuffer->begin();
+	pCommandBuffer->reset(true);
+	pCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	pCommandBuffer->copyBuffer(pSource, sourceOffset, pDestination, destinationOffset, sizeInBytes);
 	pCommandBuffer->end();
 
@@ -96,8 +96,8 @@ void CopyHandlerVK::copyBuffer(BufferVK* pSource, uint64_t sourceOffset, BufferV
 void CopyHandlerVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height, uint32_t pixelStride, VkImageLayout initalLayout, VkImageLayout finalLayout, uint32_t miplevel, uint32_t layer)
 {
 	CommandBufferVK* pCommandBuffer = getNextGraphicsBuffer();
-	pCommandBuffer->reset();
-	pCommandBuffer->begin();
+	pCommandBuffer->reset(true);
+	pCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	
 	//Insert barrier if we need to
 	if (initalLayout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
@@ -121,8 +121,8 @@ void CopyHandlerVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_
 void CopyHandlerVK::copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffset, ImageVK* pImage, uint32_t width, uint32_t height, uint32_t miplevel, uint32_t layer)
 {
 	CommandBufferVK* pCommandBuffer = getNextGraphicsBuffer();
-	pCommandBuffer->reset();
-	pCommandBuffer->begin();
+	pCommandBuffer->reset(true);
+	pCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	pCommandBuffer->copyBufferToImage(pSource, sourceOffset, pImage, width, height, miplevel, layer);
 	pCommandBuffer->end();
 
@@ -132,8 +132,8 @@ void CopyHandlerVK::copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffs
 void CopyHandlerVK::generateMips(ImageVK* pImage)
 {
 	CommandBufferVK* pCommandBuffer = getNextGraphicsBuffer();
-	pCommandBuffer->reset();
-	pCommandBuffer->begin();
+	pCommandBuffer->reset(true);
+	pCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 	const uint32_t miplevelCount = pImage->getMiplevelCount();
 	pCommandBuffer->transitionImageLayout(pImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, miplevelCount, 0, 1);
@@ -182,12 +182,12 @@ void CopyHandlerVK::submitTransferBuffer(CommandBufferVK* pCommandBuffer)
 {
 	//Need to lock this since commandbuffer submition is not meant to be done from multiple threads? Different sources say different things
 	std::scoped_lock<Spinlock> lock(m_TransferQueueLock);
-	m_pDevice->executePrimaryCommandBuffer(m_TransferQueue, pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_pDevice->executeCommandBuffer(m_TransferQueue, pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 }
 
 void CopyHandlerVK::submitGraphicsBuffer(CommandBufferVK* pCommandBuffer)
 {
 	//Need to lock this since commandbuffer submition is not meant to be done from multiple threads? Different sources say different things
 	std::scoped_lock<Spinlock> lock(m_GraphicsQueueLock);
-	m_pDevice->executePrimaryCommandBuffer(m_GraphicsQueue, pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_pDevice->executeCommandBuffer(m_GraphicsQueue, pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 }

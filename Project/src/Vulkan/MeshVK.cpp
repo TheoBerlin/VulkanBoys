@@ -58,8 +58,7 @@ bool MeshVK::initFromFile(const std::string& filepath)
 			{
 				attributes.vertices[3 * index.vertex_index + 0],
 				attributes.vertices[3 * index.vertex_index + 1],
-				attributes.vertices[3 * index.vertex_index + 2],
-				1.0f
+				attributes.vertices[3 * index.vertex_index + 2]
 			};
 
 			if (index.normal_index >= 0)
@@ -68,8 +67,7 @@ bool MeshVK::initFromFile(const std::string& filepath)
 				{
 					attributes.normals[3 * index.normal_index + 0],
 					attributes.normals[3 * index.normal_index + 1],
-					attributes.normals[3 * index.normal_index + 2],
-					0.0f
+					attributes.normals[3 * index.normal_index + 2]
 				};
 			}
 			
@@ -167,7 +165,7 @@ bool MeshVK::initAsSphere(uint32_t subDivisions)
 	std::vector<glm::vec3> vertices = icosahedronVertices;
 	std::vector<Triangle> triangles = icosahedronTriangles;
 
-	for (int i = 0; i < subDivisions; ++i)
+	for (uint32_t i = 0; i < subDivisions; ++i)
 	{
 		triangles = subdivide(vertices, triangles);
 	}
@@ -189,7 +187,7 @@ bool MeshVK::initAsSphere(uint32_t subDivisions)
 		finalIndices.push_back(triangles[i].indices[2]);
 	}
 
-	initFromMemory(finalVertices.data(), sizeof(Vertex), finalVertices.size(), finalIndices.data(), finalIndices.size());
+	initFromMemory(finalVertices.data(), sizeof(Vertex), (uint32_t)finalVertices.size(), finalIndices.data(), (uint32_t)finalIndices.size());
 	return true;
 }
 

@@ -14,8 +14,8 @@ class ITexture2D;
 class IFrameBuffer;
 class IFrameBuffer;
 class IResourceLoader;
-class IRenderingHandler;
-class IParticleEmitterHandler;
+class RenderingHandler;
+class ParticleEmitterHandler;
 
 enum API
 {
@@ -27,11 +27,11 @@ class IGraphicsContext
 public:
 	DECL_INTERFACE(IGraphicsContext);
 
-	virtual IRenderingHandler* createRenderingHandler() = 0;
-	virtual IRenderer* createMeshRenderer(IRenderingHandler* pRenderingHandler) = 0;
-	virtual IRenderer* createParticleRenderer(IRenderingHandler* pRenderingHandler) = 0;
-	virtual IRenderer* createRayTracingRenderer(IRenderingHandler* pRenderingHandler) = 0;
-	virtual IParticleEmitterHandler* createParticleEmitterHandler() = 0;
+	virtual RenderingHandler* createRenderingHandler() = 0;
+	virtual IRenderer* createMeshRenderer(RenderingHandler* pRenderingHandler) = 0;
+	virtual IRenderer* createParticleRenderer(RenderingHandler* pRenderingHandler) = 0;
+	virtual IRenderer* createRayTracingRenderer(RenderingHandler* pRenderingHandler) = 0;
+	virtual ParticleEmitterHandler* createParticleEmitterHandler() = 0;
 	virtual IImgui* createImgui() = 0;
 
 	virtual IShader* createShader() = 0;

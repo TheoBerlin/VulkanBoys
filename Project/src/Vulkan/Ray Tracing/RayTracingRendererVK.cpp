@@ -11,7 +11,6 @@
 #include "Vulkan/CommandBufferVK.h"
 #include "Vulkan/ImageViewVK.h"
 #include "Vulkan/ImageVK.h"
-#include "Vulkan/Texture2DVK.h"
 #include "Vulkan/SamplerVK.h"
 #include "Vulkan/MeshVK.h"
 #include "Vulkan/ShaderVK.h"
@@ -178,43 +177,43 @@ bool RayTracingRendererVK::init()
 
 	m_pGunMaterial = new TempMaterial();
 	m_pGunMaterial->pAlbedo = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
-	m_pGunMaterial->pAlbedo->initFromFile("assets/textures/gunAlbedo.tga");
+	m_pGunMaterial->pAlbedo->initFromFile("assets/textures/gunAlbedo.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM, true);
 
 	m_pGunMaterial->pNormalMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
-	m_pGunMaterial->pNormalMap->initFromFile("assets/textures/gunNormal.tga");
+	m_pGunMaterial->pNormalMap->initFromFile("assets/textures/gunNormal.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM, true);
 
 	m_pGunMaterial->pRoughnessMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
-	m_pGunMaterial->pRoughnessMap->initFromFile("assets/textures/gunRoughness.tga");
+	m_pGunMaterial->pRoughnessMap->initFromFile("assets/textures/gunRoughness.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM, true);
 
 	m_pCubeMaterial = new TempMaterial();
 	m_pCubeMaterial->pAlbedo = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
-	m_pCubeMaterial->pAlbedo->initFromFile("assets/textures/cubeAlbedo.jpg");
+	m_pCubeMaterial->pAlbedo->initFromFile("assets/textures/cubeAlbedo.jpg", ETextureFormat::FORMAT_R8G8B8A8_UNORM, true);
 
 	m_pCubeMaterial->pNormalMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
-	m_pCubeMaterial->pNormalMap->initFromFile("assets/textures/cubeNormal.jpg");
+	m_pCubeMaterial->pNormalMap->initFromFile("assets/textures/cubeNormal.jpg", ETextureFormat::FORMAT_R8G8B8A8_UNORM, true);
 
 	m_pCubeMaterial->pRoughnessMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
-	m_pCubeMaterial->pRoughnessMap->initFromFile("assets/textures/cubeRoughness.jpg");
+	m_pCubeMaterial->pRoughnessMap->initFromFile("assets/textures/cubeRoughness.jpg", ETextureFormat::FORMAT_R8G8B8A8_UNORM, true);
 
 	m_pSphereMaterial = new TempMaterial();
 	m_pSphereMaterial->pAlbedo = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
-	m_pSphereMaterial->pAlbedo->initFromFile("assets/textures/whiteTransparent.png");
+	m_pSphereMaterial->pAlbedo->initFromFile("assets/textures/whiteTransparent.png", ETextureFormat::FORMAT_R8G8B8A8_UNORM, true);
 
 	m_pSphereMaterial->pNormalMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
-	m_pSphereMaterial->pNormalMap->initFromFile("assets/textures/cubeNormal.jpg");
+	m_pSphereMaterial->pNormalMap->initFromFile("assets/textures/cubeNormal.jpg", ETextureFormat::FORMAT_R8G8B8A8_UNORM, true);
 
 	m_pSphereMaterial->pRoughnessMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
-	m_pSphereMaterial->pRoughnessMap->initFromFile("assets/textures/whiteOpaque.png");
+	m_pSphereMaterial->pRoughnessMap->initFromFile("assets/textures/whiteOpaque.png", ETextureFormat::FORMAT_R8G8B8A8_UNORM, true);
 
 	m_pPlaneMaterial = new TempMaterial();
 	m_pPlaneMaterial->pAlbedo = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
-	m_pPlaneMaterial->pAlbedo->initFromFile("assets/textures/woodAlbedo.png");
+	m_pPlaneMaterial->pAlbedo->initFromFile("assets/textures/woodAlbedo.png", ETextureFormat::FORMAT_R8G8B8A8_UNORM, true);
 
 	m_pPlaneMaterial->pNormalMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
-	m_pPlaneMaterial->pNormalMap->initFromFile("assets/textures/woodNormal.png");
+	m_pPlaneMaterial->pNormalMap->initFromFile("assets/textures/woodNormal.png", ETextureFormat::FORMAT_R8G8B8A8_UNORM, true);
 
 	m_pPlaneMaterial->pRoughnessMap = reinterpret_cast<Texture2DVK*>(m_pContext->createTexture2D());
-	m_pPlaneMaterial->pRoughnessMap->initFromFile("assets/textures/woodRoughness.png");
+	m_pPlaneMaterial->pRoughnessMap->initFromFile("assets/textures/woodRoughness.png", ETextureFormat::FORMAT_R8G8B8A8_UNORM, true);
 
 	m_pMeshCube = m_pContext->createMesh();
 	m_pMeshCube->initFromMemory(cubeVertices, sizeof(Vertex), 24, cubeIndices, 36);
@@ -316,29 +315,13 @@ bool RayTracingRendererVK::init()
 	m_pRayTracingStorageImageView = new ImageViewVK(m_pContext->getDevice(), m_pRayTracingStorageImage);
 	m_pRayTracingStorageImageView->init(imageViewParams);
 
-	CommandBufferVK* pTempCommandBuffer = m_ppGraphicsCommandPools[0]->allocateCommandBuffer();
-	pTempCommandBuffer->reset();
-	pTempCommandBuffer->begin();
-
-	VkImageMemoryBarrier imageMemoryBarrier = {};
-	imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-	imageMemoryBarrier.image = m_pRayTracingStorageImage->getImage();
-	imageMemoryBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-	imageMemoryBarrier.srcAccessMask = 0;
-
-	vkCmdPipelineBarrier(
-		pTempCommandBuffer->getCommandBuffer(),
-		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-		VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-		0,
-		0, nullptr,
-		0, nullptr,
-		1, &imageMemoryBarrier);
+	CommandBufferVK* pTempCommandBuffer = m_ppGraphicsCommandPools[0]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	pTempCommandBuffer->reset(true);
+	pTempCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+	pTempCommandBuffer->transitionImageLayout(m_pRayTracingStorageImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 1);
 	pTempCommandBuffer->end();
 
-	m_pContext->getDevice()->executePrimaryCommandBuffer(m_pContext->getDevice()->getGraphicsQueue(), pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_pContext->getDevice()->executeCommandBuffer(m_pContext->getDevice()->getGraphicsQueue(), pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 	m_pContext->getDevice()->wait();
 
 	m_ppGraphicsCommandPools[0]->freeCommandBuffer(&pTempCommandBuffer);
@@ -353,42 +336,51 @@ bool RayTracingRendererVK::init()
 
 	auto& allMaterials = m_pRayTracingScene->getAllMaterials();
 
-	std::vector<VkImageView> albedoImageViews;
+	std::vector<const ImageViewVK*> albedoImageViews;
 	albedoImageViews.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
-	std::vector<VkImageView> normalImageViews;
+	std::vector<const ImageViewVK*> normalImageViews;
 	normalImageViews.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
-	std::vector<VkImageView> roughnessImageViews;
+	std::vector<const ImageViewVK*> roughnessImageViews;
 	roughnessImageViews.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
 
 	m_pSampler = new SamplerVK(m_pContext->getDevice());
-	m_pSampler->init(VkFilter::VK_FILTER_LINEAR, VkFilter::VK_FILTER_LINEAR, VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT, VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT);
-	std::vector<VkSampler> samplers;
+	
+	SamplerParams samplerParams = {};
+	samplerParams.MinFilter = VkFilter::VK_FILTER_LINEAR;
+	samplerParams.MagFilter = VkFilter::VK_FILTER_LINEAR;
+	samplerParams.WrapModeU = VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerParams.WrapModeV = samplerParams.WrapModeU;
+	samplerParams.WrapModeW = samplerParams.WrapModeU;
+	m_pSampler->init(samplerParams);
+
+	std::vector<const SamplerVK*> samplers;
 	samplers.reserve(MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES);
 
 	for (uint32_t i = 0; i < MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES; i++)
 	{
-		samplers.push_back(m_pSampler->getSampler());
+		samplers.push_back(m_pSampler);
 
 		if (i < allMaterials.size())
 		{
-			albedoImageViews.push_back(allMaterials[i]->pAlbedo->getImageView()->getImageView());
-			normalImageViews.push_back(allMaterials[i]->pNormalMap->getImageView()->getImageView());
-			roughnessImageViews.push_back(allMaterials[i]->pRoughnessMap->getImageView()->getImageView());
+			albedoImageViews.push_back(allMaterials[i]->pAlbedo->getImageView());
+			normalImageViews.push_back(allMaterials[i]->pNormalMap->getImageView());
+			roughnessImageViews.push_back(allMaterials[i]->pRoughnessMap->getImageView());
 		}
 		else
 		{
-			albedoImageViews.push_back(allMaterials[0]->pAlbedo->getImageView()->getImageView());
-			normalImageViews.push_back(allMaterials[0]->pNormalMap->getImageView()->getImageView());
-			roughnessImageViews.push_back(allMaterials[0]->pRoughnessMap->getImageView()->getImageView());
+			albedoImageViews.push_back(allMaterials[0]->pAlbedo->getImageView());
+			normalImageViews.push_back(allMaterials[0]->pNormalMap->getImageView());
+			roughnessImageViews.push_back(allMaterials[0]->pRoughnessMap->getImageView());
 		}
 	}
 
 	m_pRayTracingDescriptorSet->writeAccelerationStructureDescriptor(m_pRayTracingScene->getTLAS().accelerationStructure, 0);
-	m_pRayTracingDescriptorSet->writeStorageImageDescriptor(m_pRayTracingStorageImageView->getImageView(), 1);
-	m_pRayTracingDescriptorSet->writeUniformBufferDescriptor(m_pRayTracingUniformBuffer->getBuffer(), 2);
-	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pRayTracingScene->getCombinedVertexBuffer()->getBuffer(), 3);
-	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pRayTracingScene->getCombinedIndexBuffer()->getBuffer(), 4);
-	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pRayTracingScene->getMeshIndexBuffer()->getBuffer(), 5);
+	m_pRayTracingDescriptorSet->writeStorageImageDescriptor(m_pRayTracingStorageImageView, 1);
+	m_pRayTracingDescriptorSet->writeUniformBufferDescriptor(m_pRayTracingUniformBuffer, 2);
+	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pRayTracingScene->getCombinedVertexBuffer(), 3);
+	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pRayTracingScene->getCombinedIndexBuffer(), 4);
+	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(m_pRayTracingScene->getMeshIndexBuffer(), 5);
+
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(albedoImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 6);
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(normalImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 7);
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(roughnessImageViews.data(), samplers.data(), MAX_NUM_UNIQUE_GRAPHICS_OBJECT_TEXTURES, 8);
@@ -398,7 +390,7 @@ bool RayTracingRendererVK::init()
 	return true;
 }
 
-void RayTracingRendererVK::beginFrame(const Camera& camera)
+void RayTracingRendererVK::beginFrame(const Camera& camera, const LightSetup& lightSetup)
 {
 	{
 		//Temp Update Stuff
@@ -430,7 +422,7 @@ void RayTracingRendererVK::beginFrame(const Camera& camera)
 	inheritanceInfo.subpass = 0;
 	inheritanceInfo.framebuffer = VK_NULL_HANDLE;
 
-	m_ppComputeCommandBuffers[currentFrame]->begin(&inheritanceInfo);
+	m_ppComputeCommandBuffers[currentFrame]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	m_pProfiler->beginFrame(currentFrame, m_ppComputeCommandBuffers[currentFrame], m_ppComputeCommandBuffers[currentFrame]);
 
 	CameraMatricesBuffer cameraMatricesBuffer = {};
@@ -455,8 +447,8 @@ void RayTracingRendererVK::endFrame()
 	m_pProfiler->endFrame();
 	m_ppComputeCommandBuffers[currentFrame]->end();
 
-	DeviceVK* pDevice = m_pContext->getDevice();
-	pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCurrentComputeCommandBuffer(), m_ppComputeCommandBuffers[currentFrame]);
+	//DeviceVK* pDevice = m_pContext->getDevice();
+	//pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCurrentComputeCommandBuffer(), m_ppComputeCommandBuffers[currentFrame]);
 
 	//Prepare for frame
 	//pDevice->wait(); //Todo: Remove this
@@ -472,11 +464,11 @@ void RayTracingRendererVK::endFrame()
 	inheritanceInfo.subpass = 0;
 	inheritanceInfo.framebuffer = VK_NULL_HANDLE;
 
-	m_ppGraphicsCommandBuffers[currentFrame]->begin(&inheritanceInfo);
+	m_ppGraphicsCommandBuffers[currentFrame]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 	ImageVK* pCurrentImage = m_pContext->getSwapChain()->getImage(m_pContext->getSwapChain()->getImageIndex());
-	m_ppGraphicsCommandBuffers[currentFrame]->transitionImageLayout(pCurrentImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	m_ppGraphicsCommandBuffers[currentFrame]->transitionImageLayout(m_pRayTracingStorageImage, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	m_ppGraphicsCommandBuffers[currentFrame]->transitionImageLayout(pCurrentImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, 1, 0, 1);
+	m_ppGraphicsCommandBuffers[currentFrame]->transitionImageLayout(m_pRayTracingStorageImage, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, 0, 1, 0, 1);
 
 	VkImageCopy copyRegion = {};
 	copyRegion.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
@@ -486,13 +478,17 @@ void RayTracingRendererVK::endFrame()
 	copyRegion.extent = { m_pContext->getSwapChain()->getExtent().width, m_pContext->getSwapChain()->getExtent().height, 1 };
 	vkCmdCopyImage(m_ppGraphicsCommandBuffers[currentFrame]->getCommandBuffer(), m_pRayTracingStorageImage->getImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pCurrentImage->getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
 
-	m_ppGraphicsCommandBuffers[currentFrame]->transitionImageLayout(pCurrentImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-	m_ppGraphicsCommandBuffers[currentFrame]->transitionImageLayout(m_pRayTracingStorageImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+	m_ppGraphicsCommandBuffers[currentFrame]->transitionImageLayout(pCurrentImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 0, 1, 0, 1);
+	m_ppGraphicsCommandBuffers[currentFrame]->transitionImageLayout(m_pRayTracingStorageImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 1);
 
 	m_ppGraphicsCommandBuffers[currentFrame]->end();
 
 	//Execute commandbuffer
-	pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCurrentGraphicsCommandBuffer(), m_ppGraphicsCommandBuffers[currentFrame]);
+	//pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCurrentGraphicsCommandBuffer(), m_ppGraphicsCommandBuffers[currentFrame]);
+}
+
+void RayTracingRendererVK::setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY)
+{
 }
 
 void RayTracingRendererVK::submitMesh(IMesh* pMesh, TempMaterial* pMaterial, const glm::mat4& transform)

@@ -22,12 +22,12 @@ class CommandBufferVK
 public:
 	DECL_NO_COPY(CommandBufferVK);
 
-	void reset(bool waitForFence = true);
+	void reset(bool waitForFence);
 	
-	void begin(VkCommandBufferInheritanceInfo* pInheritanceInfo = nullptr);
+	void begin(VkCommandBufferInheritanceInfo* pInheritaneInfo, VkCommandBufferUsageFlags flags);
 	void end();
 
-	void beginRenderPass(RenderPassVK* pRenderPass, FrameBufferVK* pFrameBuffer,  uint32_t width, uint32_t height, VkClearValue* pClearVales, uint32_t clearValueCount);
+	void beginRenderPass(RenderPassVK* pRenderPass, FrameBufferVK* pFrameBuffer,  uint32_t width, uint32_t height, VkClearValue* pClearVales, uint32_t clearValueCount, VkSubpassContents subpassContent);
 	void endRenderPass();
 
 	void bindVertexBuffers(const BufferVK* const * ppVertexBuffers, uint32_t vertexBufferCount, const VkDeviceSize* pOffsets);
@@ -55,6 +55,8 @@ public:
 
 	void drawInstanced(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance);
 	void drawIndexInstanced(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset, uint32_t firstInstance);
+
+	void executeSecondary(CommandBufferVK* pSecondary);
 
 	//Ray Tracing
 	void traceRays(ShaderBindingTableVK* pShaderBindingTable, uint32_t width, uint32_t height, uint32_t raygenOffset);

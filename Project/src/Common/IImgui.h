@@ -1,10 +1,10 @@
 #pragma once
-#include "IEventHandler.h"
+#include "CommonEventHandler.h"
 
 //Make API independent
 class CommandBufferVK;
 
-class IImgui : public IEventHandler
+class IImgui : public CommonEventHandler
 {
 public:
 	DECL_INTERFACE(IImgui);

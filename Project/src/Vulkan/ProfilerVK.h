@@ -2,7 +2,7 @@
 
 #define NOMINMAX
 
-#include "Common/IProfiler.h"
+#include "Common/Profiler.h"
 #include "Vulkan/QueryPoolVK.h"
 
 #include <string>
@@ -18,7 +18,7 @@ struct Timestamp {
     std::vector<uint32_t> queries;
 };
 
-class ProfilerVK : public IProfiler
+class ProfilerVK : public Profiler
 {
 public:
     ProfilerVK(const std::string& name, DeviceVK* pDevice);

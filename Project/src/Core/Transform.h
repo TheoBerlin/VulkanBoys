@@ -1,6 +1,5 @@
 #pragma once
-
-#include "glm/glm.hpp"
+#include "Core.h"
 
 const glm::vec3 g_DefaultForward(0.0f, 0.0f, 1.0f);
 const glm::vec3 g_DefaultUp(0.0f, 1.0f, 0.0f);

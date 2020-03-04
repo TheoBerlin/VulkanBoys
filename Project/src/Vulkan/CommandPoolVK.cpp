@@ -29,10 +29,10 @@ CommandPoolVK::~CommandPoolVK()
 bool CommandPoolVK::init()
 {
 	VkCommandPoolCreateInfo createInfo = {};
-	createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	createInfo.pNext = nullptr;
+	createInfo.sType			= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	createInfo.pNext			= nullptr;
 	createInfo.queueFamilyIndex = m_QueueFamilyIndex;
-	createInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	createInfo.flags			= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateCommandPool(m_pDevice->getDevice(), &createInfo, nullptr, &m_CommandPool), "Create CommandPool Failed");
 
@@ -43,11 +43,11 @@ bool CommandPoolVK::init()
 CommandBufferVK* CommandPoolVK::allocateCommandBuffer(VkCommandBufferLevel bufferLevel)
 {
 	VkCommandBufferAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.pNext = nullptr;
-	allocInfo.level = bufferLevel;
-	allocInfo.commandPool = m_CommandPool;
-	allocInfo.commandBufferCount = 1;
+	allocInfo.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.pNext					= nullptr;
+	allocInfo.level					= bufferLevel;
+	allocInfo.commandPool			= m_CommandPool;
+	allocInfo.commandBufferCount	= 1;
 
 	VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
 	VkResult result = vkAllocateCommandBuffers(m_pDevice->getDevice(), &allocInfo, &commandBuffer);

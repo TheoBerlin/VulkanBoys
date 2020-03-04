@@ -1,3 +1,4 @@
+#pragma once
 #include "Common/ITexture2D.h"
 #include "VulkanCommon.h"
 

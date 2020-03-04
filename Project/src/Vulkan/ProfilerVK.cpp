@@ -53,17 +53,19 @@ void ProfilerVK::setParentProfiler(ProfilerVK* pParentProfiler)
 
 void ProfilerVK::beginFrame(size_t currentFrame, CommandBufferVK* pProfiledCmdBuffer, CommandBufferVK* pResetCmdBuffer)
 {
-    if (!m_ProfileFrame) {
+    if (!m_ProfileFrame) 
+    {
         return;
     }
 
-    if (m_NextQuery == m_ppQueryPools[m_CurrentFrame]->getQueryCount()) {
+    if (m_NextQuery == m_ppQueryPools[m_CurrentFrame]->getQueryCount()) 
+    {
         // Expand the previous query pool
         expandQueryPools();
     }
 
-    m_CurrentFrame = currentFrame;
-    m_pProfiledCommandBuffer = pProfiledCmdBuffer;
+    m_CurrentFrame              = currentFrame;
+    m_pProfiledCommandBuffer    = pProfiledCmdBuffer;
 
     QueryPoolVK* pCurrentQueryPool = m_ppQueryPools[currentFrame];
 
@@ -76,9 +78,10 @@ void ProfilerVK::beginFrame(size_t currentFrame, CommandBufferVK* pProfiledCmdBu
     // Reset per-frame data
     m_TimeResults.clear();
 
-    for (Timestamp* pTimestamp : m_Timestamps) {
+    for (Timestamp* pTimestamp : m_Timestamps) 
+    {
         pTimestamp->queries.clear();
-        pTimestamp->time = 0.0f;
+        pTimestamp->time = 0;
     }
 }
 
@@ -171,7 +174,7 @@ void ProfilerVK::addChildProfiler(ProfilerVK* pChildProfiler)
 void ProfilerVK::initTimestamp(Timestamp* pTimestamp, const std::string name)
 {
     pTimestamp->name = name;
-    pTimestamp->time = 0.0f;
+    pTimestamp->time = 0;
     pTimestamp->queries.clear();
     m_Timestamps.push_back(pTimestamp);
 }

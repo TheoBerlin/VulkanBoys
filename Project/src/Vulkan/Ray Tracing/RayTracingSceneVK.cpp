@@ -93,7 +93,7 @@ bool RayTracingSceneVK::finalize()
 	m_pTempCommandPool = DBG_NEW CommandPoolVK(m_pContext->getDevice(), m_pContext->getDevice()->getQueueFamilyIndices().computeFamily.value());
 	m_pTempCommandPool->init();
 
-	m_pTempCommandBuffer = m_pTempCommandPool->allocateCommandBuffer();
+	m_pTempCommandBuffer = m_pTempCommandPool->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 	
 	createCombinedGraphicsObjectData();
 
@@ -136,8 +136,8 @@ void RayTracingSceneVK::update()
 	memoryBarrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NV | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NV;
 	memoryBarrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NV | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NV;
 
-	m_pTempCommandBuffer->reset();
-	m_pTempCommandBuffer->begin();
+	m_pTempCommandBuffer->reset(true);
+	m_pTempCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	m_pProfiler->beginFrame(0, m_pTempCommandBuffer, m_pTempCommandBuffer);
 	m_pProfiler->beginTimestamp(&m_TimestampBuildAccelStruct);
 
@@ -157,7 +157,7 @@ void RayTracingSceneVK::update()
 
 	m_pProfiler->endFrame();
 	m_pTempCommandBuffer->end();
-	m_pContext->getDevice()->executePrimaryCommandBuffer(m_pContext->getDevice()->getComputeQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_pContext->getDevice()->executeCommandBuffer(m_pContext->getDevice()->getComputeQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 	m_pContext->getDevice()->wait();
 }
 
@@ -445,8 +445,8 @@ bool RayTracingSceneVK::buildAccelerationTable()
 	memoryBarrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NV | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NV;
 	memoryBarrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NV | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NV;
 	
-	m_pTempCommandBuffer->reset();
-	m_pTempCommandBuffer->begin();
+	m_pTempCommandBuffer->reset(true);
+	m_pTempCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	
 	for (auto& bottomLevelAccelerationStructurePerMesh : m_BottomLevelAccelerationStructures)
 	{
@@ -502,7 +502,7 @@ bool RayTracingSceneVK::buildAccelerationTable()
 	vkCmdPipelineBarrier(m_pTempCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, 0, 1, &memoryBarrier, 0, 0, 0, 0);
 
 	m_pTempCommandBuffer->end();
-	m_pContext->getDevice()->executePrimaryCommandBuffer(m_pContext->getDevice()->getComputeQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_pContext->getDevice()->executeCommandBuffer(m_pContext->getDevice()->getComputeQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 	m_pContext->getDevice()->wait();
 
 	return true;
@@ -590,8 +590,8 @@ void RayTracingSceneVK::createCombinedGraphicsObjectData()
 	m_pCombinedIndexBuffer->init(indexBufferParams);
 	m_pMeshIndexBuffer->init(meshIndexBufferParams);
 
-	m_pTempCommandBuffer->reset();
-	m_pTempCommandBuffer->begin();
+	m_pTempCommandBuffer->reset(true);
+	m_pTempCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 	uint32_t vertexBufferOffset = 0;
 	uint32_t indexBufferOffset = 0;
@@ -635,7 +635,7 @@ void RayTracingSceneVK::createCombinedGraphicsObjectData()
 	m_pMeshIndexBuffer->unmap();
 
 	m_pTempCommandBuffer->end();
-	m_pDevice->executePrimaryCommandBuffer(m_pDevice->getComputeQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_pDevice->executeCommandBuffer(m_pDevice->getComputeQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 	m_pDevice->wait(); //Todo: Remove?
 }
 

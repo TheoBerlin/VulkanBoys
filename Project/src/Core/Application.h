@@ -4,17 +4,17 @@
 #include "LightSetup.h"
 
 #include "Common/CommonEventHandler.h"
-#include "Common/IParticleEmitterHandler.h"
+#include "Common/ParticleEmitterHandler.h"
 
-class IGraphicsContext;
-class IImgui;
-class IInputHandler;
 class IMesh;
+class IImgui;
+class IWindow;
 class IRenderer;
-class IRenderingHandler;
 class ITexture2D;
 class ITextureCube;
-class IWindow;
+class IInputHandler;
+class IGraphicsContext;
+class RenderingHandler;
 
 class Application : public CommonEventHandler
 {
@@ -39,7 +39,6 @@ public:
 	static Application* get();
 
 private:
-	//Deltatime should be in seconds
 	void update(double dt);
 	void renderUI(double dt);
 	void render(double dt);
@@ -49,8 +48,9 @@ private:
 	LightSetup m_LightSetup;
 	IWindow* m_pWindow;
 	IGraphicsContext* m_pContext;
-	IRenderingHandler* m_pRenderingHandler;
-	IRenderer* m_pMeshRenderer, *m_pParticleRenderer;
+	RenderingHandler* m_pRenderingHandler;
+	IRenderer* m_pMeshRenderer;
+	IRenderer* m_pParticleRenderer;
 	IRenderer* m_pRayTracingRenderer;
 	IImgui* m_pImgui;
 	IInputHandler* m_pInputHandler;
@@ -66,7 +66,7 @@ private:
 	Material m_GunMaterial;
 	Material m_RedMaterial;
 
-	IParticleEmitterHandler* m_pParticleEmitterHandler;
+	ParticleEmitterHandler* m_pParticleEmitterHandler;
 	ITexture2D* m_pParticleTexture;
 
 	// Resources for ImGui Particle window

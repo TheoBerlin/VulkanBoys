@@ -20,7 +20,7 @@ public:
 	void addSubpassDependency(const VkSubpassDependency& dependency);
 	bool finalize();
 
-	VkRenderPass getRenderPass() { return m_RenderPass; }
+	VkRenderPass getRenderPass() const { return m_RenderPass; }
 
 private:
 	DeviceVK* m_pDevice;

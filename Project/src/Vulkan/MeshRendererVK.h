@@ -93,60 +93,48 @@ public:
 
 	virtual bool init() override;
 
-	virtual ITextureCube* generateTextureCubeFromPanorama(ITexture2D* pPanorama, uint32_t width, uint32_t miplevels, ETextureFormat format) override;
-
-	virtual void onWindowResize(uint32_t width, uint32_t height) override;
-
 	virtual void beginFrame(const Camera& camera, const LightSetup& lightSetup) override;
 	virtual void endFrame() override;
 
-	virtual void setClearColor(float r, float g, float b) override;
-	virtual void setClearColor(const glm::vec3& color) override;
-	virtual void setSkybox(ITextureCube* pSkybox) override;
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
+	
+	void setClearColor(float r, float g, float b);
+	void setClearColor(const glm::vec3& color);
+	void setSkybox(TextureCubeVK* pSkybox, TextureCubeVK* pIrradiance, TextureCubeVK* pEnvironmentMap);
 
-	virtual void swapBuffers() override;
+	void submitMesh(IMesh* pMesh, const Material& material, const glm::mat4& transform);
 
-	virtual void submitMesh(IMesh* pMesh, const Material& material, const glm::mat4& transform) override;
+	void onWindowResize(uint32_t width, uint32_t height);
 
-	virtual void drawImgui(IImgui* pImgui) override;
+	FORCEINLINE ProfilerVK*			getProfiler() const				{ return m_pProfiler; }
+	FORCEINLINE CommandBufferVK*	getCurrentCommandBuffer() const	{ return m_ppCommandBuffers[m_CurrentFrame]; }
 
 private:
-	void createFramebuffers();
-	void releaseFramebuffers();
-
 	bool generateBRDFLookUp();
 	bool createGBuffer();
-
-	ProfilerVK* getProfiler() { return m_pProfiler; }
-
-private:
-	bool createSemaphores();
 	bool createCommandPoolAndBuffers();
+	bool createRenderPass();
 	bool createPipelines();
 	bool createPipelineLayouts();
 	bool createBuffersAndTextures();
 	bool createSamplers();
+	void createProfiler();
 
 	DescriptorSetVK* getDescriptorSetFromMeshAndMaterial(const IMesh* pMesh, const Material* pMaterial);
-	void createProfiler();
 
 private:
 	std::unordered_map<MeshFilter, MeshPipeline> m_MeshTable;
 
 	GraphicsContextVK* m_pContext;
 	RenderingHandlerVK* m_pRenderingHandler;
-	SkyboxRendererVK* m_pSkyboxRenderer;
 	ProfilerVK* m_pProfiler;
-	GBufferVK* m_pGBuffer;
+
 	CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
 
+	GBufferVK* m_pGBuffer;
 	RenderPassVK* m_pRenderPass;
 	RenderPassVK* m_pBackBufferRenderPass;
-	FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
-	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
-	VkSemaphore m_RenderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
 
 	DescriptorPoolVK* m_pDescriptorPool;
 	
@@ -178,16 +166,9 @@ private:
 	TextureCubeVK* m_pEnvironmentMap;
 	VkClearValue m_ClearColor;
 	VkClearValue m_ClearDepth;
-	Timestamp m_TimestampDrawIndexed;
-
-	PipelineVK* m_pPipeline;
-	PipelineLayoutVK* m_pPipelineLayout;
-	DescriptorSetVK* m_pDescriptorSet;
-	DescriptorPoolVK* m_pDescriptorPool;
-	DescriptorSetLayoutVK* m_pDescriptorSetLayout;
-
 	VkViewport m_Viewport;
 	VkRect2D m_ScissorRect;
 
+	Timestamp m_TimestampDrawIndexed;
 	uint64_t m_CurrentFrame;
 };

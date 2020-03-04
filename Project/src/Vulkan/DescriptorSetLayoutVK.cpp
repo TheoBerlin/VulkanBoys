@@ -69,11 +69,11 @@ void DescriptorSetLayoutVK::addBindingStorageImage(VkShaderStageFlags shaderStag
 void DescriptorSetLayoutVK::addBindingAccelerationStructure(VkShaderStageFlags shaderStageFlags, uint32_t bindingSlot, uint32_t descriptorCount)
 {
 	VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = {};
-	descriptorSetLayoutBinding.binding = bindingSlot;
-	descriptorSetLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV;
-	descriptorSetLayoutBinding.descriptorCount = descriptorCount;
-	descriptorSetLayoutBinding.stageFlags = shaderStageFlags;
-	descriptorSetLayoutBinding.pImmutableSamplers = nullptr;
+	descriptorSetLayoutBinding.binding              = bindingSlot;
+	descriptorSetLayoutBinding.descriptorType       = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV;
+	descriptorSetLayoutBinding.descriptorCount      = descriptorCount;
+	descriptorSetLayoutBinding.stageFlags           = shaderStageFlags;
+	descriptorSetLayoutBinding.pImmutableSamplers   = nullptr;
 
 	m_DescriptorSetLayoutBindings.push_back(descriptorSetLayoutBinding);
 }
@@ -81,11 +81,11 @@ void DescriptorSetLayoutVK::addBindingAccelerationStructure(VkShaderStageFlags s
 void DescriptorSetLayoutVK::addBindingCombinedImage(VkShaderStageFlags shaderStageFlags, const VkSampler* pImmutableSampler, uint32_t bindingSlot, uint32_t descriptorCount)
 {
     VkDescriptorSetLayoutBinding descriptorSetLayoutBinding = {};
-    descriptorSetLayoutBinding.binding          = bindingSlot;
-    descriptorSetLayoutBinding.descriptorType   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    descriptorSetLayoutBinding.descriptorCount  = descriptorCount;
-    descriptorSetLayoutBinding.stageFlags       = shaderStageFlags;
-    descriptorSetLayoutBinding.pImmutableSamplers = pImmutableSampler;
+    descriptorSetLayoutBinding.binding              = bindingSlot;
+    descriptorSetLayoutBinding.descriptorType       = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorSetLayoutBinding.descriptorCount      = descriptorCount;
+    descriptorSetLayoutBinding.stageFlags           = shaderStageFlags;
+    descriptorSetLayoutBinding.pImmutableSamplers   = pImmutableSampler;
 
     m_DescriptorSetLayoutBindings.push_back(descriptorSetLayoutBinding);
 }
@@ -96,7 +96,7 @@ bool DescriptorSetLayoutVK::finalize()
     descriptorSetLayoutInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     descriptorSetLayoutInfo.flags         = 0;
     descriptorSetLayoutInfo.pNext         = nullptr;
-    descriptorSetLayoutInfo.bindingCount  = m_DescriptorSetLayoutBindings.size();
+    descriptorSetLayoutInfo.bindingCount  = uint32_t(m_DescriptorSetLayoutBindings.size());
     descriptorSetLayoutInfo.pBindings     = m_DescriptorSetLayoutBindings.data();
 
 	if (vkCreateDescriptorSetLayout(m_pDevice->getDevice(), &descriptorSetLayoutInfo, nullptr, &m_DescriptorSetLayout) != VK_SUCCESS) 

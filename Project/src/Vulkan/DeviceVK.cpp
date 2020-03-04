@@ -68,7 +68,7 @@ void DeviceVK::addOptionalExtension(const char* extensionName)
 	m_RequestedOptionalExtensions.push_back(extensionName);
 }
 
-void DeviceVK::executePrimaryCommandBuffer(VkQueue queue, CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages, 
+void DeviceVK::executeCommandBuffer(VkQueue queue, CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages,
 	uint32_t waitSemaphoreCount, const VkSemaphore* pSignalSemaphores, uint32_t signalSemaphoreCount)
 {
 	//Submit
@@ -87,12 +87,6 @@ void DeviceVK::executePrimaryCommandBuffer(VkQueue queue, CommandBufferVK* pComm
 
 	VkResult result = vkQueueSubmit(queue, 1, &submitInfo, pCommandBuffer->getFence());
 	VK_CHECK_RESULT(result, "vkQueueSubmit failed");
-}
-
-void DeviceVK::executeSecondaryCommandBuffer(CommandBufferVK* pPrimaryCommandBuffer, CommandBufferVK* pSecondaryCommandBuffer)
-{
-	VkCommandBuffer secondaryBuffer = pSecondaryCommandBuffer->getCommandBuffer();
-	vkCmdExecuteCommands(pPrimaryCommandBuffer->getCommandBuffer(), 1, &secondaryBuffer);
 }
 
 void DeviceVK::wait()
@@ -266,8 +260,8 @@ void DeviceVK::checkExtensionsSupport(VkPhysicalDevice physicalDevice, bool& req
 		optionalExtensions.erase(extension.extensionName);
 	}
 
-	requiredExtensionsSupported = requiredExtensions.empty();
-	numOfOptionalExtensionsSupported = optionalExtensions.size();
+	requiredExtensionsSupported			= requiredExtensions.empty();
+	numOfOptionalExtensionsSupported	= uint32_t(optionalExtensions.size());
 }
 
 void DeviceVK::setEnabledExtensions()
