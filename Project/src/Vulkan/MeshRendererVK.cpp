@@ -31,8 +31,8 @@
 MeshRendererVK::MeshRendererVK(GraphicsContextVK* pContext, RenderingHandlerVK* pRenderingHandler)
 	: m_pContext(pContext),
 	m_pRenderingHandler(pRenderingHandler),
-	m_ppCommandPools(),
-	m_ppCommandBuffers(),
+	m_ppGeometryPassPools(),
+	m_ppGeometryPassBuffers(),
 	m_pRenderPass(nullptr),
 	m_pSkyboxPipeline(nullptr),
 	m_pLightDescriptorSet(nullptr),
@@ -62,9 +62,11 @@ MeshRendererVK::~MeshRendererVK()
 
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		SAFEDELETE(m_ppCommandPools[i]);
+		SAFEDELETE(m_ppGeometryPassPools[i]);
+		SAFEDELETE(m_ppLightPassPools[i]);
 	}
 
+	SAFEDELETE(m_pProfiler);
 	SAFEDELETE(m_pBRDFSampler);
 	SAFEDELETE(m_pIntegrationLUT);
 	SAFEDELETE(m_pEnvironmentMap);
@@ -169,84 +171,40 @@ void MeshRendererVK::onWindowResize(uint32_t width, uint32_t height)
 
 void MeshRendererVK::beginFrame(const Camera& camera, const LightSetup& lightSetup)
 {
-	//Prepare for frame
-	//uint32_t backBufferIndex = m_pContext->getSwapChain()->getImageIndex();
+	UNREFERENCED_PARAMETER(camera);
+	UNREFERENCED_PARAMETER(lightSetup);
 
-	m_ppCommandBuffers[m_CurrentFrame]->reset(false);
-	m_ppCommandPools[m_CurrentFrame]->reset();
+	m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 
-	FrameBufferVK* pFramebuffer = m_pGBuffer->getFrameBuffer();
+	m_ppGeometryPassBuffers[m_CurrentFrame]->reset(false);
+	m_ppGeometryPassPools[m_CurrentFrame]->reset();
 
 	// Needed to begin a secondary buffer
 	VkCommandBufferInheritanceInfo inheritanceInfo = {};
 	inheritanceInfo.sType		= VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
 	inheritanceInfo.pNext		= nullptr;
 	inheritanceInfo.renderPass	= m_pRenderPass->getRenderPass();
-	
 	//TODO: Not use subpass zero all the time?
 	inheritanceInfo.subpass		= 0;
-	inheritanceInfo.framebuffer = pFramebuffer->getFrameBuffer();
+	inheritanceInfo.framebuffer = m_pGBuffer->getFrameBuffer()->getFrameBuffer();
 
-	m_ppCommandBuffers[m_CurrentFrame]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	//m_pProfiler->beginFrame(m_CurrentFrame, m_ppCommandBuffers[m_CurrentFrame], m_pRenderingHandler->getCurrentGraphicsCommandBuffer());
+	m_ppGeometryPassBuffers[m_CurrentFrame]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
+	m_pProfiler->beginFrame(m_ppGeometryPassBuffers[m_CurrentFrame]);
 
-	//Update camera
-	CameraBuffer cameraBuffer = {};
-	cameraBuffer.Projection = camera.getProjectionMat();
-	cameraBuffer.View		= camera.getViewMat();
-	cameraBuffer.Position	= glm::vec4(camera.getPosition(), 1.0f);
-	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraBuffer, 0, (const void*)&cameraBuffer, sizeof(CameraBuffer));
-
-	//Update lights
-	const uint32_t numPointLights = lightSetup.getPointLightCount();
-	m_ppCommandBuffers[m_CurrentFrame]->updateBuffer(m_pLightBuffer, 0, (const void*)lightSetup.getPointLights(), sizeof(PointLight) * numPointLights);
-
-	//Begin geometrypass
-	VkClearValue clearValues[] = { m_ClearColor, m_ClearColor, m_ClearColor, m_ClearDepth };
-	m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pRenderPass, pFramebuffer, (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 4, VK_SUBPASS_CONTENTS_INLINE);
-
-	m_ppCommandBuffers[m_CurrentFrame]->setViewports(&m_Viewport, 1);
-	m_ppCommandBuffers[m_CurrentFrame]->setScissorRects(&m_ScissorRect, 1);
+	// Begin geometrypass
+	m_ppGeometryPassBuffers[m_CurrentFrame]->setViewports(&m_Viewport, 1);
+	m_ppGeometryPassBuffers[m_CurrentFrame]->setScissorRects(&m_ScissorRect, 1);
 }
 
 void MeshRendererVK::endFrame()
 {
-	//m_pProfiler->endFrame();
+	m_pProfiler->endFrame();
 
-	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pSkyboxPipelineLayout, 0, 1, &m_pSkyboxDescriptorSet, 0, nullptr);
-	m_ppCommandBuffers[m_CurrentFrame]->bindPipeline(m_pSkyboxPipeline);
-	m_ppCommandBuffers[m_CurrentFrame]->drawInstanced(36, 1, 0, 0);
+	m_ppGeometryPassBuffers[m_CurrentFrame]->bindPipeline(m_pSkyboxPipeline);
+	m_ppGeometryPassBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pSkyboxPipelineLayout, 0, 1, &m_pSkyboxDescriptorSet, 0, nullptr);
+	m_ppGeometryPassBuffers[m_CurrentFrame]->drawInstanced(36, 1, 0, 0);
 
-	m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
-
-	//Begin lightpass
-	VkClearValue clearValues[] = { m_ClearColor, m_ClearDepth };
-	uint32_t backBufferIndex = m_pContext->getSwapChain()->getImageIndex();
-
-	FrameBufferVK* pBackbuffer = m_pRenderingHandler->getCurrentBackBuffer();
-	m_ppCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pBackBufferRenderPass, pBackbuffer, (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 2, VK_SUBPASS_CONTENTS_INLINE);
-
-	m_ppCommandBuffers[m_CurrentFrame]->bindPipeline(m_pLightPipeline);
-	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pLightPipelineLayout, 0, 1, &m_pLightDescriptorSet, 0, nullptr);
-
-	m_ppCommandBuffers[m_CurrentFrame]->setViewports(&m_Viewport, 1);
-	m_ppCommandBuffers[m_CurrentFrame]->setScissorRects(&m_ScissorRect, 1);
-
-	m_ppCommandBuffers[m_CurrentFrame]->drawInstanced(3, 1, 0, 0);
-
-	m_ppCommandBuffers[m_CurrentFrame]->endRenderPass();
-
-	m_ppCommandBuffers[m_CurrentFrame]->end();
-
-	//Execute commandbuffer
-	//VkSemaphore waitSemaphores[] = { m_ImageAvailableSemaphores[m_CurrentFrame] };
-	//VkSemaphore signalSemaphores[] = { m_RenderFinishedSemaphores[m_CurrentFrame] };
-	//VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-
-	//DeviceVK* pDevice = m_pContext->getDevice();
-	//pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppCommandBuffers[m_CurrentFrame], waitSemaphores, waitStages, 1, signalSemaphores, 1);
-
-	m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+	m_ppGeometryPassBuffers[m_CurrentFrame]->end();
 }
 
 void MeshRendererVK::setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY)
@@ -262,6 +220,37 @@ void MeshRendererVK::setViewport(float width, float height, float minDepth, floa
 	m_ScissorRect.extent.height = uint32_t(height);
 	m_ScissorRect.offset.x		= 0;
 	m_ScissorRect.offset.y		= 0;
+}
+
+void MeshRendererVK::setupFrame(CommandBufferVK* pPrimaryBuffer, const Camera& camera, const LightSetup& lightsetup)
+{
+	m_pProfiler->reset(m_CurrentFrame, pPrimaryBuffer);
+
+	updateBuffers(pPrimaryBuffer, camera, lightsetup);
+
+	//Start renderpass
+	VkClearValue clearValues[] = { m_ClearColor, m_ClearColor, m_ClearColor, m_ClearDepth };
+	pPrimaryBuffer->beginRenderPass(m_pRenderPass, m_pGBuffer->getFrameBuffer(), (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 4, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+}
+
+void MeshRendererVK::finalizeFrame(CommandBufferVK* pPrimaryBuffer)
+{
+	pPrimaryBuffer->executeSecondary(m_ppGeometryPassBuffers[m_CurrentFrame]);
+	pPrimaryBuffer->endRenderPass();
+}
+
+void MeshRendererVK::updateBuffers(CommandBufferVK* pPrimaryBuffer, const Camera& camera, const LightSetup& lightSetup)
+{
+	//Update camera
+	CameraBuffer cameraBuffer = {};
+	cameraBuffer.Projection		= camera.getProjectionMat();
+	cameraBuffer.View			= camera.getViewMat();
+	cameraBuffer.Position		= glm::vec4(camera.getPosition(), 1.0f);
+	pPrimaryBuffer->updateBuffer(m_pCameraBuffer, 0, (const void*)&cameraBuffer, sizeof(CameraBuffer));
+
+	//Update lights
+	const uint32_t numPointLights = lightSetup.getPointLightCount();
+	pPrimaryBuffer->updateBuffer(m_pLightBuffer, 0, (const void*)lightSetup.getPointLights(), sizeof(PointLight) * numPointLights);
 }
 
 void MeshRendererVK::setClearColor(float r, float g, float b)
@@ -291,27 +280,48 @@ void MeshRendererVK::setSkybox(TextureCubeVK* pSkybox, TextureCubeVK* pIrradianc
 	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pEnvironmentMapView, &m_pSkyboxSampler, 1, ENVIRONMENT_BINDING);
 }
 
-void MeshRendererVK::submitMesh(IMesh* pMesh, const Material& material, const glm::mat4& transform)
+void MeshRendererVK::submitMesh(const MeshVK* pMesh, const Material* pMaterial, const glm::vec3& materialProperties, const glm::mat4& transform)
 {
 	ASSERT(pMesh != nullptr);
 
-	m_ppCommandBuffers[m_CurrentFrame]->bindPipeline(m_pGeometryPipeline);
+	m_ppGeometryPassBuffers[m_CurrentFrame]->bindPipeline(m_pGeometryPipeline);
 
-	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(transform));
-	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec4), (const void*)glm::value_ptr(material.getAlbedo()));
-
-	glm::vec3 materialProperties(material.getAmbientOcclusion(), material.getMetallic(), material.getRoughness());
-	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4) + sizeof(glm::vec4), sizeof(glm::vec3), (const void*)glm::value_ptr(materialProperties));
+	m_ppGeometryPassBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(transform));
+	m_ppGeometryPassBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec4), (const void*)glm::value_ptr(pMaterial->getAlbedo()));
+	m_ppGeometryPassBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4) + sizeof(glm::vec4), sizeof(glm::vec3), (const void*)glm::value_ptr(materialProperties));
 
 	BufferVK* pIndexBuffer = reinterpret_cast<BufferVK*>(pMesh->getIndexBuffer());
-	m_ppCommandBuffers[m_CurrentFrame]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	m_ppGeometryPassBuffers[m_CurrentFrame]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-	DescriptorSetVK* pDescriptorSet = getDescriptorSetFromMeshAndMaterial(pMesh, &material);
-	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pGeometryPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
+	DescriptorSetVK* pDescriptorSet = getDescriptorSetFromMeshAndMaterial(pMesh, pMaterial);
+	m_ppGeometryPassBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pGeometryPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
 
-	//m_pProfiler->beginTimestamp(&m_TimestampDrawIndexed);
-	m_ppCommandBuffers[m_CurrentFrame]->drawIndexInstanced(pMesh->getIndexCount(), 1, 0, 0, 0);
-	//m_pProfiler->endTimestamp(&m_TimestampDrawIndexed);
+	m_ppGeometryPassBuffers[m_CurrentFrame]->drawIndexInstanced(pMesh->getIndexCount(), 1, 0, 0, 0);
+}
+
+void MeshRendererVK::buildLightPass(RenderPassVK* pRenderPass, FrameBufferVK* pFramebuffer)
+{
+	m_ppLightPassBuffers[m_CurrentFrame]->reset(false);
+	m_ppLightPassPools[m_CurrentFrame]->reset();
+
+	// Needed to begin a secondary buffer
+	VkCommandBufferInheritanceInfo inheritanceInfo = {};
+	inheritanceInfo.sType		= VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+	inheritanceInfo.pNext		= nullptr;
+	inheritanceInfo.renderPass	= pRenderPass->getRenderPass();
+	//TODO: Not use subpass zero all the time?
+	inheritanceInfo.subpass		= 0;
+	inheritanceInfo.framebuffer = pFramebuffer->getFrameBuffer();
+	m_ppLightPassBuffers[m_CurrentFrame]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
+
+	m_ppLightPassBuffers[m_CurrentFrame]->bindPipeline(m_pLightPipeline);
+	m_ppLightPassBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pLightPipelineLayout, 0, 1, &m_pLightDescriptorSet, 0, nullptr);
+
+	m_ppLightPassBuffers[m_CurrentFrame]->setViewports(&m_Viewport, 1);
+	m_ppLightPassBuffers[m_CurrentFrame]->setScissorRects(&m_ScissorRect, 1);
+
+	m_ppLightPassBuffers[m_CurrentFrame]->drawInstanced(3, 1, 0, 0);
+	m_ppLightPassBuffers[m_CurrentFrame]->end();
 }
 
 bool MeshRendererVK::generateBRDFLookUp()
@@ -505,14 +515,26 @@ bool MeshRendererVK::createCommandPoolAndBuffers()
 	const uint32_t graphicsQueueIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, graphicsQueueIndex);
-		if (!m_ppCommandPools[i]->init())
+		m_ppGeometryPassPools[i] = DBG_NEW CommandPoolVK(pDevice, graphicsQueueIndex);
+		if (!m_ppGeometryPassPools[i]->init())
 		{
 			return false;
 		}
 
-		m_ppCommandBuffers[i] = m_ppCommandPools[i]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_SECONDARY);
-		if (m_ppCommandBuffers[i] == nullptr)
+		m_ppGeometryPassBuffers[i] = m_ppGeometryPassPools[i]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+		if (m_ppGeometryPassBuffers[i] == nullptr)
+		{
+			return false;
+		}
+
+		m_ppLightPassPools[i] = DBG_NEW CommandPoolVK(pDevice, graphicsQueueIndex);
+		if (!m_ppLightPassPools[i]->init())
+		{
+			return false;
+		}
+
+		m_ppLightPassBuffers[i] = m_ppLightPassPools[i]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+		if (m_ppLightPassBuffers[i] == nullptr)
 		{
 			return false;
 		}
@@ -955,7 +977,7 @@ bool MeshRendererVK::createSamplers()
 	return true;
 }
 
-DescriptorSetVK* MeshRendererVK::getDescriptorSetFromMeshAndMaterial(const IMesh* pMesh, const Material* pMaterial)
+DescriptorSetVK* MeshRendererVK::getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial)
 {
 	MeshFilter filter = {};
 	filter.pMesh		= pMesh;

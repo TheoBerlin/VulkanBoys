@@ -38,6 +38,8 @@ public:
 	void submitParticles(ParticleEmitterHandlerVK* pEmitterHandler);
 	void submitParticles(ParticleEmitter* pEmitter);
 
+	FORCEINLINE CommandBufferVK* getCommandBuffer(uint32_t frameindex) const { return m_ppCommandBuffers[frameindex]; }
+
 private:
 	bool createCommandPoolAndBuffers();
 	bool createPipelineLayout();

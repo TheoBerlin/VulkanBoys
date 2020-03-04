@@ -423,7 +423,9 @@ void RayTracingRendererVK::beginFrame(const Camera& camera, const LightSetup& li
 	inheritanceInfo.framebuffer = VK_NULL_HANDLE;
 
 	m_ppComputeCommandBuffers[currentFrame]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	m_pProfiler->beginFrame(currentFrame, m_ppComputeCommandBuffers[currentFrame], m_ppComputeCommandBuffers[currentFrame]);
+	
+	m_pProfiler->reset(currentFrame, m_ppComputeCommandBuffers[currentFrame]);
+	m_pProfiler->beginFrame(m_ppComputeCommandBuffers[currentFrame]);
 
 	CameraMatricesBuffer cameraMatricesBuffer = {};
 	cameraMatricesBuffer.Projection = glm::inverse(camera.getProjectionMat());

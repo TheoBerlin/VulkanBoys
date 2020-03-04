@@ -122,6 +122,7 @@ void Application::init()
 	m_pRenderingHandler->setMeshRenderer(m_pMeshRenderer);
 	m_pRenderingHandler->setParticleEmitterHandler(m_pParticleEmitterHandler);
 	m_pRenderingHandler->setParticleRenderer(m_pParticleRenderer);
+	m_pRenderingHandler->setImguiRenderer(m_pImgui);
 
 	if (m_EnableRayTracing)
 	{
@@ -135,7 +136,7 @@ void Application::init()
 	ITexture2D* pPanorama = m_pContext->createTexture2D();
 	TaskDispatcher::execute([&]
 		{
-			pPanorama->initFromFile("assets/textures/snow.hdr", ETextureFormat::FORMAT_R32G32B32A32_FLOAT, false);
+			pPanorama->initFromFile("assets/textures/arches.hdr", ETextureFormat::FORMAT_R32G32B32A32_FLOAT, false);
 			m_pSkybox = m_pRenderingHandler->generateTextureCube(pPanorama, ETextureFormat::FORMAT_R16G16B16A16_FLOAT, 2048, 1);
 		});
 
@@ -254,8 +255,8 @@ void Application::run()
 		m_pWindow->peekEvents();
 		if (m_pWindow->hasFocus())
 		{
-			//update(seconds);
-			//renderUI(seconds);
+			update(seconds);
+			renderUI(seconds);
 			render(seconds);
 		}
 		else
@@ -551,7 +552,6 @@ void Application::render(double dt)
 		}
 	}
 
-	//m_pRenderingHandler->drawImgui(m_pImgui);
 	m_pRenderingHandler->endFrame();
 	m_pRenderingHandler->swapBuffers();
 }

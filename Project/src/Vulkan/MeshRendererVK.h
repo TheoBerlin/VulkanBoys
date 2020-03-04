@@ -1,11 +1,10 @@
 #pragma once
 
 #include "Common/IRenderer.h"
-#include "Common/IMesh.h"
 #include "Core/Material.h"
 
+#include "MeshVK.h"
 #include "ProfilerVK.h"
-#include "VulkanCommon.h"
 
 #include <unordered_map>
 
@@ -50,10 +49,9 @@ class RenderPassVK;
 #define BRDF_LUT_BINDING			6
 #define LIGHT_BUFFER_BINDING		7
 
-//Stealing name from Unity
 struct MeshFilter
 {
-	const IMesh* pMesh			= nullptr;
+	const MeshVK*	pMesh		= nullptr;
 	const Material* pMaterial	= nullptr;
 
 	FORCEINLINE bool operator==(const MeshFilter& other) const
@@ -98,16 +96,22 @@ public:
 
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
 	
+	void setupFrame(CommandBufferVK* pPrimaryBuffer, const Camera& camera, const LightSetup& lightsetup);
+	void finalizeFrame(CommandBufferVK* pPrimaryBuffer);
+
 	void setClearColor(float r, float g, float b);
 	void setClearColor(const glm::vec3& color);
 	void setSkybox(TextureCubeVK* pSkybox, TextureCubeVK* pIrradiance, TextureCubeVK* pEnvironmentMap);
 
-	void submitMesh(IMesh* pMesh, const Material& material, const glm::mat4& transform);
+	void submitMesh(const MeshVK* pMesh, const Material* pMaterial, const glm::vec3& materialProperties, const glm::mat4& transform);
+	
+	void buildLightPass(RenderPassVK* pRenderPass, FrameBufferVK* pFramebuffer);
 
 	void onWindowResize(uint32_t width, uint32_t height);
-
-	FORCEINLINE ProfilerVK*			getProfiler() const				{ return m_pProfiler; }
-	FORCEINLINE CommandBufferVK*	getCurrentCommandBuffer() const	{ return m_ppCommandBuffers[m_CurrentFrame]; }
+		
+	FORCEINLINE ProfilerVK*			getProfiler() const					{ return m_pProfiler; }
+	FORCEINLINE CommandBufferVK*	getGeometryCommandBuffer() const	{ return m_ppGeometryPassBuffers[m_CurrentFrame]; }
+	FORCEINLINE CommandBufferVK*	getLightCommandBuffer() const		{ return m_ppLightPassBuffers[m_CurrentFrame]; }
 
 private:
 	bool generateBRDFLookUp();
@@ -120,7 +124,9 @@ private:
 	bool createSamplers();
 	void createProfiler();
 
-	DescriptorSetVK* getDescriptorSetFromMeshAndMaterial(const IMesh* pMesh, const Material* pMaterial);
+	void updateBuffers(CommandBufferVK* pPrimaryBuffer, const Camera& camera, const LightSetup& lightsetup);
+
+	DescriptorSetVK* getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial);
 
 private:
 	std::unordered_map<MeshFilter, MeshPipeline> m_MeshTable;
@@ -129,8 +135,11 @@ private:
 	RenderingHandlerVK* m_pRenderingHandler;
 	ProfilerVK* m_pProfiler;
 
-	CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];
-	CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
+	CommandPoolVK* m_ppGeometryPassPools[MAX_FRAMES_IN_FLIGHT];
+	CommandBufferVK* m_ppGeometryPassBuffers[MAX_FRAMES_IN_FLIGHT];
+
+	CommandPoolVK* m_ppLightPassPools[MAX_FRAMES_IN_FLIGHT];
+	CommandBufferVK* m_ppLightPassBuffers[MAX_FRAMES_IN_FLIGHT];
 
 	GBufferVK* m_pGBuffer;
 	RenderPassVK* m_pRenderPass;

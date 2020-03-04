@@ -51,10 +51,14 @@ ParticleEmitterHandlerVK::~ParticleEmitterHandlerVK()
 
 void ParticleEmitterHandlerVK::update(float dt)
 {
-	if (m_GPUComputed) {
+	if (m_GPUComputed) 
+	{
         updateGPU(dt);
-    } else {
-        for (ParticleEmitter* particleEmitter : m_ParticleEmitters) {
+    } 
+	else 
+	{
+        for (ParticleEmitter* particleEmitter : m_ParticleEmitters) 
+		{
             particleEmitter->update(dt);
         }
     }
@@ -65,10 +69,13 @@ void ParticleEmitterHandlerVK::updateRenderingBuffers(RenderingHandler* pRenderi
     RenderingHandlerVK* pRenderingHandlerVK = reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler);
     CommandBufferVK* pCommandBuffer = pRenderingHandlerVK->getCurrentGraphicsCommandBuffer();
 
-    for (ParticleEmitter* pEmitter : m_ParticleEmitters) {
-		if (!m_GPUComputed) {
+    for (ParticleEmitter* pEmitter : m_ParticleEmitters) 
+	{
+		if (!m_GPUComputed) 
+		{
 			// Update emitter buffer. If GPU computing is enabled, this will already have been updated
-			if (pEmitter->m_EmitterUpdated) {
+			if (pEmitter->m_EmitterUpdated) 
+			{
 				EmitterBuffer emitterBuffer = {};
 				pEmitter->createEmitterBuffer(emitterBuffer);
 
@@ -339,7 +346,9 @@ void ParticleEmitterHandlerVK::beginUpdateFrame()
 	m_ppCommandPools[m_CurrentFrame]->reset();
 
 	m_ppCommandBuffers[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	m_pProfiler->beginFrame(m_CurrentFrame, m_ppCommandBuffers[m_CurrentFrame], m_ppCommandBuffers[m_CurrentFrame]);
+	
+	m_pProfiler->reset(m_CurrentFrame, m_ppCommandBuffers[m_CurrentFrame]);
+	m_pProfiler->beginFrame(m_ppCommandBuffers[m_CurrentFrame]);
 
 	m_ppCommandBuffers[m_CurrentFrame]->bindPipeline(m_pPipeline);
 	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, m_pPipelineLayout, 0, 1, &m_ppDescriptorSets[m_CurrentFrame], 0, nullptr);

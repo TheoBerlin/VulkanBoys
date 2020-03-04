@@ -16,7 +16,17 @@ class ParticleRendererVK;
 class PipelineVK;
 class RayTracingRendererVK;
 class RenderPassVK;
+class MeshVK;
 class SkyboxRendererVK;
+class ImguiVK;
+
+struct SubmitedMesh
+{
+    const MeshVK*       pMesh               = nullptr;
+    const Material*     pMaterial           = nullptr;
+    glm::vec3           MaterialProperties  = glm::vec3(1.0f);
+    glm::mat4           Transform           = glm::mat4(1.0f);
+};
 
 class RenderingHandlerVK : public RenderingHandler
 {
@@ -36,12 +46,12 @@ public:
     virtual void submitMesh(IMesh* pMesh, const Material& material, const glm::mat4& transform) override;
 
     virtual void drawProfilerUI() override;
-    virtual void drawImgui(IImgui* pImgui) override;
 
-    virtual void setRayTracer(IRenderer* pRayTracer) override { m_pRayTracer = reinterpret_cast<RayTracingRendererVK*>(pRayTracer); }
-    virtual void setMeshRenderer(IRenderer* pMeshRenderer) override { m_pMeshRenderer = reinterpret_cast<MeshRendererVK*>(pMeshRenderer); }
+    virtual void setRayTracer(IRenderer* pRayTracer) override               { m_pRayTracer = reinterpret_cast<RayTracingRendererVK*>(pRayTracer); }
+    virtual void setMeshRenderer(IRenderer* pMeshRenderer) override         { m_pMeshRenderer = reinterpret_cast<MeshRendererVK*>(pMeshRenderer); }
     virtual void setParticleRenderer(IRenderer* pParticleRenderer) override { m_pParticleRenderer = reinterpret_cast<ParticleRendererVK*>(pParticleRenderer); }
- 
+    virtual void setImguiRenderer(IImgui* pImGui) override                  { m_pImGuiRenderer = reinterpret_cast<ImguiVK*>(pImGui); }
+
     virtual void setClearColor(float r, float g, float b) override;
     virtual void setClearColor(const glm::vec3& color) override;
     virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
@@ -73,12 +83,15 @@ private:
     void submitParticles();
 
 private:
+    std::vector<SubmitedMesh> m_SubmitedMeshes;
+
     GraphicsContextVK* m_pGraphicsContext;
 
     SkyboxRendererVK* m_pSkyboxRenderer;
     MeshRendererVK* m_pMeshRenderer;
     ParticleRendererVK* m_pParticleRenderer;
     RayTracingRendererVK* m_pRayTracer;
+    ImguiVK* m_pImGuiRenderer;
 
     FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];

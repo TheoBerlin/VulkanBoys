@@ -138,7 +138,9 @@ void RayTracingSceneVK::update()
 
 	m_pTempCommandBuffer->reset(true);
 	m_pTempCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	m_pProfiler->beginFrame(0, m_pTempCommandBuffer, m_pTempCommandBuffer);
+	
+	m_pProfiler->reset(0, m_pTempCommandBuffer);
+	m_pProfiler->beginFrame(m_pTempCommandBuffer);
 	m_pProfiler->beginTimestamp(&m_TimestampBuildAccelStruct);
 
 	m_pDevice->vkCmdBuildAccelerationStructureNV(

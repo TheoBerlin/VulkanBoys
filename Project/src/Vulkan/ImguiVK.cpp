@@ -207,9 +207,8 @@ bool ImguiVK::init()
 	//}
 
 	//Write to descriptor sets
-	Texture2DVK* pTexture = reinterpret_cast<Texture2DVK*>(m_pFontTexture);
-	
-	ImageViewVK* pFontTextureView = pTexture->getImageView();
+	Texture2DVK* pTexture			= reinterpret_cast<Texture2DVK*>(m_pFontTexture);
+	ImageViewVK* pFontTextureView	= pTexture->getImageView();
 	m_pDescriptorSet->writeCombinedImageDescriptors(&pFontTextureView, &m_pSampler, 1, 0);
 
 	D_LOG("ImGui initialized successfully");
@@ -243,7 +242,7 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 
 	//uint64 vertexSize	= pDrawData->TotalVtxCount * sizeof(ImDrawVert);
 	//uint64 indexSize	= pDrawData->TotalIdxCount * sizeof(ImDrawIdx);
-	// pload vertex/index data into a single contiguous GPU buffer
+	//upload vertex/index data into a single contiguous GPU buffer
 	{
 		ImDrawVert* pVtxDst = nullptr;
 		ImDrawIdx* pIdxDst = nullptr;
@@ -545,15 +544,22 @@ bool ImguiVK::createPipeline()
 	m_pPipeline->addVertexBinding(0, VK_VERTEX_INPUT_RATE_VERTEX, sizeof(ImDrawVert));
 	
 	VkPipelineColorBlendAttachmentState blendAttachment = {};
-	blendAttachment.blendEnable		= VK_TRUE;
-	blendAttachment.colorWriteMask	= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	blendAttachment.blendEnable			= VK_TRUE;
+	blendAttachment.colorWriteMask		= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	blendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	blendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	blendAttachment.colorBlendOp		= VK_BLEND_OP_ADD;
+	blendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	blendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	blendAttachment.alphaBlendOp		= VK_BLEND_OP_ADD;
 	m_pPipeline->addColorBlendAttachment(blendAttachment);
 	
 	VkPipelineRasterizationStateCreateInfo rasterizerState = {};
-	rasterizerState.cullMode	= VK_CULL_MODE_NONE;
-	rasterizerState.frontFace	= VK_FRONT_FACE_CLOCKWISE;
-	rasterizerState.polygonMode = VK_POLYGON_MODE_FILL;
-	rasterizerState.lineWidth	= 1.0f;
+	rasterizerState.cullMode				= VK_CULL_MODE_NONE;
+	rasterizerState.frontFace				= VK_FRONT_FACE_CLOCKWISE;
+	rasterizerState.polygonMode				= VK_POLYGON_MODE_FILL;
+	rasterizerState.rasterizerDiscardEnable = VK_FALSE;
+	rasterizerState.lineWidth				= 1.0f;
 	m_pPipeline->setRasterizerState(rasterizerState);
 
 	VkPipelineDepthStencilStateCreateInfo depthStencilState = {};

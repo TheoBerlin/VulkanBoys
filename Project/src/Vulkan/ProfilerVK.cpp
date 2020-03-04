@@ -21,7 +21,8 @@ ProfilerVK::ProfilerVK(const std::string& name, DeviceVK* pDevice)
 {
     findWidestText();
 
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) 
+    {
         m_ppQueryPools[i] = DBG_NEW QueryPoolVK(pDevice);
 
         if (!m_ppQueryPools[i]->init(VK_QUERY_TYPE_TIMESTAMP, 8)) {
@@ -51,26 +52,31 @@ void ProfilerVK::setParentProfiler(ProfilerVK* pParentProfiler)
     findWidestText();
 }
 
-void ProfilerVK::beginFrame(size_t currentFrame, CommandBufferVK* pProfiledCmdBuffer, CommandBufferVK* pResetCmdBuffer)
+void ProfilerVK::reset(size_t currentFrame, CommandBufferVK* pResetCmdBuffer)
+{
+    if (m_NextQuery == m_ppQueryPools[m_CurrentFrame]->getQueryCount())
+    {
+        // Expand the previous query pool
+        expandQueryPools();
+    }
+
+    m_CurrentFrame = currentFrame;
+    QueryPoolVK* pCurrentQueryPool = m_ppQueryPools[m_CurrentFrame];
+
+    vkCmdResetQueryPool(pResetCmdBuffer->getCommandBuffer(), pCurrentQueryPool->getQueryPool(), 0, pCurrentQueryPool->getQueryCount());
+    m_NextQuery = 0;
+}
+
+void ProfilerVK::beginFrame(CommandBufferVK* pProfiledCmdBuffer)
 {
     if (!m_ProfileFrame) 
     {
         return;
     }
 
-    if (m_NextQuery == m_ppQueryPools[m_CurrentFrame]->getQueryCount()) 
-    {
-        // Expand the previous query pool
-        expandQueryPools();
-    }
-
-    m_CurrentFrame              = currentFrame;
     m_pProfiledCommandBuffer    = pProfiledCmdBuffer;
 
-    QueryPoolVK* pCurrentQueryPool = m_ppQueryPools[currentFrame];
-
-    vkCmdResetQueryPool(pResetCmdBuffer->getCommandBuffer(), pCurrentQueryPool->getQueryPool(), 0, pCurrentQueryPool->getQueryCount());
-    m_NextQuery = 0;
+    QueryPoolVK* pCurrentQueryPool = m_ppQueryPools[m_CurrentFrame];
 
     // Write a timestamp to measure the time elapsed for the entire scope of the profiler
     vkCmdWriteTimestamp(m_pProfiledCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, pCurrentQueryPool->getQueryPool(), m_NextQuery++);
@@ -105,16 +111,13 @@ void ProfilerVK::writeResults()
         return;
     }
 
-    VkQueryPool currentQueryPool = m_ppQueryPools[m_CurrentFrame]->getQueryPool();
+    VkDevice device         = m_pDevice->getDevice();
+    VkQueryPool queryPool   = m_ppQueryPools[m_CurrentFrame]->getQueryPool();
+    uint32_t queryCount     = m_NextQuery;
 
-    if (vkGetQueryPoolResults(
-        m_pDevice->getDevice(), currentQueryPool,
-        0, m_NextQuery,                             // First query, query count
-        m_NextQuery * sizeof(uint64_t),             // Data size
-        (void*)m_TimeResults.data(),                // Data pointer
-        sizeof(uint64_t),                           // Strides
-        VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT)
-        != VK_SUCCESS)
+    VkResult result = vkGetQueryPoolResults(device, queryPool, 0, queryCount, queryCount * sizeof(uint64_t), 
+(void*)m_TimeResults.data(), sizeof(uint64_t), VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
+    if (result != VK_SUCCESS)
     {
         LOG("Profiler %s: failed to get query pool results", m_Name.c_str());
         return;

@@ -108,9 +108,6 @@ void ParticleRendererVK::endFrame()
 {
 	uint32_t currentFrame = m_pRenderingHandler->getCurrentFrameIndex();
 	m_ppCommandBuffers[currentFrame]->end();
-
-	//DeviceVK* pDevice = m_pGraphicsContext->getDevice();
-	//pDevice->executeSecondaryCommandBuffer(m_pRenderingHandler->getCurrentGraphicsCommandBuffer(), m_ppCommandBuffers[currentFrame]);
 }
 
 void ParticleRendererVK::submitParticles(ParticleEmitterHandlerVK* pEmitterHandler)
@@ -189,7 +186,8 @@ bool ParticleRendererVK::createCommandPoolAndBuffers()
 		}
 
 		m_ppCommandBuffers[i] = m_ppCommandPools[i]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_SECONDARY);
-		if (m_ppCommandBuffers[i] == nullptr) {
+		if (m_ppCommandBuffers[i] == nullptr) 
+		{
 			return false;
 		}
 	}
@@ -285,8 +283,14 @@ bool ParticleRendererVK::createPipeline()
 	m_pPipeline = DBG_NEW PipelineVK(m_pGraphicsContext->getDevice());
 
 	VkPipelineColorBlendAttachmentState blendAttachment = {};
-	blendAttachment.blendEnable		= VK_TRUE;
-	blendAttachment.colorWriteMask	= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	blendAttachment.blendEnable			= VK_TRUE;
+	blendAttachment.colorWriteMask		= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	blendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	blendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	blendAttachment.colorBlendOp		= VK_BLEND_OP_ADD;
+	blendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	blendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	blendAttachment.alphaBlendOp		= VK_BLEND_OP_ADD;
 	m_pPipeline->addColorBlendAttachment(blendAttachment);
 
 	VkPipelineRasterizationStateCreateInfo rasterizerState = {};
@@ -297,7 +301,7 @@ bool ParticleRendererVK::createPipeline()
 	m_pPipeline->setRasterizerState(rasterizerState);
 
 	VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
-	depthStencilState.depthTestEnable	= VK_TRUE;
+	depthStencilState.depthTestEnable	= VK_FALSE;
 	depthStencilState.depthWriteEnable	= VK_FALSE;
 	depthStencilState.depthCompareOp	= VK_COMPARE_OP_LESS;
 	depthStencilState.stencilTestEnable	= VK_FALSE;

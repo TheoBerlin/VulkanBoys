@@ -18,64 +18,64 @@ PipelineVK::PipelineVK(DeviceVK* pDevice)
     m_Pipeline(VK_NULL_HANDLE)
 {
     //Default InputAssembly
-    m_InputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    m_InputAssembly.flags = 0;
-    m_InputAssembly.pNext = nullptr;
-    m_InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    m_InputAssembly.primitiveRestartEnable = VK_FALSE;
+    m_InputAssembly.sType                   = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    m_InputAssembly.flags                   = 0;
+    m_InputAssembly.pNext                   = nullptr;
+    m_InputAssembly.topology                = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    m_InputAssembly.primitiveRestartEnable  = VK_FALSE;
 
     //Default RasterizerState
-    m_RasterizerState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    m_RasterizerState.flags = 0;
-    m_RasterizerState.pNext = nullptr;
-    m_RasterizerState.polygonMode  = VK_POLYGON_MODE_FILL;
-    m_RasterizerState.lineWidth    = 1.0f;
-    m_RasterizerState.cullMode     = VK_CULL_MODE_NONE;
-    m_RasterizerState.frontFace    = VK_FRONT_FACE_CLOCKWISE;
-    m_RasterizerState.depthBiasEnable  = VK_FALSE;
-    m_RasterizerState.depthClampEnable = VK_FALSE;
-    m_RasterizerState.rasterizerDiscardEnable = VK_FALSE;
-    m_RasterizerState.depthBiasClamp = 0.0f;
-    m_RasterizerState.depthBiasConstantFactor = 0.0f;
-    m_RasterizerState.depthBiasSlopeFactor = 0.0f;
+    m_RasterizerState.sType                     = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    m_RasterizerState.flags                     = 0;
+    m_RasterizerState.pNext                     = nullptr;
+    m_RasterizerState.polygonMode               = VK_POLYGON_MODE_FILL;
+    m_RasterizerState.lineWidth                 = 1.0f;
+    m_RasterizerState.cullMode                  = VK_CULL_MODE_NONE;
+    m_RasterizerState.frontFace                 = VK_FRONT_FACE_CLOCKWISE;
+    m_RasterizerState.depthBiasEnable           = VK_FALSE;
+    m_RasterizerState.depthClampEnable          = VK_FALSE;
+    m_RasterizerState.rasterizerDiscardEnable   = VK_FALSE;
+    m_RasterizerState.depthBiasClamp            = 0.0f;
+    m_RasterizerState.depthBiasConstantFactor   = 0.0f;
+    m_RasterizerState.depthBiasSlopeFactor      = 0.0f;
 
     //MultisamplingState
-    m_MultisamplingState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    m_MultisamplingState.flags = 0;
-    m_MultisamplingState.pNext = nullptr;
-    m_MultisamplingState.alphaToCoverageEnable = VK_FALSE;
-    m_MultisamplingState.alphaToOneEnable = VK_FALSE;
-    m_MultisamplingState.minSampleShading = 0.0f;
-    m_MultisamplingState.sampleShadingEnable = VK_FALSE;
-    m_MultisamplingState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    m_MultisamplingState.pSampleMask = nullptr;
+    m_MultisamplingState.sType                  = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    m_MultisamplingState.flags                  = 0;
+    m_MultisamplingState.pNext                  = nullptr;
+    m_MultisamplingState.alphaToCoverageEnable  = VK_FALSE;
+    m_MultisamplingState.alphaToOneEnable       = VK_FALSE;
+    m_MultisamplingState.minSampleShading       = 0.0f;
+    m_MultisamplingState.sampleShadingEnable    = VK_FALSE;
+    m_MultisamplingState.rasterizationSamples   = VK_SAMPLE_COUNT_1_BIT;
+    m_MultisamplingState.pSampleMask            = nullptr;
 
     //BlendState
-    m_BlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    m_BlendState.flags = 0;
-    m_BlendState.pNext = nullptr;
-    m_BlendState.logicOpEnable = VK_FALSE;
-    m_BlendState.logicOp = VK_LOGIC_OP_COPY;
-    m_BlendState.pAttachments = nullptr;
-    m_BlendState.attachmentCount = 0;
-    m_BlendState.blendConstants[0] = 0.0f;
-    m_BlendState.blendConstants[1] = 0.0f;
-    m_BlendState.blendConstants[2] = 0.0f;
-    m_BlendState.blendConstants[3] = 0.0f;
+    m_BlendState.sType              = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    m_BlendState.flags              = 0;
+    m_BlendState.pNext              = nullptr;
+    m_BlendState.logicOpEnable      = VK_FALSE;
+    m_BlendState.logicOp            = VK_LOGIC_OP_COPY;
+    m_BlendState.pAttachments       = nullptr;
+    m_BlendState.attachmentCount    = 0;
+    m_BlendState.blendConstants[0]  = 0.0f;
+    m_BlendState.blendConstants[1]  = 0.0f;
+    m_BlendState.blendConstants[2]  = 0.0f;
+    m_BlendState.blendConstants[3]  = 0.0f;
 
     //DepthstencilState
-    m_DepthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    m_DepthStencilState.flags = 0;
-    m_DepthStencilState.pNext = nullptr;
-    m_DepthStencilState.depthTestEnable = VK_FALSE;
-    m_DepthStencilState.depthWriteEnable = VK_TRUE;
-    m_DepthStencilState.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-    m_DepthStencilState.depthBoundsTestEnable = VK_FALSE;
-    m_DepthStencilState.stencilTestEnable = VK_FALSE;
-    m_DepthStencilState.minDepthBounds = 0.0f;
-    m_DepthStencilState.maxDepthBounds = 1.0f;
-    m_DepthStencilState.front = {};
-    m_DepthStencilState.back = {};
+    m_DepthStencilState.sType                   = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    m_DepthStencilState.flags                   = 0;
+    m_DepthStencilState.pNext                   = nullptr;
+    m_DepthStencilState.depthTestEnable         = VK_FALSE;
+    m_DepthStencilState.depthWriteEnable        = VK_TRUE;
+    m_DepthStencilState.depthCompareOp          = VK_COMPARE_OP_LESS_OR_EQUAL;
+    m_DepthStencilState.depthBoundsTestEnable   = VK_FALSE;
+    m_DepthStencilState.stencilTestEnable       = VK_FALSE;
+    m_DepthStencilState.minDepthBounds          = 0.0f;
+    m_DepthStencilState.maxDepthBounds          = 1.0f; 
+    m_DepthStencilState.front                   = {};
+    m_DepthStencilState.back                    = {};
 }
 
 PipelineVK::~PipelineVK()

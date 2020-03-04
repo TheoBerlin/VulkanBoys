@@ -33,7 +33,6 @@ public:
     virtual void submitMesh(IMesh* pMesh, const Material& material, const glm::mat4& transform) = 0;
 
     virtual void drawProfilerUI() = 0;
-    virtual void drawImgui(IImgui* pImgui) = 0;
     
     virtual void swapBuffers() = 0;
 
@@ -46,6 +45,7 @@ public:
     virtual void setMeshRenderer(IRenderer* pMeshRenderer) = 0;
     virtual void setRayTracer(IRenderer* pRayTracer) = 0;
     virtual void setParticleRenderer(IRenderer* pParticleRenderer) = 0;
+    virtual void setImguiRenderer(IImgui* pImGui) = 0;
 
     virtual void onWindowResize(uint32_t width, uint32_t height) = 0;
     
