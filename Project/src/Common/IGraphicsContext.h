@@ -4,6 +4,7 @@
 class IMesh;
 class IImgui;
 class IImage;
+class IScene;
 class IBuffer;
 class IShader;
 class IWindow;
@@ -33,6 +34,8 @@ public:
 	virtual IRenderer* createRayTracingRenderer(RenderingHandler* pRenderingHandler) = 0;
 	virtual ParticleEmitterHandler* createParticleEmitterHandler() = 0;
 	virtual IImgui* createImgui() = 0;
+
+	virtual IScene* createScene() = 0;
 
 	virtual IShader* createShader() = 0;
 	

@@ -26,6 +26,8 @@ public:
 	virtual ParticleEmitterHandler* createParticleEmitterHandler() override;
 	virtual IImgui* createImgui() override;
 
+	virtual IScene* createScene() override;
+
     virtual IMesh* createMesh() override;
 
 	virtual IShader* createShader() override;

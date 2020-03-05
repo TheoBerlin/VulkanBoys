@@ -145,9 +145,9 @@ void main()
 
 	vec3 worldNormal = texture(normalMaps[textureIndex], texCoords).xyz;
 	worldNormal = normalize(worldNormal * 2.0f - 1.0f);
-	worldNormal = TBN * worldNormal;
+	worldNormal = normal;//TBN * worldNormal;
 
-	vec4 albedoColor = texture(albedoMaps[textureIndex], texCoords);
+	vec4 albedoColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);//texture(albedoMaps[textureIndex], texCoords);
 	float refractiveness = (1.0f - albedoColor.a);
 	float reflectiveness = (1.0f - texture(roughnessMaps[textureIndex], texCoords).r);
 

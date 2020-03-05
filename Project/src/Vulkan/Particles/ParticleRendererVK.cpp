@@ -73,7 +73,7 @@ bool ParticleRendererVK::init()
 	return true;
 }
 
-void ParticleRendererVK::beginFrame(const Camera& camera, const LightSetup& lightSetup)
+void ParticleRendererVK::beginFrame(IScene* pScene)
 {
 	// Prepare for frame
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
@@ -101,7 +101,7 @@ void ParticleRendererVK::beginFrame(const Camera& camera, const LightSetup& ligh
 	m_ppCommandBuffers[frameIndex]->bindPipeline(m_pPipeline);
 }
 
-void ParticleRendererVK::endFrame()
+void ParticleRendererVK::endFrame(IScene* pScene)
 {
 	uint32_t currentFrame = m_pRenderingHandler->getCurrentFrameIndex();
 	m_ppCommandBuffers[currentFrame]->end();

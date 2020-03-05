@@ -38,6 +38,9 @@ public:
 
 	static Application* get();
 
+	//Temp
+	IScene* getScene() { return m_pScene; }
+
 private:
 	void update(double dt);
 	void renderUI(double dt);
@@ -54,6 +57,8 @@ private:
 	IRenderer* m_pRayTracingRenderer;
 	IImgui* m_pImgui;
 	IInputHandler* m_pInputHandler;
+
+	IScene* m_pScene;
 
 	//TODO: Resoures should they be here?
 	IMesh* m_pMesh;
@@ -75,6 +80,13 @@ private:
 	bool m_IsRunning;
 	bool m_UpdateCamera;
 	bool m_EnableRayTracing;
+
+	uint32_t m_GraphicsIndex0;
+	uint32_t m_GraphicsIndex1;
+	uint32_t m_GraphicsIndex2;
+
+	static constexpr uint32_t SPHERE_COUNT_DIMENSION = 8;
+	uint32_t m_SphereIndexes[SPHERE_COUNT_DIMENSION];
 
 	static Application* s_pInstance;
 };

@@ -20,8 +20,10 @@ class MeshVK;
 class SkyboxRendererVK;
 class ImguiVK;
 class GBufferVK;
+class IScene;
+class SceneVK;
 
-struct SubmitedMesh
+struct SubmitedMesh //Todo: Remove this
 {
     const MeshVK*       pMesh               = nullptr;
     const Material*     pMaterial           = nullptr;
@@ -39,12 +41,9 @@ public:
 
     virtual ITextureCube* generateTextureCube(ITexture2D* pPanorama, ETextureFormat format, uint32_t width, uint32_t miplevels) override;
 
-    virtual void beginFrame(const Camera& camera, const LightSetup& lightsetup) override;
-    virtual void endFrame() override;
+	virtual void render(IScene* pScene) override;
 
     virtual void swapBuffers() override;
-
-    virtual void submitMesh(IMesh* pMesh, const Material& material, const glm::mat4& transform) override;
 
     virtual void drawProfilerUI() override;
 
@@ -72,6 +71,9 @@ public:
 	GBufferVK*				getGBuffer() const							{ return m_pGBuffer; }
 
 private:
+	void beginFrame(SceneVK* pScene);
+	void endFrame(SceneVK* pScene);
+
     bool createBackBuffers();
     bool createCommandPoolAndBuffers();
     bool createRenderPasses();
@@ -87,8 +89,6 @@ private:
     void submitParticles();
 
 private:
-    std::vector<SubmitedMesh> m_SubmitedMeshes;
-
     GraphicsContextVK* m_pGraphicsContext;
 
     SkyboxRendererVK* m_pSkyboxRenderer;

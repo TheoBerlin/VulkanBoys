@@ -2,6 +2,7 @@
 #include "BufferVK.h"
 #include "CopyHandlerVK.h"
 #include "ImguiVK.h"
+#include "SceneVK.h"
 #include "MeshVK.h"
 #include "ShaderVK.h"
 #include "SamplerVK.h"
@@ -98,6 +99,11 @@ ParticleEmitterHandler* GraphicsContextVK::createParticleEmitterHandler()
 IImgui* GraphicsContextVK::createImgui()
 {
 	return DBG_NEW ImguiVK(this);
+}
+
+IScene* GraphicsContextVK::createScene()
+{
+	return DBG_NEW SceneVK(this);
 }
 
 IMesh* GraphicsContextVK::createMesh()

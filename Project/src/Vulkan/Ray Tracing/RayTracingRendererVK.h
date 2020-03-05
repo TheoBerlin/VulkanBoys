@@ -6,7 +6,7 @@
 
 class GraphicsContextVK;
 class RenderingHandlerVK;
-class RayTracingSceneVK;
+class SceneVK;
 class RayTracingPipelineVK;
 class ShaderBindingTableVK;
 class DescriptorSetLayoutVK;
@@ -21,8 +21,8 @@ class ShaderVK;
 class SamplerVK;
 class Texture2DVK;
 class BufferVK;
-
-struct TempMaterial;
+class Material;
+class MeshVK;
 
 class RayTracingRendererVK : public IRenderer
 {
@@ -32,13 +32,15 @@ public:
 
 	virtual bool init() override;
 
-	virtual void beginFrame(const Camera& camera, const LightSetup& lightSetup) override;
-	virtual void endFrame() override;
+	virtual void beginFrame(IScene* pScene) override;
+	virtual void endFrame(IScene* pScene) override;
 
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
-	
-	void submitMesh(IMesh* pMesh, TempMaterial* pMaterial, const glm::mat4& transform);
 
+	void onWindowResize(uint32_t width, uint32_t height);
+
+	CommandBufferVK* getComputeCommandBufferTemp() const;
+	CommandBufferVK* getGraphicsCommandBufferTemp() const;
 	ProfilerVK* getProfiler() { return m_pProfiler; }
 
 private:
@@ -59,7 +61,6 @@ private:
 	CommandBufferVK* m_ppComputeCommandBuffers[MAX_FRAMES_IN_FLIGHT];
 
 	RayTracingPipelineVK* m_pRayTracingPipeline;
-	RayTracingSceneVK* m_pRayTracingScene;
 
 	PipelineLayoutVK* m_pRayTracingPipelineLayout;
 
@@ -100,10 +101,25 @@ private:
 
 	SamplerVK* m_pSampler;
 
-	TempMaterial* m_pCubeMaterial;
-	TempMaterial* m_pGunMaterial;
-	TempMaterial* m_pSphereMaterial;
-	TempMaterial* m_pPlaneMaterial;
+	Texture2DVK* m_pGunAlbedo;
+	Texture2DVK* m_pGunNormalMap;
+	Texture2DVK* m_pGunRoughnessMap;
+	Texture2DVK* m_pCubeAlbedo;
+	Texture2DVK* m_pCubeNormalMap;
+	Texture2DVK* m_pCubeRoughnessMap;
+	Texture2DVK* m_pSphereAlbedo;
+	Texture2DVK* m_pSphereNormalMap;
+	Texture2DVK* m_pSphereRoughnessMap;
+	Texture2DVK* m_pPlaneAlbedo;
+	Texture2DVK* m_pPlaneNormalMap;
+	Texture2DVK* m_pPlaneRoughnessMap;
+
+	Material* m_pCubeMaterial;
+	Material* m_pGunMaterial;
+	Material* m_pSphereMaterial;
+	Material* m_pPlaneMaterial;
+
+	bool m_TempSubmitLimit;
 
 	float m_TempTimer;
 };

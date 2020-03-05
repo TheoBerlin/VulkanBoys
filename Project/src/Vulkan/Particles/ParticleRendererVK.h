@@ -30,8 +30,8 @@ public:
 
     virtual bool init() override;
 
-	virtual void beginFrame(const Camera& camera, const LightSetup& lightSetup) override;
-	virtual void endFrame() override;
+	virtual void beginFrame(IScene* pScene) override;
+	virtual void endFrame(IScene* pScene) override;
 	
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
 

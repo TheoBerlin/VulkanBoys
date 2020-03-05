@@ -21,6 +21,7 @@
 #include "SkyboxRendererVK.h"
 #include "ImguiVK.h"
 #include "GBufferVK.h"
+#include "SceneVK.h"
 
 #include "Particles/ParticleEmitterHandlerVK.h"
 #include "Particles/ParticleRendererVK.h"
@@ -28,13 +29,13 @@
 #include "Ray Tracing/RayTracingRendererVK.h"
 
 RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
-    :m_pGraphicsContext(pGraphicsContext),
+	:m_pGraphicsContext(pGraphicsContext),
 	m_pMeshRenderer(nullptr),
 	m_pRayTracer(nullptr),
 	m_pParticleRenderer(nullptr),
 	m_pGBuffer(nullptr),
 	m_pGeometryRenderPass(nullptr),
-    m_pBackBufferRenderPass(nullptr),
+	m_pBackBufferRenderPass(nullptr),
 	m_pCameraDirectionsBuffer(nullptr),
     m_CurrentFrame(0),
 	m_BackBufferIndex(0),
@@ -137,6 +138,16 @@ ITextureCube* RenderingHandlerVK::generateTextureCube(ITexture2D* pPanorama, ETe
 	return pTextureCube;
 }
 
+void RenderingHandlerVK::render(IScene* pScene)
+{
+	SceneVK* pVulkanScene = reinterpret_cast<SceneVK*>(pScene);
+
+	//Todo: These should probably not be seperate anymore
+	beginFrame(pVulkanScene);
+	endFrame(pVulkanScene);
+	swapBuffers();
+}
+
 void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 {
 	m_pGraphicsContext->getDevice()->wait();
@@ -146,10 +157,12 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 
 	m_pMeshRenderer->onWindowResize(width, height);
 
+	m_pRayTracer->onWindowResize(width, height);
+
 	createBackBuffers();
 }
 
-void RenderingHandlerVK::beginFrame(const Camera& camera, const LightSetup& lightsetup)
+void RenderingHandlerVK::beginFrame(SceneVK* pScene)
 {
 	SwapChainVK* pSwapChain = m_pGraphicsContext->getSwapChain();
 	pSwapChain->acquireNextImage(m_ImageAvailableSemaphores[m_CurrentFrame]);
@@ -164,129 +177,139 @@ void RenderingHandlerVK::beginFrame(const Camera& camera, const LightSetup& ligh
 	m_ppComputeCommandPools[m_CurrentFrame]->reset();
 	m_ppComputeCommandBuffers[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
+	const Camera& camera = pScene->getCamera();
+	const LightSetup& lightsetup = pScene->getLightSetup();
+
 	updateBuffers(camera);
 
-	if (m_pMeshRenderer != nullptr) 
+	if (m_pRayTracer != nullptr) 
 	{
-		m_pMeshRenderer->setupFrame(m_ppGraphicsCommandBuffers[m_CurrentFrame], camera, lightsetup);
-		m_pMeshRenderer->beginFrame(camera, lightsetup);
+		m_pRayTracer->beginFrame(pScene);
 	}
-
-	//if (m_pRayTracer != nullptr) 
-	//{
-	//	m_pRayTracer->beginFrame(camera, lightsetup);
-	//}
-
-	if (m_pParticleRenderer != nullptr) 
+	else
 	{
-		m_pParticleRenderer->beginFrame(camera, lightsetup);
-		submitParticles();
-	}		
+		if (m_pMeshRenderer != nullptr)
+		{
+			m_pMeshRenderer->setupFrame(m_ppGraphicsCommandBuffers[m_CurrentFrame], camera, lightsetup);
+			m_pMeshRenderer->beginFrame(pScene);
+		}
 
+		if (m_pParticleRenderer != nullptr)
+		{
+			m_pParticleRenderer->beginFrame(pScene);
+			submitParticles();
+		}
+	}
 	//startRenderPass();
 }
 
-void RenderingHandlerVK::endFrame()
+void RenderingHandlerVK::endFrame(SceneVK* pScene)
 {
-	//if (m_pRayTracer != nullptr) 
-	//{
-	//	m_pRayTracer->endFrame();
-	//}
-
-    // Submit the rendering handler's command buffer
 	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
-	if (m_pParticleEmitterHandler)
+
+	if (m_pRayTracer != nullptr) 
 	{
-		ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
-		if (pEmitterHandler->gpuComputed()) 
+		m_pRayTracer->endFrame(pScene);
+		m_ppComputeCommandBuffers[m_CurrentFrame]->executeSecondary(m_pRayTracer->getComputeCommandBufferTemp());
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pRayTracer->getGraphicsCommandBufferTemp());
+	}
+	else
+	{
+
+		// Submit the rendering handler's command buffer
+		if (m_pParticleEmitterHandler)
 		{
-			for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters()) 
+			ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
+			if (pEmitterHandler->gpuComputed())
 			{
-				pEmitterHandler->releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
+				for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters())
+				{
+					pEmitterHandler->releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
+				}
 			}
 		}
-	}
 
-	//Render all the meshes
-	FrameBufferVK*		pBackbuffer					= getCurrentBackBuffer();
-	CommandBufferVK*	pSecondaryCommandBuffer		= m_ppCommandBuffersSecondary[m_CurrentFrame];
-	CommandPoolVK*		pSecondaryCommandPool		= m_ppCommandPoolsSecondary[m_CurrentFrame];
+		//Render all the meshes
+		FrameBufferVK* pBackbuffer = getCurrentBackBuffer();
+		CommandBufferVK* pSecondaryCommandBuffer = m_ppCommandBuffersSecondary[m_CurrentFrame];
+		CommandPoolVK* pSecondaryCommandPool = m_ppCommandPoolsSecondary[m_CurrentFrame];
 
-	if (m_pImGuiRenderer)
-	{
-		TaskDispatcher::execute([&, this] 
-			{
-				// Needed to begin a secondary buffer
-				VkCommandBufferInheritanceInfo inheritanceInfo = {};
-				inheritanceInfo.sType		= VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
-				inheritanceInfo.pNext		= nullptr;
-				inheritanceInfo.renderPass	= m_pBackBufferRenderPass->getRenderPass();
-				inheritanceInfo.subpass		= 0; // TODO: Don't hardcode this :(
-				inheritanceInfo.framebuffer = pBackbuffer->getFrameBuffer();
-
-				pSecondaryCommandBuffer->reset(false);
-				pSecondaryCommandPool->reset();
-				pSecondaryCommandBuffer->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
-
-				m_pImGuiRenderer->render(pSecondaryCommandBuffer);
-				pSecondaryCommandBuffer->end();
-			});
-	}
-
-	if (m_pMeshRenderer)
-	{
-		//Start renderpass
-		VkClearValue clearValues[] = { m_ClearColor, m_ClearColor, m_ClearColor, m_ClearDepth };
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pGeometryRenderPass, m_pGBuffer->getFrameBuffer(), (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 4, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-
-		TaskDispatcher::execute([this] 
-			{
-				for (SubmitedMesh& submission : m_SubmitedMeshes)
+		if (m_pImGuiRenderer)
+		{
+			TaskDispatcher::execute([&, this]
 				{
-					m_pMeshRenderer->submitMesh(submission.pMesh, submission.pMaterial, submission.MaterialProperties, submission.Transform);
-				}
-				m_SubmitedMeshes.clear();
-				m_pMeshRenderer->endFrame();
-			});
+					// Needed to begin a secondary buffer
+					VkCommandBufferInheritanceInfo inheritanceInfo = {};
+					inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+					inheritanceInfo.pNext = nullptr;
+					inheritanceInfo.renderPass = m_pBackBufferRenderPass->getRenderPass();
+					inheritanceInfo.subpass = 0; // TODO: Don't hardcode this :(
+					inheritanceInfo.framebuffer = pBackbuffer->getFrameBuffer();
 
-		TaskDispatcher::execute([this]
-			{
-				m_pMeshRenderer->buildLightPass(m_pBackBufferRenderPass, getCurrentBackBuffer());
-			});
+					pSecondaryCommandBuffer->reset(false);
+					pSecondaryCommandPool->reset();
+					pSecondaryCommandBuffer->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
 
-		TaskDispatcher::waitForTasks();
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pMeshRenderer->getGeometryCommandBuffer());
+					m_pImGuiRenderer->render(pSecondaryCommandBuffer);
+					pSecondaryCommandBuffer->end();
+				});
+		}
+
+		if (m_pMeshRenderer)
+		{
+			//Start renderpass
+			VkClearValue clearValues[] = { m_ClearColor, m_ClearColor, m_ClearColor, m_ClearDepth };
+			m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pGeometryRenderPass, m_pGBuffer->getFrameBuffer(), (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 4, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+
+			TaskDispatcher::execute([pScene, this]
+				{
+
+					for (auto& graphicsObject : pScene->getGraphicsObjects())
+					{
+						m_pMeshRenderer->submitMesh(graphicsObject.pMesh, graphicsObject.pMaterial, glm::vec3(1.0f), graphicsObject.Transform);
+					}
+					m_pMeshRenderer->endFrame(pScene);
+				});
+
+			TaskDispatcher::execute([this]
+				{
+					m_pMeshRenderer->buildLightPass(m_pBackBufferRenderPass, getCurrentBackBuffer());
+				});
+
+			TaskDispatcher::waitForTasks();
+			m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pMeshRenderer->getGeometryCommandBuffer());
+			m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
+		}
+
+		//Gather all renderer's data and finalize the frame
+		VkClearValue clearValues[] = { m_ClearColor, m_ClearDepth };
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pBackBufferRenderPass, pBackbuffer, (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 2, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+
+		if (m_pMeshRenderer)
+		{
+			m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pMeshRenderer->getLightCommandBuffer());
+		}
+
+		if (m_pParticleRenderer)
+		{
+			m_pParticleRenderer->endFrame(pScene);
+			m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pParticleRenderer->getCommandBuffer(m_CurrentFrame));
+		}
+
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(pSecondaryCommandBuffer);
+
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
 	}
-
-	//Gather all renderer's data and finalize the frame
-	VkClearValue clearValues[] = { m_ClearColor, m_ClearDepth };
-	m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pBackBufferRenderPass, pBackbuffer, (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 2, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-	
-	if (m_pMeshRenderer)
-	{
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pMeshRenderer->getLightCommandBuffer());
-	}
-
-	if (m_pParticleRenderer)
-	{
-		m_pParticleRenderer->endFrame();
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pParticleRenderer->getCommandBuffer(m_CurrentFrame));
-	}
-
-	m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(pSecondaryCommandBuffer);
-
-	m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->end();
 	m_ppComputeCommandBuffers[m_CurrentFrame]->end();
 
 	// Execute commandbuffer
-	VkSemaphore waitSemaphores[]		= { m_ImageAvailableSemaphores[m_CurrentFrame] };
-	VkSemaphore signalSemaphores[]		= { m_RenderFinishedSemaphores[m_CurrentFrame] };
-	VkPipelineStageFlags waitStages[]	= { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	VkSemaphore graphicsWaitSemaphores[]		= { m_ImageAvailableSemaphores[m_CurrentFrame] };
+	VkSemaphore graphicsSignalSemaphores[]		= { m_RenderFinishedSemaphores[m_CurrentFrame] };
+	VkPipelineStageFlags graphicswaitStages[]	= { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
+	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppGraphicsCommandBuffers[m_CurrentFrame], graphicsWaitSemaphores, graphicswaitStages, 1, graphicsSignalSemaphores, 1);
 	pDevice->executeCommandBuffer(pDevice->getComputeQueue(), m_ppComputeCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
-	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppGraphicsCommandBuffers[m_CurrentFrame], waitSemaphores, waitStages, 1, signalSemaphores, 1);
 }
 
 void RenderingHandlerVK::swapBuffers()
@@ -370,14 +393,6 @@ void RenderingHandlerVK::setSkybox(ITextureCube* pSkybox)
 	}
 
 	m_pMeshRenderer->setSkybox(reinterpret_cast<TextureCubeVK*>(pSkybox), pIrradianceMap, pEnvironmentMap);
-}
-
-void RenderingHandlerVK::submitMesh(IMesh* pMesh, const Material& material, const glm::mat4& transform)
-{
-	MeshVK* pMeshVK = reinterpret_cast<MeshVK*>(pMesh);
-	
-	glm::vec3 materialProperties(material.getAmbientOcclusion(), material.getMetallic(), material.getRoughness());
-	m_SubmitedMeshes.push_back({ pMeshVK, &material, materialProperties, transform });
 }
 
 bool RenderingHandlerVK::createBackBuffers()

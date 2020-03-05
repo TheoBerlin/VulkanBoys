@@ -10,6 +10,7 @@
 #include "Common/IWindow.h"
 #include "Common/IShader.h"
 #include "Common/ISampler.h"
+#include "Common/IScene.h"
 #include "Common/IMesh.h"
 #include "Common/IRenderer.h"
 #include "Common/IShader.h"
@@ -46,6 +47,7 @@ Application::Application()
 	m_pMeshRenderer(nullptr),
 	m_pRayTracingRenderer(nullptr),
 	m_pImgui(nullptr),
+	m_pScene(nullptr),
 	m_pMesh(nullptr),
 	m_pAlbedo(nullptr),
 	m_pInputHandler(nullptr),
@@ -102,7 +104,7 @@ void Application::init()
 	
 	m_pParticleRenderer = m_pContext->createParticleRenderer(m_pRenderingHandler);
 	m_pParticleRenderer->init();
-	
+
 	if (m_EnableRayTracing) 
 	{
 		m_pRayTracingRenderer = m_pContext->createRayTracingRenderer(m_pRenderingHandler);
@@ -237,6 +239,26 @@ void Application::init()
 	m_pWindow->show();
 
 	SAFEDELETE(pPanorama);
+
+	//Create Scene
+	m_pScene = m_pContext->createScene();
+
+	//Add Game Objects to Scene
+	m_GraphicsIndex0 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
+	m_GraphicsIndex1 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
+	m_GraphicsIndex2 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
+	
+	
+	for (uint32_t y = 0; y < SPHERE_COUNT_DIMENSION; y++)
+	{
+		for (uint32_t x = 0; x < SPHERE_COUNT_DIMENSION; x++)
+		{
+			m_SphereIndexes[x + y * SPHERE_COUNT_DIMENSION] = m_pScene->submitGraphicsObject(m_pSphere, &m_RedMaterial);
+		}
+	}
+	
+	//Finalize after (more efficient)
+	m_pScene->finalize();
 }
 
 void Application::run()
@@ -296,6 +318,7 @@ void Application::release()
 	SAFEDELETE(m_pParticleEmitterHandler);
 	SAFEDELETE(m_pImgui);
 	SAFEDELETE(m_pContext);
+	SAFEDELETE(m_pScene);
 
 	SAFEDELETE(m_pInputHandler);
 	Input::setInputHandler(nullptr);
@@ -379,6 +402,8 @@ Application* Application::get()
 	return s_pInstance;
 }
 
+static glm::vec4 g_Color = glm::vec4(0.5f, 0.0f, 0.0f, 1.0f);
+
 void Application::update(double dt)
 {
 	//TODO: Is float enough precision on fast systems?
@@ -449,9 +474,36 @@ void Application::update(double dt)
 
 	//TODO: Is float enough precision on fast systems?
 	m_pParticleEmitterHandler->update((float)dt);
-}
 
-static glm::vec4 g_Color = glm::vec4(0.5f, 0.0f, 0.0f, 1.0f);
+	//Set sphere color
+	static glm::mat4 rotation = glm::mat4(1.0f);
+	rotation = glm::rotate(rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
+	m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex0, glm::mat4(1.0f) * rotation);
+	m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex1, glm::translate(glm::mat4(1.0f), glm::vec3(1.5f, 0.0f, 0.0f)));
+	m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex2, glm::translate(glm::mat4(1.0f), glm::vec3(-1.5f, 0.0f, 0.0f)));
+
+	m_RedMaterial.setAlbedo(g_Color);
+
+	constexpr uint32_t sphereCount = 8;
+	for (uint32_t y = 0; y < sphereCount; y++)
+	{
+		float yCoord = ((float(sphereCount) * 0.5f) / -2.0f) + float(y * 0.5);
+		m_RedMaterial.setMetallic(float(y) / float(sphereCount));
+
+		for (uint32_t x = 0; x < sphereCount; x++)
+		{
+			float xCoord = ((float(sphereCount) * 0.5f) / -2.0f) + float(x * 0.5);
+			m_RedMaterial.setRoughness(glm::clamp((float(x) / float(sphereCount)), 0.05f, 1.0f));
+
+			m_pScene->updateGraphicsObjectTransform(m_SphereIndexes[x + y * SPHERE_COUNT_DIMENSION], glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)));
+		}
+	}
+
+	m_pScene->updateCamera(m_Camera);
+	m_pScene->updateLightSetup(m_LightSetup);
+
+	m_pScene->update();
+}
 
 void Application::renderUI(double dt)
 {
@@ -529,33 +581,5 @@ void Application::renderUI(double dt)
 
 void Application::render(double dt)
 {
-	m_pRenderingHandler->beginFrame(m_Camera, m_LightSetup);
-
-	static glm::mat4 rotation = glm::mat4(1.0f);
-	rotation = glm::rotate(rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
-
-	m_pRenderingHandler->submitMesh(m_pMesh, m_GunMaterial, glm::mat4(1.0f) * rotation);
-	m_pRenderingHandler->submitMesh(m_pMesh, m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(1.5f, 0.0f, 0.0f)));
-	m_pRenderingHandler->submitMesh(m_pMesh, m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(-1.5f, 0.0f, 0.0f)));
-
-	//Set sphere color
-	m_RedMaterial.setAlbedo(g_Color);
-
-	constexpr uint32_t sphereCount = 8;
-	for (uint32_t y = 0; y < sphereCount; y++)
-	{
-		float yCoord = ((float(sphereCount) * 0.5f) / -2.0f) + float(y * 0.5);
-		m_RedMaterial.setMetallic(float(y) / float(sphereCount));
-
-		for (uint32_t x = 0; x < sphereCount; x++)
-		{
-			float xCoord = ((float(sphereCount) * 0.5f) / -2.0f) + float(x * 0.5);
-			m_RedMaterial.setRoughness(glm::clamp((float(x) / float(sphereCount)), 0.05f, 1.0f));
-
-			m_pRenderingHandler->submitMesh(m_pSphere, m_RedMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)));
-		}
-	}
-
-	m_pRenderingHandler->endFrame();
-	m_pRenderingHandler->swapBuffers();
+	m_pRenderingHandler->render(m_pScene);
 }

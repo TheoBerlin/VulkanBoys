@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 
 class IImgui;
+class IScene;
 class ITextureCube;
 class ITexture2D;
 class IMesh;
@@ -21,8 +22,8 @@ public:
 
 	virtual bool init() = 0;
 
-	virtual void beginFrame(const Camera& camera, const LightSetup& lightSetup) = 0;
-	virtual void endFrame() = 0;
+	virtual void beginFrame(IScene* pScene) = 0;
+	virtual void endFrame(IScene* pScene) = 0;
 
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) = 0;
 };

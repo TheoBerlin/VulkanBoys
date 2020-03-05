@@ -160,10 +160,9 @@ void MeshRendererVK::onWindowResize(uint32_t width, uint32_t height)
 	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment2, &m_pGBufferSampler, 1, GBUFFER_POSITION_BINDING);
 }
 
-void MeshRendererVK::beginFrame(const Camera& camera, const LightSetup& lightSetup)
+void MeshRendererVK::beginFrame(IScene* pScene)
 {
-	UNREFERENCED_PARAMETER(camera);
-	UNREFERENCED_PARAMETER(lightSetup);
+	UNREFERENCED_PARAMETER(pScene);
 
 	m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 
@@ -189,7 +188,7 @@ void MeshRendererVK::beginFrame(const Camera& camera, const LightSetup& lightSet
 	m_ppGeometryPassBuffers[m_CurrentFrame]->setScissorRects(&m_ScissorRect, 1);
 }
 
-void MeshRendererVK::endFrame()
+void MeshRendererVK::endFrame(IScene* pScene)
 {
 	m_pProfiler->endFrame();
 
