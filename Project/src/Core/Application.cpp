@@ -87,7 +87,7 @@ void Application::init()
 	//Create context
 	m_pContext = IGraphicsContext::create(m_pWindow, API::VULKAN);
 
-	constexpr bool forceRayTracingOff = true;
+	constexpr bool forceRayTracingOff = false;
 	m_EnableRayTracing = m_pContext->supportsRayTracing() && !forceRayTracingOff;
 
 	// Create and setup rendering handler

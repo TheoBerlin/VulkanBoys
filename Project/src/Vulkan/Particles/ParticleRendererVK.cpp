@@ -85,7 +85,7 @@ void ParticleRendererVK::beginFrame(const Camera& camera, const LightSetup& ligh
 	VkCommandBufferInheritanceInfo inheritanceInfo = {};
 	inheritanceInfo.sType		= VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
 	inheritanceInfo.pNext		= nullptr;
-	inheritanceInfo.renderPass	= m_pRenderingHandler->getRenderPass()->getRenderPass();
+	inheritanceInfo.renderPass	= m_pRenderingHandler->getBackBufferRenderPass()->getRenderPass();
 	inheritanceInfo.subpass		= 0; // TODO: Don't hardcode this :(
 	inheritanceInfo.framebuffer = m_pRenderingHandler->getCurrentBackBuffer()->getFrameBuffer();
 
@@ -264,7 +264,7 @@ bool ParticleRendererVK::createPipeline()
 	depthStencilState.stencilTestEnable	= VK_FALSE;
 	m_pPipeline->setDepthStencilState(depthStencilState);
 
-	m_pPipeline->finalizeGraphics(shaders, m_pRenderingHandler->getRenderPass(), m_pPipelineLayout);
+	m_pPipeline->finalizeGraphics(shaders, m_pRenderingHandler->getBackBufferRenderPass(), m_pPipelineLayout);
 
 	SAFEDELETE(pVertexShader);
 	SAFEDELETE(pPixelShader);

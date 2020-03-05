@@ -97,7 +97,6 @@ public:
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
 	
 	void setupFrame(CommandBufferVK* pPrimaryBuffer, const Camera& camera, const LightSetup& lightsetup);
-	void finalizeFrame(CommandBufferVK* pPrimaryBuffer);
 
 	void setClearColor(float r, float g, float b);
 	void setClearColor(const glm::vec3& color);
@@ -115,7 +114,6 @@ public:
 
 private:
 	bool generateBRDFLookUp();
-	bool createGBuffer();
 	bool createCommandPoolAndBuffers();
 	bool createRenderPass();
 	bool createPipelines();
@@ -141,8 +139,6 @@ private:
 	CommandPoolVK* m_ppLightPassPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppLightPassBuffers[MAX_FRAMES_IN_FLIGHT];
 
-	GBufferVK* m_pGBuffer;
-	RenderPassVK* m_pRenderPass;
 	RenderPassVK* m_pBackBufferRenderPass;
 
 	DescriptorPoolVK* m_pDescriptorPool;

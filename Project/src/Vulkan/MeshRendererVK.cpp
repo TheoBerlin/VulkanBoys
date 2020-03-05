@@ -33,12 +33,10 @@ MeshRendererVK::MeshRendererVK(GraphicsContextVK* pContext, RenderingHandlerVK* 
 	m_pRenderingHandler(pRenderingHandler),
 	m_ppGeometryPassPools(),
 	m_ppGeometryPassBuffers(),
-	m_pRenderPass(nullptr),
 	m_pSkyboxPipeline(nullptr),
 	m_pLightDescriptorSet(nullptr),
 	m_pGBufferSampler(nullptr),
 	m_pSkyboxPipelineLayout(nullptr),
-	m_pGBuffer(nullptr),
 	m_pDescriptorPool(nullptr),
 	m_pLightDescriptorSetLayout(nullptr),
 	m_pCameraBuffer(nullptr),
@@ -75,9 +73,7 @@ MeshRendererVK::~MeshRendererVK()
 	SAFEDELETE(m_pSkyboxPipeline);
 	SAFEDELETE(m_pSkyboxPipelineLayout);
 	SAFEDELETE(m_pSkyboxDescriptorSetLayout);
-	SAFEDELETE(m_pGBuffer);
 	SAFEDELETE(m_pGBufferSampler);
-	SAFEDELETE(m_pRenderPass);
 	SAFEDELETE(m_pBackBufferRenderPass);
 	SAFEDELETE(m_pSkyboxPipelineLayout);
 	SAFEDELETE(m_pSkyboxPipeline);
@@ -110,11 +106,6 @@ bool MeshRendererVK::init()
 		return false;
 	}
 
-	if (!createGBuffer())
-	{
-		return false;
-	}
-
 	if (!createCommandPoolAndBuffers())
 	{
 		return false;
@@ -140,9 +131,10 @@ bool MeshRendererVK::init()
 		return false;
 	}
 
-	ImageViewVK* pAttachment0 = m_pGBuffer->getColorAttachment(0);
-	ImageViewVK* pAttachment1 = m_pGBuffer->getColorAttachment(1);
-	ImageViewVK* pAttachment2 = m_pGBuffer->getColorAttachment(2);
+	GBufferVK* pGBuffer = m_pRenderingHandler->getGBuffer();
+	ImageViewVK* pAttachment0 = pGBuffer->getColorAttachment(0);
+	ImageViewVK* pAttachment1 = pGBuffer->getColorAttachment(1);
+	ImageViewVK* pAttachment2 = pGBuffer->getColorAttachment(2);
 	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment0, &m_pGBufferSampler, 1, GBUFFER_ALBEDO_BINDING);
 	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment1, &m_pGBufferSampler, 1, GBUFFER_NORMAL_BINDING);
 	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment2, &m_pGBufferSampler, 1, GBUFFER_POSITION_BINDING);
@@ -159,11 +151,10 @@ bool MeshRendererVK::init()
 
 void MeshRendererVK::onWindowResize(uint32_t width, uint32_t height)
 {
-	m_pGBuffer->resize(width, height);
-
-	ImageViewVK* pAttachment0 = m_pGBuffer->getColorAttachment(0);
-	ImageViewVK* pAttachment1 = m_pGBuffer->getColorAttachment(1);
-	ImageViewVK* pAttachment2 = m_pGBuffer->getColorAttachment(2);
+	GBufferVK* pGBuffer = m_pRenderingHandler->getGBuffer();
+	ImageViewVK* pAttachment0 = pGBuffer->getColorAttachment(0);
+	ImageViewVK* pAttachment1 = pGBuffer->getColorAttachment(1);
+	ImageViewVK* pAttachment2 = pGBuffer->getColorAttachment(2);
 	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment0, &m_pGBufferSampler, 1, GBUFFER_ALBEDO_BINDING);
 	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment1, &m_pGBufferSampler, 1, GBUFFER_NORMAL_BINDING);
 	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment2, &m_pGBufferSampler, 1, GBUFFER_POSITION_BINDING);
@@ -180,13 +171,15 @@ void MeshRendererVK::beginFrame(const Camera& camera, const LightSetup& lightSet
 	m_ppGeometryPassPools[m_CurrentFrame]->reset();
 
 	// Needed to begin a secondary buffer
+	RenderPassVK* pGeometryRenderPass = m_pRenderingHandler->getGeometryRenderPass();
+
 	VkCommandBufferInheritanceInfo inheritanceInfo = {};
 	inheritanceInfo.sType		= VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
 	inheritanceInfo.pNext		= nullptr;
-	inheritanceInfo.renderPass	= m_pRenderPass->getRenderPass();
+	inheritanceInfo.renderPass	= pGeometryRenderPass->getRenderPass();
 	//TODO: Not use subpass zero all the time?
 	inheritanceInfo.subpass		= 0;
-	inheritanceInfo.framebuffer = m_pGBuffer->getFrameBuffer()->getFrameBuffer();
+	inheritanceInfo.framebuffer = m_pRenderingHandler->getGBuffer()->getFrameBuffer()->getFrameBuffer();
 
 	m_ppGeometryPassBuffers[m_CurrentFrame]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
 	m_pProfiler->beginFrame(m_ppGeometryPassBuffers[m_CurrentFrame]);
@@ -227,16 +220,6 @@ void MeshRendererVK::setupFrame(CommandBufferVK* pPrimaryBuffer, const Camera& c
 	m_pProfiler->reset(m_CurrentFrame, pPrimaryBuffer);
 
 	updateBuffers(pPrimaryBuffer, camera, lightsetup);
-
-	//Start renderpass
-	VkClearValue clearValues[] = { m_ClearColor, m_ClearColor, m_ClearColor, m_ClearDepth };
-	pPrimaryBuffer->beginRenderPass(m_pRenderPass, m_pGBuffer->getFrameBuffer(), (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 4, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-}
-
-void MeshRendererVK::finalizeFrame(CommandBufferVK* pPrimaryBuffer)
-{
-	pPrimaryBuffer->executeSecondary(m_ppGeometryPassBuffers[m_CurrentFrame]);
-	pPrimaryBuffer->endRenderPass();
 }
 
 void MeshRendererVK::updateBuffers(CommandBufferVK* pPrimaryBuffer, const Camera& camera, const LightSetup& lightSetup)
@@ -496,18 +479,6 @@ bool MeshRendererVK::generateBRDFLookUp()
 	return true;
 }
 
-bool MeshRendererVK::createGBuffer()
-{
-	VkExtent2D extent = m_pContext->getSwapChain()->getExtent();
-
-	m_pGBuffer = DBG_NEW GBufferVK(m_pContext->getDevice());
-	m_pGBuffer->addColorAttachmentFormat(VK_FORMAT_R8G8B8A8_UNORM);
-	m_pGBuffer->addColorAttachmentFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
-	m_pGBuffer->addColorAttachmentFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
-	m_pGBuffer->setDepthAttachmentFormat(VK_FORMAT_D24_UNORM_S8_UINT);
-	return m_pGBuffer->finalize(m_pRenderPass, extent.width, extent.height);
-}
-
 bool MeshRendererVK::createCommandPoolAndBuffers()
 {
 	DeviceVK* pDevice = m_pContext->getDevice();
@@ -592,93 +563,12 @@ bool MeshRendererVK::createRenderPass()
 	{
 		return false;
 	}
-
-	//Create renderpass
-	m_pRenderPass = DBG_NEW RenderPassVK(m_pContext->getDevice());
-
-	//Albedo
-	description.format			= VK_FORMAT_R8G8B8A8_UNORM;
-	description.samples			= VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
-	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
-	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
-	description.finalLayout		= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	m_pRenderPass->addAttachment(description);
-
-	//Normals
-	description.format			= VK_FORMAT_R16G16B16A16_SFLOAT;
-	description.samples			= VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
-	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
-	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
-	description.finalLayout		= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	m_pRenderPass->addAttachment(description);
-
-	//World position
-	description.format			= VK_FORMAT_R16G16B16A16_SFLOAT;
-	description.samples			= VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
-	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
-	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
-	description.finalLayout		= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	m_pRenderPass->addAttachment(description);
-
-	//Depth
-	description.format			= VK_FORMAT_D24_UNORM_S8_UINT;
-	description.samples			= VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
-	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
-	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
-	description.finalLayout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	m_pRenderPass->addAttachment(description);
-
-	VkAttachmentReference colorAttachmentRefs[3];
-	//Albedo
-	colorAttachmentRefs[0].attachment	= 0;
-	colorAttachmentRefs[0].layout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	//Normals
-	colorAttachmentRefs[1].attachment	= 1;
-	colorAttachmentRefs[1].layout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	//Positions
-	colorAttachmentRefs[2].attachment	= 2;
-	colorAttachmentRefs[2].layout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	depthStencilAttachmentRef = {};
-	depthStencilAttachmentRef.attachment	= 3;
-	depthStencilAttachmentRef.layout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	m_pRenderPass->addSubpass(colorAttachmentRefs, 3, &depthStencilAttachmentRef);
-
-	dependency.dependencyFlags	= VK_DEPENDENCY_BY_REGION_BIT;
-	dependency.srcSubpass		= VK_SUBPASS_EXTERNAL;
-	dependency.dstSubpass		= 0;
-	dependency.srcStageMask		= VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-	dependency.dstStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.srcAccessMask	= VK_ACCESS_MEMORY_READ_BIT;
-	dependency.dstAccessMask	= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	m_pRenderPass->addSubpassDependency(dependency);
-
-	dependency.srcSubpass		= 0;
-	dependency.dstSubpass		= VK_SUBPASS_EXTERNAL;
-	dependency.srcStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.dstStageMask		= VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-	dependency.srcAccessMask	= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	dependency.dstAccessMask	= VK_ACCESS_MEMORY_READ_BIT;
-	m_pRenderPass->addSubpassDependency(dependency);
-
-	return m_pRenderPass->finalize();
 }
 
 bool MeshRendererVK::createPipelines()
 {
+	RenderPassVK* pGeometryRenderPass = m_pRenderingHandler->getGeometryRenderPass();
+
 	//Geometry Pass
 	IShader* pVertexShader = m_pContext->createShader();
 	pVertexShader->initFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/geometryVertex.spv");
@@ -718,7 +608,7 @@ bool MeshRendererVK::createPipelines()
 	m_pGeometryPipeline->setDepthStencilState(depthStencilState);
 
 	std::vector<const IShader*> shaders = { pVertexShader, pPixelShader };
-	if (!m_pGeometryPipeline->finalizeGraphics(shaders, m_pRenderPass, m_pGeometryPipelineLayout))
+	if (!m_pGeometryPipeline->finalizeGraphics(shaders, pGeometryRenderPass, m_pGeometryPipelineLayout))
 	{
 		return false;
 	}
@@ -800,7 +690,8 @@ bool MeshRendererVK::createPipelines()
 	depthStencilState.depthCompareOp	= VK_COMPARE_OP_LESS_OR_EQUAL;
 	depthStencilState.stencilTestEnable = VK_FALSE;
 	m_pSkyboxPipeline->setDepthStencilState(depthStencilState);
-	if (!m_pSkyboxPipeline->finalizeGraphics(shaders, m_pRenderPass, m_pSkyboxPipelineLayout))
+
+	if (!m_pSkyboxPipeline->finalizeGraphics(shaders, pGeometryRenderPass, m_pSkyboxPipelineLayout))
 	{
 		return false;
 	}

@@ -10,6 +10,7 @@ class IMesh;
 class Camera;
 class Material;
 class LightSetup;
+class GBufferVK;
 
 #define MAX_POINTLIGHTS 4
 
