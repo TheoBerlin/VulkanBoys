@@ -266,10 +266,10 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 	BufferVK* pAgesBuffer = reinterpret_cast<BufferVK*>(pEmitter->getAgesBuffer());
 	BufferVK* pEmitterBuffer = reinterpret_cast<BufferVK*>(pEmitter->getEmitterBuffer());
 
-	pEmitterDescriptorSet->writeStorageBufferDescriptor(pPositionsBuffer->getBuffer(), 0);
-	pEmitterDescriptorSet->writeStorageBufferDescriptor(pVelocitiesBuffer->getBuffer(), 1);
-	pEmitterDescriptorSet->writeStorageBufferDescriptor(pAgesBuffer->getBuffer(), 2);
-	pEmitterDescriptorSet->writeUniformBufferDescriptor(pEmitterBuffer->getBuffer(), 3);
+	pEmitterDescriptorSet->writeStorageBufferDescriptor(pPositionsBuffer, 0);
+	pEmitterDescriptorSet->writeStorageBufferDescriptor(pVelocitiesBuffer, 1);
+	pEmitterDescriptorSet->writeStorageBufferDescriptor(pAgesBuffer, 2);
+	pEmitterDescriptorSet->writeUniformBufferDescriptor(pEmitterBuffer, 3);
 
 	pEmitter->setDescriptorSetCompute(pEmitterDescriptorSet);
 
@@ -337,10 +337,6 @@ void ParticleEmitterHandlerVK::updateGPU(float dt)
 		}
 
 		// TODO: Use constant variables or define macros for binding indices
-		m_ppDescriptorSets[m_CurrentFrame]->writeStorageBufferDescriptor(pPositionsBuffer, 0);
-		m_ppDescriptorSets[m_CurrentFrame]->writeStorageBufferDescriptor(pVelocitiesBuffer, 1);
-		m_ppDescriptorSets[m_CurrentFrame]->writeStorageBufferDescriptor(pAgesBuffer, 2);
-		m_ppDescriptorSets[m_CurrentFrame]->writeUniformBufferDescriptor(pEmitterBuffer, 3);
 		DescriptorSetVK* pDescriptorSet = reinterpret_cast<DescriptorSetVK*>(pEmitter->getDescriptorSetCompute());
 		m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, m_pPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
 

@@ -317,12 +317,14 @@ bool ParticleRendererVK::bindDescriptorSet(ParticleEmitter* pEmitter)
 		BufferVK* pCameraDirectionsBuffer = m_pRenderingHandler->getCameraDirectionsBuffer();
 
 		// TODO: Use constant variables or define macros for binding indices
-		pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer->getBuffer(), 0);
-		pDescriptorSet->writeUniformBufferDescriptor(pCameraMatricesBuffer->getBuffer(), 1);
-		pDescriptorSet->writeUniformBufferDescriptor(pCameraDirectionsBuffer->getBuffer(), 2);
-		pDescriptorSet->writeUniformBufferDescriptor(pEmitterBuffer->getBuffer(), 3);
-		pDescriptorSet->writeStorageBufferDescriptor(pPositionsBuffer->getBuffer(), 4);
-		pDescriptorSet->writeCombinedImageDescriptor(pParticleTexture->getImageView()->getImageView(), m_pSampler->getSampler(), 5);
+		pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer, 0);
+		pDescriptorSet->writeUniformBufferDescriptor(pCameraMatricesBuffer, 1);
+		pDescriptorSet->writeUniformBufferDescriptor(pCameraDirectionsBuffer, 2);
+		pDescriptorSet->writeUniformBufferDescriptor(pEmitterBuffer, 3);
+		pDescriptorSet->writeStorageBufferDescriptor(pPositionsBuffer, 4);
+
+		ImageViewVK* pParticleTextureVIew = pParticleTexture->getImageView();
+		pDescriptorSet->writeCombinedImageDescriptors(&pParticleTextureVIew, &m_pSampler, 1, 5);
 
 		pEmitter->setDescriptorSetRender(pDescriptorSet);
 	}

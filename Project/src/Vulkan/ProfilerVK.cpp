@@ -222,50 +222,6 @@ void ProfilerVK::endTimestamp(Timestamp* pTimestamp)
     vkCmdWriteTimestamp(m_pProfiledCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, pCurrentQueryPool->getQueryPool(), pTimestamp->queries.back() + 1);
 }
 
-void ProfilerVK::writeResults()
-{
-    if (!m_ProfileFrame) {
-        return;
-    }
-
-    VkQueryPool currentQueryPool = m_ppQueryPools[m_CurrentFrame]->getQueryPool();
-
-    if (vkGetQueryPoolResults(
-        m_pDevice->getDevice(), currentQueryPool,
-        0, m_NextQuery,                             // First query, query count
-        (m_NextQuery+1) * sizeof(uint64_t),             // Data size
-        (void*)m_TimeResults.data(),                // Data pointer
-        sizeof(uint64_t),                           // Stride
-        VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT/*VK_QUERY_RESULT_WAIT_BIT*/)
-        != VK_SUCCESS)
-    {
-        LOG("Profiler %s: failed to get query pool results", m_Name.c_str());
-        return;
-    }
-
-    // The flag VK_QUERY_RESULT_WITH_AVAILABILITY_BIT ensures that if query results are unavailable, the last element is zero
-    if (m_TimeResults.back() != 0) {
-        // Write the profiler's time first
-        m_Time = m_TimeResults[1] - m_TimeResults[0];
-
-        for (Timestamp* pTimestamp : m_Timestamps) {
-            const std::vector<uint32_t>& timestampQueries = pTimestamp->queries;
-            pTimestamp->time = 0;
-
-            for (uint32_t query : pTimestamp->queries) {
-                pTimestamp->time += m_TimeResults[query + 1] - m_TimeResults[query];
-            }
-
-            pTimestamp->queries.clear();
-        }
-    }
-
-    // Have the child profilers write their results
-    for (ProfilerVK* pChild : m_Children) {
-        pChild->writeResults();
-    }
-}
-
 void ProfilerVK::findWidestText()
 {
     // Widest string among the profiler and its timestamps, includes the width of the dash-prefix and the name of the profiler/timestamp
