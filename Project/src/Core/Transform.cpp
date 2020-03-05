@@ -1,7 +1,5 @@
 #include "Transform.h"
 
-#include "glm/gtx/vector_angle.hpp"
-
 float getYaw(const glm::vec3& vec)
 {
     glm::vec3 sameY = glm::normalize(glm::vec3(vec.x, g_DefaultForward.y, vec.z));

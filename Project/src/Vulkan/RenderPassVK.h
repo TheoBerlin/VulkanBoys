@@ -17,10 +17,10 @@ public:
 	void addAttachment(const VkAttachmentDescription& attachmentDesc);
 	//Add subpasses in order. They will be referenced with the index 0, 1, .. and so on. Order matters.
 	void addSubpass(const VkAttachmentReference* const pColorAttachments, uint32_t colorAttachmentCount, const VkAttachmentReference* const pDepthStencilAttachment);
-	void addSubpassDependency(uint32_t srcSubpass, uint32_t dstSubpass, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage, VkAccessFlags srcAccess, VkAccessFlags dstAccess);
+	void addSubpassDependency(const VkSubpassDependency& dependency);
 	bool finalize();
 
-	VkRenderPass getRenderPass() { return m_RenderPass; }
+	VkRenderPass getRenderPass() const { return m_RenderPass; }
 
 private:
 	DeviceVK* m_pDevice;

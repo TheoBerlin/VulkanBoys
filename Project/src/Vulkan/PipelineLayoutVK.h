@@ -12,7 +12,7 @@ public:
 
     bool init(const std::vector<const DescriptorSetLayoutVK*>& descriptorSetLayouts, const std::vector<VkPushConstantRange>& pushConstantRanges);
 
-    VkPipelineLayout getPipelineLayout() { return m_PipelineLayout; }
+    VkPipelineLayout getPipelineLayout() const { return m_PipelineLayout; }
 
 private:
     DeviceVK* m_pDevice;

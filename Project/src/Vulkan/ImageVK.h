@@ -5,14 +5,15 @@ class DeviceVK;
 
 struct ImageParams
 {
-	VkImageType Type;
-	VkSampleCountFlagBits Samples;
-	VkImageUsageFlags Usage;
-	VkMemoryPropertyFlags MemoryProperty;
-	VkFormat Format;
-	VkExtent3D Extent;
-	uint32_t MipLevels;
-	uint32_t ArrayLayers;
+	VkImageType				Type;
+	VkImageCreateFlags		Flags;
+	VkSampleCountFlagBits	Samples;
+	VkImageUsageFlags		Usage;
+	VkMemoryPropertyFlags	MemoryProperty;
+	VkFormat				Format;
+	VkExtent3D				Extent;
+	uint32_t				MipLevels;
+	uint32_t				ArrayLayers;
 };
 
 class ImageVK
@@ -28,6 +29,8 @@ public:
 
 	VkImage getImage() const { return m_Image; }
 	VkFormat getFormat() const { return m_Params.Format; }
+	VkExtent3D getExtent() const { return m_Params.Extent; }
+	uint32_t getMiplevelCount() const { return m_Params.MipLevels; }
 
 private:
 	DeviceVK* m_pDevice;

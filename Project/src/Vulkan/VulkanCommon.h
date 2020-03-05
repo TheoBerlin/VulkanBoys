@@ -44,6 +44,18 @@ inline VkShaderStageFlagBits convertShaderType(EShader shader)
     return VK_SHADER_STAGE_ALL;
 }
 
+inline VkFormat convertFormat(ETextureFormat format)
+{
+    switch (format)
+    {
+    case ETextureFormat::FORMAT_R8G8B8A8_UNORM:     return VK_FORMAT_R8G8B8A8_UNORM;
+    case ETextureFormat::FORMAT_R16G16B16A16_FLOAT: return VK_FORMAT_R16G16B16A16_SFLOAT;
+    case ETextureFormat::FORMAT_R32G32B32A32_FLOAT: return VK_FORMAT_R32G32B32A32_SFLOAT;
+    }
+
+    return VK_FORMAT_UNDEFINED;
+}
+
 inline const char* presentatModeAsString(VkPresentModeKHR mode)
 {
     switch (mode)

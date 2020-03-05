@@ -22,11 +22,12 @@ class CommandBufferVK
 public:
 	DECL_NO_COPY(CommandBufferVK);
 
-	void reset(bool waitForFence = true);
-	void begin(VkCommandBufferInheritanceInfo* pInheritanceInfo = nullptr);
+	void reset(bool waitForFence);
+	
+	void begin(VkCommandBufferInheritanceInfo* pInheritaneInfo, VkCommandBufferUsageFlags flags);
 	void end();
 
-	void beginRenderPass(RenderPassVK* pRenderPass, FrameBufferVK* pFrameBuffer,  uint32_t width, uint32_t height, VkClearValue* pClearVales, uint32_t clearValueCount);
+	void beginRenderPass(RenderPassVK* pRenderPass, FrameBufferVK* pFrameBuffer,  uint32_t width, uint32_t height, VkClearValue* pClearVales, uint32_t clearValueCount, VkSubpassContents subpassContent);
 	void endRenderPass();
 
 	void bindVertexBuffers(const BufferVK* const * ppVertexBuffers, uint32_t vertexBufferCount, const VkDeviceSize* pOffsets);
@@ -42,16 +43,20 @@ public:
 	void updateBuffer(BufferVK* pDestination, uint64_t destinationOffset, const void* pSource, uint64_t sizeInBytes);
 	void copyBuffer(BufferVK* pSource, uint64_t sourceOffset, BufferVK* pDestination, uint64_t destinationOffset, uint64_t sizeInBytes);
 
+	void blitImage2D(ImageVK* pSource, uint32_t sourceMip, VkExtent2D sourceExtent, ImageVK* pDestination, uint32_t destinationMip, VkExtent2D destinationExtent);
+
+	void updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height, uint32_t pixelStride, uint32_t miplevel, uint32_t layer);
+	void copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffset, ImageVK* pImage, uint32_t width, uint32_t height, uint32_t miplevel, uint32_t layer);
+	
+	void transitionImageLayout(ImageVK* pImage, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t baseMiplevel, uint32_t miplevels, uint32_t baseLayer, uint32_t layerCount);
+	
 	void releaseBufferOwnership(BufferVK* pBuffer, VkAccessFlags srcAccessMask, uint32_t srcQueueFamilyIndex, uint32_t dstQueueFamilyIndex, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask);
 	void acquireBufferOwnership(BufferVK* pBuffer, VkAccessFlags dstAccessMask, uint32_t srcQueueFamilyIndex, uint32_t dstQueueFamilyIndex, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask);
 
-	void updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height);
-	void copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffset, ImageVK* pImage, uint32_t width, uint32_t height);
-
-	void transitionImageLayout(ImageVK* pImage, VkImageLayout oldLayout, VkImageLayout newLayout);
-
 	void drawInstanced(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance);
 	void drawIndexInstanced(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset, uint32_t firstInstance);
+
+	void executeSecondary(CommandBufferVK* pSecondary);
 
 	//Ray Tracing
 	void traceRays(ShaderBindingTableVK* pShaderBindingTable, uint32_t width, uint32_t height, uint32_t raygenOffset);

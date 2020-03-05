@@ -1,6 +1,5 @@
 #pragma once
-
-#include "Common/IParticleEmitterHandler.h"
+#include "Common/ParticleEmitterHandler.h"
 #include "Common/ITexture2D.h"
 #include "Core/ParticleEmitter.h"
 #include "Vulkan/ProfilerVK.h"
@@ -24,14 +23,14 @@ class Texture2DVK;
 
 struct ParticleStorage;
 
-class ParticleEmitterHandlerVK : public IParticleEmitterHandler
+class ParticleEmitterHandlerVK : public ParticleEmitterHandler
 {
 public:
     ParticleEmitterHandlerVK();
     ~ParticleEmitterHandlerVK();
 
     virtual void update(float dt) override;
-    virtual void updateRenderingBuffers(IRenderingHandler* pRenderingHandler) override;
+    virtual void updateRenderingBuffers(RenderingHandler* pRenderingHandler) override;
     virtual void drawProfilerUI() override;
 
     virtual bool initializeGPUCompute() override;

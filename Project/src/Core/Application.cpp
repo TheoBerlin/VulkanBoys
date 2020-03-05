@@ -4,16 +4,19 @@
 #include "TaskDispatcher.h"
 #include "Transform.h"
 
-#include "Common/IGraphicsContext.h"
+#include "Common/Profiler.h"
+#include "Common/RenderingHandler.hpp"
 #include "Common/IImgui.h"
-#include "Common/IInputHandler.h"
+#include "Common/IWindow.h"
+#include "Common/IShader.h"
+#include "Common/ISampler.h"
 #include "Common/IMesh.h"
-#include "Common/IProfiler.h"
 #include "Common/IRenderer.h"
-#include "Common/IRenderingHandler.hpp"
 #include "Common/IShader.h"
 #include "Common/ITexture2D.h"
-#include "Common/IWindow.h"
+#include "Common/ITextureCube.h"
+#include "Common/IInputHandler.h"
+#include "Common/IGraphicsContext.h"
 
 #include "Vulkan/RenderPassVK.h"
 #include "Vulkan/CommandPoolVK.h"
@@ -84,26 +87,99 @@ void Application::init()
 	//Create context
 	m_pContext = IGraphicsContext::create(m_pWindow, API::VULKAN);
 
-	const bool forceRayTracingOff = true;
+	constexpr bool forceRayTracingOff = true;
 	m_EnableRayTracing = m_pContext->supportsRayTracing() && !forceRayTracingOff;
+
+	// Create and setup rendering handler
+	m_pRenderingHandler = m_pContext->createRenderingHandler();
+	m_pRenderingHandler->initialize();
+	m_pRenderingHandler->setClearColor(0.0f, 0.0f, 0.0f);
+	m_pRenderingHandler->setViewport((float)m_pWindow->getWidth(), (float)m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
+
+	// Setup renderers
+	m_pMeshRenderer = m_pContext->createMeshRenderer(m_pRenderingHandler);
+	m_pMeshRenderer->init();
+	
+	m_pParticleRenderer = m_pContext->createParticleRenderer(m_pRenderingHandler);
+	m_pParticleRenderer->init();
+	
+	if (m_EnableRayTracing) 
+	{
+		m_pRayTracingRenderer = m_pContext->createRayTracingRenderer(m_pRenderingHandler);
+		m_pRayTracingRenderer->init();
+	}
+
+	//Create particlehandler
+	m_pParticleEmitterHandler = m_pContext->createParticleEmitterHandler();
+	m_pParticleEmitterHandler->initialize(m_pContext, &m_Camera);
 
 	//Setup Imgui
 	m_pImgui = m_pContext->createImgui();
 	m_pImgui->init();
 	m_pWindow->addEventHandler(m_pImgui);
 
-	//Setup camera
-	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
-	m_Camera.setPosition(glm::vec3(0.0f, 0.5f, -2.0f));
-	m_Camera.setProjection(90.0f, m_pWindow->getWidth(), m_pWindow->getHeight(), 0.1f, 100.0f);
-	m_Camera.update();
+	//Set renderers to renderhandler
+	m_pRenderingHandler->setMeshRenderer(m_pMeshRenderer);
+	m_pRenderingHandler->setParticleEmitterHandler(m_pParticleEmitterHandler);
+	m_pRenderingHandler->setParticleRenderer(m_pParticleRenderer);
+	m_pRenderingHandler->setImguiRenderer(m_pImgui);
+
+	if (m_EnableRayTracing)
+	{
+		m_pRenderingHandler->setRayTracer(m_pRayTracingRenderer);
+	}
+
+	m_pRenderingHandler->setClearColor(0.0f, 0.0f, 0.0f);
+	m_pRenderingHandler->setParticleEmitterHandler(m_pParticleEmitterHandler);
+
+	//Load resources
+	ITexture2D* pPanorama = m_pContext->createTexture2D();
+	TaskDispatcher::execute([&]
+		{
+			pPanorama->initFromFile("assets/textures/arches.hdr", ETextureFormat::FORMAT_R32G32B32A32_FLOAT, false);
+			m_pSkybox = m_pRenderingHandler->generateTextureCube(pPanorama, ETextureFormat::FORMAT_R16G16B16A16_FLOAT, 2048, 1);
+		});
+
+	m_pMesh = m_pContext->createMesh();
+	TaskDispatcher::execute([&] 
+		{ 
+			m_pMesh->initFromFile("assets/meshes/gun.obj");
+		});
+
+	m_pSphere = m_pContext->createMesh();
+	TaskDispatcher::execute([&]
+		{
+			m_pSphere->initFromFile("assets/meshes/sphere.obj");
+		});
+
+	m_pAlbedo = m_pContext->createTexture2D();
+	TaskDispatcher::execute([this]
+		{
+			m_pAlbedo->initFromFile("assets/textures/gunAlbedo.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+		});
+
+	m_pNormal = m_pContext->createTexture2D();
+	TaskDispatcher::execute([this]
+		{
+			m_pNormal->initFromFile("assets/textures/gunNormal.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+		});
+
+	m_pMetallic = m_pContext->createTexture2D();
+	TaskDispatcher::execute([this]
+		{
+			m_pMetallic->initFromFile("assets/textures/gunMetallic.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+		});
+
+	m_pRoughness = m_pContext->createTexture2D();
+	TaskDispatcher::execute([this]
+		{
+			m_pRoughness->initFromFile("assets/textures/gunRoughness.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+		});
 
 	// Setup particles
-	m_pParticleEmitterHandler = m_pContext->createParticleEmitterHandler();
-	m_pParticleEmitterHandler->initialize(m_pContext, &m_Camera);
-
 	m_pParticleTexture = m_pContext->createTexture2D();
-	if (!m_pParticleTexture->initFromFile("assets/textures/sun.png")) {
+	if (!m_pParticleTexture->initFromFile("assets/textures/sun.png", ETextureFormat::FORMAT_R8G8B8A8_UNORM, true)) 
+	{
 		LOG("Failed to create particle texture");
 		SAFEDELETE(m_pParticleTexture);
 	}
@@ -117,124 +193,50 @@ void Application::init()
 	emitterInfo.particlesPerSecond = 40.0f;
 	emitterInfo.spread = glm::quarter_pi<float>() / 1.3f;
 	emitterInfo.pTexture = m_pParticleTexture;
-	m_pParticleEmitterHandler->createEmitter(emitterInfo);
-
-	for (size_t i = 0; i < 2; i++) {
+	for (size_t i = 0; i < 2; i++) 
+	{
 		emitterInfo.position.x = 1.0f + (float)i;
 		m_pParticleEmitterHandler->createEmitter(emitterInfo);
 	}
 
-	// Setup rendering handler
-	m_pRenderingHandler = m_pContext->createRenderingHandler();
-	m_pRenderingHandler->initialize();
-	m_pRenderingHandler->setClearColor(0.0f, 0.0f, 0.0f);
-	m_pRenderingHandler->setParticleEmitterHandler(m_pParticleEmitterHandler);
+	//We can set the pointer to the material even if loading happens on another thread
+	m_GunMaterial.setAlbedo(glm::vec4(1.0f));
+	m_GunMaterial.setAmbientOcclusion(1.0f);
+	m_GunMaterial.setMetallic(1.0f);
+	m_GunMaterial.setRoughness(1.0f);
+	m_GunMaterial.setAlbedoMap(m_pAlbedo);
+	m_GunMaterial.setNormalMap(m_pNormal);
+	m_GunMaterial.setMetallicMap(m_pMetallic);
+	m_GunMaterial.setRoughnessMap(m_pRoughness);
 
-	// Setup renderers
-	m_pMeshRenderer = m_pContext->createMeshRenderer(m_pRenderingHandler);
-	m_pParticleRenderer = m_pContext->createParticleRenderer(m_pRenderingHandler);
-	if (m_EnableRayTracing) {
-		m_pRayTracingRenderer = m_pContext->createRayTracingRenderer(m_pRenderingHandler);
-		m_pRayTracingRenderer->init();
-	}
-	m_pMeshRenderer->init();
-	m_pParticleRenderer->init();
+	m_RedMaterial.setAmbientOcclusion(1.0f);
 
-	// TODO: Should the renderers themselves call these instead?
-	m_pRenderingHandler->setMeshRenderer(m_pMeshRenderer);
-	m_pRenderingHandler->setParticleRenderer(m_pParticleRenderer);
-	if (m_EnableRayTracing) {
-		m_pRenderingHandler->setRayTracer(m_pRayTracingRenderer);
-	}
+	SamplerParams samplerParams = {};
+	samplerParams.MinFilter = VK_FILTER_LINEAR;
+	samplerParams.MagFilter = VK_FILTER_LINEAR;
+	samplerParams.WrapModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerParams.WrapModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	m_GunMaterial.createSampler(m_pContext, samplerParams);
+	m_RedMaterial.createSampler(m_pContext, samplerParams);
 
-	m_pRenderingHandler->setViewport(m_pWindow->getWidth(), m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
+	//Setup lights
+	m_LightSetup.addPointLight(PointLight(glm::vec3( 10.0f,  10.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3(-10.0f,  10.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3( 10.0f, -10.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3(-10.0f, -10.0f, -10.0f), glm::vec4(300.0f)));
 
-	//Load mesh
-	{
-		using namespace glm;
+	//Setup camera
+	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
+	m_Camera.setPosition(glm::vec3(0.0f, 1.0f, -3.0f));
+	m_Camera.setProjection(90.0f, (float)m_pWindow->getWidth(), (float)m_pWindow->getHeight(), 0.01f, 100.0f);
+	m_Camera.update();
 
-		Vertex vertices[] =
-		{
-			//FRONT FACE
-			{ glm::vec4(-0.5,  0.5, -0.5, 1.0f), glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
-			{ glm::vec4(0.5,  0.5, -0.5, 1.0f),  glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
-			{ glm::vec4(-0.5, -0.5, -0.5, 1.0f), glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
-			{ glm::vec4(0.5, -0.5, -0.5, 1.0f),  glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
+	TaskDispatcher::waitForTasks();
 
-			//BACK FACE
-			{ glm::vec4(0.5,  0.5,  0.5, 1.0f),  glm::vec4(0.0f,  0.0f,  1.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
-			{ glm::vec4(-0.5,  0.5,  0.5, 1.0f), glm::vec4(0.0f,  0.0f,  1.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
-			{ glm::vec4(0.5, -0.5,  0.5, 1.0f),  glm::vec4(0.0f,  0.0f,  1.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
-			{ glm::vec4(-0.5, -0.5,  0.5, 1.0f), glm::vec4(0.0f,  0.0f,  1.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
+	m_pRenderingHandler->setSkybox(m_pSkybox);
+	m_pWindow->show();
 
-			//RIGHT FACE
-			{ glm::vec4(0.5,  0.5, -0.5, 1.0f),  glm::vec4(1.0f,  0.0f,  0.0f, 0.0f), glm::vec4(0.0f,  0.0f, 1.0f,  0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
-			{ glm::vec4(0.5,  0.5,  0.5, 1.0f),  glm::vec4(1.0f,  0.0f,  0.0f, 0.0f), glm::vec4(0.0f,  0.0f, 1.0f,  0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
-			{ glm::vec4(0.5, -0.5, -0.5, 1.0f),  glm::vec4(1.0f,  0.0f,  0.0f, 0.0f), glm::vec4(0.0f,  0.0f, 1.0f,  0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
-			{ glm::vec4(0.5, -0.5,  0.5, 1.0f),  glm::vec4(1.0f,  0.0f,  0.0f, 0.0f), glm::vec4(0.0f,  0.0f, 1.0f,  0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
-
-			//LEFT FACE
-			{ glm::vec4(-0.5,  0.5, -0.5, 1.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
-			{ glm::vec4(-0.5,  0.5,  0.5, 1.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
-			{ glm::vec4(-0.5, -0.5, -0.5, 1.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
-			{ glm::vec4(-0.5, -0.5,  0.5, 1.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f,  0.0f, -1.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
-
-			//TOP FACE
-			{ glm::vec4(-0.5,  0.5,  0.5, 1.0f), glm::vec4(0.0f,  1.0f,  0.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
-			{ glm::vec4(0.5,  0.5,  0.5, 1.0f),  glm::vec4(0.0f,  1.0f,  0.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
-			{ glm::vec4(-0.5,  0.5, -0.5, 1.0f), glm::vec4(0.0f,  1.0f,  0.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
-			{ glm::vec4(0.5,  0.5, -0.5, 1.0f),  glm::vec4(0.0f,  1.0f,  0.0f, 0.0f), glm::vec4(1.0f,  0.0f, 0.0f,  0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
-
-			//BOTTOM FACE
-			{ glm::vec4(-0.5, -0.5, -0.5, 1.0f), glm::vec4(0.0f, -1.0f,  0.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f) },
-			{ glm::vec4(0.5, -0.5, -0.5, 1.0f),  glm::vec4(0.0f, -1.0f,  0.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 0.0f, 0.0f, 0.0f) },
-			{ glm::vec4(-0.5, -0.5,  0.5, 1.0f), glm::vec4(0.0f, -1.0f,  0.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 1.0f, 0.0f, 0.0f) },
-			{ glm::vec4(0.5, -0.5,  0.5, 1.0f),  glm::vec4(0.0f, -1.0f,  0.0f, 0.0f), glm::vec4(-1.0f,  0.0f, 0.0f, 0.0f), glm::vec4(1.0f, 1.0f, 0.0f, 0.0f) },
-		};
-
-		uint32_t indices[] =
-		{
-			//FRONT FACE
-			2, 1, 0,
-			2, 3, 1,
-
-			//BACK FACE
-			6, 5, 4,
-			6, 7, 5,
-
-			//RIGHT FACE
-			10, 9, 8,
-			10, 11, 9,
-
-			//LEFT FACE
-			12, 13, 14,
-			13, 15, 14,
-
-			//TOP FACE
-			18, 17, 16,
-			18, 19, 17,
-
-			//BOTTOM FACE
-			22, 21, 20,
-			22, 23, 21
-		};
-
-		m_pMesh = m_pContext->createMesh();
-		TaskDispatcher::execute([this] 
-			{ 
-				m_pMesh->initFromFile("assets/meshes/gun.obj"); 
-			});
-
-		m_pAlbedo = m_pContext->createTexture2D();
-		TaskDispatcher::execute([this]
-			{
-				m_pAlbedo->initFromFile("assets/textures/albedo.tga");
-			});
-
-		TaskDispatcher::waitForTasks();
-		
-		//m_pMesh->initFromMemory(vertices, 24, indices, 36);
-	}
+	SAFEDELETE(pPanorama);
 }
 
 void Application::run()
@@ -276,6 +278,14 @@ void Application::release()
 
 	m_pContext->sync();
 
+	m_GunMaterial.release();
+	m_RedMaterial.release();
+
+	SAFEDELETE(m_pSkybox);
+	SAFEDELETE(m_pSphere);
+	SAFEDELETE(m_pRoughness);
+	SAFEDELETE(m_pMetallic);
+	SAFEDELETE(m_pNormal);
 	SAFEDELETE(m_pAlbedo);
 	SAFEDELETE(m_pMesh);
 	SAFEDELETE(m_pRenderingHandler);
@@ -303,8 +313,9 @@ void Application::onWindowResize(uint32_t width, uint32_t height)
 
 	if (width != 0 && height != 0)
 	{
-		if (m_pRenderingHandler) {
-			m_pRenderingHandler->setViewport(width, height, 0.0f, 1.0f, 0.0f, 0.0f);
+		if (m_pRenderingHandler) 
+		{
+			m_pRenderingHandler->setViewport((float)width, (float)height, 0.0f, 1.0f, 0.0f, 0.0f);
 			m_pRenderingHandler->onWindowResize(width, height);
 		}
 
@@ -368,11 +379,10 @@ Application* Application::get()
 	return s_pInstance;
 }
 
-static glm::mat4 g_Rotation = glm::mat4(1.0f);
-
 void Application::update(double dt)
 {
-	IProfiler::progressTimer(dt);
+	//TODO: Is float enough precision on fast systems?
+	Profiler::progressTimer((float)dt);
 
 	constexpr float speed = 0.75f;
 	if (Input::isKeyPressed(EKey::KEY_A))
@@ -437,10 +447,11 @@ void Application::update(double dt)
 		Input::setMousePosition(m_pWindow, glm::vec2(m_pWindow->getClientWidth() / 2.0f, m_pWindow->getClientHeight() / 2.0f));
 	}
 
-	m_pParticleEmitterHandler->update(dt);
+	//TODO: Is float enough precision on fast systems?
+	m_pParticleEmitterHandler->update((float)dt);
 }
 
-static glm::vec4 g_Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+static glm::vec4 g_Color = glm::vec4(0.5f, 0.0f, 0.0f, 1.0f);
 
 void Application::renderUI(double dt)
 {
@@ -456,7 +467,7 @@ void Application::renderUI(double dt)
 
 	// Particle control panel
 	ImGui::SetNextWindowSize(ImVec2(320, 210), ImGuiCond_Always);
-	if (ImGui::Begin("Particles", NULL, ImGuiWindowFlags_NoResize))
+	if (ImGui::Begin("Particles", NULL))
 	{
 		ImGui::Text("Toggle Computation Device");
 		const char* btnLabel = m_pParticleEmitterHandler->gpuComputed() ? "GPU" : "CPU";
@@ -496,7 +507,7 @@ void Application::renderUI(double dt)
 
 		ImGui::Text("Particles: %d", pEmitter->getParticleCount());
 		float particlesPerSecond = pEmitter->getParticlesPerSecond();
-		float particleDuration = pEmitter->getParticleDuration();
+		//float particleDuration = pEmitter->getParticleDuration();
 
 		if (ImGui::SliderFloat("Particles per second", &particlesPerSecond, 0.0f, 1000.0f)) {
 		}
@@ -505,7 +516,9 @@ void Application::renderUI(double dt)
 
 	// Draw profiler UI
 	ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);
-	if (ImGui::Begin("Profiler", NULL, ImGuiWindowFlags_NoResize)) {
+	if (ImGui::Begin("Profiler", NULL)) 
+	{
+		//TODO: If the renderinghandler have all renderers/handlers, why are we calling their draw UI functions should this not be done by the renderinghandler
 		m_pParticleEmitterHandler->drawProfilerUI();
 		m_pRenderingHandler->drawProfilerUI();
 	}
@@ -516,14 +529,33 @@ void Application::renderUI(double dt)
 
 void Application::render(double dt)
 {
-	m_pRenderingHandler->beginFrame(m_Camera);
+	m_pRenderingHandler->beginFrame(m_Camera, m_LightSetup);
 
-	if (!m_EnableRayTracing) {
-		g_Rotation = glm::rotate(g_Rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
-		m_pRenderingHandler->submitMesh(m_pMesh, g_Color, glm::mat4(1.0f) * g_Rotation);
+	static glm::mat4 rotation = glm::mat4(1.0f);
+	rotation = glm::rotate(rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
+
+	m_pRenderingHandler->submitMesh(m_pMesh, m_GunMaterial, glm::mat4(1.0f) * rotation);
+	m_pRenderingHandler->submitMesh(m_pMesh, m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(1.5f, 0.0f, 0.0f)));
+	m_pRenderingHandler->submitMesh(m_pMesh, m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(-1.5f, 0.0f, 0.0f)));
+
+	//Set sphere color
+	m_RedMaterial.setAlbedo(g_Color);
+
+	constexpr uint32_t sphereCount = 8;
+	for (uint32_t y = 0; y < sphereCount; y++)
+	{
+		float yCoord = ((float(sphereCount) * 0.5f) / -2.0f) + float(y * 0.5);
+		m_RedMaterial.setMetallic(float(y) / float(sphereCount));
+
+		for (uint32_t x = 0; x < sphereCount; x++)
+		{
+			float xCoord = ((float(sphereCount) * 0.5f) / -2.0f) + float(x * 0.5);
+			m_RedMaterial.setRoughness(glm::clamp((float(x) / float(sphereCount)), 0.05f, 1.0f));
+
+			m_pRenderingHandler->submitMesh(m_pSphere, m_RedMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)));
+		}
 	}
 
-	m_pRenderingHandler->drawImgui(m_pImgui);
 	m_pRenderingHandler->endFrame();
 	m_pRenderingHandler->swapBuffers();
 }

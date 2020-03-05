@@ -16,7 +16,7 @@ public:
 
 	bool init();
 
-	CommandBufferVK* allocateCommandBuffer(VkCommandBufferLevel bufferLevel = VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+	CommandBufferVK* allocateCommandBuffer(VkCommandBufferLevel bufferLevel);
 	void freeCommandBuffer(CommandBufferVK** ppCommandBuffer);
 	void reset();
 

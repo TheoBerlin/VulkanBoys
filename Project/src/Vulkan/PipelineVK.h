@@ -15,20 +15,18 @@ public:
 
 	void addVertexBinding(uint32_t binding, VkVertexInputRate inputRate, uint32_t stride);
 	void addVertexAttribute(uint32_t binding, VkFormat format, uint32_t location, uint32_t offset);
-	void addColorBlendAttachment(bool blendEnable, VkColorComponentFlags colorWriteMask);
+	void addColorBlendAttachment(const VkPipelineColorBlendAttachmentState& colorBlendAttachment);
 
-	void setDepthTest(bool depthTest) { m_DepthTest = depthTest; }
-	void setDepthWrite(bool depthWrite) { m_DepthWrite = depthWrite; }
-	void setCulling(bool culling) { m_Culling = culling; }
-	void setWireFrame(bool wireframe) { m_WireFrame = wireframe; }
+	void setInputAssembly(VkPrimitiveTopology topology, bool primitiveRestartEnable);
+	void setRasterizerState(const VkPipelineRasterizationStateCreateInfo& rasterizerState);
+	void setDepthStencilState(const VkPipelineDepthStencilStateCreateInfo& depthStencilState);
+	void setBlendState(VkLogicOp logicOp, bool logicOpEnable, float blendConstants[4]);
 
-	// Creates a graphics pipeline
-	bool finalizeGraphics(const std::vector<IShader*>& shaders, RenderPassVK* pRenderPass, PipelineLayoutVK* pPipelineLayout);
-	// Creates a compute pipeline
-	bool finalizeCompute(IShader* shader, PipelineLayoutVK* pPipelineLayout);
+	bool finalizeGraphics(const std::vector<const IShader*>& shaders, const RenderPassVK* pRenderPass, const PipelineLayoutVK* pPipelineLayout);
+	bool finalizeCompute(const IShader* shader, const PipelineLayoutVK* pPipelineLayout);
 
-	VkPipeline getPipeline() const { return m_Pipeline; }
-	VkPipelineBindPoint getBindPoint() const { return m_BindPoint; }
+	VkPipeline				getPipeline() const		{ return m_Pipeline; }
+	VkPipelineBindPoint		getBindPoint() const	{ return m_BindPoint; }
 
 private:
     void createShaderStageInfo(VkPipelineShaderStageCreateInfo& shaderStageInfo, const IShader* shader);
@@ -36,13 +34,13 @@ private:
 private:
 	std::vector<VkVertexInputBindingDescription> m_VertexBindings;
 	std::vector<VkVertexInputAttributeDescription> m_VertexAttributes;
-	std::vector<VkPipelineColorBlendAttachmentState> m_ColorBlendAttachments;
+	std::vector< VkPipelineColorBlendAttachmentState> m_ColorBlendAttachments;
+	VkPipelineInputAssemblyStateCreateInfo m_InputAssembly;
+	VkPipelineRasterizationStateCreateInfo m_RasterizerState;
+	VkPipelineMultisampleStateCreateInfo m_MultisamplingState;
+	VkPipelineColorBlendStateCreateInfo m_BlendState;
+	VkPipelineDepthStencilStateCreateInfo m_DepthStencilState;
 	DeviceVK* m_pDevice;
 	VkPipeline m_Pipeline;
-	bool m_WireFrame;
-	bool m_Culling;
-	bool m_DepthTest;
-	bool m_DepthWrite;
-
 	VkPipelineBindPoint m_BindPoint;
 };

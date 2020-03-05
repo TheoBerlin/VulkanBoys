@@ -27,8 +27,10 @@ public:
 	virtual uint32_t getIndexCount() const override;
 	virtual uint32_t getVertexCount() const override;
 
+	virtual uint32_t getMeshID() const override;
+
 private:
-	glm::vec4 calculateTangent(const Vertex& v0, const Vertex& v1, const Vertex& v2);
+	glm::vec3 calculateTangent(const Vertex& v0, const Vertex& v1, const Vertex& v2);
 
 	uint32_t vertexForEdge(std::map<std::pair<uint32_t, uint32_t>, uint32_t>& lookup, std::vector<glm::vec3>& vertices, uint32_t first, uint32_t second);
 	std::vector<Triangle> subdivide(std::vector<glm::vec3>& vertices, std::vector<Triangle>& triangles);
@@ -39,4 +41,7 @@ private:
 	BufferVK* m_pIndexBuffer;
 	uint32_t m_VertexCount;
 	uint32_t m_IndexCount;
+	const uint32_t m_ID;
+
+	static uint32_t s_ID;
 };

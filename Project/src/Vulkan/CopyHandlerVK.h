@@ -9,7 +9,7 @@ class BufferVK;
 class CommandPoolVK;
 class CommandBufferVK;
 
-#define MAX_COMMAND_BUFFERS 3
+#define MAX_COMMAND_BUFFERS 6
 
 class CopyHandlerVK
 {
@@ -22,8 +22,10 @@ public:
 	void updateBuffer(BufferVK* pDestination, uint64_t destinationOffset, const void* pSource, uint64_t sizeInBytes);
 	void copyBuffer(BufferVK* pSource, uint64_t sourceOffset, BufferVK* pDestination, uint64_t destinationOffset, uint64_t sizeInBytes);
 
-	void updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height, VkImageLayout initalLayout, VkImageLayout finalLayout);
-	void copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffset, ImageVK* pImage, uint32_t width, uint32_t height);
+	void updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height, uint32_t pixelStride, VkImageLayout initalLayout, VkImageLayout finalLayout, uint32_t miplevel, uint32_t layer);
+	void copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffset, ImageVK* pImage, uint32_t width, uint32_t height, uint32_t miplevel, uint32_t layer);
+
+	void generateMips(ImageVK* pImage);
 
 	void waitForResources();
 

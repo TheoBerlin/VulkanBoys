@@ -1,18 +1,20 @@
 #pragma once
-#include "Common/IEventHandler.h"
-#include "Common/IParticleEmitterHandler.h"
-
 #include "Camera.h"
-#include "Common/CommonEventHandler.h"
+#include "Material.h"
+#include "LightSetup.h"
 
-class IGraphicsContext;
-class IImgui;
-class IInputHandler;
+#include "Common/CommonEventHandler.h"
+#include "Common/ParticleEmitterHandler.h"
+
 class IMesh;
-class IRenderer;
-class IRenderingHandler;
-class ITexture2D;
+class IImgui;
 class IWindow;
+class IRenderer;
+class ITexture2D;
+class ITextureCube;
+class IInputHandler;
+class IGraphicsContext;
+class RenderingHandler;
 
 class Application : public CommonEventHandler
 {
@@ -37,26 +39,34 @@ public:
 	static Application* get();
 
 private:
-	//Deltatime should be in seconds
 	void update(double dt);
 	void renderUI(double dt);
 	void render(double dt);
 
 private:
 	Camera m_Camera;
+	LightSetup m_LightSetup;
 	IWindow* m_pWindow;
 	IGraphicsContext* m_pContext;
-	IRenderingHandler* m_pRenderingHandler;
-	IRenderer* m_pMeshRenderer, *m_pParticleRenderer;
+	RenderingHandler* m_pRenderingHandler;
+	IRenderer* m_pMeshRenderer;
+	IRenderer* m_pParticleRenderer;
 	IRenderer* m_pRayTracingRenderer;
 	IImgui* m_pImgui;
 	IInputHandler* m_pInputHandler;
 
 	//TODO: Resoures should they be here?
 	IMesh* m_pMesh;
+	IMesh* m_pSphere;
 	ITexture2D* m_pAlbedo;
+	ITexture2D* m_pNormal;
+	ITexture2D* m_pMetallic;
+	ITexture2D* m_pRoughness;
+	ITextureCube* m_pSkybox;
+	Material m_GunMaterial;
+	Material m_RedMaterial;
 
-	IParticleEmitterHandler* m_pParticleEmitterHandler;
+	ParticleEmitterHandler* m_pParticleEmitterHandler;
 	ITexture2D* m_pParticleTexture;
 
 	// Resources for ImGui Particle window
