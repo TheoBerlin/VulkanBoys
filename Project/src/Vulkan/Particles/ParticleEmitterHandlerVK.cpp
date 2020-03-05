@@ -30,7 +30,6 @@ ParticleEmitterHandlerVK::ParticleEmitterHandlerVK()
 {
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         m_ppCommandPools[i] = nullptr;
-		m_ppDescriptorSets[i] = nullptr;
     }
 }
 
@@ -255,6 +254,25 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 {
 	pEmitter->initialize(m_pGraphicsContext, m_pCamera);
 
+	// Create descriptor set for the emitter
+	DescriptorSetVK* pEmitterDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
+	if (pEmitterDescriptorSet == nullptr) {
+		LOG("Failed to create descriptor set for particle emitter");
+		return;
+	}
+
+	BufferVK* pPositionsBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
+	BufferVK* pVelocitiesBuffer = reinterpret_cast<BufferVK*>(pEmitter->getVelocitiesBuffer());
+	BufferVK* pAgesBuffer = reinterpret_cast<BufferVK*>(pEmitter->getAgesBuffer());
+	BufferVK* pEmitterBuffer = reinterpret_cast<BufferVK*>(pEmitter->getEmitterBuffer());
+
+	pEmitterDescriptorSet->writeStorageBufferDescriptor(pPositionsBuffer->getBuffer(), 0);
+	pEmitterDescriptorSet->writeStorageBufferDescriptor(pVelocitiesBuffer->getBuffer(), 1);
+	pEmitterDescriptorSet->writeStorageBufferDescriptor(pAgesBuffer->getBuffer(), 2);
+	pEmitterDescriptorSet->writeUniformBufferDescriptor(pEmitterBuffer->getBuffer(), 3);
+
+	pEmitter->setDescriptorSetCompute(pEmitterDescriptorSet);
+
 	GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
 	DeviceVK* pDevice = pGraphicsContext->getDevice();
 	const QueueFamilyIndices& queueFamilyIndices = pDevice->getQueueFamilyIndices();
@@ -323,6 +341,8 @@ void ParticleEmitterHandlerVK::updateGPU(float dt)
 		m_ppDescriptorSets[m_CurrentFrame]->writeStorageBufferDescriptor(pVelocitiesBuffer, 1);
 		m_ppDescriptorSets[m_CurrentFrame]->writeStorageBufferDescriptor(pAgesBuffer, 2);
 		m_ppDescriptorSets[m_CurrentFrame]->writeUniformBufferDescriptor(pEmitterBuffer, 3);
+		DescriptorSetVK* pDescriptorSet = reinterpret_cast<DescriptorSetVK*>(pEmitter->getDescriptorSetCompute());
+		m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, m_pPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
 
 		uint32_t particleCount = pEmitter->getParticleCount();
 		glm::u32vec3 workGroupSize(1 + particleCount / m_WorkGroupSize, 1, 1);
@@ -351,7 +371,6 @@ void ParticleEmitterHandlerVK::beginUpdateFrame()
 	m_pProfiler->beginFrame(m_ppCommandBuffers[m_CurrentFrame]);
 
 	m_ppCommandBuffers[m_CurrentFrame]->bindPipeline(m_pPipeline);
-	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, m_pPipelineLayout, 0, 1, &m_ppDescriptorSets[m_CurrentFrame], 0, nullptr);
 
 	// Update emitter buffers
 	for (ParticleEmitter* pEmitter : m_ParticleEmitters) 
@@ -379,7 +398,6 @@ void ParticleEmitterHandlerVK::endUpdateFrame()
     DeviceVK* pDevice = pGraphicsContext->getDevice();
 
 	pDevice->executeCommandBuffer(pDevice->getComputeQueue(), m_ppCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
-	m_pProfiler->writeResults();
 
 	m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
@@ -445,14 +463,6 @@ bool ParticleEmitterHandlerVK::createPipelineLayout()
 	if (!m_pDescriptorPool->init(descriptorCounts, 16)) {
 		LOG("Failed to initialize descriptor pool");
 		return false;
-	}
-
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		m_ppDescriptorSets[i] = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
-		if (m_ppDescriptorSets[i] == nullptr) {
-			LOG("Failed to create descriptor set for particle renderer");
-			return false;
-		}
 	}
 
 	m_pPipelineLayout = DBG_NEW PipelineLayoutVK(pDevice);

@@ -1,4 +1,6 @@
 #pragma once
+
+#include "Common/IDescriptorSet.h"
 #include "VulkanCommon.h"
 #include "DescriptorCounts.h"
 
@@ -8,7 +10,7 @@ class SamplerVK;
 class ImageViewVK;
 class DescriptorPoolVK;
 
-class DescriptorSetVK
+class DescriptorSetVK : public IDescriptorSet
 {
 public:
     DescriptorSetVK();

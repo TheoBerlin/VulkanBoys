@@ -193,7 +193,11 @@ void Application::init()
 	emitterInfo.particlesPerSecond = 40.0f;
 	emitterInfo.spread = glm::quarter_pi<float>() / 1.3f;
 	emitterInfo.pTexture = m_pParticleTexture;
-	m_pParticleEmitterHandler->createEmitter(emitterInfo);
+	for (size_t i = 0; i < 2; i++) 
+	{
+		emitterInfo.position.x = 1.0f + (float)i;
+		m_pParticleEmitterHandler->createEmitter(emitterInfo);
+	}
 
 	//We can set the pointer to the material even if loading happens on another thread
 	m_GunMaterial.setAlbedo(glm::vec4(1.0f));

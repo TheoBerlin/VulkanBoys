@@ -22,6 +22,8 @@ ParticleEmitter::ParticleEmitter(const ParticleEmitterInfo& emitterInfo)
     m_RandEngine(std::random_device()()),
     m_ZRandomizer(std::cos(m_Spread), 1.0f),
     m_PhiRandomizer(0.0f, glm::two_pi<float>()),
+    m_pDescriptorSetCompute(nullptr),
+    m_pDescriptorSetRender(nullptr),
     m_pPositionsBuffer(nullptr),
     m_pVelocitiesBuffer(nullptr),
     m_pAgesBuffer(nullptr),
