@@ -117,6 +117,13 @@ void ParticleEmitter::setParticleDuration(float particleDuration)
     m_EmitterUpdated = true;
 }
 
+void ParticleEmitter::setSpread(float spread)
+{
+    m_ZRandomizer = std::uniform_real_distribution<float>(std::cos(spread), 1.0f);
+    m_Spread = spread;
+    m_EmitterUpdated = true;
+}
+
 bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
 {
     size_t particleCount = m_ParticlesPerSecond * m_ParticleDuration;

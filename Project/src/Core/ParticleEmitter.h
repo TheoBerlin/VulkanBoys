@@ -57,12 +57,14 @@ public:
     float getInitialSpeed() const { return m_InitialSpeed; }
     float getParticlesPerSecond() const { return m_ParticlesPerSecond; }
     float getParticleDuration() const { return m_ParticleDuration; }
+    float getSpread() const { return m_Spread; }
 
     void setPosition(const glm::vec3& position);
     void setDirection(const glm::vec3& direction);
     void setInitialSpeed(float initialSpeed);
     void setParticlesPerSecond(float particlesPerSecond);
     void setParticleDuration(float particleDuration);
+    void setSpread(float spread);
 
     IDescriptorSet* getDescriptorSetCompute() { return m_pDescriptorSetCompute; }
     IDescriptorSet* getDescriptorSetRender() { return m_pDescriptorSetRender; }
