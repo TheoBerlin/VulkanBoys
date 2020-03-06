@@ -54,6 +54,7 @@ public:
 
     glm::vec3 getPosition() const { return m_Position; }
     glm::vec3 getDirection() const { return m_Direction; }
+    glm::vec2 getParticleSize() const { return m_ParticleSize; }
     float getInitialSpeed() const { return m_InitialSpeed; }
     float getParticlesPerSecond() const { return m_ParticlesPerSecond; }
     float getParticleDuration() const { return m_ParticleDuration; }
@@ -61,6 +62,7 @@ public:
 
     void setPosition(const glm::vec3& position);
     void setDirection(const glm::vec3& direction);
+    void setParticleSize(const glm::vec2& size);
     void setInitialSpeed(float initialSpeed);
     void setParticlesPerSecond(float particlesPerSecond);
     void setParticleDuration(float particleDuration);

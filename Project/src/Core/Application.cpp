@@ -487,6 +487,7 @@ void Application::renderUI(double dt)
 		// Get current emitter data
 		ParticleEmitter* pEmitter = particleEmitters[m_CurrentEmitterIdx];
 		glm::vec3 emitterPos = pEmitter->getPosition();
+		glm::vec2 particleSize = pEmitter->getParticleSize();
 
 		glm::vec3 emitterDirection = pEmitter->getDirection();
 		float yaw = getYaw(emitterDirection);
@@ -510,6 +511,9 @@ void Application::renderUI(double dt)
 		}
 		if (ImGui::SliderFloat3("Direction", glm::value_ptr(emitterDirection), -1.0f, 1.0f)) {
 			pEmitter->setDirection(glm::normalize(emitterDirection));
+		}
+		if (ImGui::SliderFloat2("Size", glm::value_ptr(particleSize), 0.0f, 1.0f)) {
+			pEmitter->setParticleSize(particleSize);
 		}
 		if (ImGui::SliderFloat("Speed", &emitterSpeed, 0.0f, 20.0f)) {
 			pEmitter->setInitialSpeed(emitterSpeed);

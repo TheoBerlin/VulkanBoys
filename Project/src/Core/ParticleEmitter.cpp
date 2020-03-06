@@ -93,6 +93,12 @@ void ParticleEmitter::setDirection(const glm::vec3& direction)
     m_EmitterUpdated = true;
 }
 
+void ParticleEmitter::setParticleSize(const glm::vec2& size)
+{
+    m_ParticleSize = size;
+    m_EmitterUpdated = true;
+}
+
 void ParticleEmitter::setInitialSpeed(float initialSpeed)
 {
     m_InitialSpeed = initialSpeed;
