@@ -297,16 +297,16 @@ void RenderingHandlerVK::swapBuffers()
 
 void RenderingHandlerVK::drawProfilerUI()
 {
-	if (m_pMeshRenderer)
-	{
-		ProfilerVK* pMeshProfiler = m_pMeshRenderer->getProfiler();
-		pMeshProfiler->drawResults();
-	} 
-	
-	if (m_pRayTracer)
-	{
-		ProfilerVK* pRTProfiler = m_pRayTracer->getProfiler();
-		pRTProfiler->drawResults();
+	if (m_pMeshRenderer) {
+		m_pMeshRenderer->getProfiler()->drawResults();
+	}
+
+	if (m_pParticleRenderer) {
+		m_pParticleRenderer->getProfiler()->drawResults();
+	}
+
+	if (m_pRayTracer) {
+		m_pRayTracer->getProfiler()->drawResults();
 	}
 }
 

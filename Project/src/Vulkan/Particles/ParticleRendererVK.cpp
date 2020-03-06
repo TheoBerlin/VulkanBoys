@@ -25,6 +25,7 @@
 ParticleRendererVK::ParticleRendererVK(GraphicsContextVK* pGraphicsContext, RenderingHandlerVK* pRenderingHandler)
 	:m_pGraphicsContext(pGraphicsContext),
 	m_pRenderingHandler(pRenderingHandler),
+	m_pProfiler(nullptr),
 	m_pDescriptorPool(nullptr),
 	m_pDescriptorSetLayout(nullptr),
 	m_pPipelineLayout(nullptr),
@@ -40,6 +41,8 @@ ParticleRendererVK::ParticleRendererVK(GraphicsContextVK* pGraphicsContext, Rend
 
 ParticleRendererVK::~ParticleRendererVK()
 {
+	SAFEDELETE(m_pProfiler);
+
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		SAFEDELETE(m_ppCommandPools[i]);
 	}
@@ -70,6 +73,8 @@ bool ParticleRendererVK::init()
 		return false;
 	}
 
+	createProfiler();
+
 	return true;
 }
 
@@ -80,6 +85,7 @@ void ParticleRendererVK::beginFrame(const Camera& camera, const LightSetup& ligh
 
 	m_ppCommandBuffers[frameIndex]->reset(false);
 	m_ppCommandPools[frameIndex]->reset();
+	m_pProfiler->reset(frameIndex, m_pRenderingHandler->getCurrentGraphicsCommandBuffer());
 
 	// Needed to begin a secondary buffer
 	VkCommandBufferInheritanceInfo inheritanceInfo = {};
@@ -90,6 +96,7 @@ void ParticleRendererVK::beginFrame(const Camera& camera, const LightSetup& ligh
 	inheritanceInfo.framebuffer = m_pRenderingHandler->getCurrentBackBuffer()->getFrameBuffer();
 
 	m_ppCommandBuffers[frameIndex]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
+	m_pProfiler->beginFrame(m_ppCommandBuffers[frameIndex]);
 
 	m_ppCommandBuffers[frameIndex]->setViewports(&m_Viewport, 1);
 	m_ppCommandBuffers[frameIndex]->setScissorRects(&m_ScissorRect, 1);
@@ -104,6 +111,8 @@ void ParticleRendererVK::beginFrame(const Camera& camera, const LightSetup& ligh
 void ParticleRendererVK::endFrame()
 {
 	uint32_t currentFrame = m_pRenderingHandler->getCurrentFrameIndex();
+
+	m_pProfiler->endFrame();
 	m_ppCommandBuffers[currentFrame]->end();
 }
 
@@ -120,7 +129,10 @@ void ParticleRendererVK::submitParticles(ParticleEmitter* pEmitter)
 	}
 
 	uint32_t particleCount = pEmitter->getParticleCount();
+
+	m_pProfiler->beginTimestamp(&m_TimestampDraw);
 	m_ppCommandBuffers[frameIndex]->drawIndexInstanced(m_pQuadMesh->getIndexCount(), particleCount, 0, 0, 0);
+	m_pProfiler->endTimestamp(&m_TimestampDraw);
 }
 
 void ParticleRendererVK::setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY)
@@ -293,6 +305,12 @@ bool ParticleRendererVK::createQuadMesh()
 
 	m_pQuadMesh = DBG_NEW MeshVK(m_pGraphicsContext->getDevice());
 	return m_pQuadMesh->initFromMemory(pQuadVertices.data(), sizeof(QuadVertex), pQuadVertices.size(), pQuadIndices.data(), pQuadIndices.size());
+}
+
+void ParticleRendererVK::createProfiler()
+{
+	m_pProfiler = DBG_NEW ProfilerVK("Particles Render", m_pGraphicsContext->getDevice());
+	m_pProfiler->initTimestamp(&m_TimestampDraw, "Draw Instanced");
 }
 
 bool ParticleRendererVK::bindDescriptorSet(ParticleEmitter* pEmitter)
