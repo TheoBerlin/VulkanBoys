@@ -475,8 +475,17 @@ void Application::renderUI(double dt)
 			m_pParticleEmitterHandler->toggleComputationDevice();
 		}
 
+		// Emitter selection
+		std::vector<ParticleEmitter*> particleEmitters = m_pParticleEmitterHandler->getParticleEmitters();
+		m_CurrentEmitterIdx = std::min(m_CurrentEmitterIdx, particleEmitters.size() - 1);
+		int emitterIdxInt = (int)m_CurrentEmitterIdx;
+
+		if (ImGui::SliderInt("Emitter selection", &emitterIdxInt, 0, int(particleEmitters.size() - 1))) {
+			m_CurrentEmitterIdx = (size_t)emitterIdxInt;
+		}
+
 		// Get current emitter data
-		ParticleEmitter* pEmitter = m_pParticleEmitterHandler->getParticleEmitter(m_CurrentEmitterIdx);
+		ParticleEmitter* pEmitter = particleEmitters[m_CurrentEmitterIdx];
 		glm::vec3 emitterPos = pEmitter->getPosition();
 
 		glm::vec3 emitterDirection = pEmitter->getDirection();

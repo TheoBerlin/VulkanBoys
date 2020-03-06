@@ -195,13 +195,10 @@ void RenderingHandlerVK::endFrame()
 
     // Submit the rendering handler's command buffer
 	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
-	if (m_pParticleEmitterHandler)
-	{
+	if (m_pParticleEmitterHandler) {
 		ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
-		if (pEmitterHandler->gpuComputed()) 
-		{
-			for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters()) 
-			{
+		if (pEmitterHandler->gpuComputed()) {
+			for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters()) {
 				pEmitterHandler->releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
 			}
 		}
