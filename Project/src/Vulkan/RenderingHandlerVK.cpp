@@ -201,11 +201,10 @@ void RenderingHandlerVK::swapBuffers()
 void RenderingHandlerVK::drawProfilerUI()
 {
 	if (m_pRayTracer == nullptr) {
-		ProfilerVK* pMeshProfiler = m_pMeshRenderer->getProfiler();
-		pMeshProfiler->drawResults();
+		m_pParticleRenderer->getProfiler()->drawResults();
+		m_pMeshRenderer->getProfiler()->drawResults();
 	} else {
-		ProfilerVK* pRTProfiler = m_pRayTracer->getProfiler();
-		pRTProfiler->drawResults();
+		m_pRayTracer->getProfiler()->drawResults();
 	}
 }
 
