@@ -32,9 +32,9 @@ ProfilerVK::ProfilerVK(const std::string& name, DeviceVK* pDevice)
     }
 
     // From Vulkan spec: "The number of nanoseconds it takes for a timestamp value to be incremented by 1"
-    float nanoSecPerTime = pDevice->getTimestampPeriod();
-    const float nanoSecond = std::pow(10.0f, -9.0f);
-    const float milliSecondInv = 1000.0f;
+    double nanoSecPerTime = (double)pDevice->getTimestampPeriod();
+    const double nanoSecond = std::pow(10.0, -9.0);
+    const double milliSecondInv = 1000.0;
 
     m_TimestampToMillisec = nanoSecPerTime * nanoSecond * milliSecondInv;
 }
