@@ -2,7 +2,7 @@
 
 #define NOMINMAX
 
-#include "Common/IProfiler.h"
+#include "Common/Profiler.h"
 #include "Vulkan/QueryPoolVK.h"
 
 #include <string>
@@ -18,7 +18,7 @@ struct Timestamp {
     std::vector<uint32_t> queries;
 };
 
-class ProfilerVK : public IProfiler
+class ProfilerVK : public Profiler
 {
 public:
     ProfilerVK(const std::string& name, DeviceVK* pDevice);
@@ -26,8 +26,9 @@ public:
 
     void setParentProfiler(ProfilerVK* pParentProfiler);
 
-    // pResetCmdBuffer is used to reset the query pool
-    void beginFrame(size_t currentFrame, CommandBufferVK* pProfiledCmdBuffer, CommandBufferVK* pResetCmdBuffer);
+    // The query pool is reset using pResetCmdBuffer
+    void reset(size_t currentFrame, CommandBufferVK* pResetCmdBuffer);
+    void beginFrame(CommandBufferVK* pProfiledCmdBuffer);
     void endFrame();
     void drawResults();
 

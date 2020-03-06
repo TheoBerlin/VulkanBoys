@@ -40,21 +40,21 @@ ImageVK::~ImageVK()
 bool ImageVK::init(const ImageParams& params)
 {
 	VkImageCreateInfo imageInfo = {};
-	imageInfo.sType	 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	imageInfo.pNext	 = nullptr;
-	imageInfo.flags	 = 0;
-	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	imageInfo.usage	 = params.Usage;
+	imageInfo.sType					= VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageInfo.pNext					= nullptr;
+	imageInfo.flags					= params.Flags;
+	imageInfo.tiling				= VK_IMAGE_TILING_OPTIMAL;
+	imageInfo.usage					= params.Usage;
 	imageInfo.pQueueFamilyIndices	= nullptr;
 	imageInfo.queueFamilyIndexCount = 0;
-	imageInfo.sharingMode	= VK_SHARING_MODE_EXCLUSIVE;
-	imageInfo.samples		= params.Samples;
-	imageInfo.format		= params.Format;
-	imageInfo.imageType		= params.Type;
-	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	imageInfo.mipLevels		= params.MipLevels;
-	imageInfo.arrayLayers	= params.ArrayLayers;
-	imageInfo.extent		= params.Extent;
+	imageInfo.sharingMode			= VK_SHARING_MODE_EXCLUSIVE;
+	imageInfo.samples				= params.Samples;
+	imageInfo.format				= params.Format;
+	imageInfo.imageType				= params.Type;
+	imageInfo.initialLayout			= VK_IMAGE_LAYOUT_UNDEFINED;
+	imageInfo.mipLevels				= params.MipLevels;
+	imageInfo.arrayLayers			= params.ArrayLayers;
+	imageInfo.extent				= params.Extent;
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateImage(m_pDevice->getDevice(), &imageInfo, nullptr, &m_Image), "vkCreateImage failed");
 

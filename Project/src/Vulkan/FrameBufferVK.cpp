@@ -32,7 +32,7 @@ void FrameBufferVK::setDepthStencilAttachment(ImageViewVK* pImageView)
 
 bool FrameBufferVK::finalize(RenderPassVK* pRenderPass, uint32_t width, uint32_t height)
 {
-	uint32_t attachmentCount = m_ColorAttachments.size() + (m_pDepthStencilAttachment != nullptr ? 1 : 0);
+	uint32_t attachmentCount = uint32_t(m_ColorAttachments.size()) + (m_pDepthStencilAttachment != nullptr ? 1u : 0u);
 
 	std::vector<VkImageView> attachments(attachmentCount);
 	for (uint32_t i = 0; i < m_ColorAttachments.size(); i++)

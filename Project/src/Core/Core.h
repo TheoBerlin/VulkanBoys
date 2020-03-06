@@ -1,4 +1,11 @@
 #pragma once
+
+// Disable warnings in visual studio
+#ifdef _MSC_VER
+	#pragma warning(disable : 4201) // Non standard struct/union
+	#pragma warning(disable : 4324) // Padding
+#endif
+
 #include "Log.h"
 
 #include <cstdint>
@@ -11,9 +18,11 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/hash.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include "glm/gtx/vector_angle.hpp"
 
 #include "Common/Debug.h"
 
+// Common defines for creating classes
 #define DECL_NO_COPY(Type) \
 	Type(Type&&) = delete; \
 	Type(const Type&) = delete; \
@@ -30,19 +39,14 @@
 		~Type() = delete; \
 		DECL_NO_COPY(Type)
 	
+// Resources
 #define SAFEDELETE(object) if ((object)) { delete (object); (object) = nullptr; }
 
+// Assert
 #define ASSERT(condition) assert(condition)
 
+// Log defines
 #define LOG(...) logPrintf(__VA_ARGS__); logPrintf("\n")
-
-#ifdef _WIN32
-	//TODO: Maybe should check for visual studio and not only windows since __forceinline is MSVC specific
-	#define FORCEINLINE __forceinline
-#else
-	//TODO: Make sure this is actually a forceinline
-	#define FORCEINLINE inline
-#endif
 
 #if _DEBUG
 	#define D_LOG(...) LOG(__VA_ARGS__)
@@ -50,14 +54,27 @@
 	#define D_LOG(...)
 #endif
 
+// Remove the unused parameter warning temporarily
+#define UNREFERENCED_PARAMETER(param) (param)
+
+// Compiler macros
+#ifdef _MSC_VER
+	#define FORCEINLINE __forceinline
+#else
+	//TODO: Make sure this is actually a forceinline
+	#define FORCEINLINE inline
+#endif
+
+// Size macros
 #define MB(bytes) bytes * 1024 * 1024
 
+//Define Common structures
 struct Vertex
 {
-	glm::vec4 Position;
-	glm::vec4 Normal;
-	glm::vec4 Tangent;
-	glm::vec4 TexCoord;
+	alignas(16) glm::vec3 Position;
+	alignas(16) glm::vec3 Normal;
+	alignas(16) glm::vec3 Tangent;
+	alignas(16) glm::vec2 TexCoord;
 
 	bool operator==(const Vertex& other) const 
 	{
@@ -71,9 +88,30 @@ namespace std
 	{
 		size_t operator()(Vertex const& vertex) const 
 		{
-			return ((hash<glm::vec4>()(vertex.Position) ^
-				(hash<glm::vec4>()(vertex.Normal) << 1)) >> 1) ^
-				(hash<glm::vec4>()(vertex.TexCoord) << 1);
+			return 
+				((hash<glm::vec3>()(vertex.Position) ^
+				(hash<glm::vec3>()(vertex.Normal) << 1)) >> 1) ^
+				(hash<glm::vec2>()(vertex.TexCoord) << 1);
 		}
 	};
+}
+
+enum class ETextureFormat : uint8_t
+{
+	FORMAT_NONE					= 0,
+	FORMAT_R8G8B8A8_UNORM		= 1,
+	FORMAT_R16G16B16A16_FLOAT	= 2,
+	FORMAT_R32G32B32A32_FLOAT	= 3
+};
+
+inline uint32_t textureFormatStride(ETextureFormat format)
+{
+	switch (format)
+	{
+	case ETextureFormat::FORMAT_R8G8B8A8_UNORM:     return 4;
+	case ETextureFormat::FORMAT_R16G16B16A16_FLOAT: return 8;
+	case ETextureFormat::FORMAT_R32G32B32A32_FLOAT: return 16;
+	}
+
+	return 0;
 }

@@ -63,7 +63,8 @@ bool CommandBufferVK::finalize()
 void CommandBufferVK::reset(bool waitForFence)
 {
 	// Only primary buffers need to wait for their fences
-	if (waitForFence) {
+	if (waitForFence) 
+	{
 		// Wait for GPU to finish with this commandbuffer and then reset it
 		vkWaitForFences(m_pDevice->getDevice(), 1, &m_Fence, VK_TRUE, UINT64_MAX);
 		vkResetFences(m_pDevice->getDevice(), 1, &m_Fence);
@@ -73,22 +74,13 @@ void CommandBufferVK::reset(bool waitForFence)
 	m_pStagingTexture->reset();
 }
 
-void CommandBufferVK::begin(VkCommandBufferInheritanceInfo* pInheritaneInfo)
+void CommandBufferVK::begin(VkCommandBufferInheritanceInfo* pInheritaneInfo, VkCommandBufferUsageFlags flags)
 {
 	VkCommandBufferBeginInfo beginInfo = {};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.pNext = nullptr;
-	// If inheritance info is not nullptr, this is a secondary command buffer
-	if (pInheritaneInfo != nullptr)
-	{
-		beginInfo.flags = pInheritaneInfo->renderPass == VK_NULL_HANDLE ? 0 : VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
-	}
-	else
-	{
-		beginInfo.flags = 0;
-	}
-
-	beginInfo.pInheritanceInfo = pInheritaneInfo;
+	beginInfo.sType				= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.pNext				= nullptr;
+	beginInfo.flags				= flags;
+	beginInfo.pInheritanceInfo	= pInheritaneInfo;
 
 	VK_CHECK_RESULT(vkBeginCommandBuffer(m_CommandBuffer, &beginInfo), "Begin CommandBuffer Failed");
 }
@@ -98,19 +90,19 @@ void CommandBufferVK::end()
 	VK_CHECK_RESULT(vkEndCommandBuffer(m_CommandBuffer), "End CommandBuffer Failed");
 }
 
-void CommandBufferVK::beginRenderPass(RenderPassVK* pRenderPass, FrameBufferVK* pFrameBuffer, uint32_t width, uint32_t height, VkClearValue* pClearVales, uint32_t clearValueCount)
+void CommandBufferVK::beginRenderPass(RenderPassVK* pRenderPass, FrameBufferVK* pFrameBuffer, uint32_t width, uint32_t height, VkClearValue* pClearVales, uint32_t clearValueCount, VkSubpassContents subpassContent)
 {
 	VkRenderPassBeginInfo renderPassInfo = {};
-	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.pNext = nullptr;
-	renderPassInfo.renderPass	= pRenderPass->getRenderPass();
-	renderPassInfo.framebuffer	= pFrameBuffer->getFrameBuffer();
+	renderPassInfo.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.pNext				= nullptr;
+	renderPassInfo.renderPass			= pRenderPass->getRenderPass();
+	renderPassInfo.framebuffer			= pFrameBuffer->getFrameBuffer();
 	renderPassInfo.renderArea.offset	= { 0, 0 };
 	renderPassInfo.renderArea.extent	= { width, height };
 	renderPassInfo.pClearValues			= pClearVales;
 	renderPassInfo.clearValueCount		= clearValueCount;
 
-	vkCmdBeginRenderPass(m_CommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+	vkCmdBeginRenderPass(m_CommandBuffer, &renderPassInfo, subpassContent);
 }
 
 void CommandBufferVK::endRenderPass()
@@ -187,112 +179,163 @@ void CommandBufferVK::copyBuffer(BufferVK* pSource, uint64_t sourceOffset, Buffe
 void CommandBufferVK::releaseBufferOwnership(BufferVK* pBuffer, VkAccessFlags srcAccessMask, uint32_t srcQueueFamilyIndex, uint32_t dstQueueFamilyIndex, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask)
 {
 	VkBufferMemoryBarrier bufferMemoryBarrier = {};
-	bufferMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-	bufferMemoryBarrier.pNext = nullptr;
-	bufferMemoryBarrier.srcAccessMask = srcAccessMask;
-	bufferMemoryBarrier.dstAccessMask = 0;
+	bufferMemoryBarrier.sType				= VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+	bufferMemoryBarrier.pNext				= nullptr;
+	bufferMemoryBarrier.srcAccessMask		= srcAccessMask;
+	bufferMemoryBarrier.dstAccessMask		= 0;
 	bufferMemoryBarrier.srcQueueFamilyIndex = srcQueueFamilyIndex;
 	bufferMemoryBarrier.dstQueueFamilyIndex = dstQueueFamilyIndex;
-	bufferMemoryBarrier.offset = 0;
-	bufferMemoryBarrier.size = VK_WHOLE_SIZE;
-	bufferMemoryBarrier.buffer = pBuffer->getBuffer();
+	bufferMemoryBarrier.offset				= 0;
+	bufferMemoryBarrier.size				= VK_WHOLE_SIZE;
+	bufferMemoryBarrier.buffer				= pBuffer->getBuffer();
 
-	vkCmdPipelineBarrier(
-		m_CommandBuffer,
-		srcStageMask,
-		dstStageMask,
-		0,
-		0, nullptr,
-		1, &bufferMemoryBarrier,
-		0, nullptr);
+	vkCmdPipelineBarrier(m_CommandBuffer, srcStageMask, dstStageMask, 0, 0, nullptr, 1, &bufferMemoryBarrier, 0, nullptr);
 }
 
 void CommandBufferVK::acquireBufferOwnership(BufferVK* pBuffer, VkAccessFlags dstAccessMask, uint32_t srcQueueFamilyIndex, uint32_t dstQueueFamilyIndex, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask)
 {
 	VkBufferMemoryBarrier bufferMemoryBarrier = {};
-	bufferMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-	bufferMemoryBarrier.pNext = nullptr;
-	bufferMemoryBarrier.srcAccessMask = 0;
-	bufferMemoryBarrier.dstAccessMask = dstAccessMask;
+	bufferMemoryBarrier.sType				= VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+	bufferMemoryBarrier.pNext				= nullptr;
+	bufferMemoryBarrier.srcAccessMask		= 0;
+	bufferMemoryBarrier.dstAccessMask		= dstAccessMask;
 	bufferMemoryBarrier.srcQueueFamilyIndex = srcQueueFamilyIndex;
 	bufferMemoryBarrier.dstQueueFamilyIndex = dstQueueFamilyIndex;
-	bufferMemoryBarrier.offset = 0;
-	bufferMemoryBarrier.size = VK_WHOLE_SIZE;
-	bufferMemoryBarrier.buffer = pBuffer->getBuffer();
+	bufferMemoryBarrier.offset				= 0;
+	bufferMemoryBarrier.size				= VK_WHOLE_SIZE;
+	bufferMemoryBarrier.buffer				= pBuffer->getBuffer();
 
-	vkCmdPipelineBarrier(
-		m_CommandBuffer,
-		srcStageMask,
-		dstStageMask,
-		0,
-		0, nullptr,
-		1, &bufferMemoryBarrier,
-		0, nullptr);
+	vkCmdPipelineBarrier(m_CommandBuffer, srcStageMask, dstStageMask, 0, 0, nullptr, 1, &bufferMemoryBarrier, 0, nullptr);
 }
 
-void CommandBufferVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height)
+void CommandBufferVK::blitImage2D(ImageVK* pSource, uint32_t sourceMip, VkExtent2D sourceExtent, ImageVK* pDestination, uint32_t destinationMip, VkExtent2D destinationExtent)
 {
-	uint32_t sizeInBytes = width * height * 4;
+	VkImageBlit blit = {};
+	blit.srcOffsets[0]					= { 0, 0, 0 };
+	blit.srcOffsets[1]					= { int32_t(sourceExtent.width), int32_t(sourceExtent.height), int32_t(1) };
+	blit.srcSubresource.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
+	blit.srcSubresource.mipLevel		= sourceMip;
+	blit.srcSubresource.baseArrayLayer	= 0;
+	blit.srcSubresource.layerCount		= 1;
+	blit.dstOffsets[0]					= { 0, 0, 0 };
+	blit.dstOffsets[1]					= { int32_t(destinationExtent.width), int32_t(destinationExtent.height), int32_t(1) };
+	blit.dstSubresource.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
+	blit.dstSubresource.mipLevel		= destinationMip;
+	blit.dstSubresource.baseArrayLayer	= 0;
+	blit.dstSubresource.layerCount		= 1;
+
+	vkCmdBlitImage(m_CommandBuffer, pSource->getImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, pDestination->getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
+}
+
+void CommandBufferVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height, uint32_t pixelStride, uint32_t miplevel, uint32_t layer)
+{
+	uint32_t sizeInBytes = width * height * pixelStride;
 	
 	VkDeviceSize offset = m_pStagingTexture->getCurrentOffset();
-	void* pHostMemory = m_pStagingTexture->allocate(sizeInBytes);
+	void* pHostMemory	= m_pStagingTexture->allocate(sizeInBytes);
 	memcpy(pHostMemory, pPixelData, sizeInBytes);
 	
-	copyBufferToImage(m_pStagingTexture->getBuffer(), offset, pImage, width, height);
+	copyBufferToImage(m_pStagingTexture->getBuffer(), offset, pImage, width, height, miplevel, layer);
 }
 
-void CommandBufferVK::copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffset, ImageVK* pImage, uint32_t width, uint32_t height)
+void CommandBufferVK::copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffset, ImageVK* pImage, uint32_t width, uint32_t height, uint32_t miplevel, uint32_t layer)
 {
 	VkBufferImageCopy region = {};
-	region.bufferImageHeight = 0;
-	region.bufferOffset		= sourceOffset;
-	region.bufferRowLength	= 0;
-	region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	region.imageSubresource.baseArrayLayer = 0;
-	region.imageSubresource.mipLevel	= 0;
-	region.imageSubresource.layerCount	= 1;
-	region.imageExtent.depth	= 1;
-	region.imageExtent.height	= height;
-	region.imageExtent.width	= width;
+	region.bufferImageHeight				= 0;
+	region.bufferOffset						= sourceOffset;
+	region.bufferRowLength					= 0;
+	region.imageSubresource.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
+	region.imageSubresource.baseArrayLayer	= layer;
+	region.imageSubresource.layerCount		= 1;
+	region.imageSubresource.mipLevel		= miplevel;
+	region.imageExtent.depth				= 1;
+	region.imageExtent.height				= height;
+	region.imageExtent.width				= width;
 
 	vkCmdCopyBufferToImage(m_CommandBuffer, pSource->getBuffer(), pImage->getImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 }
 
 
-void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLayout, VkImageLayout newLayout)
+void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t baseMiplevel, uint32_t miplevels, uint32_t baseLayer, uint32_t layerCount)
 {
 	VkImageMemoryBarrier barrier = {};
-	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.oldLayout = oldLayout;
-	barrier.newLayout = newLayout;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-
+	barrier.sType							= VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	barrier.srcQueueFamilyIndex				= VK_QUEUE_FAMILY_IGNORED;
+	barrier.dstQueueFamilyIndex				= VK_QUEUE_FAMILY_IGNORED;
+	barrier.oldLayout						= oldLayout;
+	barrier.newLayout						= newLayout;
+	barrier.subresourceRange.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
+	barrier.subresourceRange.baseMipLevel	= baseMiplevel;
+	barrier.subresourceRange.levelCount		= miplevels;
+	barrier.subresourceRange.baseArrayLayer	= baseLayer;
+	barrier.subresourceRange.layerCount		= layerCount;
 	barrier.image = pImage->getImage();
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
 
-	VkPipelineStageFlags sourceStage;
-	VkPipelineStageFlags destinationStage;
-
-	if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+	VkPipelineStageFlags sourceStage		= 0;
+	VkPipelineStageFlags destinationStage	= 0;
+	if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) 
 	{
 		barrier.srcAccessMask = 0;
 		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
-		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-		destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		sourceStage			= VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		destinationStage	= VK_PIPELINE_STAGE_TRANSFER_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_GENERAL)
+	{
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = 0;
+
+		sourceStage			= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+		destinationStage	= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+	{
+		barrier.srcAccessMask = 0;
+		barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+		sourceStage			= VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		destinationStage	= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+	{
+		barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+		sourceStage			= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		destinationStage	= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 	}
 	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 	{
 		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-		sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-		destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		sourceStage			= VK_PIPELINE_STAGE_TRANSFER_BIT;
+		destinationStage	= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+	{
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+		sourceStage			= VK_PIPELINE_STAGE_TRANSFER_BIT;
+		destinationStage	= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+	{
+		barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+		sourceStage			= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		destinationStage	= VK_PIPELINE_STAGE_TRANSFER_BIT;
+	}
+	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
+	{
+		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+		sourceStage			= VK_PIPELINE_STAGE_TRANSFER_BIT;
+		destinationStage	= VK_PIPELINE_STAGE_TRANSFER_BIT;
 	}
 	else if (oldLayout == VK_IMAGE_LAYOUT_GENERAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
 	{
@@ -333,12 +376,18 @@ void CommandBufferVK::drawIndexInstanced(uint32_t indexCount, uint32_t instanceC
 	vkCmdDrawIndexed(m_CommandBuffer, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
 }
 
+void CommandBufferVK::executeSecondary(CommandBufferVK* pSecondary)
+{
+	VkCommandBuffer secondaryBuffer = pSecondary->getCommandBuffer();
+	vkCmdExecuteCommands(m_CommandBuffer, 1, &secondaryBuffer);
+}
+
 void CommandBufferVK::traceRays(ShaderBindingTableVK* pShaderBindingTable, uint32_t width, uint32_t height, uint32_t raygenOffset)
 {
 	VkBuffer bufferSBT = pShaderBindingTable->getBuffer()->getBuffer();
 
-	uint32_t missOffset = pShaderBindingTable->getBindingOffsetMissShaderGroup();
-	uint32_t intersectOffset = pShaderBindingTable->getBindingOffsetHitShaderGroup();
+	VkDeviceSize missOffset			= pShaderBindingTable->getBindingOffsetMissShaderGroup();
+	VkDeviceSize intersectOffset	= pShaderBindingTable->getBindingOffsetHitShaderGroup();
 
 	m_pDevice->vkCmdTraceRaysNV(m_CommandBuffer,
 		bufferSBT, raygenOffset,

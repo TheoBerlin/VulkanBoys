@@ -39,37 +39,32 @@ bool DescriptorPoolVK::init(const DescriptorCounts& descriptorCounts, uint32_t d
 {
 	m_DescriptorCapacities = descriptorCounts;
 
-	size_t descriptorTypeCount = 0;
-	if (descriptorCounts.m_StorageBuffers > 0) {
+	//size_t descriptorTypeCount = 0;
+	//if (descriptorCounts.m_StorageBuffers > 0) {
 
-	}
+	//}
 
 	std::array<VkDescriptorPoolSize, 5> poolSizes;
-	poolSizes[0] = {};
-	poolSizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-	poolSizes[0].descriptorCount = descriptorCounts.m_StorageBuffers;
+	poolSizes[0].type				= VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	poolSizes[0].descriptorCount	= descriptorCounts.m_StorageBuffers;
 
-	poolSizes[1] = {};
-	poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolSizes[1].descriptorCount = descriptorCounts.m_UniformBuffers;
+	poolSizes[1].type				= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	poolSizes[1].descriptorCount	= descriptorCounts.m_UniformBuffers;
 
-	poolSizes[2] = {};
-	poolSizes[2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	poolSizes[2].descriptorCount = descriptorCounts.m_SampledImages;
+	poolSizes[2].type				= VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	poolSizes[2].descriptorCount	= descriptorCounts.m_SampledImages;
 
-	poolSizes[3] = {};
-	poolSizes[3].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	poolSizes[3].descriptorCount = descriptorCounts.m_StorageImages;
+	poolSizes[3].type				= VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	poolSizes[3].descriptorCount	= descriptorCounts.m_StorageImages;
 
-	poolSizes[4] = {};
-	poolSizes[4].type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV;
-	poolSizes[4].descriptorCount = descriptorCounts.m_AccelerationStructures;
+	poolSizes[4].type				= VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV;
+	poolSizes[4].descriptorCount	= descriptorCounts.m_AccelerationStructures;
 
 	VkDescriptorPoolCreateInfo poolInfo = {};
-	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolInfo.poolSizeCount = descriptorCounts.getDescriptorTypesCount();
-	poolInfo.pPoolSizes = poolSizes.data();
-	poolInfo.maxSets = descriptorSetCount;
+	poolInfo.sType			= VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolInfo.poolSizeCount	= uint32_t(descriptorCounts.getDescriptorTypesCount());
+	poolInfo.pPoolSizes		= poolSizes.data();
+	poolInfo.maxSets		= descriptorSetCount;
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateDescriptorPool(m_pDevice->getDevice(), &poolInfo, nullptr, &m_DescriptorPool), "Failed to create Descriptor Pool");
 	

@@ -24,7 +24,8 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 	m_ClientHeight(0),
 	m_OldClientWidth(0),
 	m_OldClientHeight(0),
-	m_IsFullscreen(false)
+	m_IsFullscreen(false),
+	m_HasFocus(false)
 {
 	if (s_WindowCount < 1)
 	{
@@ -40,7 +41,9 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 
 	if (s_HasGLFW)
 	{
-		glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
+		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+		glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_TRUE);
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
 		m_pWindow = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
@@ -87,21 +90,24 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 				});
 
 			glfwSetKeyCallback(m_pWindow, [](GLFWwindow* pWindow, int32_t key, int32_t scancode, int32_t action, int32_t mods)
-			{
-				for (IEventHandler* pEventHandler : GET_EVENTHANDLERS(pWindow))
 				{
-					//TODO: GLFW and EKey have the same integer value so this is valid however, a convertion function maybe should be 
-					//considered in the future
-					if (action == GLFW_PRESS || action == GLFW_REPEAT)
+					UNREFERENCED_PARAMETER(mods);
+					UNREFERENCED_PARAMETER(scancode);
+
+					for (IEventHandler* pEventHandler : GET_EVENTHANDLERS(pWindow))
 					{
-						pEventHandler->onKeyPressed(EKey(key));
+						//TODO: GLFW and EKey have the same integer value so this is valid however, a convertion function maybe should be 
+						//considered in the future
+						if (action == GLFW_PRESS || action == GLFW_REPEAT)
+						{
+							pEventHandler->onKeyPressed(EKey(key));
+						}
+						else if (action == GLFW_RELEASE)
+						{
+							pEventHandler->onKeyReleased(EKey(key));
+						}
 					}
-					else if (action == GLFW_RELEASE)
-					{
-						pEventHandler->onKeyReleased(EKey(key));
-					}
-				}
-			});
+				});
 
 			glfwSetCharCallback(m_pWindow, [](GLFWwindow* pWindow, uint32_t codepoint)
 				{
@@ -121,6 +127,8 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 
 			glfwSetMouseButtonCallback(m_pWindow, [](GLFWwindow* pWindow, int32_t button, int32_t action, int32_t mods)
 				{
+					UNREFERENCED_PARAMETER(mods);
+
 					for (IEventHandler* pEventHandler : GET_EVENTHANDLERS(pWindow))
 					{
 						if (action == GLFW_PRESS || action == GLFW_REPEAT)
@@ -152,19 +160,19 @@ GLFWWindow::GLFWWindow(const std::string& title, uint32_t width, uint32_t height
 				});
 
 			//Init members
-			int32_t width	= 0;
-			int32_t height	= 0;
-			glfwGetFramebufferSize(m_pWindow, &width, &height);
+			int32_t w = 0;
+			int32_t h = 0;
+			glfwGetFramebufferSize(m_pWindow, &w, &h);
 
-			m_Width		= width;
-			m_Height	= height;
+			m_Width		= w;
+			m_Height	= h;
 
-			width	= 0;
-			height	= 0;
-			glfwGetWindowSize(m_pWindow, &width, &height);
+			w = 0;
+			h = 0;
+			glfwGetWindowSize(m_pWindow, &w, &h);
 
-			m_ClientWidth	= width;
-			m_ClientHeight	= height;
+			m_ClientWidth	= w;
+			m_ClientHeight	= h;
 
 			int32_t x = 0;
 			int32_t y = 0;

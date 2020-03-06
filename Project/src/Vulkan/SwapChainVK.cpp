@@ -77,7 +77,7 @@ void SwapChainVK::release()
 
 VkResult SwapChainVK::acquireNextImage(VkSemaphore imageSemaphore)
 {
-	VkResult result = vkAcquireNextImageKHR(m_pDevice->getDevice(), m_SwapChain, UINT64_MAX, imageSemaphore, VK_NULL_HANDLE, &m_ImageIndex);
+	vkAcquireNextImageKHR(m_pDevice->getDevice(), m_SwapChain, UINT64_MAX, imageSemaphore, VK_NULL_HANDLE, &m_ImageIndex);
 	return VK_SUCCESS;
 }
 
@@ -86,8 +86,8 @@ VkResult SwapChainVK::present(VkSemaphore renderSemaphore)
 	VkSemaphore waitSemaphores[] = { renderSemaphore };
 
 	VkPresentInfoKHR presentInfo = {};
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentInfo.pNext = nullptr;
+	presentInfo.sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.pNext				= nullptr;
 	presentInfo.swapchainCount		= 1;
 	presentInfo.pSwapchains			= &m_SwapChain;
 	presentInfo.waitSemaphoreCount	= 1;
@@ -95,7 +95,7 @@ VkResult SwapChainVK::present(VkSemaphore renderSemaphore)
 	presentInfo.pResults			= nullptr;
 	presentInfo.pImageIndices		= &m_ImageIndex;
 
-	VkResult result = vkQueuePresentKHR(m_pDevice->getPresentQueue(), &presentInfo);
+	vkQueuePresentKHR(m_pDevice->getPresentQueue(), &presentInfo);
 	return VK_SUCCESS;
 }
 

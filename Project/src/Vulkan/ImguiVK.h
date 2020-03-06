@@ -27,10 +27,6 @@ public:
 	virtual void end() override;
 	
 	virtual void render(CommandBufferVK* pCommandBuffer) override;
-
-	virtual void onWindowClose() override;
-	virtual void onWindowResize(uint32_t width, uint32_t height) override;
-	virtual void onWindowFocusChanged(IWindow* pWindow, bool hasFocus) override;
 	
 	virtual void onMouseMove(uint32_t x, uint32_t y) override;
 	virtual void onMousePressed(int32_t button) override;

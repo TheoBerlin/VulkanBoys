@@ -37,26 +37,17 @@ void RenderPassVK::addSubpass(const VkAttachmentReference* pColorAttachments, ui
 	m_Subpasses.emplace_back(subpass);
 }
 
-void RenderPassVK::addSubpassDependency(uint32_t srcSubpass, uint32_t dstSubpass, VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage, VkAccessFlags srcAccess, VkAccessFlags dstAccess)
+void RenderPassVK::addSubpassDependency(const VkSubpassDependency& dependency)
 {
-	VkSubpassDependency dependency = {};
-	dependency.srcSubpass		= srcSubpass;
-	dependency.srcStageMask		= srcStage;
-	dependency.srcAccessMask	= srcAccess;
-
-	dependency.dstSubpass		= dstSubpass;
-	dependency.dstStageMask		= dstStage;
-	dependency.dstAccessMask	= dstAccess;
-
 	m_SubpassDependencies.emplace_back(dependency);
 }
 
 bool RenderPassVK::finalize()
 {
 	VkRenderPassCreateInfo renderPassInfo = {};
-	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassInfo.pNext = nullptr;
-	renderPassInfo.flags = 0;
+	renderPassInfo.sType			= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassInfo.pNext			= nullptr;
+	renderPassInfo.flags			= 0;
 	renderPassInfo.attachmentCount	= uint32_t(m_Attachments.size());
 	renderPassInfo.pAttachments		= (m_Attachments.data()) ? m_Attachments.data() : nullptr;
 	renderPassInfo.subpassCount		= uint32_t(m_Subpasses.size());

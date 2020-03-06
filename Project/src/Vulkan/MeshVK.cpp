@@ -8,12 +8,15 @@
 #include <tinyobjloader/tiny_obj_loader.h>
 #include <array>
 
+uint32_t MeshVK::s_ID = 0;
+
 MeshVK::MeshVK(DeviceVK* pDevice)
 	: m_pDevice(pDevice),
 	m_pVertexBuffer(nullptr),
 	m_pIndexBuffer(nullptr),
 	m_IndexCount(0),
-	m_VertexCount(0)
+	m_VertexCount(0),
+	m_ID(s_ID++)
 {
 }
 
@@ -47,12 +50,15 @@ bool MeshVK::initFromFile(const std::string& filepath)
 		for (const tinyobj::index_t& index : shape.mesh.indices) 
 		{
 			Vertex vertex = {};
+
+			//Normals and texcoords are optional, while positions are required
+			ASSERT(index.vertex_index >= 0);
+			
 			vertex.Position = 
 			{
 				attributes.vertices[3 * index.vertex_index + 0],
 				attributes.vertices[3 * index.vertex_index + 1],
-				attributes.vertices[3 * index.vertex_index + 2],
-				1.0f
+				attributes.vertices[3 * index.vertex_index + 2]
 			};
 
 			if (index.normal_index >= 0)
@@ -61,17 +67,18 @@ bool MeshVK::initFromFile(const std::string& filepath)
 				{
 					attributes.normals[3 * index.normal_index + 0],
 					attributes.normals[3 * index.normal_index + 1],
-					attributes.normals[3 * index.normal_index + 2],
-					0.0f
+					attributes.normals[3 * index.normal_index + 2]
 				};
 			}
-
-			vertex.TexCoord = 
+			
+			if (index.texcoord_index >= 0)
 			{
-				attributes.texcoords[2 * index.texcoord_index + 0],
-				1.0f - attributes.texcoords[2 * index.texcoord_index + 1],
-				0.0f, 0.0f
-			};
+				vertex.TexCoord = 
+				{
+					attributes.texcoords[2 * index.texcoord_index + 0],
+					1.0f -	attributes.texcoords[2 * index.texcoord_index + 1]
+				};
+			}
 
 			if (uniqueVertices.count(vertex) == 0) 
 			{
@@ -83,6 +90,7 @@ bool MeshVK::initFromFile(const std::string& filepath)
 		}
 	}
 
+	//Calculate tangents
 	for (uint32_t index = 0; index < indices.size(); index += 3)
 	{
 		Vertex& v0 = vertices[indices[index + 0]];
@@ -157,7 +165,7 @@ bool MeshVK::initAsSphere(uint32_t subDivisions)
 	std::vector<glm::vec3> vertices = icosahedronVertices;
 	std::vector<Triangle> triangles = icosahedronTriangles;
 
-	for (int i = 0; i < subDivisions; ++i)
+	for (uint32_t i = 0; i < subDivisions; ++i)
 	{
 		triangles = subdivide(vertices, triangles);
 	}
@@ -179,7 +187,7 @@ bool MeshVK::initAsSphere(uint32_t subDivisions)
 		finalIndices.push_back(triangles[i].indices[2]);
 	}
 
-	initFromMemory(finalVertices.data(), sizeof(Vertex), finalVertices.size(), finalIndices.data(), finalIndices.size());
+	initFromMemory(finalVertices.data(), sizeof(Vertex), (uint32_t)finalVertices.size(), finalIndices.data(), (uint32_t)finalIndices.size());
 	return true;
 }
 
@@ -203,7 +211,12 @@ uint32_t MeshVK::getVertexCount() const
 	return m_VertexCount;
 }
 
-glm::vec4 MeshVK::calculateTangent(const Vertex& v0, const Vertex& v1, const Vertex& v2)
+uint32_t MeshVK::getMeshID() const
+{
+	return m_ID;
+}
+
+glm::vec3 MeshVK::calculateTangent(const Vertex& v0, const Vertex& v1, const Vertex& v2)
 {
 	glm::vec3 edge1 = v1.Position - v0.Position;
 	glm::vec3 edge2 = v2.Position - v0.Position;
@@ -218,7 +231,7 @@ glm::vec4 MeshVK::calculateTangent(const Vertex& v0, const Vertex& v1, const Ver
 	tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
 	tangent = glm::normalize(tangent);
 
-	return glm::vec4(tangent, 0.0f);
+	return tangent;
 }
 
 uint32_t MeshVK::vertexForEdge(std::map<std::pair<uint32_t, uint32_t>, uint32_t>& lookup, std::vector<glm::vec3>& vertices, uint32_t first, uint32_t second)

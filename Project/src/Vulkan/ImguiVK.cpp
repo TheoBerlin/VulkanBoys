@@ -207,8 +207,9 @@ bool ImguiVK::init()
 	//}
 
 	//Write to descriptor sets
-	Texture2DVK* pTexture = reinterpret_cast<Texture2DVK*>(m_pFontTexture);
-	m_pDescriptorSet->writeCombinedImageDescriptor(pTexture->getImageView()->getImageView(), m_pSampler->getSampler(), 0);
+	Texture2DVK* pTexture			= reinterpret_cast<Texture2DVK*>(m_pFontTexture);
+	ImageViewVK* pFontTextureView	= pTexture->getImageView();
+	m_pDescriptorSet->writeCombinedImageDescriptors(&pFontTextureView, &m_pSampler, 1, 0);
 
 	D_LOG("ImGui initialized successfully");
 	return true;
@@ -217,12 +218,12 @@ bool ImguiVK::init()
 void ImguiVK::begin(double deltatime)
 {
     ImGuiIO& io = ImGui::GetIO();
-	io.DeltaTime = deltatime;
+	io.DeltaTime = float(deltatime);
 
     //Maybe should not be dependent on Application?
     IWindow* pWindow = Application::get()->getWindow();
-    io.DisplaySize = ImVec2(float(pWindow->getClientWidth()), float(pWindow->getClientHeight()));
-	io.DisplayFramebufferScale = ImVec2(pWindow->getScaleX(), pWindow->getScaleY());
+    io.DisplaySize				= ImVec2(float(pWindow->getClientWidth()), float(pWindow->getClientHeight()));
+	io.DisplayFramebufferScale	= ImVec2(pWindow->getScaleX(), pWindow->getScaleY());
 
 	ImGui::NewFrame();
 }
@@ -241,7 +242,7 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 
 	//uint64 vertexSize	= pDrawData->TotalVtxCount * sizeof(ImDrawVert);
 	//uint64 indexSize	= pDrawData->TotalIdxCount * sizeof(ImDrawIdx);
-	// pload vertex/index data into a single contiguous GPU buffer
+	//upload vertex/index data into a single contiguous GPU buffer
 	{
 		ImDrawVert* pVtxDst = nullptr;
 		ImDrawIdx* pIdxDst = nullptr;
@@ -274,12 +275,12 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 
 	//Setup viewport
 	VkViewport viewport = {};
-	viewport.x = 0.0f;
-	viewport.y = 0.0f;
-	viewport.width	= io.DisplaySize.x * io.DisplayFramebufferScale.x;
-	viewport.height = io.DisplaySize.y * io.DisplayFramebufferScale.y;
-	viewport.minDepth = 0.0f;
-	viewport.maxDepth = 1.0f;
+	viewport.x			= 0.0f;
+	viewport.y			= 0.0f;
+	viewport.width		= io.DisplaySize.x * io.DisplayFramebufferScale.x;
+	viewport.height		= io.DisplaySize.y * io.DisplayFramebufferScale.y;
+	viewport.minDepth	= 0.0f;
+	viewport.maxDepth	= 1.0f;
 	pCommandBuffer->setViewports(&viewport, 1);
 
 	// Setup scale and translation:
@@ -327,10 +328,10 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 
 				// Apply scissor/clipping rectangle	
 				VkRect2D scissor = {};
-				scissor.offset.x = clipRect.x;
-				scissor.offset.y = clipRect.y;
-				scissor.extent.width	= clipRect.z - clipRect.x;
-				scissor.extent.height	= clipRect.w - clipRect.y;
+				scissor.offset.x		= (int32_t)clipRect.x;
+				scissor.offset.y		= (int32_t)clipRect.y;
+				scissor.extent.width	= uint32_t(clipRect.z - clipRect.x);
+				scissor.extent.height	= uint32_t(clipRect.w - clipRect.y);
 				pCommandBuffer->setScissorRects(&scissor, 1);
 
 				// Draw
@@ -340,18 +341,6 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 		globalIdxOffset += pCmdList->IdxBuffer.Size;
 		globalVtxOffset += pCmdList->VtxBuffer.Size;
 	}
-}
-
-void ImguiVK::onWindowClose()
-{
-}
-
-void ImguiVK::onWindowResize(uint32_t width, uint32_t height)
-{
-}
-
-void ImguiVK::onWindowFocusChanged(IWindow* pWindow, bool hasFocus)
-{
 }
 
 void ImguiVK::onMouseMove(uint32_t x, uint32_t y)
@@ -369,8 +358,8 @@ void ImguiVK::onMousePressed(int32_t button)
 void ImguiVK::onMouseScroll(double x, double y)
 {
 	ImGuiIO& io = ImGui::GetIO();
-	io.MouseWheelH	+= x;
-	io.MouseWheel	+= y;
+	io.MouseWheelH	+= (float)x;
+	io.MouseWheel	+= (float)y;
 }
 
 void ImguiVK::onMouseReleased(int32_t button)
@@ -487,20 +476,20 @@ bool ImguiVK::createRenderPass()
 	m_pRenderPass = DBG_NEW RenderPassVK(m_pContext->getDevice());
 
 	VkAttachmentDescription description = {};
-	description.format	= VK_FORMAT_B8G8R8A8_UNORM;
-	description.samples	= VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp	= VK_ATTACHMENT_LOAD_OP_CLEAR;				
-	description.storeOp	= VK_ATTACHMENT_STORE_OP_STORE;				
+	description.format			= VK_FORMAT_B8G8R8A8_UNORM;
+	description.samples			= VK_SAMPLE_COUNT_1_BIT;
+	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;				
+	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;				
 	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;	
 	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;	
 	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;			
 	description.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;		
 	m_pRenderPass->addAttachment(description);
 
-	description.format	= VK_FORMAT_D24_UNORM_S8_UINT;
-	description.samples	= VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp	= VK_ATTACHMENT_LOAD_OP_CLEAR;
-	description.storeOp	= VK_ATTACHMENT_STORE_OP_STORE;	
+	description.format			= VK_FORMAT_D24_UNORM_S8_UINT;
+	description.samples			= VK_SAMPLE_COUNT_1_BIT;
+	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
+	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;	
 	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;	
 	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;	
 	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;	
@@ -508,14 +497,23 @@ bool ImguiVK::createRenderPass()
 	m_pRenderPass->addAttachment(description);
 
 	VkAttachmentReference colorAttachmentRef = {};
-	colorAttachmentRef.attachment = 0;
-	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	colorAttachmentRef.attachment	= 0;
+	colorAttachmentRef.layout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentReference depthStencilAttachmentRef = {};
-	depthStencilAttachmentRef.attachment = 1;
-	depthStencilAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	depthStencilAttachmentRef.attachment	= 1;
+	depthStencilAttachmentRef.layout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	m_pRenderPass->addSubpass(&colorAttachmentRef, 1, &depthStencilAttachmentRef);
-	m_pRenderPass->addSubpassDependency(VK_SUBPASS_EXTERNAL, 0, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+
+	VkSubpassDependency dependency = {};
+	dependency.dependencyFlags	= VK_DEPENDENCY_BY_REGION_BIT;
+	dependency.srcSubpass		= VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass		= 0;
+	dependency.srcStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.dstStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.srcAccessMask	= 0;
+	dependency.dstAccessMask	= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	m_pRenderPass->addSubpassDependency(dependency);
 	m_pRenderPass->finalize();
 
 	return true;
@@ -537,19 +535,38 @@ bool ImguiVK::createPipeline()
 	pPixelShader->initFromByteCode(EShader::PIXEL_SHADER, "main", pixelByteCode);
 	pPixelShader->finalize();
 
-	std::vector<IShader*> shaders = { pVertexShader, pPixelShader };
+	std::vector<const IShader*> shaders = { pVertexShader, pPixelShader };
 	m_pPipeline = DBG_NEW PipelineVK(m_pContext->getDevice());
 	m_pPipeline->addVertexAttribute(0, VK_FORMAT_R32G32_SFLOAT, 0, IM_OFFSETOF(ImDrawVert, pos));
 	m_pPipeline->addVertexAttribute(0, VK_FORMAT_R32G32_SFLOAT, 1, IM_OFFSETOF(ImDrawVert, uv));
 	m_pPipeline->addVertexAttribute(0, VK_FORMAT_R8G8B8A8_UNORM, 2, IM_OFFSETOF(ImDrawVert, col));
 
 	m_pPipeline->addVertexBinding(0, VK_VERTEX_INPUT_RATE_VERTEX, sizeof(ImDrawVert));
+	
+	VkPipelineColorBlendAttachmentState blendAttachment = {};
+	blendAttachment.blendEnable			= VK_TRUE;
+	blendAttachment.colorWriteMask		= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	blendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	blendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	blendAttachment.colorBlendOp		= VK_BLEND_OP_ADD;
+	blendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	blendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	blendAttachment.alphaBlendOp		= VK_BLEND_OP_ADD;
+	m_pPipeline->addColorBlendAttachment(blendAttachment);
+	
+	VkPipelineRasterizationStateCreateInfo rasterizerState = {};
+	rasterizerState.cullMode				= VK_CULL_MODE_NONE;
+	rasterizerState.frontFace				= VK_FRONT_FACE_CLOCKWISE;
+	rasterizerState.polygonMode				= VK_POLYGON_MODE_FILL;
+	rasterizerState.rasterizerDiscardEnable = VK_FALSE;
+	rasterizerState.lineWidth				= 1.0f;
+	m_pPipeline->setRasterizerState(rasterizerState);
 
-	m_pPipeline->addColorBlendAttachment(true, VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
-
-	m_pPipeline->setCulling(false);
-	m_pPipeline->setWireFrame(false);
-	m_pPipeline->setDepthTest(false);
+	VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
+	depthStencilState.depthTestEnable	= VK_FALSE;
+	depthStencilState.depthWriteEnable	= VK_FALSE;
+	depthStencilState.stencilTestEnable = VK_FALSE;
+	m_pPipeline->setDepthStencilState(depthStencilState);
 
 	m_pPipeline->finalizeGraphics(shaders, m_pRenderPass, m_pPipelineLayout);
 
@@ -561,8 +578,14 @@ bool ImguiVK::createPipeline()
 
 bool ImguiVK::createPipelineLayout()
 {
+	SamplerParams samplerParams = {};
+	samplerParams.MinFilter = VK_FILTER_LINEAR;
+	samplerParams.MagFilter = VK_FILTER_LINEAR;
+	samplerParams.WrapModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerParams.WrapModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
 	m_pSampler = DBG_NEW SamplerVK(m_pContext->getDevice());
-	m_pSampler->init(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+	m_pSampler->init(samplerParams);
 
 	const VkSampler immutableSamplers[] = { m_pSampler->getSampler() };
 	m_pDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(m_pContext->getDevice());
@@ -580,10 +603,10 @@ bool ImguiVK::createPipelineLayout()
 	m_pPipelineLayout->init(descriptorSetLayouts, pushConstantRanges);
 
 	DescriptorCounts counts;
-	counts.m_SampledImages	= 1;
-	counts.m_StorageBuffers = 1;
-	counts.m_UniformBuffers = 1;
-	counts.m_StorageImages = 1;
+	counts.m_SampledImages			= 1;
+	counts.m_StorageBuffers			= 1;
+	counts.m_UniformBuffers			= 1;
+	counts.m_StorageImages			= 1;
 	counts.m_AccelerationStructures = 1;
 
 	m_pDescriptorPool = DBG_NEW DescriptorPoolVK(m_pContext->getDevice());
@@ -597,22 +620,21 @@ bool ImguiVK::createFontTexture()
 {
 	ImGuiIO& io = ImGui::GetIO();
 
-	uint8_t* pPixels = nullptr;
-	int32_t width	= 0;
-	int32_t height	= 0;
+	uint8_t* pPixels	= nullptr;
+	int32_t width		= 0;
+	int32_t height		= 0;
 	io.Fonts->GetTexDataAsRGBA32(&pPixels, &width, &height);
-	size_t uploadSize = width * height * 4;
 
 	m_pFontTexture = m_pContext->createTexture2D();
-	return m_pFontTexture->initFromMemory(pPixels, width, height);
+	return m_pFontTexture->initFromMemory(pPixels, width, height, ETextureFormat::FORMAT_R8G8B8A8_UNORM, 0, false);
 }
 
 bool ImguiVK::createBuffers(uint32_t vertexBufferSize, uint32_t indexBufferSize)
 {
 	BufferParams vertexBufferparams = {};
-	vertexBufferparams.Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-	vertexBufferparams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	vertexBufferparams.SizeInBytes = vertexBufferSize;
+	vertexBufferparams.Usage			= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	vertexBufferparams.MemoryProperty	= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	vertexBufferparams.SizeInBytes		= vertexBufferSize;
 
 	m_pVertexBuffer = DBG_NEW BufferVK(m_pContext->getDevice());
 	if (!m_pVertexBuffer->init(vertexBufferparams))
@@ -621,9 +643,9 @@ bool ImguiVK::createBuffers(uint32_t vertexBufferSize, uint32_t indexBufferSize)
 	}
 
 	BufferParams indexBufferparams = {};
-	indexBufferparams.Usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-	indexBufferparams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	indexBufferparams.SizeInBytes = indexBufferSize;
+	indexBufferparams.Usage				= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+	indexBufferparams.MemoryProperty	= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	indexBufferparams.SizeInBytes		= indexBufferSize;
 
 	m_pIndexBuffer = DBG_NEW BufferVK(m_pContext->getDevice());
 	if (!m_pIndexBuffer->init(indexBufferparams))

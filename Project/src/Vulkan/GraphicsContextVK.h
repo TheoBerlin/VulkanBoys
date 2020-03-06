@@ -19,12 +19,11 @@ public:
 
 	void init();
 
-	//OVERRIDE
-	virtual IRenderingHandler* createRenderingHandler() override;
-	virtual IRenderer* createMeshRenderer(IRenderingHandler* pRenderingHandler) override;
-	virtual IRenderer* createParticleRenderer(IRenderingHandler* pRenderingHandler) override;
-	virtual IRenderer* createRayTracingRenderer(IRenderingHandler* pRenderingHandler) override;
-	virtual IParticleEmitterHandler* createParticleEmitterHandler() override;
+	virtual RenderingHandler* createRenderingHandler() override;
+	virtual IRenderer* createMeshRenderer(RenderingHandler* pRenderingHandler) override;
+	virtual IRenderer* createParticleRenderer(RenderingHandler* pRenderingHandler) override;
+	virtual IRenderer* createRayTracingRenderer(RenderingHandler* pRenderingHandler) override;
+	virtual ParticleEmitterHandler* createParticleEmitterHandler() override;
 	virtual IImgui* createImgui() override;
 
     virtual IMesh* createMesh() override;
@@ -38,6 +37,7 @@ public:
 	virtual IImage* createImage() override;
 	virtual IImageView* createImageView() override;
 	virtual ITexture2D* createTexture2D() override;
+	virtual ISampler* createSampler() override;
 
 	virtual void sync() override;
 
@@ -45,8 +45,8 @@ public:
 
 	bool supportsRayTracing() const;
 
-	DeviceVK* getDevice() { return &m_Device; } //Const function?
-	SwapChainVK* getSwapChain() const { return m_pSwapChain; }
+	DeviceVK*		getDevice()				{ return &m_Device; } //Const function?
+	SwapChainVK*	getSwapChain() const	{ return m_pSwapChain; }
 
 private:
 	InstanceVK m_Instance;

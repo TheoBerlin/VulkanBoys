@@ -24,9 +24,9 @@ bool PipelineLayoutVK::init(const std::vector<const DescriptorSetLayoutVK*>& des
     }
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
-	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.pNext = nullptr;
-	pipelineLayoutInfo.flags = 0;
+	pipelineLayoutInfo.sType					= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.pNext					= nullptr;
+	pipelineLayoutInfo.flags					= 0;
     pipelineLayoutInfo.setLayoutCount			= uint32_t(vkDescriptorSetLayouts.size());
 	pipelineLayoutInfo.pSetLayouts				= (vkDescriptorSetLayouts.size() > 0) ? vkDescriptorSetLayouts.data() : nullptr;
 	pipelineLayoutInfo.pushConstantRangeCount	= uint32_t(pushConstantRanges.size());

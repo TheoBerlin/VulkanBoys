@@ -32,10 +32,12 @@ public:
 
 	virtual bool init() override;
 
-	virtual void beginFrame(const Camera& camera) override;
+	virtual void beginFrame(const Camera& camera, const LightSetup& lightSetup) override;
 	virtual void endFrame() override;
 
-	virtual void submitMesh(IMesh* pMesh, TempMaterial* pMaterial, const glm::mat4& transform);
+	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
+	
+	void submitMesh(IMesh* pMesh, TempMaterial* pMaterial, const glm::mat4& transform);
 
 	ProfilerVK* getProfiler() { return m_pProfiler; }
 

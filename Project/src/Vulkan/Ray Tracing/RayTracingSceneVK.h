@@ -1,7 +1,7 @@
 #pragma once
-
-#include "../VulkanCommon.h"
+#include "Vulkan/VulkanCommon.h"
 #include "Vulkan/ProfilerVK.h"
+#include "Vulkan/Texture2DVK.h"
 
 #include <vector>
 #include <unordered_map>

@@ -1,20 +1,21 @@
 #pragma once
-
 #include "Core/Core.h"
 
-class IBuffer;
-class IFrameBuffer;
+class IMesh;
 class IImgui;
 class IImage;
-class IImageView;
-class IMesh;
-class IParticleEmitterHandler;
-class IRenderer;
-class IRenderingHandler;
+class IBuffer;
 class IShader;
-class ITexture2D;
 class IWindow;
+class ISampler;
+class IRenderer;
+class IImageView;
+class ITexture2D;
+class IFrameBuffer;
+class IFrameBuffer;
 class IResourceLoader;
+class RenderingHandler;
+class ParticleEmitterHandler;
 
 enum API
 {
@@ -26,11 +27,11 @@ class IGraphicsContext
 public:
 	DECL_INTERFACE(IGraphicsContext);
 
-	virtual IRenderingHandler* createRenderingHandler() = 0;
-	virtual IRenderer* createMeshRenderer(IRenderingHandler* pRenderingHandler) = 0;
-	virtual IRenderer* createParticleRenderer(IRenderingHandler* pRenderingHandler) = 0;
-	virtual IRenderer* createRayTracingRenderer(IRenderingHandler* pRenderingHandler) = 0;
-	virtual IParticleEmitterHandler* createParticleEmitterHandler() = 0;
+	virtual RenderingHandler* createRenderingHandler() = 0;
+	virtual IRenderer* createMeshRenderer(RenderingHandler* pRenderingHandler) = 0;
+	virtual IRenderer* createParticleRenderer(RenderingHandler* pRenderingHandler) = 0;
+	virtual IRenderer* createRayTracingRenderer(RenderingHandler* pRenderingHandler) = 0;
+	virtual ParticleEmitterHandler* createParticleEmitterHandler() = 0;
 	virtual IImgui* createImgui() = 0;
 
 	virtual IShader* createShader() = 0;
@@ -44,6 +45,7 @@ public:
 	virtual IImage* createImage() = 0;
 	virtual IImageView* createImageView() = 0;
 	virtual ITexture2D* createTexture2D() = 0;
+	virtual ISampler* createSampler() = 0;
 
 	virtual void sync() = 0;
 
