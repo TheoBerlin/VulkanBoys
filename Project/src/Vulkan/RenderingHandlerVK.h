@@ -22,6 +22,8 @@ class ImguiVK;
 class GBufferVK;
 class IScene;
 class SceneVK;
+class ImageVK;
+class ImageViewVK;
 
 struct SubmitedMesh //Todo: Remove this
 {
@@ -79,6 +81,7 @@ private:
     bool createRenderPasses();
     bool createSemaphores();
     bool createBuffers();
+	bool createRayTracingRenderImage(uint32_t width, uint32_t height);
 	bool createGBuffer();
 
     void releaseBackBuffers();
@@ -97,7 +100,6 @@ private:
     RayTracingRendererVK* m_pRayTracer;
     ImguiVK* m_pImGuiRenderer;
 
-	GBufferVK* m_pGBuffer;
 
     FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
@@ -126,6 +128,11 @@ private:
 	VkRect2D m_ScissorRect;
 
     BufferVK* m_pCameraMatricesBuffer, *m_pCameraDirectionsBuffer;
+
+	//Render Results
+	ImageVK* m_pRayTracingStorageImage;
+	ImageViewVK* m_pRayTracingStorageImageView;
+	GBufferVK* m_pGBuffer;
 
     bool m_EnableRayTracing;
 };

@@ -13,6 +13,7 @@ layout(binding = 3) uniform sampler2D 	u_WorldPosition;
 layout(binding = 4) uniform samplerCube u_IrradianceMap;
 layout(binding = 5) uniform samplerCube u_EnvironmentMap;
 layout(binding = 6) uniform sampler2D 	u_BrdfLUT;
+layout(binding = 8) uniform sampler2D 	u_RayTracingResult;
 
 struct PointLight
 {
@@ -169,8 +170,11 @@ void main()
 	vec2 envBRDF 	= texture(u_BrdfLUT, vec2(max(dot(normal, viewDir), 0.0f), roughness)).rg;
 	vec3 specular	= prefilteredColor * (f * envBRDF.x + envBRDF.y);
 
+	vec4 rayTracedGlossy = texture(u_RayTracingResult, texCoord);
+
 	vec3 ambient 	= ((kDiffuse * diffuse) + specular) * ao;
 	
 	vec3 finalColor = ambient + L0;
     out_Color = ColorPost(finalColor);
+	out_Color.rgb = rayTracedGlossy.rgb;
 }

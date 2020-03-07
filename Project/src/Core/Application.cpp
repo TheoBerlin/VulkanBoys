@@ -132,7 +132,6 @@ void Application::init()
 	}
 
 	m_pRenderingHandler->setClearColor(0.0f, 0.0f, 0.0f);
-	m_pRenderingHandler->setParticleEmitterHandler(m_pParticleEmitterHandler);
 
 	//Load resources
 	ITexture2D* pPanorama = m_pContext->createTexture2D();

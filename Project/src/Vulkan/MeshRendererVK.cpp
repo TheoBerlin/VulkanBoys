@@ -262,6 +262,11 @@ void MeshRendererVK::setSkybox(TextureCubeVK* pSkybox, TextureCubeVK* pIrradianc
 	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pEnvironmentMapView, &m_pSkyboxSampler, 1, ENVIRONMENT_BINDING);
 }
 
+void MeshRendererVK::setRayTracingResult(ImageViewVK* pRayTracingResultImageView)
+{
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pRayTracingResultImageView, &m_pGBufferSampler, 1, RAY_TRACING_RESULT_BINDING);
+}
+
 void MeshRendererVK::submitMesh(const MeshVK* pMesh, const Material* pMaterial, const glm::vec3& materialProperties, const glm::mat4& transform)
 {
 	ASSERT(pMesh != nullptr);
@@ -754,6 +759,7 @@ bool MeshRendererVK::createPipelineLayouts()
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, IRRADIANCE_BINDING, 1);
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ENVIRONMENT_BINDING, 1);
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, BRDF_LUT_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, RAY_TRACING_RESULT_BINDING, 1);
 	if (!m_pLightDescriptorSetLayout->finalize())
 	{
 		return false;

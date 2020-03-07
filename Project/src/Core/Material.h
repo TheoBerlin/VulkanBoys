@@ -40,7 +40,7 @@ public:
 	ITexture2D* getAmbientOcclusionMap() const { return m_pAmbientOcclusionMap; }
 	ITexture2D* getMetallicMap() const { return m_pMetallicMap; }
 	ITexture2D* getRoughnessMap() const { return m_pRoughnessMap; }
-	ISampler* getSampler() const { return m_pSampler; };
+	ISampler* getSampler() const { assert(m_pSampler != nullptr); return m_pSampler; };
 	const glm::vec4& getAlbedo() const { return m_Albedo; }
 	uint32_t getMaterialID() const { return m_ID; }
 	float getAmbientOcclusion() const { return m_Ambient; }

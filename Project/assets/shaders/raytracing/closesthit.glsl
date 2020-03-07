@@ -26,19 +26,13 @@ layout(location = 1) rayPayloadNV ShadowRayPayload shadowRayPayload;
 
 hitAttributeNV vec3 attribs;
 
-layout(binding = 0, set = 0) uniform accelerationStructureNV topLevelAS;
-layout(binding = 2, set = 0) uniform CameraProperties
-{
-	mat4 viewInverse;
-	mat4 projInverse;
-	vec4 lightPos;
-} cam;
-layout(binding = 3, set = 0) buffer Vertices { Vertex v[]; } vertices;
-layout(binding = 4, set = 0) buffer Indices { uint i[]; } indices;
-layout(binding = 5, set = 0) buffer MeshIndices { uint mi[]; } meshIndices;
-layout(binding = 6, set = 0) uniform sampler2D albedoMaps[16];
-layout(binding = 7, set = 0) uniform sampler2D normalMaps[16];
-layout(binding = 8, set = 0) uniform sampler2D roughnessMaps[16];
+layout(binding = 2, set = 0) uniform accelerationStructureNV topLevelAS;
+layout(binding = 6, set = 0) buffer Vertices { Vertex v[]; } vertices;
+layout(binding = 7, set = 0) buffer Indices { uint i[]; } indices;
+layout(binding = 8, set = 0) buffer MeshIndices { uint mi[]; } meshIndices;
+layout(binding = 9, set = 0) uniform sampler2D albedoMaps[16];
+layout(binding = 10, set = 0) uniform sampler2D normalMaps[16];
+layout(binding = 11, set = 0) uniform sampler2D roughnessMaps[16];
 
 // Max. number of recursion is passed via a specialization constant
 layout (constant_id = 0) const int MAX_RECURSION = 0;
