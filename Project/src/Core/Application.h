@@ -21,7 +21,7 @@ class Application : public CommonEventHandler
 public:
 	Application();
 	~Application();
-	
+
 	DECL_NO_COPY(Application);
 
 	void init();
@@ -30,7 +30,7 @@ public:
 
 	virtual void onWindowClose() override;
 	virtual void onWindowResize(uint32_t width, uint32_t height) override;
-	
+
 	virtual void onKeyPressed(EKey key) override;
 	virtual void onMouseMove(uint32_t x, uint32_t y) override;
 
@@ -71,6 +71,8 @@ private:
 
 	// Resources for ImGui Particle window
 	size_t m_CurrentEmitterIdx;
+	bool m_CreatingEmitter;
+	ParticleEmitterInfo m_NewEmitterInfo;
 
 	bool m_IsRunning;
 	bool m_UpdateCamera;
