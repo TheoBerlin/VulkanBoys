@@ -163,8 +163,7 @@ bool ParticleRendererVK::createCommandPoolAndBuffers()
 		}
 
 		m_ppCommandBuffers[i] = m_ppCommandPools[i]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_SECONDARY);
-		if (m_ppCommandBuffers[i] == nullptr) 
-		{
+		if (m_ppCommandBuffers[i] == nullptr) {
 			return false;
 		}
 	}
@@ -196,7 +195,7 @@ bool ParticleRendererVK::createPipelineLayout()
 
 	// Particle Texture
 	m_pSampler = new SamplerVK(pDevice);
-	
+
 	SamplerParams samplerParams = {};
 	samplerParams.MinFilter = VkFilter::VK_FILTER_LINEAR;
 	samplerParams.MagFilter = VkFilter::VK_FILTER_LINEAR;

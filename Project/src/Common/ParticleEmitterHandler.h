@@ -29,7 +29,6 @@ public:
     ParticleEmitter* createEmitter(const ParticleEmitterInfo& emitterInfo);
 
     std::vector<ParticleEmitter*>& getParticleEmitters() { return m_ParticleEmitters; }
-    ParticleEmitter* getParticleEmitter(size_t idx) { return m_ParticleEmitters[idx]; }
 
     bool gpuComputed() const { return m_GPUComputed; }
     virtual void toggleComputationDevice() = 0;

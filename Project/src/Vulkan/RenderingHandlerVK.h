@@ -59,7 +59,7 @@ public:
     virtual void setSkybox(ITextureCube* pSkybox) override;
 
     virtual void onWindowResize(uint32_t width, uint32_t height) override;
-    
+
     uint32_t                getCurrentFrameIndex() const                { return m_CurrentFrame; }
     FrameBufferVK* const*   getBackBuffers() const                      { return m_ppBackbuffers; }
 	RenderPassVK*			getGeometryRenderPass() const				{ return m_pGeometryRenderPass; }
@@ -83,7 +83,6 @@ private:
 
     void updateBuffers(const Camera& camera);
 
-    void startRenderPass();
     void submitParticles();
 
 private:

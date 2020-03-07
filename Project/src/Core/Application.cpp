@@ -190,7 +190,7 @@ void Application::init()
 	emitterInfo.particleSize = glm::vec2(0.2f, 0.2f);
 	emitterInfo.initialSpeed = 5.5f;
 	emitterInfo.particleDuration = 3.0f;
-	emitterInfo.particlesPerSecond = 40.0f;
+	emitterInfo.particlesPerSecond = 20000.0f;
 	emitterInfo.spread = glm::quarter_pi<float>() / 1.3f;
 	emitterInfo.pTexture = m_pParticleTexture;
 	for (size_t i = 0; i < 2; i++) 
@@ -475,9 +475,19 @@ void Application::renderUI(double dt)
 			m_pParticleEmitterHandler->toggleComputationDevice();
 		}
 
+		// Emitter selection
+		std::vector<ParticleEmitter*> particleEmitters = m_pParticleEmitterHandler->getParticleEmitters();
+		m_CurrentEmitterIdx = std::min(m_CurrentEmitterIdx, particleEmitters.size() - 1);
+		int emitterIdxInt = (int)m_CurrentEmitterIdx;
+
+		if (ImGui::SliderInt("Emitter selection", &emitterIdxInt, 0, int(particleEmitters.size() - 1))) {
+			m_CurrentEmitterIdx = (size_t)emitterIdxInt;
+		}
+
 		// Get current emitter data
-		ParticleEmitter* pEmitter = m_pParticleEmitterHandler->getParticleEmitter(m_CurrentEmitterIdx);
+		ParticleEmitter* pEmitter = particleEmitters[m_CurrentEmitterIdx];
 		glm::vec3 emitterPos = pEmitter->getPosition();
+		glm::vec2 particleSize = pEmitter->getParticleSize();
 
 		glm::vec3 emitterDirection = pEmitter->getDirection();
 		float yaw = getYaw(emitterDirection);
@@ -486,6 +496,7 @@ void Application::renderUI(double dt)
 		float oldPitch = pitch;
 
 		float emitterSpeed = pEmitter->getInitialSpeed();
+		float spread = pEmitter->getSpread();
 
 		if (ImGui::SliderFloat3("Position", glm::value_ptr(emitterPos), -10.0f, 10.0f)) {
 			pEmitter->setPosition(emitterPos);
@@ -501,16 +512,17 @@ void Application::renderUI(double dt)
 		if (ImGui::SliderFloat3("Direction", glm::value_ptr(emitterDirection), -1.0f, 1.0f)) {
 			pEmitter->setDirection(glm::normalize(emitterDirection));
 		}
+		if (ImGui::SliderFloat2("Size", glm::value_ptr(particleSize), 0.0f, 1.0f)) {
+			pEmitter->setParticleSize(particleSize);
+		}
 		if (ImGui::SliderFloat("Speed", &emitterSpeed, 0.0f, 20.0f)) {
 			pEmitter->setInitialSpeed(emitterSpeed);
 		}
+		if (ImGui::SliderFloat("Spread", &spread, 0.0f, glm::pi<float>())) {
+			pEmitter->setSpread(spread);
+		}
 
 		ImGui::Text("Particles: %d", pEmitter->getParticleCount());
-		float particlesPerSecond = pEmitter->getParticlesPerSecond();
-		//float particleDuration = pEmitter->getParticleDuration();
-
-		if (ImGui::SliderFloat("Particles per second", &particlesPerSecond, 0.0f, 1000.0f)) {
-		}
 	}
 	ImGui::End();
 
