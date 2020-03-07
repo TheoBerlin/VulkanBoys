@@ -42,7 +42,7 @@ public:
     ParticleEmitter(const ParticleEmitterInfo& emitterInfo);
     ~ParticleEmitter();
 
-    bool initialize(IGraphicsContext* pGraphicsContext, const Camera* pCamera);
+    bool initialize(IGraphicsContext* pGraphicsContext);
 
     void update(float dt);
     void updateGPU(float dt);
@@ -122,6 +122,4 @@ private:
     IBuffer* m_pVelocitiesBuffer;
     IBuffer* m_pAgesBuffer;
     IBuffer* m_pEmitterBuffer;
-
-    const Camera* m_pCamera;
 };

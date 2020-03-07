@@ -46,7 +46,7 @@ RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 	m_ClearDepth.depthStencil.depth = 1.0f;
 	m_ClearDepth.depthStencil.stencil = 0;
 
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) 
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
         m_ppGraphicsCommandPools[i]		= VK_NULL_HANDLE;
 		m_ppComputeCommandPools[i]		= VK_NULL_HANDLE;
@@ -67,18 +67,18 @@ RenderingHandlerVK::~RenderingHandlerVK()
 	releaseBackBuffers();
 
 	VkDevice device = m_pGraphicsContext->getDevice()->getDevice();
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) 
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
 		SAFEDELETE(m_ppGraphicsCommandPools[i]);
 		SAFEDELETE(m_ppComputeCommandPools[i]);
 		SAFEDELETE(m_ppCommandPoolsSecondary[i]);
 
-		if (m_ImageAvailableSemaphores[i] != VK_NULL_HANDLE) 
+		if (m_ImageAvailableSemaphores[i] != VK_NULL_HANDLE)
 		{
 			vkDestroySemaphore(device, m_ImageAvailableSemaphores[i], nullptr);
 		}
 
-		if (m_RenderFinishedSemaphores[i] != VK_NULL_HANDLE) 
+		if (m_RenderFinishedSemaphores[i] != VK_NULL_HANDLE)
 		{
 			vkDestroySemaphore(device, m_RenderFinishedSemaphores[i], nullptr);
 		}
@@ -93,27 +93,27 @@ bool RenderingHandlerVK::initialize()
 		return false;
 	}
 
-	if (!createRenderPasses()) 
+	if (!createRenderPasses())
 	{
 		return false;
 	}
 
-	if (!createBackBuffers()) 
+	if (!createBackBuffers())
 	{
 		return false;
 	}
 
-	if (!createCommandPoolAndBuffers()) 
+	if (!createCommandPoolAndBuffers())
 	{
 		return false;
 	}
 
-	if (!createSemaphores()) 
+	if (!createSemaphores())
 	{
 		return false;
 	}
 
-	if (!createBuffers()) 
+	if (!createBuffers())
 	{
 		return false;
 	}
@@ -166,29 +166,29 @@ void RenderingHandlerVK::beginFrame(const Camera& camera, const LightSetup& ligh
 
 	updateBuffers(camera);
 
-	if (m_pMeshRenderer != nullptr) 
+	if (m_pMeshRenderer != nullptr)
 	{
 		m_pMeshRenderer->setupFrame(m_ppGraphicsCommandBuffers[m_CurrentFrame], camera, lightsetup);
 		m_pMeshRenderer->beginFrame(camera, lightsetup);
 	}
 
-	//if (m_pRayTracer != nullptr) 
+	//if (m_pRayTracer != nullptr)
 	//{
 	//	m_pRayTracer->beginFrame(camera, lightsetup);
 	//}
 
-	if (m_pParticleRenderer != nullptr) 
+	if (m_pParticleRenderer != nullptr)
 	{
 		m_pParticleRenderer->beginFrame(camera, lightsetup);
 		submitParticles();
-	}		
+	}
 
 	//startRenderPass();
 }
 
 void RenderingHandlerVK::endFrame()
 {
-	//if (m_pRayTracer != nullptr) 
+	//if (m_pRayTracer != nullptr)
 	//{
 	//	m_pRayTracer->endFrame();
 	//}
@@ -211,7 +211,7 @@ void RenderingHandlerVK::endFrame()
 
 	if (m_pImGuiRenderer)
 	{
-		TaskDispatcher::execute([&, this] 
+		TaskDispatcher::execute([&, this]
 			{
 				// Needed to begin a secondary buffer
 				VkCommandBufferInheritanceInfo inheritanceInfo = {};
@@ -236,7 +236,7 @@ void RenderingHandlerVK::endFrame()
 		VkClearValue clearValues[] = { m_ClearColor, m_ClearColor, m_ClearColor, m_ClearDepth };
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pGeometryRenderPass, m_pGBuffer->getFrameBuffer(), (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 4, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
-		TaskDispatcher::execute([this] 
+		TaskDispatcher::execute([this]
 			{
 				for (SubmitedMesh& submission : m_SubmitedMeshes)
 				{
@@ -259,7 +259,7 @@ void RenderingHandlerVK::endFrame()
 	//Gather all renderer's data and finalize the frame
 	VkClearValue clearValues[] = { m_ClearColor, m_ClearDepth };
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pBackBufferRenderPass, pBackbuffer, (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 2, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-	
+
 	if (m_pMeshRenderer)
 	{
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pMeshRenderer->getLightCommandBuffer());
@@ -372,7 +372,7 @@ void RenderingHandlerVK::setSkybox(ITextureCube* pSkybox)
 void RenderingHandlerVK::submitMesh(IMesh* pMesh, const Material& material, const glm::mat4& transform)
 {
 	MeshVK* pMeshVK = reinterpret_cast<MeshVK*>(pMesh);
-	
+
 	glm::vec3 materialProperties(material.getAmbientOcclusion(), material.getMetallic(), material.getRoughness());
 	m_SubmitedMeshes.push_back({ pMeshVK, &material, materialProperties, transform });
 }
@@ -384,13 +384,13 @@ bool RenderingHandlerVK::createBackBuffers()
 
 	VkExtent2D extent = pSwapChain->getExtent();
 	ImageViewVK* pDepthStencilView = pSwapChain->getDepthStencilView();
-	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) 
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
 		m_ppBackbuffers[i] = DBG_NEW FrameBufferVK(pDevice);
 		m_ppBackbuffers[i]->addColorAttachment(pSwapChain->getImageView(i));
 		m_ppBackbuffers[i]->setDepthStencilAttachment(pDepthStencilView);
-		
-		if (!m_ppBackbuffers[i]->finalize(m_pBackBufferRenderPass, extent.width, extent.height)) 
+
+		if (!m_ppBackbuffers[i]->finalize(m_pBackBufferRenderPass, extent.width, extent.height))
 		{
 			return false;
 		}
@@ -405,40 +405,40 @@ bool RenderingHandlerVK::createCommandPoolAndBuffers()
     const uint32_t graphicsQueueFamilyIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
 	const uint32_t gcomputeQueueFamilyIndex = pDevice->getQueueFamilyIndices().computeFamily.value();
 
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) 
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
         m_ppGraphicsCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, graphicsQueueFamilyIndex);
-		if (!m_ppGraphicsCommandPools[i]->init()) 
+		if (!m_ppGraphicsCommandPools[i]->init())
 		{
 			return false;
 		}
 
         m_ppGraphicsCommandBuffers[i] = m_ppGraphicsCommandPools[i]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-        if (m_ppGraphicsCommandBuffers[i] == nullptr) 
+        if (m_ppGraphicsCommandBuffers[i] == nullptr)
 		{
             return false;
         }
 
 		m_ppComputeCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, gcomputeQueueFamilyIndex);
-		if (!m_ppComputeCommandPools[i]->init()) 
+		if (!m_ppComputeCommandPools[i]->init())
 		{
 			return false;
 		}
 
 		m_ppComputeCommandBuffers[i] = m_ppComputeCommandPools[i]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-		if (m_ppComputeCommandBuffers[i] == nullptr) 
+		if (m_ppComputeCommandBuffers[i] == nullptr)
 		{
 			return false;
 		}
 
         m_ppCommandPoolsSecondary[i] = DBG_NEW CommandPoolVK(pDevice, graphicsQueueFamilyIndex);
-		if (!m_ppCommandPoolsSecondary[i]->init()) 
+		if (!m_ppCommandPoolsSecondary[i]->init())
 		{
 			return false;
 		}
 
         m_ppCommandBuffersSecondary[i] = m_ppCommandPoolsSecondary[i]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_SECONDARY);
-        if (m_ppCommandBuffersSecondary[i] == nullptr) 
+        if (m_ppCommandBuffersSecondary[i] == nullptr)
 		{
             return false;
         }
@@ -454,22 +454,22 @@ bool RenderingHandlerVK::createRenderPasses()
 	VkAttachmentDescription description = {};
 	description.format			= VK_FORMAT_B8G8R8A8_UNORM;
 	description.samples			= VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;			
-	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;			
-	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;	
-	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;	
-	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;			
-	description.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;		
+	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
+	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
+	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
+	description.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	m_pBackBufferRenderPass->addAttachment(description);
 
 	description.format			= VK_FORMAT_D24_UNORM_S8_UINT;
 	description.samples			= VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;				
-	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;				
-	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;	
-	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;	
-	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;							
-	description.finalLayout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;		
+	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
+	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
+	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
+	description.finalLayout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	m_pBackBufferRenderPass->addAttachment(description);
 
 	VkAttachmentReference colorAttachmentRef = {};
@@ -589,7 +589,7 @@ bool RenderingHandlerVK::createSemaphores()
 	semaphoreInfo.flags = 0;
 
 	VkDevice device = m_pGraphicsContext->getDevice()->getDevice();
-	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) 
+	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
 		VK_CHECK_RESULT_RETURN_FALSE(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_ImageAvailableSemaphores[i]), "Failed to create semaphores for a Frame");
 		VK_CHECK_RESULT_RETURN_FALSE(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_RenderFinishedSemaphores[i]), "Failed to create semaphores for a Frame");
@@ -600,7 +600,7 @@ bool RenderingHandlerVK::createSemaphores()
 
 void RenderingHandlerVK::releaseBackBuffers()
 {
-	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) 
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
 		SAFEDELETE(m_ppBackbuffers[i]);
 	}
@@ -623,21 +623,14 @@ void RenderingHandlerVK::updateBuffers(const Camera& camera)
 	m_pParticleEmitterHandler->updateRenderingBuffers(this);
 }
 
-void RenderingHandlerVK::startRenderPass()
-{
-	// Start renderpass
-	VkClearValue clearValues[] = { m_ClearColor, m_ClearDepth };
-	m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pBackBufferRenderPass, m_ppBackbuffers[m_BackBufferIndex], (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 2, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-}
-
 void RenderingHandlerVK::submitParticles()
 {
 	ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
 
 	// Transfer buffer ownerships to the graphics queue
-	for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters()) 
+	for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters())
 	{
-		if (pEmitterHandler->gpuComputed()) 
+		if (pEmitterHandler->gpuComputed())
 		{
 			pEmitterHandler->acquireForGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
 		}
@@ -655,7 +648,7 @@ bool RenderingHandlerVK::createBuffers()
 	cameraBufferParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 	m_pCameraMatricesBuffer = DBG_NEW BufferVK(m_pGraphicsContext->getDevice());
-	if (!m_pCameraMatricesBuffer->init(cameraBufferParams)) 
+	if (!m_pCameraMatricesBuffer->init(cameraBufferParams))
 	{
 		LOG("Failed to create camera matrices buffer");
 		return false;
@@ -665,7 +658,7 @@ bool RenderingHandlerVK::createBuffers()
 	cameraBufferParams.SizeInBytes = sizeof(CameraDirectionsBuffer);
 
 	m_pCameraDirectionsBuffer = DBG_NEW BufferVK(m_pGraphicsContext->getDevice());
-	if (!m_pCameraDirectionsBuffer->init(cameraBufferParams)) 
+	if (!m_pCameraDirectionsBuffer->init(cameraBufferParams))
 	{
 		LOG("Failed to create camera directions buffer");
 		return false;

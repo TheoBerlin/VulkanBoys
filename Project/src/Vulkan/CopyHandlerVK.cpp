@@ -98,7 +98,7 @@ void CopyHandlerVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_
 	CommandBufferVK* pCommandBuffer = getNextGraphicsBuffer();
 	pCommandBuffer->reset(true);
 	pCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	
+
 	//Insert barrier if we need to
 	if (initalLayout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
 	{
@@ -137,7 +137,7 @@ void CopyHandlerVK::generateMips(ImageVK* pImage)
 
 	const uint32_t miplevelCount = pImage->getMiplevelCount();
 	pCommandBuffer->transitionImageLayout(pImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, miplevelCount, 0, 1);
-	
+
 	VkExtent2D destinationExtent = {};
 	VkExtent2D sourceExtent = { pImage->getExtent().width, pImage->getExtent().height };
 	for (uint32_t i = 1; i < miplevelCount; i++)
