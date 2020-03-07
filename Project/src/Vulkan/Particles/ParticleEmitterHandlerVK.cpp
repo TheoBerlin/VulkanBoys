@@ -279,6 +279,10 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 		pTempCommandBufferCompute->reset(true);
 		pTempCommandBufferCompute->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
+		if (m_GPUComputed) {
+			releaseFromCompute(pPositionsBuffer, pTempCommandBufferCompute);
+		}
+
 		releaseFromGraphics(pVelocitiesBuffer, pTempCommandBufferGraphics);
 		releaseFromGraphics(pAgesBuffer, pTempCommandBufferGraphics);
 
