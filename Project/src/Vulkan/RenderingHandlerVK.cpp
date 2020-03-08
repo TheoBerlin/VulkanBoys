@@ -98,6 +98,11 @@ bool RenderingHandlerVK::initialize()
 		return false;
 	}
 
+	if (!createGBuffer())
+	{
+		return false;
+	}
+
 	if (!createBackBuffers())
 	{
 		return false;
@@ -114,11 +119,6 @@ bool RenderingHandlerVK::initialize()
 	}
 
 	if (!createBuffers())
-	{
-		return false;
-	}
-
-	if (!createGBuffer())
 	{
 		return false;
 	}
@@ -383,7 +383,7 @@ bool RenderingHandlerVK::createBackBuffers()
 	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
 
 	VkExtent2D extent = pSwapChain->getExtent();
-	ImageViewVK* pDepthStencilView = pSwapChain->getDepthStencilView();
+	ImageViewVK* pDepthStencilView = m_pGBuffer->getDepthAttachment();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
 		m_ppBackbuffers[i] = DBG_NEW FrameBufferVK(pDevice);
@@ -464,11 +464,11 @@ bool RenderingHandlerVK::createRenderPasses()
 
 	description.format			= VK_FORMAT_D24_UNORM_S8_UINT;
 	description.samples			= VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
+	description.loadOp			= VK_ATTACHMENT_LOAD_OP_LOAD;
 	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
 	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
+	description.initialLayout	= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	description.finalLayout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	m_pBackBufferRenderPass->addAttachment(description);
 

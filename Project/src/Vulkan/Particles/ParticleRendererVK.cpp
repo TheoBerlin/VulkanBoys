@@ -269,7 +269,7 @@ bool ParticleRendererVK::createPipeline()
 	m_pPipeline->setRasterizerState(rasterizerState);
 
 	VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
-	depthStencilState.depthTestEnable	= VK_FALSE;
+	depthStencilState.depthTestEnable	= VK_TRUE;
 	depthStencilState.depthWriteEnable	= VK_FALSE;
 	depthStencilState.depthCompareOp	= VK_COMPARE_OP_LESS;
 	depthStencilState.stencilTestEnable	= VK_FALSE;

@@ -120,7 +120,7 @@ bool MeshRendererVK::init()
 	{
 		return false;
 	}
-	
+
 	if (!createBuffersAndTextures())
 	{
 		return false;
@@ -644,8 +644,8 @@ bool MeshRendererVK::createPipelines()
 	rasterizerState.lineWidth	= 1.0f;
 	m_pLightPipeline->setRasterizerState(rasterizerState);
 
-	depthStencilState.depthTestEnable	= VK_TRUE;
-	depthStencilState.depthWriteEnable	= VK_TRUE;
+	depthStencilState.depthTestEnable	= VK_FALSE;
+	depthStencilState.depthWriteEnable	= VK_FALSE;
 	depthStencilState.depthCompareOp	= VK_COMPARE_OP_LESS;
 	depthStencilState.stencilTestEnable = VK_FALSE;
 	m_pLightPipeline->setDepthStencilState(depthStencilState);
