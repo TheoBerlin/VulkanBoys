@@ -1,10 +1,13 @@
 #include "SceneVK.h"
 
+#include "Core/Material.h"
+
 #include "Vulkan/GraphicsContextVK.h"
 #include "Vulkan/DeviceVK.h"
 #include "Vulkan/BufferVK.h"
 #include "Vulkan/MeshVK.h"
 #include "Vulkan/Texture2DVK.h"
+#include "Vulkan/SamplerVK.h"
 
 #include "Vulkan/CommandPoolVK.h"
 #include "Vulkan/CommandBufferVK.h"
@@ -32,7 +35,11 @@ SceneVK::SceneVK(IGraphicsContext* pContext) :
 	m_TopLevelIsDirty(false),
 	m_BottomLevelIsDirty(false),
 	m_pVeryTempMaterial(nullptr),
-	m_pLightProbeMesh(nullptr)
+	m_pLightProbeMesh(nullptr),
+	m_pDefaultTexture(nullptr),
+	m_pDefaultNormal(nullptr),
+	m_pDefaultSampler(nullptr),
+	m_pMaterialParametersBuffer(nullptr)
 {
 	m_pDevice = reinterpret_cast<DeviceVK*>(m_pContext->getDevice());
 }
@@ -56,13 +63,18 @@ SceneVK::~SceneVK()
 	SAFEDELETE(m_pCombinedIndexBuffer);
 	SAFEDELETE(m_pMeshIndexBuffer);
 	SAFEDELETE(m_pLightProbeMesh);
+	SAFEDELETE(m_pDefaultTexture);
+	SAFEDELETE(m_pDefaultNormal);
+	SAFEDELETE(m_pDefaultSampler);
+
+	SAFEDELETE(m_pMaterialParametersBuffer);
 
 	for (auto& bottomLevelAccelerationStructurePerMesh : m_NewBottomLevelAccelerationStructures)
 	{
 		for (auto& bottomLevelAccelerationStructure : bottomLevelAccelerationStructurePerMesh.second)
 		{
-			vkFreeMemory(m_pDevice->getDevice(), bottomLevelAccelerationStructure.second.memory, nullptr);
-			m_pDevice->vkDestroyAccelerationStructureNV(m_pDevice->getDevice(), bottomLevelAccelerationStructure.second.accelerationStructure, nullptr);
+			vkFreeMemory(m_pDevice->getDevice(), bottomLevelAccelerationStructure.second.Memory, nullptr);
+			m_pDevice->vkDestroyAccelerationStructureNV(m_pDevice->getDevice(), bottomLevelAccelerationStructure.second.AccelerationStructure, nullptr);
 		}
 	}
 	m_NewBottomLevelAccelerationStructures.clear();
@@ -71,26 +83,26 @@ SceneVK::~SceneVK()
 	{
 		for (auto& bottomLevelAccelerationStructure : bottomLevelAccelerationStructurePerMesh.second)
 		{
-			vkFreeMemory(m_pDevice->getDevice(), bottomLevelAccelerationStructure.second.memory, nullptr);
-			m_pDevice->vkDestroyAccelerationStructureNV(m_pDevice->getDevice(), bottomLevelAccelerationStructure.second.accelerationStructure, nullptr);
+			vkFreeMemory(m_pDevice->getDevice(), bottomLevelAccelerationStructure.second.Memory, nullptr);
+			m_pDevice->vkDestroyAccelerationStructureNV(m_pDevice->getDevice(), bottomLevelAccelerationStructure.second.AccelerationStructure, nullptr);
 		}
 	}
 	m_FinalizedBottomLevelAccelerationStructures.clear();
 
 
-	if (m_TopLevelAccelerationStructure.memory != VK_NULL_HANDLE)
+	if (m_TopLevelAccelerationStructure.Memory != VK_NULL_HANDLE)
 	{
-		vkFreeMemory(m_pDevice->getDevice(), m_TopLevelAccelerationStructure.memory, nullptr);
-		m_TopLevelAccelerationStructure.memory = VK_NULL_HANDLE;
+		vkFreeMemory(m_pDevice->getDevice(), m_TopLevelAccelerationStructure.Memory, nullptr);
+		m_TopLevelAccelerationStructure.Memory = VK_NULL_HANDLE;
 	}
 
-	if (m_TopLevelAccelerationStructure.accelerationStructure != VK_NULL_HANDLE)
+	if (m_TopLevelAccelerationStructure.AccelerationStructure != VK_NULL_HANDLE)
 	{
-		m_pDevice->vkDestroyAccelerationStructureNV(m_pDevice->getDevice(), m_TopLevelAccelerationStructure.accelerationStructure, nullptr);
-		m_TopLevelAccelerationStructure.accelerationStructure = VK_NULL_HANDLE;
+		m_pDevice->vkDestroyAccelerationStructureNV(m_pDevice->getDevice(), m_TopLevelAccelerationStructure.AccelerationStructure, nullptr);
+		m_TopLevelAccelerationStructure.AccelerationStructure = VK_NULL_HANDLE;
 	}
 
-	m_TopLevelAccelerationStructure.handle = VK_NULL_HANDLE;
+	m_TopLevelAccelerationStructure.Handle = VK_NULL_HANDLE;
 }
 
 bool SceneVK::finalize()
@@ -103,6 +115,12 @@ bool SceneVK::finalize()
 	if (!createTLAS())
 	{
 		LOG("--- SceneVK: Failed to create TLAS!");
+		return false;
+	}
+
+	if (!createDefaultTexturesAndSamplers())
+	{
+		LOG("--- SceneVK: Failed to create Default Textures and/or Samplers!");
 		return false;
 	}
 
@@ -127,6 +145,8 @@ bool SceneVK::finalize()
 		LOG("--- SceneVK: Failed to create Combined Graphics Object Data!");
 		return false;
 	}
+
+	updateMaterials();
 	
 	createProfiler();
 
@@ -146,6 +166,63 @@ void SceneVK::update()
 		updateTLAS();
 		createCombinedGraphicsObjectData();
 	}
+}
+
+void SceneVK::updateMaterials()
+{
+	for (uint32_t i = 0; i < MAX_NUM_UNIQUE_MATERIALS; i++)
+	{
+		if (i < m_Materials.size())
+		{
+			const Material* pMaterial = m_Materials[i];
+
+			const Texture2DVK* pAlbedoMap = reinterpret_cast<const Texture2DVK*>(pMaterial->getAlbedoMap());
+			const Texture2DVK* pNormalMap = reinterpret_cast<const Texture2DVK*>(pMaterial->getNormalMap());
+			const Texture2DVK* pAOMap = reinterpret_cast<const Texture2DVK*>(pMaterial->getAmbientOcclusionMap());
+			const Texture2DVK* pMetallicMap = reinterpret_cast<const Texture2DVK*>(pMaterial->getMetallicMap());
+			const Texture2DVK* pRoughnessMap = reinterpret_cast<const Texture2DVK*>(pMaterial->getRoughnessMap());
+			const SamplerVK* pSampler = reinterpret_cast<const SamplerVK*>(pMaterial->getSampler());
+
+			m_AlbedoMaps[i] = pAlbedoMap != nullptr ? pAlbedoMap->getImageView() : m_pDefaultTexture->getImageView();
+			m_NormalMaps[i] = pNormalMap != nullptr ? pNormalMap->getImageView() : m_pDefaultNormal->getImageView();
+			m_AOMaps[i] = pAOMap != nullptr ? pAOMap->getImageView() : m_pDefaultTexture->getImageView();
+			m_MetallicMaps[i] = pMetallicMap != nullptr ? pMetallicMap->getImageView() : m_pDefaultTexture->getImageView();
+			m_RoughnessMaps[i] = pRoughnessMap != nullptr ? pRoughnessMap->getImageView() : m_pDefaultTexture->getImageView();
+			m_Samplers[i] = pSampler != nullptr ? pSampler : m_pDefaultSampler;
+			m_MaterialParameters[i] =
+			{
+				pMaterial->getAlbedo(),
+				pMaterial->getMetallic(),
+				pMaterial->getRoughness(),
+				pMaterial->getAmbientOcclusion(),
+				1.0f
+			};
+		}
+		else
+		{
+			m_AlbedoMaps[i] = m_pDefaultTexture->getImageView();
+			m_NormalMaps[i] =m_pDefaultNormal->getImageView();
+			m_AOMaps[i] = m_pDefaultTexture->getImageView();
+			m_MetallicMaps[i] = m_pDefaultTexture->getImageView();
+			m_RoughnessMaps[i] = m_pDefaultTexture->getImageView();
+			m_Samplers[i] =m_pDefaultSampler;
+			m_MaterialParameters[i] =
+			{
+				glm::vec4(1.0f),
+				1.0f,
+				1.0f,
+				1.0f,
+				1.0f
+			};
+		}
+	}
+
+	constexpr uint32_t SIZE_IN_BYTES = MAX_NUM_UNIQUE_MATERIALS * sizeof(MaterialParameters);
+
+	void* pDest;
+	m_pMaterialParametersBuffer->map(&pDest);
+	memcpy(pDest, m_MaterialParameters.data(), SIZE_IN_BYTES);
+	m_pMaterialParametersBuffer->unmap();
 }
 
 void SceneVK::updateCamera(const Camera& camera)
@@ -202,11 +279,11 @@ uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMate
 			m_BottomLevelIsDirty = true;
 			BottomLevelAccelerationStructure blasCopy = finalizedBLASPerMesh->second.begin()->second;
 
-			blasCopy.index = m_NumBottomLevelAccelerationStructures;
+			blasCopy.Index = m_NumBottomLevelAccelerationStructures;
 			m_NumBottomLevelAccelerationStructures++;
 
-			blasCopy.textureIndex = m_AllMaterials.size();
-			m_AllMaterials.push_back(pMaterial);
+			blasCopy.MaterialIndex = m_Materials.size();
+			m_Materials.push_back(pMaterial);
 
 			std::unordered_map<const Material*, BottomLevelAccelerationStructure> tempBLASPerMesh;
 			tempBLASPerMesh[pMaterial] = blasCopy;
@@ -227,11 +304,11 @@ uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMate
 		m_BottomLevelIsDirty = true;
 		BottomLevelAccelerationStructure blasCopy = newBLASPerMesh->second.begin()->second;
 
-		blasCopy.index = m_NumBottomLevelAccelerationStructures;
+		blasCopy.Index = m_NumBottomLevelAccelerationStructures;
 		m_NumBottomLevelAccelerationStructures++;
 
-		blasCopy.textureIndex = m_AllMaterials.size();
-		m_AllMaterials.push_back(pMaterial);
+		blasCopy.MaterialIndex = m_Materials.size();
+		m_Materials.push_back(pMaterial);
 
 		newBLASPerMesh->second[pMaterial] = blasCopy;
 		pBottomLevelAccelerationStructure = &newBLASPerMesh->second[pMaterial];
@@ -243,12 +320,12 @@ uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMate
 	}
 
 	GeometryInstance geometryInstance = {};
-	geometryInstance.transform = glm::transpose(transform);
-	geometryInstance.instanceId = pBottomLevelAccelerationStructure->index; //This is not really used anymore, Todo: remove this
-	geometryInstance.mask = customMask;
-	geometryInstance.instanceOffset = 0;
-	geometryInstance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_CULL_DISABLE_BIT_NV;
-	geometryInstance.accelerationStructureHandle = pBottomLevelAccelerationStructure->handle;
+	geometryInstance.Transform = glm::transpose(transform);
+	geometryInstance.InstanceId = pBottomLevelAccelerationStructure->Index; //This is not really used anymore, Todo: remove this
+	geometryInstance.Mask = customMask;
+	geometryInstance.InstanceOffset = 0;
+	geometryInstance.Flags = VK_GEOMETRY_INSTANCE_TRIANGLE_CULL_DISABLE_BIT_NV;
+	geometryInstance.AccelerationStructureHandle = pBottomLevelAccelerationStructure->Handle;
 	m_GeometryInstances.push_back(geometryInstance);
 
 	m_GraphicsObjects.push_back({ pVulkanMesh, pMaterial, transform });
@@ -258,8 +335,58 @@ uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMate
 
 void SceneVK::updateGraphicsObjectTransform(uint32_t index, const glm::mat4& transform)
 {
-	m_GeometryInstances[index].transform = glm::transpose(transform);
+	m_GeometryInstances[index].Transform = glm::transpose(transform);
 	m_GraphicsObjects[index].Transform = transform;
+}
+
+bool SceneVK::createDefaultTexturesAndSamplers()
+{
+	uint8_t whitePixels[] = { 255, 255, 255, 255 };
+	m_pDefaultTexture = DBG_NEW Texture2DVK(m_pContext->getDevice());
+	if (!m_pDefaultTexture->initFromMemory(whitePixels, 1, 1, ETextureFormat::FORMAT_R8G8B8A8_UNORM, 0, false))
+	{
+		return false;
+	}
+
+	uint8_t pixels[] = { 127, 127, 255, 255 };
+	m_pDefaultNormal = DBG_NEW Texture2DVK(m_pContext->getDevice());
+	if (!m_pDefaultNormal->initFromMemory(pixels, 1, 1, ETextureFormat::FORMAT_R8G8B8A8_UNORM, 0, false))
+	{
+		return false;
+	}
+
+	SamplerParams samplerParams = {};
+	samplerParams.MinFilter = VkFilter::VK_FILTER_LINEAR;
+	samplerParams.MagFilter = VkFilter::VK_FILTER_LINEAR;
+	samplerParams.WrapModeU = VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerParams.WrapModeV = samplerParams.WrapModeU;
+	samplerParams.WrapModeW = samplerParams.WrapModeU;
+
+	m_pDefaultSampler = new SamplerVK(m_pContext->getDevice());
+	if (!m_pDefaultSampler->init(samplerParams))
+	{
+		return false;
+	}
+
+	m_AlbedoMaps.resize(MAX_NUM_UNIQUE_MATERIALS);
+	m_NormalMaps.resize(MAX_NUM_UNIQUE_MATERIALS);
+	m_AOMaps.resize(MAX_NUM_UNIQUE_MATERIALS);
+	m_MetallicMaps.resize(MAX_NUM_UNIQUE_MATERIALS);
+	m_RoughnessMaps.resize(MAX_NUM_UNIQUE_MATERIALS);
+	m_Samplers.resize(MAX_NUM_UNIQUE_MATERIALS);
+	m_MaterialParameters.resize(MAX_NUM_UNIQUE_MATERIALS);
+
+	constexpr uint32_t SIZE_IN_BYTES = MAX_NUM_UNIQUE_MATERIALS * sizeof(MaterialParameters);
+
+	BufferParams materialParametersBufferParams = {};
+	materialParametersBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	materialParametersBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	materialParametersBufferParams.SizeInBytes = SIZE_IN_BYTES;
+
+	m_pMaterialParametersBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
+	m_pMaterialParametersBuffer->init(materialParametersBufferParams);
+
+	return true;
 }
 
 void SceneVK::initBuildBuffers()
@@ -270,7 +397,7 @@ void SceneVK::initBuildBuffers()
 	memoryRequirementsInfo.type = VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_BUILD_SCRATCH_NV;
 
 	VkMemoryRequirements2 memReqTLAS;
-	memoryRequirementsInfo.accelerationStructure = m_TopLevelAccelerationStructure.accelerationStructure;
+	memoryRequirementsInfo.accelerationStructure = m_TopLevelAccelerationStructure.AccelerationStructure;
 	m_pDevice->vkGetAccelerationStructureMemoryRequirementsNV(m_pDevice->getDevice(), &memoryRequirementsInfo, &memReqTLAS);
 
 	BufferParams scratchBufferParams = {};
@@ -294,40 +421,40 @@ SceneVK::BottomLevelAccelerationStructure* SceneVK::createBLAS(const MeshVK* pMe
 {
 	BottomLevelAccelerationStructure bottomLevelAccelerationStructure = {};
 
-	bottomLevelAccelerationStructure.geometry.sType = VK_STRUCTURE_TYPE_GEOMETRY_NV;
-	bottomLevelAccelerationStructure.geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_NV;
-	bottomLevelAccelerationStructure.geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NV;
-	bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexData = ((BufferVK*)pMesh->getVertexBuffer())->getBuffer();
-	bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexOffset = 0;
-	bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexCount = pMesh->getVertexCount();
-	bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexStride = sizeof(Vertex);
-	bottomLevelAccelerationStructure.geometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
-	bottomLevelAccelerationStructure.geometry.geometry.triangles.indexData = ((BufferVK*)pMesh->getIndexBuffer())->getBuffer();
-	bottomLevelAccelerationStructure.geometry.geometry.triangles.indexOffset = 0;
-	bottomLevelAccelerationStructure.geometry.geometry.triangles.indexCount = pMesh->getIndexCount();
-	bottomLevelAccelerationStructure.geometry.geometry.triangles.indexType = VK_INDEX_TYPE_UINT32;
-	bottomLevelAccelerationStructure.geometry.geometry.triangles.transformData = VK_NULL_HANDLE;
-	bottomLevelAccelerationStructure.geometry.geometry.triangles.transformOffset = 0;
-	bottomLevelAccelerationStructure.geometry.geometry.aabbs = {};
-	bottomLevelAccelerationStructure.geometry.geometry.aabbs.sType = { VK_STRUCTURE_TYPE_GEOMETRY_AABB_NV };
-	bottomLevelAccelerationStructure.geometry.flags = VK_GEOMETRY_OPAQUE_BIT_NV;
+	bottomLevelAccelerationStructure.Geometry.sType = VK_STRUCTURE_TYPE_GEOMETRY_NV;
+	bottomLevelAccelerationStructure.Geometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_NV;
+	bottomLevelAccelerationStructure.Geometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NV;
+	bottomLevelAccelerationStructure.Geometry.geometry.triangles.vertexData = ((BufferVK*)pMesh->getVertexBuffer())->getBuffer();
+	bottomLevelAccelerationStructure.Geometry.geometry.triangles.vertexOffset = 0;
+	bottomLevelAccelerationStructure.Geometry.geometry.triangles.vertexCount = pMesh->getVertexCount();
+	bottomLevelAccelerationStructure.Geometry.geometry.triangles.vertexStride = sizeof(Vertex);
+	bottomLevelAccelerationStructure.Geometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
+	bottomLevelAccelerationStructure.Geometry.geometry.triangles.indexData = ((BufferVK*)pMesh->getIndexBuffer())->getBuffer();
+	bottomLevelAccelerationStructure.Geometry.geometry.triangles.indexOffset = 0;
+	bottomLevelAccelerationStructure.Geometry.geometry.triangles.indexCount = pMesh->getIndexCount();
+	bottomLevelAccelerationStructure.Geometry.geometry.triangles.indexType = VK_INDEX_TYPE_UINT32;
+	bottomLevelAccelerationStructure.Geometry.geometry.triangles.transformData = VK_NULL_HANDLE;
+	bottomLevelAccelerationStructure.Geometry.geometry.triangles.transformOffset = 0;
+	bottomLevelAccelerationStructure.Geometry.geometry.aabbs = {};
+	bottomLevelAccelerationStructure.Geometry.geometry.aabbs.sType = { VK_STRUCTURE_TYPE_GEOMETRY_AABB_NV };
+	bottomLevelAccelerationStructure.Geometry.flags = VK_GEOMETRY_OPAQUE_BIT_NV;
 
 	VkAccelerationStructureInfoNV accelerationStructureInfo = {};
 	accelerationStructureInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV;
 	accelerationStructureInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_NV;
 	accelerationStructureInfo.instanceCount = 0;
 	accelerationStructureInfo.geometryCount = 1;
-	accelerationStructureInfo.pGeometries = &bottomLevelAccelerationStructure.geometry;
+	accelerationStructureInfo.pGeometries = &bottomLevelAccelerationStructure.Geometry;
 
 	VkAccelerationStructureCreateInfoNV accelerationStructureCreateInfo = {};
 	accelerationStructureCreateInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV;
 	accelerationStructureCreateInfo.info = accelerationStructureInfo;
-	VK_CHECK_RESULT(m_pDevice->vkCreateAccelerationStructureNV(m_pDevice->getDevice(), &accelerationStructureCreateInfo, nullptr, &bottomLevelAccelerationStructure.accelerationStructure), "--- RayTracingScene: Could not create BLAS!");
+	VK_CHECK_RESULT(m_pDevice->vkCreateAccelerationStructureNV(m_pDevice->getDevice(), &accelerationStructureCreateInfo, nullptr, &bottomLevelAccelerationStructure.AccelerationStructure), "--- RayTracingScene: Could not create BLAS!");
 
 	VkAccelerationStructureMemoryRequirementsInfoNV memoryRequirementsInfo = {};
 	memoryRequirementsInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV;
 	memoryRequirementsInfo.type = VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_OBJECT_NV;
-	memoryRequirementsInfo.accelerationStructure = bottomLevelAccelerationStructure.accelerationStructure;
+	memoryRequirementsInfo.accelerationStructure = bottomLevelAccelerationStructure.AccelerationStructure;
 
 	VkMemoryRequirements2 memoryRequirements2 = {};
 	m_pDevice->vkGetAccelerationStructureMemoryRequirementsNV(m_pDevice->getDevice(), &memoryRequirementsInfo, &memoryRequirements2);
@@ -336,21 +463,21 @@ SceneVK::BottomLevelAccelerationStructure* SceneVK::createBLAS(const MeshVK* pMe
 	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	memoryAllocateInfo.allocationSize = memoryRequirements2.memoryRequirements.size;
 	memoryAllocateInfo.memoryTypeIndex = findMemoryType(m_pDevice->getPhysicalDevice(), memoryRequirements2.memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	VK_CHECK_RESULT(vkAllocateMemory(m_pDevice->getDevice(), &memoryAllocateInfo, nullptr, &bottomLevelAccelerationStructure.memory), "--- RayTracingScene: Could not allocate memory for BLAS!");
+	VK_CHECK_RESULT(vkAllocateMemory(m_pDevice->getDevice(), &memoryAllocateInfo, nullptr, &bottomLevelAccelerationStructure.Memory), "--- RayTracingScene: Could not allocate memory for BLAS!");
 
 	VkBindAccelerationStructureMemoryInfoNV accelerationStructureMemoryInfo = {};
 	accelerationStructureMemoryInfo.sType = VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NV;
-	accelerationStructureMemoryInfo.accelerationStructure = bottomLevelAccelerationStructure.accelerationStructure;
-	accelerationStructureMemoryInfo.memory = bottomLevelAccelerationStructure.memory;
+	accelerationStructureMemoryInfo.accelerationStructure = bottomLevelAccelerationStructure.AccelerationStructure;
+	accelerationStructureMemoryInfo.memory = bottomLevelAccelerationStructure.Memory;
 	VK_CHECK_RESULT(m_pDevice->vkBindAccelerationStructureMemoryNV(m_pDevice->getDevice(), 1, &accelerationStructureMemoryInfo), "--- RayTracingScene: Could not bind memory for BLAS!");
 
-	VK_CHECK_RESULT(m_pDevice->vkGetAccelerationStructureHandleNV(m_pDevice->getDevice(), bottomLevelAccelerationStructure.accelerationStructure, sizeof(uint64_t), &bottomLevelAccelerationStructure.handle), "--- RayTracingScene: Could not get handle for BLAS!");
+	VK_CHECK_RESULT(m_pDevice->vkGetAccelerationStructureHandleNV(m_pDevice->getDevice(), bottomLevelAccelerationStructure.AccelerationStructure, sizeof(uint64_t), &bottomLevelAccelerationStructure.Handle), "--- RayTracingScene: Could not get handle for BLAS!");
 
-	bottomLevelAccelerationStructure.index = m_NumBottomLevelAccelerationStructures;
+	bottomLevelAccelerationStructure.Index = m_NumBottomLevelAccelerationStructures;
 	m_NumBottomLevelAccelerationStructures++;
 
-	bottomLevelAccelerationStructure.textureIndex = m_AllMaterials.size();
-	m_AllMaterials.push_back(pMaterial);
+	bottomLevelAccelerationStructure.MaterialIndex = m_Materials.size();
+	m_Materials.push_back(pMaterial);
 
 	std::unordered_map<const Material*, BottomLevelAccelerationStructure> newBLASPerMesh;
 	newBLASPerMesh[pMaterial] = bottomLevelAccelerationStructure;
@@ -400,7 +527,7 @@ bool SceneVK::buildBLASs()
 			buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV;
 			buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_NV;
 			buildInfo.geometryCount = 1;
-			buildInfo.pGeometries = &bottomLevelAccelerationStructure.second.geometry;
+			buildInfo.pGeometries = &bottomLevelAccelerationStructure.second.Geometry;
 
 			//Todo: Make this better?
 			m_pDevice->vkCmdBuildAccelerationStructureNV(
@@ -409,7 +536,7 @@ bool SceneVK::buildBLASs()
 				VK_NULL_HANDLE,
 				0,
 				VK_FALSE,
-				bottomLevelAccelerationStructure.second.accelerationStructure,
+				bottomLevelAccelerationStructure.second.AccelerationStructure,
 				VK_NULL_HANDLE,
 				m_pScratchBuffer->getBuffer(),
 				0);
@@ -443,12 +570,12 @@ bool SceneVK::createTLAS()
 	VkAccelerationStructureCreateInfoNV accelerationStructureCreateInfo = {};
 	accelerationStructureCreateInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV;
 	accelerationStructureCreateInfo.info = accelerationStructureInfo;
-	VK_CHECK_RESULT_RETURN_FALSE(m_pDevice->vkCreateAccelerationStructureNV(m_pDevice->getDevice(), &accelerationStructureCreateInfo, nullptr, &m_TopLevelAccelerationStructure.accelerationStructure), "--- RayTracingScene: Could not create TLAS!");
+	VK_CHECK_RESULT_RETURN_FALSE(m_pDevice->vkCreateAccelerationStructureNV(m_pDevice->getDevice(), &accelerationStructureCreateInfo, nullptr, &m_TopLevelAccelerationStructure.AccelerationStructure), "--- RayTracingScene: Could not create TLAS!");
 
 	VkAccelerationStructureMemoryRequirementsInfoNV memoryRequirementsInfo = {};
 	memoryRequirementsInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV;
 	memoryRequirementsInfo.type = VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_OBJECT_NV;
-	memoryRequirementsInfo.accelerationStructure = m_TopLevelAccelerationStructure.accelerationStructure;
+	memoryRequirementsInfo.accelerationStructure = m_TopLevelAccelerationStructure.AccelerationStructure;
 
 	VkMemoryRequirements2 memoryRequirements2 = {};
 	m_pDevice->vkGetAccelerationStructureMemoryRequirementsNV(m_pDevice->getDevice(), &memoryRequirementsInfo, &memoryRequirements2);
@@ -457,15 +584,15 @@ bool SceneVK::createTLAS()
 	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	memoryAllocateInfo.allocationSize = memoryRequirements2.memoryRequirements.size;
 	memoryAllocateInfo.memoryTypeIndex = findMemoryType(m_pDevice->getPhysicalDevice(), memoryRequirements2.memoryRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	VK_CHECK_RESULT_RETURN_FALSE(vkAllocateMemory(m_pDevice->getDevice(), &memoryAllocateInfo, nullptr, &m_TopLevelAccelerationStructure.memory), "--- RayTracingScene: Could not allocate memory for TLAS!");
+	VK_CHECK_RESULT_RETURN_FALSE(vkAllocateMemory(m_pDevice->getDevice(), &memoryAllocateInfo, nullptr, &m_TopLevelAccelerationStructure.Memory), "--- RayTracingScene: Could not allocate memory for TLAS!");
 
 	VkBindAccelerationStructureMemoryInfoNV accelerationStructureMemoryInfo = {};
 	accelerationStructureMemoryInfo.sType = VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NV;
-	accelerationStructureMemoryInfo.accelerationStructure = m_TopLevelAccelerationStructure.accelerationStructure;
-	accelerationStructureMemoryInfo.memory = m_TopLevelAccelerationStructure.memory;
+	accelerationStructureMemoryInfo.accelerationStructure = m_TopLevelAccelerationStructure.AccelerationStructure;
+	accelerationStructureMemoryInfo.memory = m_TopLevelAccelerationStructure.Memory;
 	VK_CHECK_RESULT_RETURN_FALSE(m_pDevice->vkBindAccelerationStructureMemoryNV(m_pDevice->getDevice(), 1, &accelerationStructureMemoryInfo), "--- RayTracingScene: Could not allocate bind memory for TLAS!");
 
-	VK_CHECK_RESULT_RETURN_FALSE(m_pDevice->vkGetAccelerationStructureHandleNV(m_pDevice->getDevice(), m_TopLevelAccelerationStructure.accelerationStructure, sizeof(uint64_t), &m_TopLevelAccelerationStructure.handle), "--- RayTracingScene: Could not get handle for TLAS!");
+	VK_CHECK_RESULT_RETURN_FALSE(m_pDevice->vkGetAccelerationStructureHandleNV(m_pDevice->getDevice(), m_TopLevelAccelerationStructure.AccelerationStructure, sizeof(uint64_t), &m_TopLevelAccelerationStructure.Handle), "--- RayTracingScene: Could not get handle for TLAS!");
 	return true;
 }
 
@@ -499,7 +626,7 @@ bool SceneVK::buildTLAS()
 		m_pInstanceBuffer->getBuffer(),
 		0,
 		VK_FALSE,
-		m_TopLevelAccelerationStructure.accelerationStructure,
+		m_TopLevelAccelerationStructure.AccelerationStructure,
 		VK_NULL_HANDLE,
 		m_pScratchBuffer->getBuffer(),
 		0);
@@ -563,7 +690,7 @@ bool SceneVK::updateTLAS()
 			m_pInstanceBuffer->getBuffer(),
 			0,
 			VK_FALSE,
-			m_TopLevelAccelerationStructure.accelerationStructure,
+			m_TopLevelAccelerationStructure.AccelerationStructure,
 			VK_NULL_HANDLE,
 			m_pScratchBuffer->getBuffer(),
 			0);
@@ -611,8 +738,8 @@ bool SceneVK::updateTLAS()
 			m_pInstanceBuffer->getBuffer(),
 			0,
 			VK_TRUE,
-			m_TopLevelAccelerationStructure.accelerationStructure,
-			m_TopLevelAccelerationStructure.accelerationStructure,
+			m_TopLevelAccelerationStructure.AccelerationStructure,
+			m_TopLevelAccelerationStructure.AccelerationStructure,
 			m_pScratchBuffer->getBuffer(),
 			0);
 
@@ -639,19 +766,19 @@ void SceneVK::cleanGarbage()
 	SAFEDELETE(m_pGarbageScratchBuffer);
 	SAFEDELETE(m_pGarbageInstanceBuffer)
 
-	if (m_OldTopLevelAccelerationStructure.memory != VK_NULL_HANDLE)
+	if (m_OldTopLevelAccelerationStructure.Memory != VK_NULL_HANDLE)
 	{
-		vkFreeMemory(m_pDevice->getDevice(), m_OldTopLevelAccelerationStructure.memory, nullptr);
-		m_OldTopLevelAccelerationStructure.memory = VK_NULL_HANDLE;
+		vkFreeMemory(m_pDevice->getDevice(), m_OldTopLevelAccelerationStructure.Memory, nullptr);
+		m_OldTopLevelAccelerationStructure.Memory = VK_NULL_HANDLE;
 	}
 
-	if (m_OldTopLevelAccelerationStructure.accelerationStructure != VK_NULL_HANDLE)
+	if (m_OldTopLevelAccelerationStructure.AccelerationStructure != VK_NULL_HANDLE)
 	{
-		m_pDevice->vkDestroyAccelerationStructureNV(m_pDevice->getDevice(), m_OldTopLevelAccelerationStructure.accelerationStructure, nullptr);
-		m_OldTopLevelAccelerationStructure.accelerationStructure = VK_NULL_HANDLE;
+		m_pDevice->vkDestroyAccelerationStructureNV(m_pDevice->getDevice(), m_OldTopLevelAccelerationStructure.AccelerationStructure, nullptr);
+		m_OldTopLevelAccelerationStructure.AccelerationStructure = VK_NULL_HANDLE;
 	}
 
-	m_OldTopLevelAccelerationStructure.handle = VK_NULL_HANDLE;
+	m_OldTopLevelAccelerationStructure.Handle = VK_NULL_HANDLE;
 }
 
 void SceneVK::updateScratchBufferForBLAS()
@@ -769,15 +896,15 @@ bool SceneVK::createCombinedGraphicsObjectData()
 		{
 			for (auto& geometryInstance : m_GeometryInstances)
 			{
-				if (geometryInstance.accelerationStructureHandle == bottomLevelAccelerationStructure.second.handle)
+				if (geometryInstance.AccelerationStructureHandle == bottomLevelAccelerationStructure.second.Handle)
 				{
-					geometryInstance.instanceId = currentCustomInstanceIndexNV;
+					geometryInstance.InstanceId = currentCustomInstanceIndexNV;
 				}
 			}
 
 			memcpy((void*)((size_t)pMeshIndexBufferMapped +  meshIndexBufferOffset		* sizeof(uint32_t)), &vertexBufferOffset, sizeof(uint32_t));
 			memcpy((void*)((size_t)pMeshIndexBufferMapped + (meshIndexBufferOffset + 1) * sizeof(uint32_t)), &indexBufferOffset, sizeof(uint32_t));
-			memcpy((void*)((size_t)pMeshIndexBufferMapped + (meshIndexBufferOffset + 2) * sizeof(uint32_t)), &bottomLevelAccelerationStructure.second.textureIndex, sizeof(uint32_t));
+			memcpy((void*)((size_t)pMeshIndexBufferMapped + (meshIndexBufferOffset + 2) * sizeof(uint32_t)), &bottomLevelAccelerationStructure.second.MaterialIndex, sizeof(uint32_t));
 			meshIndexBufferOffset += 3;
 			currentCustomInstanceIndexNV++;
 		}
@@ -811,7 +938,7 @@ VkDeviceSize SceneVK::findMaxMemReqBLAS()
 		for (auto& bottomLevelAccelerationStructure : bottomLevelAccelerationStructurePerMesh.second)
 		{
 			VkMemoryRequirements2 memReqBLAS = {};
-			memoryRequirementsInfo.accelerationStructure = bottomLevelAccelerationStructure.second.accelerationStructure;
+			memoryRequirementsInfo.accelerationStructure = bottomLevelAccelerationStructure.second.AccelerationStructure;
 			m_pDevice->vkGetAccelerationStructureMemoryRequirementsNV(m_pDevice->getDevice(), &memoryRequirementsInfo, &memReqBLAS);
 
 			if (memReqBLAS.memoryRequirements.size > maxSize)
@@ -827,7 +954,7 @@ VkDeviceSize SceneVK::findMaxMemReqTLAS()
 	VkAccelerationStructureMemoryRequirementsInfoNV memoryRequirementsInfo = {};
 	memoryRequirementsInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV;
 	memoryRequirementsInfo.type = VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_UPDATE_SCRATCH_NV;
-	memoryRequirementsInfo.accelerationStructure = m_TopLevelAccelerationStructure.accelerationStructure;
+	memoryRequirementsInfo.accelerationStructure = m_TopLevelAccelerationStructure.AccelerationStructure;
 
 	VkMemoryRequirements2 memReqTLAS = {};
 	m_pDevice->vkGetAccelerationStructureMemoryRequirementsNV(m_pDevice->getDevice(), &memoryRequirementsInfo, &memReqTLAS);

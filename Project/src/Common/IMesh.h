@@ -12,6 +12,7 @@ public:
     
     virtual bool initFromFile(const std::string& filepath) = 0;
     virtual bool initFromMemory(const void* pVertices, size_t vertexSize, uint32_t vertexCount, const uint32_t* pIndices, uint32_t indexCount) = 0;
+	virtual bool initAsSphere(uint32_t subDivisions) = 0;
 
     virtual IBuffer* getVertexBuffer() const = 0;
     virtual IBuffer* getIndexBuffer() const = 0;

@@ -150,7 +150,7 @@ void Application::init()
 	m_pSphere = m_pContext->createMesh();
 	TaskDispatcher::execute([&]
 		{
-			m_pSphere->initFromFile("assets/meshes/sphere.obj");
+			m_pSphere->initFromFile("assets/meshes/sphere2.obj");
 		});
 
 	m_pAlbedo = m_pContext->createTexture2D();
@@ -210,7 +210,6 @@ void Application::init()
 	m_GunMaterial.setMetallicMap(m_pMetallic);
 	m_GunMaterial.setRoughnessMap(m_pRoughness);
 
-	m_RedMaterial.setAmbientOcclusion(1.0f);
 
 	SamplerParams samplerParams = {};
 	samplerParams.MinFilter = VK_FILTER_LINEAR;
@@ -218,7 +217,19 @@ void Application::init()
 	samplerParams.WrapModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerParams.WrapModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	m_GunMaterial.createSampler(m_pContext, samplerParams);
-	m_RedMaterial.createSampler(m_pContext, samplerParams);
+
+	for (uint32_t y = 0; y < SPHERE_COUNT_DIMENSION; y++)
+	{
+		for (uint32_t x = 0; x < SPHERE_COUNT_DIMENSION; x++)
+		{
+			Material& material = m_SphereMaterials[x + y * SPHERE_COUNT_DIMENSION];
+			material.setAmbientOcclusion(1.0f);
+			material.setMetallic(float(y) / float(SPHERE_COUNT_DIMENSION));
+			material.setRoughness(glm::clamp((float(x) / float(SPHERE_COUNT_DIMENSION)), 0.05f, 1.0f));
+			material.createSampler(m_pContext, samplerParams);
+		}
+	}
+	
 
 	//Setup lights
 	m_LightSetup.addPointLight(PointLight(glm::vec3( 10.0f,  10.0f, -10.0f), glm::vec4(300.0f)));
@@ -250,9 +261,15 @@ void Application::init()
 	
 	for (uint32_t y = 0; y < SPHERE_COUNT_DIMENSION; y++)
 	{
+		float yCoord = ((float(SPHERE_COUNT_DIMENSION) * 0.5f) / -2.0f) + float(y * 0.5);
+
 		for (uint32_t x = 0; x < SPHERE_COUNT_DIMENSION; x++)
 		{
-			m_SphereIndexes[x + y * SPHERE_COUNT_DIMENSION] = m_pScene->submitGraphicsObject(m_pSphere, &m_RedMaterial);
+			float xCoord = ((float(SPHERE_COUNT_DIMENSION) * 0.5f) / -2.0f) + float(x * 0.5);
+
+			m_SphereIndexes[x + y * SPHERE_COUNT_DIMENSION] = m_pScene->submitGraphicsObject(
+				m_pSphere, &m_SphereMaterials[x + y * SPHERE_COUNT_DIMENSION], 
+				glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)), glm::vec3(0.25f)));
 		}
 	}
 	
@@ -300,7 +317,11 @@ void Application::release()
 	m_pContext->sync();
 
 	m_GunMaterial.release();
-	m_RedMaterial.release();
+	
+	for (uint32_t i = 0; i < SPHERE_COUNT_DIMENSION * SPHERE_COUNT_DIMENSION; i++)
+	{
+		m_SphereMaterials->release();
+	}
 
 	SAFEDELETE(m_pSkybox);
 	SAFEDELETE(m_pSphere);
@@ -481,27 +502,16 @@ void Application::update(double dt)
 	m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex1, glm::translate(glm::mat4(1.0f), glm::vec3(1.5f, 0.0f, 0.0f)));
 	m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex2, glm::translate(glm::mat4(1.0f), glm::vec3(-1.5f, 0.0f, 0.0f)));
 
-	m_RedMaterial.setAlbedo(g_Color);
-
-	constexpr uint32_t sphereCount = 8;
-	for (uint32_t y = 0; y < sphereCount; y++)
+	for (uint32_t i = 0; i < SPHERE_COUNT_DIMENSION * SPHERE_COUNT_DIMENSION; i++)
 	{
-		float yCoord = ((float(sphereCount) * 0.5f) / -2.0f) + float(y * 0.5);
-		m_RedMaterial.setMetallic(float(y) / float(sphereCount));
-
-		for (uint32_t x = 0; x < sphereCount; x++)
-		{
-			float xCoord = ((float(sphereCount) * 0.5f) / -2.0f) + float(x * 0.5);
-			m_RedMaterial.setRoughness(glm::clamp((float(x) / float(sphereCount)), 0.05f, 1.0f));
-
-			m_pScene->updateGraphicsObjectTransform(m_SphereIndexes[x + y * SPHERE_COUNT_DIMENSION], glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)));
-		}
+		m_SphereMaterials[i].setAlbedo(g_Color);
 	}
 
 	m_pScene->updateCamera(m_Camera);
 	m_pScene->updateLightSetup(m_LightSetup);
 
 	m_pScene->update();
+	m_pScene->updateMaterials();
 }
 
 void Application::renderUI(double dt)

@@ -18,6 +18,7 @@ class ITexture2D;
 class BufferVK;
 class MeshVK;
 class Texture2DVK;
+class SamplerVK;
 
 //Todo: Remove these
 class CommandPoolVK;
@@ -34,31 +35,39 @@ class SceneVK : public IScene
 
 	struct GeometryInstance
 	{
-		glm::mat3x4 transform;
-		uint32_t instanceId : 24;
-		uint32_t mask : 8;
-		uint32_t instanceOffset : 24;
-		uint32_t flags : 8;
-		uint64_t accelerationStructureHandle;
+		glm::mat3x4 Transform;
+		uint32_t InstanceId : 24;
+		uint32_t Mask : 8;
+		uint32_t InstanceOffset : 24;
+		uint32_t Flags : 8;
+		uint64_t AccelerationStructureHandle;
 	};
 	
 	struct BottomLevelAccelerationStructure
 	{
-		VkDeviceMemory memory = VK_NULL_HANDLE;
-		VkAccelerationStructureNV accelerationStructure = VK_NULL_HANDLE;
-		uint64_t handle = 0;
-		VkGeometryNV geometry = {};
-		uint32_t index = 0;
-		uint32_t textureIndex = 0;
+		VkDeviceMemory Memory = VK_NULL_HANDLE;
+		VkAccelerationStructureNV AccelerationStructure = VK_NULL_HANDLE;
+		uint64_t Handle = 0;
+		VkGeometryNV Geometry = {};
+		uint32_t Index = 0;
+		uint32_t MaterialIndex = 0;
 	};
 
 	struct TopLevelAccelerationStructure
 	{
-		VkDeviceMemory memory = VK_NULL_HANDLE;
-		VkAccelerationStructureNV accelerationStructure = VK_NULL_HANDLE;
-		uint64_t handle = 0;
+		VkDeviceMemory Memory = VK_NULL_HANDLE;
+		VkAccelerationStructureNV AccelerationStructure = VK_NULL_HANDLE;
+		uint64_t Handle = 0;
 	};
 
+	struct MaterialParameters
+	{
+		glm::vec4 Albedo;
+		float Metallic;
+		float Roughness;
+		float AO;
+		float Padding;
+	};
 	
 public:
 	DECL_NO_COPY(SceneVK);
@@ -68,6 +77,7 @@ public:
 
 	virtual bool finalize() override;
 	virtual void update() override;
+	virtual void updateMaterials() override;
 
 	virtual void updateCamera(const Camera& camera) override;
 	virtual void updateLightSetup(const LightSetup& lightsetup) override;
@@ -86,7 +96,13 @@ public:
 	BufferVK* getCombinedIndexBuffer()		{ return m_pCombinedIndexBuffer; }
 	BufferVK* getMeshIndexBuffer()			{ return m_pMeshIndexBuffer; }
 
-	const std::vector<const Material*>& getAllMaterials() { return m_AllMaterials; }
+	const std::vector<const ImageViewVK*>& getAlbedoMaps()			{ return m_AlbedoMaps; }
+	const std::vector<const ImageViewVK*>& getNormalMaps()			{ return m_NormalMaps; }
+	const std::vector<const ImageViewVK*>& getAOMaps()				{ return m_AOMaps; }
+	const std::vector<const ImageViewVK*>& getMetallicMaps()		{ return m_MetallicMaps; }
+	const std::vector<const ImageViewVK*>& getRoughnessMaps()		{ return m_RoughnessMaps; }
+	const std::vector<const SamplerVK*>& getSamplers()				{ return m_Samplers; }
+	const BufferVK* getMaterialParametersBuffer()					{ return m_pMaterialParametersBuffer; }
 
 	const TopLevelAccelerationStructure& getTLAS() { return m_TopLevelAccelerationStructure; }
 
@@ -95,6 +111,8 @@ public:
 	void generateLightProbeGeometry(float probeStepX, float probeStepY, float probeStepZ, uint32_t samplesPerProbe, uint32_t numProbesPerDimension);
 
 private:
+	bool createDefaultTexturesAndSamplers();
+
 	void initBuildBuffers();
 
 	BottomLevelAccelerationStructure* createBLAS(const MeshVK* pMesh, const Material* pMaterial);
@@ -134,7 +152,17 @@ private:
 	BufferVK* m_pCombinedVertexBuffer;
 	BufferVK* m_pCombinedIndexBuffer;
 	BufferVK* m_pMeshIndexBuffer;
-	std::vector<const Material*> m_AllMaterials;
+
+	std::vector<const Material*> m_Materials;
+
+	std::vector<const ImageViewVK*> m_AlbedoMaps;
+	std::vector<const ImageViewVK*> m_NormalMaps;
+	std::vector<const ImageViewVK*> m_AOMaps;
+	std::vector<const ImageViewVK*> m_MetallicMaps;
+	std::vector<const ImageViewVK*> m_RoughnessMaps;
+	std::vector<const SamplerVK*> m_Samplers;
+	std::vector< MaterialParameters> m_MaterialParameters;
+	BufferVK* m_pMaterialParametersBuffer;
 
 	TopLevelAccelerationStructure m_OldTopLevelAccelerationStructure;
 	TopLevelAccelerationStructure m_TopLevelAccelerationStructure;
@@ -149,6 +177,10 @@ private:
 
 	bool m_BottomLevelIsDirty;
 	bool m_TopLevelIsDirty;
+
+	Texture2DVK* m_pDefaultTexture;
+	Texture2DVK* m_pDefaultNormal;
+	SamplerVK* m_pDefaultSampler;
 
 	//Temp / Debug
 	CommandPoolVK* m_pTempCommandPool;

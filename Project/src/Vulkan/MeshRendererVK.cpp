@@ -267,7 +267,7 @@ void MeshRendererVK::setRayTracingResult(ImageViewVK* pRayTracingResultImageView
 	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pRayTracingResultImageView, &m_pGBufferSampler, 1, RAY_TRACING_RESULT_BINDING);
 }
 
-void MeshRendererVK::submitMesh(const MeshVK* pMesh, const Material* pMaterial, const glm::vec3& materialProperties, const glm::mat4& transform)
+void MeshRendererVK::submitMesh(const MeshVK* pMesh, const Material* pMaterial, const glm::mat4& transform)
 {
 	ASSERT(pMesh != nullptr);
 
@@ -275,7 +275,7 @@ void MeshRendererVK::submitMesh(const MeshVK* pMesh, const Material* pMaterial, 
 
 	m_ppGeometryPassBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(transform));
 	m_ppGeometryPassBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec4), (const void*)glm::value_ptr(pMaterial->getAlbedo()));
-	m_ppGeometryPassBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4) + sizeof(glm::vec4), sizeof(glm::vec3), (const void*)glm::value_ptr(materialProperties));
+	m_ppGeometryPassBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4) + sizeof(glm::vec4), sizeof(glm::vec3), (const void*)glm::value_ptr(pMaterial->getMaterialProperties()));
 
 	BufferVK* pIndexBuffer = reinterpret_cast<BufferVK*>(pMesh->getIndexBuffer());
 	m_ppGeometryPassBuffers[m_CurrentFrame]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
@@ -710,12 +710,12 @@ bool MeshRendererVK::createPipelineLayouts()
 {
 	//Descriptorpool
 	DescriptorCounts descriptorCounts = {};
-	descriptorCounts.m_SampledImages = 128;
-	descriptorCounts.m_StorageBuffers = 128;
-	descriptorCounts.m_UniformBuffers = 128;
+	descriptorCounts.m_SampledImages = 1024;
+	descriptorCounts.m_StorageBuffers = 256;
+	descriptorCounts.m_UniformBuffers = 256;
 
 	m_pDescriptorPool = DBG_NEW DescriptorPoolVK(m_pContext->getDevice());
-	if (!m_pDescriptorPool->init(descriptorCounts, 16))
+	if (!m_pDescriptorPool->init(descriptorCounts, 256))
 	{
 		return false;
 	}

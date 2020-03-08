@@ -116,8 +116,8 @@ void main()
 	}
 	
 	float ao 			= sampledAlbedo.a;
-	float metallic 		= sampledNormal.a;
-	float roughness 	= sampledWorldPosition.a;
+	float roughness 	= sampledNormal.a;
+	float metallic 		= sampledWorldPosition.a;
 	
 	normal = normalize(normal);
 	
@@ -165,16 +165,16 @@ void main()
 	vec3 f 			= FresnelRoughness(f0, clamp(dot(normal, viewDir), 0.0f, 1.0f), roughness);
 	vec3 kDiffuse 	= (vec3(1.0f) - f) * metallicFactor;
 
-	vec3 prefilteredColor 	= textureLod(u_EnvironmentMap, reflection, roughness * MAX_REFLECTION_MIPS).rgb;
+	vec4 rayTracedGlossy = texture(u_RayTracingResult, texCoord);
+	vec3 prefilteredColor 	= rayTracedGlossy.rgb;//textureLod(u_EnvironmentMap, reflection, roughness * MAX_REFLECTION_MIPS).rgb;
 	
 	vec2 envBRDF 	= texture(u_BrdfLUT, vec2(max(dot(normal, viewDir), 0.0f), roughness)).rg;
 	vec3 specular	= prefilteredColor * (f * envBRDF.x + envBRDF.y);
 
-	vec4 rayTracedGlossy = texture(u_RayTracingResult, texCoord);
 
 	vec3 ambient 	= ((kDiffuse * diffuse) + specular) * ao;
 	
 	vec3 finalColor = ambient + L0;
     out_Color = ColorPost(finalColor);
-	out_Color.rgb = rayTracedGlossy.rgb;
+	//out_Color.rgb = rayTracedGlossy.rgb;
 }

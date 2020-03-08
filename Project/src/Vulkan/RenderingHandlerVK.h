@@ -25,14 +25,6 @@ class SceneVK;
 class ImageVK;
 class ImageViewVK;
 
-struct SubmitedMesh //Todo: Remove this
-{
-    const MeshVK*       pMesh               = nullptr;
-    const Material*     pMaterial           = nullptr;
-    glm::vec3           MaterialProperties  = glm::vec3(1.0f);
-    glm::mat4           Transform           = glm::mat4(1.0f);
-};
-
 class RenderingHandlerVK : public RenderingHandler
 {
 public:

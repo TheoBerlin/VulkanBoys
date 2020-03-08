@@ -4,25 +4,44 @@
 #include "Vulkan/ProfilerVK.h"
 #include "Vulkan/VulkanCommon.h"
 
-class GraphicsContextVK;
-class RenderingHandlerVK;
-class SceneVK;
+class DescriptorSetLayoutVK;
 class RayTracingPipelineVK;
 class ShaderBindingTableVK;
-class DescriptorSetLayoutVK;
+class RenderingHandlerVK;
+class GraphicsContextVK;
 class PipelineLayoutVK;
 class DescriptorPoolVK;
 class DescriptorSetVK;
-class CommandPoolVK;
 class CommandBufferVK;
-class ImageVK;
+class CommandPoolVK;
+class TextureCubeVK;
 class ImageViewVK;
-class ShaderVK;
-class SamplerVK;
 class Texture2DVK;
+class SamplerVK;
+class ShaderVK;
 class BufferVK;
 class Material;
+class SceneVK;
+class ImageVK;
 class MeshVK;
+
+constexpr uint32_t RT_RESULT_IMAGE_BINDING = 0;
+constexpr uint32_t RT_CAMERA_BUFFER_BINDING = 1;
+constexpr uint32_t RT_TLAS_BINDING = 2;
+constexpr uint32_t RT_GBUFFER_ALBEDO_BINDING = 3;
+constexpr uint32_t RT_GBUFFER_NORMAL_BINDING = 4;
+constexpr uint32_t RT_GBUFFER_DEPTH_BINDING = 5;
+constexpr uint32_t RT_COMBINED_VERTEX_BINDING = 6;
+constexpr uint32_t RT_COMBINED_INDEX_BINDING = 7;
+constexpr uint32_t RT_MESH_INDEX_BINDING = 8;
+constexpr uint32_t RT_COMBINED_ALBEDO_BINDING = 9;
+constexpr uint32_t RT_COMBINED_NORMAL_BINDING = 10;
+constexpr uint32_t RT_COMBINED_AO_BINDING = 11;
+constexpr uint32_t RT_COMBINED_METALLIC_BINDING = 12;
+constexpr uint32_t RT_COMBINED_ROUGHNESS_BINDING = 13;
+constexpr uint32_t RT_COMBINED_MATERIAL_PARAMETERS_BINDING = 14;
+constexpr uint32_t RT_SKYBOX_BINDING = 15;
+constexpr uint32_t RT_LIGHT_BUFFER_BINDING = 16;
 
 class RayTracingRendererVK : public IRenderer
 {
@@ -41,7 +60,9 @@ public:
 
 	void onWindowResize(uint32_t width, uint32_t height);
 
-	void setRayTracingResult(ImageViewVK* pRayTracingResultImageView);
+	void setRayTracingResult(ImageViewVK* pRayTracingResultImageView, uint32_t width, uint32_t height);
+	void setSkybox(TextureCubeVK* pSkybox);
+
 
 	CommandBufferVK* getComputeCommandBuffer() const;
 	ProfilerVK* getProfiler() { return m_pProfiler; }
@@ -53,6 +74,8 @@ private:
 	bool createUniformBuffers();
 
 	void createProfiler();
+
+	void updateBuffers(SceneVK* pScene, CommandBufferVK* pCommandBuffer);
 
 private:
 	GraphicsContextVK* m_pContext;
@@ -71,8 +94,11 @@ private:
 	DescriptorPoolVK* m_pRayTracingDescriptorPool;
 	DescriptorSetLayoutVK* m_pRayTracingDescriptorSetLayout;
 
+	TextureCubeVK* m_pSkybox;
+
 	//Temp?
-	BufferVK* m_pRayTracingUniformBuffer;
+	BufferVK* m_pCameraBuffer;
+	BufferVK* m_pLightsBuffer;
 
 	ShaderVK* m_pRaygenShader;
 	ShaderVK* m_pClosestHitShader;
@@ -81,6 +107,9 @@ private:
 	ShaderVK* m_pMissShadowShader;
 
 	SamplerVK* m_pSampler;
+
+	uint32_t m_RaysWidth;
+	uint32_t m_RaysHeight;
 
 	bool m_TempSubmitLimit;
 };

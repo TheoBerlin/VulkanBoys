@@ -14,6 +14,7 @@ public:
 
 	virtual bool finalize() = 0;
 	virtual void update() = 0;
+	virtual void updateMaterials() = 0;
 
 	virtual void updateCamera(const Camera& camera) = 0;
 	virtual void updateLightSetup(const LightSetup& lightsetup) = 0;

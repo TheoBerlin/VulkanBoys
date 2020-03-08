@@ -61,6 +61,8 @@ private:
 	IScene* m_pScene;
 
 	//TODO: Resoures should they be here?
+	static constexpr uint32_t SPHERE_COUNT_DIMENSION = 8;
+
 	IMesh* m_pMesh;
 	IMesh* m_pSphere;
 	ITexture2D* m_pAlbedo;
@@ -69,7 +71,8 @@ private:
 	ITexture2D* m_pRoughness;
 	ITextureCube* m_pSkybox;
 	Material m_GunMaterial;
-	Material m_RedMaterial;
+	Material m_SphereMaterials[SPHERE_COUNT_DIMENSION * SPHERE_COUNT_DIMENSION];
+	uint32_t m_SphereIndexes[SPHERE_COUNT_DIMENSION * SPHERE_COUNT_DIMENSION];
 
 	ParticleEmitterHandler* m_pParticleEmitterHandler;
 	ITexture2D* m_pParticleTexture;
@@ -85,8 +88,7 @@ private:
 	uint32_t m_GraphicsIndex1;
 	uint32_t m_GraphicsIndex2;
 
-	static constexpr uint32_t SPHERE_COUNT_DIMENSION = 8;
-	uint32_t m_SphereIndexes[SPHERE_COUNT_DIMENSION];
+
 
 	static Application* s_pInstance;
 };

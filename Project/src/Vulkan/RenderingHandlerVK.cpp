@@ -30,6 +30,8 @@
 #include <Vulkan\ImageVK.h>
 #include <Vulkan\ImageViewVK.h>
 
+constexpr uint32_t RAY_TRACING_RESOLUTION_DENOMINATOR = 1;
+
 RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 	:m_pGraphicsContext(pGraphicsContext),
 	m_pMeshRenderer(nullptr),
@@ -264,7 +266,7 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 
 				for (auto& graphicsObject : pScene->getGraphicsObjects())
 				{
-					m_pMeshRenderer->submitMesh(graphicsObject.pMesh, graphicsObject.pMaterial, glm::vec3(1.0f), graphicsObject.Transform);
+					m_pMeshRenderer->submitMesh(graphicsObject.pMesh, graphicsObject.pMaterial, graphicsObject.Transform);
 				}
 				m_pMeshRenderer->endFrame(pScene);
 			});
@@ -285,7 +287,7 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 			VK_ACCESS_MEMORY_READ_BIT,
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
-			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 			VK_SHADER_STAGE_RAYGEN_BIT_NV);
 
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->releaseImageOwnership(
@@ -293,7 +295,7 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 			VK_ACCESS_MEMORY_READ_BIT,
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
-			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 			VK_SHADER_STAGE_RAYGEN_BIT_NV,
 			VK_IMAGE_ASPECT_DEPTH_BIT);
 
@@ -302,8 +304,12 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 			VK_ACCESS_MEMORY_WRITE_BIT,
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
-			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 			VK_SHADER_STAGE_RAYGEN_BIT_NV);
+
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->end();
+		pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppGraphicsCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
+		m_pGraphicsContext->getDevice()->wait();
 	}
 
 	//Ray Tracing
@@ -315,7 +321,7 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 			VK_ACCESS_MEMORY_READ_BIT,
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
-			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 			VK_SHADER_STAGE_RAYGEN_BIT_NV);
 
 
@@ -324,7 +330,7 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 			VK_ACCESS_MEMORY_READ_BIT,
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
-			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 			VK_SHADER_STAGE_RAYGEN_BIT_NV,
 			VK_IMAGE_ASPECT_DEPTH_BIT);
 
@@ -337,13 +343,13 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 			VK_ACCESS_MEMORY_WRITE_BIT,
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
-			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 			VK_SHADER_STAGE_RAYGEN_BIT_NV);
 
 		//Todo: Combine this and acquire to same
 		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pRayTracingStorageImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 1);
 
-		m_pRayTracer->setRayTracingResult(m_pRayTracingStorageImageView);
+		m_pRayTracer->setRayTracingResult(m_pRayTracingStorageImageView, m_pGraphicsContext->getSwapChain()->getExtent().width / RAY_TRACING_RESOLUTION_DENOMINATOR, m_pGraphicsContext->getSwapChain()->getExtent().height / RAY_TRACING_RESOLUTION_DENOMINATOR);
 		m_pRayTracer->render(pScene, m_pGBuffer);
 		m_ppComputeCommandBuffers[m_CurrentFrame]->executeSecondary(m_pRayTracer->getComputeCommandBuffer());
 
@@ -354,7 +360,7 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
 			VK_SHADER_STAGE_RAYGEN_BIT_NV,
-			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
 		//Todo: Combine this and release to same
 		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pGBuffer->getDepthImage(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, 1, 0, 1, VK_IMAGE_ASPECT_DEPTH_BIT);
@@ -365,7 +371,7 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
 			VK_SHADER_STAGE_RAYGEN_BIT_NV,
-			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 			VK_IMAGE_ASPECT_DEPTH_BIT);
 
 		//Todo: Combine this and release to same
@@ -377,11 +383,13 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
 			VK_SHADER_STAGE_RAYGEN_BIT_NV,
-			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 	}
 
 	if (m_pMeshRenderer)
 	{
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->reset(true);
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->acquireImagesOwnership(
 			m_pGBuffer->getColorImages(),
 			m_pGBuffer->getColorImageCount(),
@@ -389,7 +397,7 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
 			VK_SHADER_STAGE_RAYGEN_BIT_NV,
-			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->acquireImageOwnership(
 			m_pGBuffer->getDepthImage(),
@@ -397,7 +405,7 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
 			VK_SHADER_STAGE_RAYGEN_BIT_NV,
-			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 			VK_IMAGE_ASPECT_DEPTH_BIT);
 
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->acquireImageOwnership(
@@ -406,7 +414,7 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
 			VK_SHADER_STAGE_RAYGEN_BIT_NV,
-			VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 	}
 
 	//Gather all renderer's data and finalize the frame
@@ -436,9 +444,9 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 	VkSemaphore graphicsSignalSemaphores[]		= { m_RenderFinishedSemaphores[m_CurrentFrame] };
 	VkPipelineStageFlags graphicswaitStages[]	= { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
-	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppGraphicsCommandBuffers[m_CurrentFrame], graphicsWaitSemaphores, graphicswaitStages, 1, graphicsSignalSemaphores, 1);
-	//m_pGraphicsContext->getDevice()->wait();
 	pDevice->executeCommandBuffer(pDevice->getComputeQueue(), m_ppComputeCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
+	m_pGraphicsContext->getDevice()->wait();
+	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppGraphicsCommandBuffers[m_CurrentFrame], graphicsWaitSemaphores, graphicswaitStages, 1, graphicsSignalSemaphores, 1);
 }
 
 void RenderingHandlerVK::swapBuffers()
@@ -522,6 +530,8 @@ void RenderingHandlerVK::setSkybox(ITextureCube* pSkybox)
 	}
 
 	m_pMeshRenderer->setSkybox(reinterpret_cast<TextureCubeVK*>(pSkybox), pIrradianceMap, pEnvironmentMap);
+
+	m_pRayTracer->setSkybox(reinterpret_cast<TextureCubeVK*>(pSkybox));
 }
 
 bool RenderingHandlerVK::createBackBuffers()
@@ -680,7 +690,7 @@ bool RenderingHandlerVK::createRenderPasses()
 	m_pGeometryRenderPass->addAttachment(description);
 
 	//Depth
-	description.format = VK_FORMAT_D24_UNORM_S8_UINT;
+	description.format = VK_FORMAT_D32_SFLOAT;// VK_FORMAT_D24_UNORM_S8_UINT;
 	description.samples = VK_SAMPLE_COUNT_1_BIT;
 	description.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -757,8 +767,8 @@ void RenderingHandlerVK::updateBuffers(const Camera& camera)
 {
 	// Update camera buffers
 	CameraMatricesBuffer cameraMatricesBuffer = {};
-	cameraMatricesBuffer.Projection = camera.getProjectionMat();
-	cameraMatricesBuffer.View		= camera.getViewMat();
+	cameraMatricesBuffer.ProjectionInv = camera.getProjectionMat();
+	cameraMatricesBuffer.ViewInv		= camera.getViewMat();
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraMatricesBuffer, 0, (const void*)&cameraMatricesBuffer, sizeof(CameraMatricesBuffer));
 
 	CameraDirectionsBuffer cameraDirectionsBuffer = {};
@@ -829,8 +839,8 @@ bool RenderingHandlerVK::createRayTracingRenderImage(uint32_t width, uint32_t he
 	ImageParams imageParams = {};
 	imageParams.Type = VK_IMAGE_TYPE_2D;
 	imageParams.Format = m_pGraphicsContext->getSwapChain()->getFormat();
-	imageParams.Extent.width = width;
-	imageParams.Extent.height = height;
+	imageParams.Extent.width = width / RAY_TRACING_RESOLUTION_DENOMINATOR;
+	imageParams.Extent.height = height / RAY_TRACING_RESOLUTION_DENOMINATOR;
 	imageParams.Extent.depth = 1;
 	imageParams.MipLevels = 1;
 	imageParams.ArrayLayers = 1;

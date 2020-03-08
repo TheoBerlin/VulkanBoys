@@ -210,7 +210,7 @@ bool ParticleRendererVK::createPipelineLayout()
 	descriptorCounts.m_UniformBuffers	= 128;
 
 	m_pDescriptorPool = DBG_NEW DescriptorPoolVK(pDevice);
-	if (!m_pDescriptorPool->init(descriptorCounts, 16)) {
+	if (!m_pDescriptorPool->init(descriptorCounts, 256)) {
 		LOG("Failed to initialize descriptor pool");
 		return false;
 	}

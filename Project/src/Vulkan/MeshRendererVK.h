@@ -105,7 +105,7 @@ public:
 	void setSkybox(TextureCubeVK* pSkybox, TextureCubeVK* pIrradiance, TextureCubeVK* pEnvironmentMap);
 	void setRayTracingResult(ImageViewVK* pRayTracingResultImageView);
 
-	void submitMesh(const MeshVK* pMesh, const Material* pMaterial, const glm::vec3& materialProperties, const glm::mat4& transform);
+	void submitMesh(const MeshVK* pMesh, const Material* pMaterial, const glm::mat4& transform);
 	
 	void buildLightPass(RenderPassVK* pRenderPass, FrameBufferVK* pFramebuffer);
 

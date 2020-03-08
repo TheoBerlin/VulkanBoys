@@ -46,6 +46,7 @@ public:
 	float getAmbientOcclusion() const { return m_Ambient; }
 	float getRoughness() const { return m_Roughness; }
 	float getMetallic() const { return m_Metallic; }
+	const glm::vec3& getMaterialProperties() const { return m_MaterialProperties; }
 
 private:
 	//Resources should not be owned by the material?
@@ -56,9 +57,18 @@ private:
 	ITexture2D* m_pRoughnessMap;
 	ISampler* m_pSampler;
 	glm::vec4 m_Albedo;
-	float m_Metallic;
-	float m_Roughness;
-	float m_Ambient;
+	union
+	{
+		struct
+		{
+			float m_Ambient;
+			float m_Metallic;
+			float m_Roughness;
+		};
+
+		glm::vec3 m_MaterialProperties;
+	};
+	
 	const uint32_t m_ID;
 
 	static uint32_t s_ID;
