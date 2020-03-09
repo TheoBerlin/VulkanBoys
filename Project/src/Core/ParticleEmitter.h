@@ -42,7 +42,7 @@ public:
     ParticleEmitter(const ParticleEmitterInfo& emitterInfo);
     ~ParticleEmitter();
 
-    bool initialize(IGraphicsContext* pGraphicsContext, const Camera* pCamera);
+    bool initialize(IGraphicsContext* pGraphicsContext);
 
     void update(float dt);
     void updateGPU(float dt);
@@ -54,15 +54,19 @@ public:
 
     glm::vec3 getPosition() const { return m_Position; }
     glm::vec3 getDirection() const { return m_Direction; }
+    glm::vec2 getParticleSize() const { return m_ParticleSize; }
     float getInitialSpeed() const { return m_InitialSpeed; }
     float getParticlesPerSecond() const { return m_ParticlesPerSecond; }
     float getParticleDuration() const { return m_ParticleDuration; }
+    float getSpread() const { return m_Spread; }
 
     void setPosition(const glm::vec3& position);
     void setDirection(const glm::vec3& direction);
+    void setParticleSize(const glm::vec2& size);
     void setInitialSpeed(float initialSpeed);
     void setParticlesPerSecond(float particlesPerSecond);
     void setParticleDuration(float particleDuration);
+    void setSpread(float spread);
 
     IDescriptorSet* getDescriptorSetCompute() { return m_pDescriptorSetCompute; }
     IDescriptorSet* getDescriptorSetRender() { return m_pDescriptorSetRender; }
@@ -118,6 +122,4 @@ private:
     IBuffer* m_pVelocitiesBuffer;
     IBuffer* m_pAgesBuffer;
     IBuffer* m_pEmitterBuffer;
-
-    const Camera* m_pCamera;
 };

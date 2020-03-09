@@ -50,14 +50,10 @@ ParticleEmitterHandlerVK::~ParticleEmitterHandlerVK()
 
 void ParticleEmitterHandlerVK::update(float dt)
 {
-	if (m_GPUComputed) 
-	{
+	if (m_GPUComputed) {
         updateGPU(dt);
-    } 
-	else 
-	{
-        for (ParticleEmitter* particleEmitter : m_ParticleEmitters) 
-		{
+    } else {
+        for (ParticleEmitter* particleEmitter : m_ParticleEmitters) {
             particleEmitter->update(dt);
         }
     }
@@ -68,13 +64,10 @@ void ParticleEmitterHandlerVK::updateRenderingBuffers(RenderingHandler* pRenderi
     RenderingHandlerVK* pRenderingHandlerVK = reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler);
     CommandBufferVK* pCommandBuffer = pRenderingHandlerVK->getCurrentGraphicsCommandBuffer();
 
-    for (ParticleEmitter* pEmitter : m_ParticleEmitters) 
-	{
-		if (!m_GPUComputed) 
-		{
+    for (ParticleEmitter* pEmitter : m_ParticleEmitters) {
+		if (!m_GPUComputed) {
 			// Update emitter buffer. If GPU computing is enabled, this will already have been updated
-			if (pEmitter->m_EmitterUpdated) 
-			{
+			if (pEmitter->m_EmitterUpdated) {
 				EmitterBuffer emitterBuffer = {};
 				pEmitter->createEmitterBuffer(emitterBuffer);
 
@@ -125,8 +118,7 @@ void ParticleEmitterHandlerVK::toggleComputationDevice()
 	DeviceVK* pDevice = pGraphicsContext->getDevice();
 
 	// Disable GPU-side computing
-	if (m_GPUComputed) 
-	{
+	if (m_GPUComputed) {
 		CommandBufferVK* pTempCommandBuffer = m_pCommandPoolGraphics->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 		pTempCommandBuffer->reset(true);
 		pTempCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -142,16 +134,13 @@ void ParticleEmitterHandlerVK::toggleComputationDevice()
 		// Wait for command buffer to finish executing before deleting it
 		pTempCommandBuffer->reset(true);
 		m_pCommandPoolGraphics->freeCommandBuffer(&pTempCommandBuffer);
-	} 
-	else 
-	{
+	} else {
 		// Enable GPU-side computing
 		CommandBufferVK* pTempCmdBufferCompute = m_ppCommandPools[0]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 		pTempCmdBufferCompute->reset(true);
 		pTempCmdBufferCompute->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-		for (ParticleEmitter* pEmitter : m_ParticleEmitters) 
-		{
+		for (ParticleEmitter* pEmitter : m_ParticleEmitters) {
 			// Since ImGui is what triggered this, and ImGui is handled AFTER particles are updated, the particle buffers will be used
 			// for rendering next, and the renderer will try to acquire ownership of the buffers for the rendering queue, the compute queue needs to release them
 			BufferVK* pPositionsBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
@@ -252,7 +241,7 @@ void ParticleEmitterHandlerVK::acquireForCompute(BufferVK* pBuffer, CommandBuffe
 
 void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 {
-	pEmitter->initialize(m_pGraphicsContext, m_pCamera);
+	pEmitter->initialize(m_pGraphicsContext);
 
 	// Create descriptor set for the emitter
 	DescriptorSetVK* pEmitterDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
@@ -278,8 +267,7 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 	const QueueFamilyIndices& queueFamilyIndices = pDevice->getQueueFamilyIndices();
 
 	// Transfer ownership of buffers to compute queue
-	if (queueFamilyIndices.graphicsFamily.value() != queueFamilyIndices.computeFamily.value()) 
-	{
+	if (queueFamilyIndices.graphicsFamily.value() != queueFamilyIndices.computeFamily.value()) {
 		BufferVK* pVelocitiesBuffer = reinterpret_cast<BufferVK*>(pEmitter->getVelocitiesBuffer());
 		BufferVK* pAgesBuffer = reinterpret_cast<BufferVK*>(pEmitter->getAgesBuffer());
 
@@ -290,6 +278,10 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 		CommandBufferVK* pTempCommandBufferCompute = m_ppCommandPools[0]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 		pTempCommandBufferCompute->reset(true);
 		pTempCommandBufferCompute->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+		if (m_GPUComputed) {
+			releaseFromCompute(pPositionsBuffer, pTempCommandBufferCompute);
+		}
 
 		releaseFromGraphics(pVelocitiesBuffer, pTempCommandBufferGraphics);
 		releaseFromGraphics(pAgesBuffer, pTempCommandBufferGraphics);
@@ -347,8 +339,7 @@ void ParticleEmitterHandlerVK::updateGPU(float dt)
 		m_ppCommandBuffers[m_CurrentFrame]->dispatch(workGroupSize);
 		m_pProfiler->endTimestamp(&m_TimestampDispatch);
 
-		if (transferOwnerships) 
-		{
+		if (transferOwnerships) {
 			releaseFromCompute(pPositionsBuffer, m_ppCommandBuffers[m_CurrentFrame]);
 		}
     }
@@ -362,17 +353,15 @@ void ParticleEmitterHandlerVK::beginUpdateFrame()
 	m_ppCommandPools[m_CurrentFrame]->reset();
 
 	m_ppCommandBuffers[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	
+
 	m_pProfiler->reset(m_CurrentFrame, m_ppCommandBuffers[m_CurrentFrame]);
 	m_pProfiler->beginFrame(m_ppCommandBuffers[m_CurrentFrame]);
 
 	m_ppCommandBuffers[m_CurrentFrame]->bindPipeline(m_pPipeline);
 
 	// Update emitter buffers
-	for (ParticleEmitter* pEmitter : m_ParticleEmitters) 
-	{
-		if (pEmitter->m_EmitterUpdated) 
-		{
+	for (ParticleEmitter* pEmitter : m_ParticleEmitters) {
+		if (pEmitter->m_EmitterUpdated) {
 			EmitterBuffer emitterBuffer = {};
 			pEmitter->createEmitterBuffer(emitterBuffer);
 

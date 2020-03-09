@@ -13,6 +13,7 @@ uint32_t ProfilerVK::m_MaxTextWidth = 0;
 
 ProfilerVK::ProfilerVK(const std::string& name, DeviceVK* pDevice)
     :m_Name(name),
+    m_Time(0),
     m_pDevice(pDevice),
     m_pProfiledCommandBuffer(nullptr),
     m_RecurseDepth(0),
@@ -22,8 +23,7 @@ ProfilerVK::ProfilerVK(const std::string& name, DeviceVK* pDevice)
 {
     findWidestText();
 
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) 
-    {
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         m_ppQueryPools[i] = DBG_NEW QueryPoolVK(pDevice);
 
         if (!m_ppQueryPools[i]->init(VK_QUERY_TYPE_TIMESTAMP, 8)) {
@@ -33,9 +33,9 @@ ProfilerVK::ProfilerVK(const std::string& name, DeviceVK* pDevice)
     }
 
     // From Vulkan spec: "The number of nanoseconds it takes for a timestamp value to be incremented by 1"
-    float nanoSecPerTime = pDevice->getTimestampPeriod();
-    const float nanoSecond = std::pow(10.0f, -9.0f);
-    const float milliSecondInv = 1000.0f;
+    double nanoSecPerTime = (double)pDevice->getTimestampPeriod();
+    const double nanoSecond = std::pow(10.0, -9.0);
+    const double milliSecondInv = 1000.0;
 
     m_TimestampToMillisec = nanoSecPerTime * nanoSecond * milliSecondInv;
 }
@@ -53,9 +53,12 @@ void ProfilerVK::setParentProfiler(ProfilerVK* pParentProfiler)
     findWidestText();
 }
 
-
 void ProfilerVK::reset(size_t currentFrame, CommandBufferVK* pResetCmdBuffer)
 {
+    if (!m_ProfileFrame) {
+        return;
+    }
+
     // Write the results from the previous profiled frame
     if (m_NextQuery > 0) {
         writeResults();
@@ -71,18 +74,17 @@ void ProfilerVK::reset(size_t currentFrame, CommandBufferVK* pResetCmdBuffer)
     QueryPoolVK* pCurrentQueryPool = m_ppQueryPools[m_CurrentFrame];
 
     vkCmdResetQueryPool(pResetCmdBuffer->getCommandBuffer(), pCurrentQueryPool->getQueryPool(), 0, pCurrentQueryPool->getQueryCount());
-    
+
     // Queries 0 and 1 are reserved for the profiler, the rest are used by timestamp objects
     m_NextQuery = 2;
 
     // Reset per-frame data
-    m_TimeResults.clear();
+    //m_TimeResults.clear();
 }
 
 void ProfilerVK::beginFrame(CommandBufferVK* pProfiledCmdBuffer)
 {
-    if (!m_ProfileFrame) 
-    {
+    if (!m_ProfileFrame) {
         return;
     }
 
@@ -104,7 +106,7 @@ void ProfilerVK::writeResults()
     if (vkGetQueryPoolResults(
         m_pDevice->getDevice(), currentQueryPool,
         0, m_NextQuery,                             // First query, query count
-        (m_NextQuery+1) * sizeof(uint64_t),             // Data size
+        (m_NextQuery + 1) * sizeof(uint64_t),             // Data size
         (void*)m_TimeResults.data(),                // Data pointer
         sizeof(uint64_t),                           // Stride
         VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT/*VK_QUERY_RESULT_WAIT_BIT*/)
@@ -147,7 +149,7 @@ void ProfilerVK::endFrame()
     vkCmdWriteTimestamp(m_pProfiledCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, currentQueryPool, 1);
 
     if (m_NextQuery > m_TimeResults.size()) {
-        m_TimeResults.resize(m_NextQuery);
+        m_TimeResults.resize(m_NextQuery + 1);
     }
 }
 

@@ -63,9 +63,9 @@ float Distrubution(vec3 normal, vec3 halfVector, float roughness)
 {
 	float roughnessSqrd = roughness*roughness;
 	float alphaSqrd 	= roughnessSqrd *roughnessSqrd;
-	
+
 	float NdotH = max(dot(normal, halfVector), 0.0f);
-	
+
 	float denom = ((NdotH * NdotH) * (alphaSqrd - 1.0f)) + 1.0f;
 	return alphaSqrd / (PI * denom * denom);
 }
@@ -77,7 +77,7 @@ float GeometryGGX(float NdotV, float roughness)
 {
 	float r 		= roughness + 1.0f;
 	float k_Direct 	= (r*r) / 8.0f;
-	
+
 	return NdotV / ((NdotV * (1.0f - k_Direct)) + k_Direct);
 }
 
@@ -88,7 +88,7 @@ float Geometry(vec3 normal, vec3 viewDir, vec3 lightDirection, float roughness)
 {
 	float NdotV = max(dot(normal, viewDir), 0.0f);
 	float NdotL = max(dot(normal, lightDirection), 0.0f);
-	
+
 	return GeometryGGX(NdotV, roughness) * GeometryGGX(NdotL, roughness);
 }
 
@@ -107,62 +107,62 @@ void main()
 	vec4 sampledAlbedo 			= texture(u_Albedo, texCoord);
 	vec4 sampledNormal 			= texture(u_Normal, texCoord);
 	vec4 sampledWorldPosition 	= texture(u_WorldPosition, texCoord);
-	
+
 	vec3 albedo 		= sampledAlbedo.rgb;
 	vec3 normal 		= sampledNormal.xyz;
 	vec3 worldPosition 	= sampledWorldPosition.xyz;
-	
+
 	//Just skybox
 	if (length(normal) == 0)
 	{
 	    out_Color = ColorPost(albedo);
 		return;
 	}
-	
+
 	float ao 			= sampledAlbedo.a;
 	float roughness 	= sampledNormal.a;
 	float metallic 		= sampledWorldPosition.a;
 	
 	normal = normalize(normal);
-	
+
 	vec3 cameraPosition = g_PerFrame.Position.xyz;
 	vec3 viewDir 		= normalize(cameraPosition - worldPosition);
 	vec3 reflection 	= reflect(-viewDir, normal);
-	
+
 	vec3 f0 = vec3(0.04f);
 	f0 = mix(f0, albedo, metallic);
 
 	float metallicFactor = 1.0f - metallic;
-	
+
 	//Radiance from light
 	vec3 L0 = vec3(0.0f);
 	for (int i = 0; i < MAX_POINT_LIGHTS; i++)
 	{
 		vec3 lightPosition 	= u_Lights.lights[i].Position.xyz;
 		vec3 lightColor 	= u_Lights.lights[i].Color.rgb;
-		
+
 		vec3 lightDirection = (lightPosition - worldPosition);
 		float distance 		= length(lightDirection);
 		float attenuation 	= 1.0f / (distance * distance);
 
 		lightDirection 	= normalize(lightDirection);
 		vec3 halfVector = normalize(viewDir + lightDirection);
-		
+
 		vec3 radiance = lightColor * attenuation;
-		
-		vec3 f 		= Fresnel(f0, clamp(dot(halfVector, viewDir), 0.0f, 1.0f));	
+
+		vec3 f 		= Fresnel(f0, clamp(dot(halfVector, viewDir), 0.0f, 1.0f));
 		float ndf 	= Distrubution(normal, halfVector, roughness);
 		float g 	= Geometry(normal, viewDir, lightDirection, roughness);
-		
+
 		float denom 	= (4.0f * max(dot(normal, viewDir), 0.0f) * max(dot(normal, lightDirection), 0.0f)) + 0.0001f;
-		vec3 specular   = (ndf * g * f) / denom;	
-		
+		vec3 specular   = (ndf * g * f) / denom;
+
 		//Take 1.0f minus the incoming radiance to get the diffuse (Energy conservation)
 		vec3 diffuse = (vec3(1.0f) - f) * metallicFactor;
-		
+
 		L0 += ((diffuse * (albedo / PI)) + specular) * radiance * max(dot(normal, lightDirection), 0.0f);
 	}
-	
+
 	//Irradiance from surroundings
 	vec3 irradiance = texture(u_IrradianceMap, normal).rgb;
 	vec3 diffuse 	= irradiance * albedo;
@@ -187,7 +187,7 @@ void main()
 
 
 	vec3 ambient 	= ((kDiffuse * diffuse) + specular) * ao;
-	
+
 	vec3 finalColor = ambient + L0;
     out_Color = ColorPost(finalColor);
 	//out_Color.rgb = rayTracedGlossy.rgb;

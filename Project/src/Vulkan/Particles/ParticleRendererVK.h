@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common/IRenderer.h"
+#include "Vulkan/ProfilerVK.h"
 #include "Vulkan/VulkanCommon.h"
 
 class CommandBufferVK;
@@ -39,17 +40,22 @@ public:
 
 	FORCEINLINE CommandBufferVK* getCommandBuffer(uint32_t frameindex) const { return m_ppCommandBuffers[frameindex]; }
 
+	ProfilerVK* getProfiler() { return m_pProfiler; }
+
 private:
 	bool createCommandPoolAndBuffers();
 	bool createPipelineLayout();
 	bool createPipeline();
 	bool createQuadMesh();
+	void createProfiler();
 
 	bool bindDescriptorSet(ParticleEmitter* pEmitter);
 
 private:
 	GraphicsContextVK* m_pGraphicsContext;
 	RenderingHandlerVK* m_pRenderingHandler;
+	ProfilerVK* m_pProfiler;
+	Timestamp m_TimestampDraw;
 
 	CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
 	CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];

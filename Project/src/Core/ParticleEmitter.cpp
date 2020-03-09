@@ -40,10 +40,8 @@ ParticleEmitter::~ParticleEmitter()
     SAFEDELETE(m_pEmitterBuffer);
 }
 
-bool ParticleEmitter::initialize(IGraphicsContext* pGraphicsContext, const Camera* pCamera)
+bool ParticleEmitter::initialize(IGraphicsContext* pGraphicsContext)
 {
-    m_pCamera = pCamera;
-
     size_t particleCount = m_ParticlesPerSecond * m_ParticleDuration;
     resizeParticleStorage(particleCount);
 
@@ -93,6 +91,12 @@ void ParticleEmitter::setDirection(const glm::vec3& direction)
     m_EmitterUpdated = true;
 }
 
+void ParticleEmitter::setParticleSize(const glm::vec2& size)
+{
+    m_ParticleSize = size;
+    m_EmitterUpdated = true;
+}
+
 void ParticleEmitter::setInitialSpeed(float initialSpeed)
 {
     m_InitialSpeed = initialSpeed;
@@ -117,6 +121,13 @@ void ParticleEmitter::setParticleDuration(float particleDuration)
     m_EmitterUpdated = true;
 }
 
+void ParticleEmitter::setSpread(float spread)
+{
+    m_ZRandomizer = std::uniform_real_distribution<float>(std::cos(spread), 1.0f);
+    m_Spread = spread;
+    m_EmitterUpdated = true;
+}
+
 bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
 {
     size_t particleCount = m_ParticlesPerSecond * m_ParticleDuration;
@@ -125,7 +136,7 @@ bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
     BufferParams bufferParams = {};
     bufferParams.IsExclusive = true;
     bufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-    bufferParams.Usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    bufferParams.Usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     bufferParams.SizeInBytes = particleCount * sizeof(glm::vec4);
 
     m_pPositionsBuffer = pGraphicsContext->createBuffer();
@@ -166,14 +177,12 @@ bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
 
 void ParticleEmitter::ageEmitter(float dt)
 {
-    if (m_EmitterAge < m_ParticleDuration) 
-    {
+    if (m_EmitterAge < m_ParticleDuration) {
         uint32_t oldParticleCount = getParticleCount();
         m_EmitterAge += dt;
         uint32_t newParticleCount = getParticleCount();
 
-        if (newParticleCount > oldParticleCount) 
-        {
+        if (newParticleCount > oldParticleCount) {
             m_EmitterUpdated = true;
         }
     }
@@ -187,8 +196,7 @@ void ParticleEmitter::moveParticles(float dt)
 
     size_t particleCount = getParticleCount();
 
-    for (size_t particleIdx = 0; particleIdx < particleCount; particleIdx++) 
-    {
+    for (size_t particleIdx = 0; particleIdx < particleCount; particleIdx++) {
         positions[particleIdx] += velocities[particleIdx] * dt;
         velocities[particleIdx].y -= 9.82f * dt;
         ages[particleIdx] += dt;
