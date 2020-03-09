@@ -596,7 +596,7 @@ void Application::renderUI(double dt)
 
 void Application::render(double dt)
 {
-	m_pRenderingHandler->beginFrame(m_Camera, m_LightSetup);
+	m_pRenderingHandler->beginGeometryPass(&m_Camera, &m_LightSetup);
 
 	static glm::mat4 rotation = glm::mat4(1.0f);
 	rotation = glm::rotate(rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -623,6 +623,10 @@ void Application::render(double dt)
 		}
 	}
 
-	m_pRenderingHandler->endFrame();
+	m_pRenderingHandler->endGeometryPass();
+
+	// TODO: Update particles here, as they will need the depth buffer from the geometry pass to simulate collisions
+
+	m_pRenderingHandler->drawLightPass();
 	m_pRenderingHandler->swapBuffers();
 }

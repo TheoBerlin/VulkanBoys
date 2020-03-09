@@ -27,13 +27,15 @@ public:
 
     virtual ITextureCube* generateTextureCube(ITexture2D* pPanorama, ETextureFormat format, uint32_t width, uint32_t miplevels) = 0;
 
-    virtual void beginFrame(const Camera& camera, const LightSetup& lightSetup) = 0;
-    virtual void endFrame() = 0;
+    virtual void beginGeometryPass(const Camera* pCamera, const LightSetup* pLightSetup) = 0;
+    virtual void endGeometryPass() = 0;
+
+    virtual void drawLightPass() = 0;
 
     virtual void submitMesh(IMesh* pMesh, const Material& material, const glm::mat4& transform) = 0;
 
     virtual void drawProfilerUI() = 0;
-    
+
     virtual void swapBuffers() = 0;
 
     virtual void setClearColor(float r, float g, float b) = 0;
@@ -48,7 +50,7 @@ public:
     virtual void setImguiRenderer(IImgui* pImGui) = 0;
 
     virtual void onWindowResize(uint32_t width, uint32_t height) = 0;
-    
+
     void setParticleEmitterHandler(ParticleEmitterHandler* pParticleEmitterHandler) { m_pParticleEmitterHandler = pParticleEmitterHandler; }
 
 protected:

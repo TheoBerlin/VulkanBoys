@@ -33,7 +33,7 @@ public:
 
 	virtual void beginFrame(const Camera& camera, const LightSetup& lightSetup) override;
 	virtual void endFrame() override;
-	
+
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
 
 	void submitParticles(ParticleEmitter* pEmitter);

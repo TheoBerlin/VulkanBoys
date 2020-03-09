@@ -39,8 +39,10 @@ public:
 
     virtual ITextureCube* generateTextureCube(ITexture2D* pPanorama, ETextureFormat format, uint32_t width, uint32_t miplevels) override;
 
-    virtual void beginFrame(const Camera& camera, const LightSetup& lightsetup) override;
-    virtual void endFrame() override;
+    virtual void beginGeometryPass(const Camera* pCamera, const LightSetup* pLightsetup) override;
+    virtual void endGeometryPass() override;
+
+    virtual void drawLightPass() override;
 
     virtual void swapBuffers() override;
 
@@ -81,7 +83,7 @@ private:
 
     void releaseBackBuffers();
 
-    void updateBuffers(const Camera& camera);
+    void updateBuffers();
 
     void submitParticles();
 
@@ -89,6 +91,9 @@ private:
     std::vector<SubmitedMesh> m_SubmitedMeshes;
 
     GraphicsContextVK* m_pGraphicsContext;
+    // Set at the beginning of each frame
+    const Camera* m_pFrameCamera;
+    const LightSetup* m_pFrameLightSetup;
 
     SkyboxRendererVK* m_pSkyboxRenderer;
     MeshRendererVK* m_pMeshRenderer;
