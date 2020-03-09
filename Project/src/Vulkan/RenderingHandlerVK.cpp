@@ -59,8 +59,6 @@ RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 		m_ppComputeCommandPools[i]		= VK_NULL_HANDLE;
         m_ppGraphicsCommandBuffers[i]	= VK_NULL_HANDLE;
     }
-
-	m_EnableRayTracing = m_pGraphicsContext->supportsRayTracing();
 }
 
 RenderingHandlerVK::~RenderingHandlerVK()
@@ -170,10 +168,12 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 
 	m_pMeshRenderer->onWindowResize(width, height);
 
-	m_pRayTracer->onWindowResize(width, height);
-
-	//Temp?
-	m_pRayTracer->setResolution(width / RAY_TRACING_RESOLUTION_DENOMINATOR, height / RAY_TRACING_RESOLUTION_DENOMINATOR);
+	if (m_pRayTracer != nullptr)
+	{
+		m_pRayTracer->onWindowResize(width, height);
+		//Temp?
+		m_pRayTracer->setResolution(width / RAY_TRACING_RESOLUTION_DENOMINATOR, height / RAY_TRACING_RESOLUTION_DENOMINATOR);
+	}
 
 	createRayTracingRenderImage(width, height);
 
@@ -534,7 +534,10 @@ void RenderingHandlerVK::setSkybox(ITextureCube* pSkybox)
 
 	m_pMeshRenderer->setSkybox(reinterpret_cast<TextureCubeVK*>(pSkybox), pIrradianceMap, pEnvironmentMap);
 
-	m_pRayTracer->setSkybox(reinterpret_cast<TextureCubeVK*>(pSkybox));
+	if (m_pRayTracer != nullptr)
+	{
+		m_pRayTracer->setSkybox(reinterpret_cast<TextureCubeVK*>(pSkybox));
+	}
 }
 
 bool RenderingHandlerVK::createBackBuffers()

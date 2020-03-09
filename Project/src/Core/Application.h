@@ -82,7 +82,6 @@ private:
 
 	bool m_IsRunning;
 	bool m_UpdateCamera;
-	bool m_EnableRayTracing;
 
 	uint32_t m_GraphicsIndex0;
 	uint32_t m_GraphicsIndex1;

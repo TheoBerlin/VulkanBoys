@@ -52,7 +52,8 @@ public:
 
 	virtual void sync() = 0;
 
-	virtual bool supportsRayTracing() const = 0;
+	virtual bool setRayTracingEnabled(bool enabled) = 0;
+	virtual bool isRayTracingEnabled() const = 0;
 	
 public:
 	static IGraphicsContext* create(IWindow* pWindow, API api);

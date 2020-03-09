@@ -22,7 +22,8 @@ GraphicsContextVK::GraphicsContextVK(IWindow* pWindow)
 	: m_pWindow(pWindow),
 	m_pSwapChain(nullptr),
 	m_Device(),
-	m_Instance()
+	m_Instance(),
+	m_RayTracingEnabled(false)
 {}
 
 GraphicsContextVK::~GraphicsContextVK()
@@ -165,7 +166,9 @@ void GraphicsContextVK::swapBuffers(VkSemaphore renderSemaphore)
 	m_pSwapChain->present(renderSemaphore);
 }
 
-bool GraphicsContextVK::supportsRayTracing() const
+
+bool GraphicsContextVK::setRayTracingEnabled(bool enabled)
 {
-	return m_Device.supportsRayTracing();
+	m_RayTracingEnabled = enabled && m_Device.supportsRayTracing();
+	return m_RayTracingEnabled;
 }

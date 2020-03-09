@@ -634,6 +634,7 @@ bool MeshRendererVK::createPipelines()
 	{
 		return false;
 	}
+	reinterpret_cast<ShaderVK*>(pPixelShader)->setSpecializationConstant<uint32_t>(0, m_pContext->isRayTracingEnabled() ? 1 : 0);
 
 	shaders = { pVertexShader, pPixelShader };
 	m_pLightPipeline = DBG_NEW PipelineVK(m_pContext->getDevice());

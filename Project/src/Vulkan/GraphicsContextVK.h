@@ -45,7 +45,8 @@ public:
 
 	void swapBuffers(VkSemaphore renderSemaphore);
 
-	bool supportsRayTracing() const;
+	bool setRayTracingEnabled(bool enabled) override;
+	bool isRayTracingEnabled() const override { return m_RayTracingEnabled; }
 
 	DeviceVK*		getDevice()				{ return &m_Device; } //Const function?
 	SwapChainVK*	getSwapChain() const	{ return m_pSwapChain; }
@@ -55,4 +56,6 @@ private:
 	DeviceVK m_Device;
 	IWindow* m_pWindow;
 	SwapChainVK* m_pSwapChain;
+
+	bool m_RayTracingEnabled;
 };

@@ -185,7 +185,7 @@ void main()
 	MaterialParameters mp = u_MaterialParameters.mp[materialIndex];
 
 	float refractiveness = (1.0f - albedo.a);
-	float reflectiveness = (1.0f - mp.Roughness * roughness.r);
+	float reflectiveness = (1.0f - mp.Metallic * metallic.r);
 
 	vec3 hitPos = gl_WorldRayOriginNV + normalize(gl_WorldRayDirectionNV) * gl_HitTNV;
 	uint rayFlags = gl_RayFlagsOpaqueNV;

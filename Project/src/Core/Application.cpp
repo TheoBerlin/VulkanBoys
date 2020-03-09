@@ -90,7 +90,7 @@ void Application::init()
 	m_pContext = IGraphicsContext::create(m_pWindow, API::VULKAN);
 
 	constexpr bool forceRayTracingOff = false;
-	m_EnableRayTracing = m_pContext->supportsRayTracing() && !forceRayTracingOff;
+	m_pContext->setRayTracingEnabled(forceRayTracingOff);
 
 	// Create and setup rendering handler
 	m_pRenderingHandler = m_pContext->createRenderingHandler();
@@ -105,7 +105,7 @@ void Application::init()
 	m_pParticleRenderer = m_pContext->createParticleRenderer(m_pRenderingHandler);
 	m_pParticleRenderer->init();
 
-	if (m_EnableRayTracing) 
+	if (m_pContext->isRayTracingEnabled()) 
 	{
 		m_pRayTracingRenderer = m_pContext->createRayTracingRenderer(m_pRenderingHandler);
 		m_pRayTracingRenderer->init();
@@ -126,7 +126,7 @@ void Application::init()
 	m_pRenderingHandler->setParticleRenderer(m_pParticleRenderer);
 	m_pRenderingHandler->setImguiRenderer(m_pImgui);
 
-	if (m_EnableRayTracing)
+	if (m_pContext->isRayTracingEnabled())
 	{
 		m_pRenderingHandler->setRayTracer(m_pRayTracingRenderer);
 	}

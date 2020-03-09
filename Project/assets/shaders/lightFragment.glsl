@@ -9,6 +9,8 @@
 layout(location = 0) in vec2	in_TexCoord;
 layout(location = 0) out vec4	out_Color;
 
+layout (constant_id = 0) const int RAY_TRACING_ENABLED = 0;
+
 layout(binding = 1) uniform sampler2D 	u_Albedo;
 layout(binding = 2) uniform sampler2D 	u_Normal;
 layout(binding = 3) uniform sampler2D 	u_WorldPosition;
@@ -167,9 +169,18 @@ void main()
 	vec3 f 			= FresnelRoughness(f0, clamp(dot(normal, viewDir), 0.0f, 1.0f), roughness);
 	vec3 kDiffuse 	= (vec3(1.0f) - f) * metallicFactor;
 
-	vec4 centerRayTracedGlossy = texture(u_RayTracingResult, texCoord);
-	vec4 rayTracedGlossy = bilateralBlur13Roughness(u_RayTracingResult, centerRayTracedGlossy, texCoord, vec2(0.0f, 1.0f), roughness);//texture(u_RayTracingResult, texCoord);
-	vec3 prefilteredColor 	= rayTracedGlossy.rgb;//textureLod(u_EnvironmentMap, reflection, roughness * MAX_REFLECTION_MIPS).rgb;
+	vec3 prefilteredColor = vec3(0.0f);
+
+	if (RAY_TRACING_ENABLED == 1)
+	{
+		vec4 centerRayTracedGlossy = texture(u_RayTracingResult, texCoord);
+		vec4 rayTracedGlossy = bilateralBlur13Roughness(u_RayTracingResult, centerRayTracedGlossy, texCoord, vec2(0.0f, 1.0f), roughness);//texture(u_RayTracingResult, texCoord);
+		prefilteredColor = rayTracedGlossy.rgb;
+	}
+	else
+	{
+		prefilteredColor = textureLod(u_EnvironmentMap, reflection, roughness * MAX_REFLECTION_MIPS).rgb;
+	}
 	
 	vec2 envBRDF 	= texture(u_BrdfLUT, vec2(max(dot(normal, viewDir), 0.0f), roughness)).rg;
 	vec3 specular	= prefilteredColor * (f * envBRDF.x + envBRDF.y);
