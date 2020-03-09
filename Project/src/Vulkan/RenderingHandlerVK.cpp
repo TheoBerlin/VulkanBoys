@@ -172,6 +172,9 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 
 	m_pRayTracer->onWindowResize(width, height);
 
+	//Temp?
+	m_pRayTracer->setResolution(width / RAY_TRACING_RESOLUTION_DENOMINATOR, height / RAY_TRACING_RESOLUTION_DENOMINATOR);
+
 	createRayTracingRenderImage(width, height);
 
 	createBackBuffers();
@@ -349,7 +352,7 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 		//Todo: Combine this and acquire to same
 		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pRayTracingStorageImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 1);
 
-		m_pRayTracer->setRayTracingResult(m_pRayTracingStorageImageView, m_pGraphicsContext->getSwapChain()->getExtent().width / RAY_TRACING_RESOLUTION_DENOMINATOR, m_pGraphicsContext->getSwapChain()->getExtent().height / RAY_TRACING_RESOLUTION_DENOMINATOR);
+		m_pRayTracer->setRayTracingResult(m_pRayTracingStorageImageView, m_pGraphicsContext->getSwapChain()->getExtent().width, m_pGraphicsContext->getSwapChain()->getExtent().height);
 		m_pRayTracer->render(pScene, m_pGBuffer);
 		m_ppComputeCommandBuffers[m_CurrentFrame]->executeSecondary(m_pRayTracer->getComputeCommandBuffer());
 
@@ -838,7 +841,7 @@ bool RenderingHandlerVK::createRayTracingRenderImage(uint32_t width, uint32_t he
 
 	ImageParams imageParams = {};
 	imageParams.Type = VK_IMAGE_TYPE_2D;
-	imageParams.Format = m_pGraphicsContext->getSwapChain()->getFormat();
+	imageParams.Format = VK_FORMAT_A2B10G10R10_UNORM_PACK32; //Todo: What format should this be?
 	imageParams.Extent.width = width / RAY_TRACING_RESOLUTION_DENOMINATOR;
 	imageParams.Extent.height = height / RAY_TRACING_RESOLUTION_DENOMINATOR;
 	imageParams.Extent.depth = 1;

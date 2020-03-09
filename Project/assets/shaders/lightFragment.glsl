@@ -1,6 +1,8 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
+#include "helpers.glsl"
+
 #define MAX_POINT_LIGHTS 	4
 #define MAX_REFLECTION_MIPS 6.0f
 
@@ -165,7 +167,8 @@ void main()
 	vec3 f 			= FresnelRoughness(f0, clamp(dot(normal, viewDir), 0.0f, 1.0f), roughness);
 	vec3 kDiffuse 	= (vec3(1.0f) - f) * metallicFactor;
 
-	vec4 rayTracedGlossy = texture(u_RayTracingResult, texCoord);
+	vec4 centerRayTracedGlossy = texture(u_RayTracingResult, texCoord);
+	vec4 rayTracedGlossy = bilateralBlur13Roughness(u_RayTracingResult, centerRayTracedGlossy, texCoord, vec2(0.0f, 1.0f), roughness);//texture(u_RayTracingResult, texCoord);
 	vec3 prefilteredColor 	= rayTracedGlossy.rgb;//textureLod(u_EnvironmentMap, reflection, roughness * MAX_REFLECTION_MIPS).rgb;
 	
 	vec2 envBRDF 	= texture(u_BrdfLUT, vec2(max(dot(normal, viewDir), 0.0f), roughness)).rg;

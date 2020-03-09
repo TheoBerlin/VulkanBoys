@@ -3,7 +3,7 @@
 
 #define EPSILON 0.001f
 
-layout(binding = 0, set = 0, rgba8) uniform image2D u_ResultImage;
+layout(binding = 0, set = 0, rgb10_a2) uniform image2D u_ResultImage;
 layout(binding = 1, set = 0) uniform CameraProperties 
 {
 	mat4 viewInverse;
@@ -72,7 +72,7 @@ void main()
 
 	if (dot(sampledNormalRoughness.xyz, sampledNormalRoughness.xyz) < 0.5f)
 	{
-		imageStore(u_ResultImage, ivec2(gl_LaunchIDNV.xy), vec4(1.0f, 0.0f, 1.0f, 1.0f));
+		imageStore(u_ResultImage, ivec2(gl_LaunchIDNV.xy), vec4(1.0f, 0.0f, 1.0f, 0.0f));
 		return;
 	}
 

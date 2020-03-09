@@ -17,6 +17,7 @@ class CommandPoolVK;
 class TextureCubeVK;
 class ImageViewVK;
 class Texture2DVK;
+class PipelineVK;
 class SamplerVK;
 class ShaderVK;
 class BufferVK;
@@ -25,7 +26,7 @@ class SceneVK;
 class ImageVK;
 class MeshVK;
 
-constexpr uint32_t RT_RESULT_IMAGE_BINDING = 0;
+constexpr uint32_t RT_RAW_RESULT_IMAGE_BINDING = 0;
 constexpr uint32_t RT_CAMERA_BUFFER_BINDING = 1;
 constexpr uint32_t RT_TLAS_BINDING = 2;
 constexpr uint32_t RT_GBUFFER_ALBEDO_BINDING = 3;
@@ -43,6 +44,12 @@ constexpr uint32_t RT_COMBINED_MATERIAL_PARAMETERS_BINDING = 14;
 constexpr uint32_t RT_SKYBOX_BINDING = 15;
 constexpr uint32_t RT_LIGHT_BUFFER_BINDING = 16;
 
+constexpr uint32_t RT_BP_BLUR_RESULT_BINDING = 0;
+constexpr uint32_t RT_BP_RAW_RESULT_BINDING = 1;
+constexpr uint32_t RT_BP_GBUFFER_ALBEDO_BINDING = 2;
+constexpr uint32_t RT_BP_GBUFFER_NORMAL_BINDING = 3;
+constexpr uint32_t RT_BP_GBUFFER_DEPTH_BINDING = 4;
+
 class RayTracingRendererVK : public IRenderer
 {
 public:
@@ -58,6 +65,8 @@ public:
 
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
 
+	void setResolution(uint32_t width, uint32_t height);
+	
 	void onWindowResize(uint32_t width, uint32_t height);
 
 	void setRayTracingResult(ImageViewVK* pRayTracingResultImageView, uint32_t width, uint32_t height);
@@ -70,7 +79,7 @@ public:
 private:
 	bool createCommandPoolAndBuffers();
 	bool createPipelineLayouts();
-	bool createPipeline();
+	bool createPipelines();
 	bool createUniformBuffers();
 
 	void createProfiler();
@@ -86,6 +95,7 @@ private:
 	CommandPoolVK* m_ppComputeCommandPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppComputeCommandBuffers[MAX_FRAMES_IN_FLIGHT];
 
+	//Ray Tracing
 	RayTracingPipelineVK* m_pRayTracingPipeline;
 
 	PipelineLayoutVK* m_pRayTracingPipelineLayout;
@@ -94,22 +104,31 @@ private:
 	DescriptorPoolVK* m_pRayTracingDescriptorPool;
 	DescriptorSetLayoutVK* m_pRayTracingDescriptorSetLayout;
 
+	uint32_t m_RaysWidth;
+	uint32_t m_RaysHeight;
+
+	//Blur Pass
+	PipelineVK* m_pBlurPassPipeline;
+
+	PipelineLayoutVK* m_pBlurPassPipelineLayout;
+
+	DescriptorSetVK* m_pBlurPassDescriptorSet;
+	DescriptorPoolVK* m_pBlurPassDescriptorPool;
+	DescriptorSetLayoutVK* m_pBlurPassDescriptorSetLayout;
+	uint32_t m_WorkGroupSize[3];
+
+	uint32_t m_NumBlurImagePixels;
+
+	//General
 	TextureCubeVK* m_pSkybox;
 
-	//Temp?
+	ImageVK* m_pRawResultImage;
+	ImageViewVK* m_pRawResultImageView;
+
 	BufferVK* m_pCameraBuffer;
 	BufferVK* m_pLightsBuffer;
 
-	ShaderVK* m_pRaygenShader;
-	ShaderVK* m_pClosestHitShader;
-	ShaderVK* m_pClosestHitShadowShader;
-	ShaderVK* m_pMissShader;
-	ShaderVK* m_pMissShadowShader;
-
 	SamplerVK* m_pSampler;
-
-	uint32_t m_RaysWidth;
-	uint32_t m_RaysHeight;
 
 	bool m_TempSubmitLimit;
 };
