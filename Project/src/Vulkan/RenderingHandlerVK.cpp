@@ -130,7 +130,7 @@ bool RenderingHandlerVK::initialize()
 		return false;
 	}
 
-	if (!createGBuffer())
+	if (!createBuffers())
 	{
 		return false;
 	}
@@ -625,7 +625,7 @@ bool RenderingHandlerVK::createRenderPasses()
 	description.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	m_pBackBufferRenderPass->addAttachment(description);
 
-	description.format			= VK_FORMAT_D24_UNORM_S8_UINT;
+	description.format			= VK_FORMAT_D32_SFLOAT;//VK_FORMAT_D24_UNORM_S8_UINT;
 	description.samples			= VK_SAMPLE_COUNT_1_BIT;
 	description.loadOp			= VK_ATTACHMENT_LOAD_OP_LOAD;
 	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
@@ -773,7 +773,7 @@ void RenderingHandlerVK::updateBuffers(const Camera& camera)
 {
 	// Update camera buffers
 	CameraMatricesBuffer cameraMatricesBuffer = {};
-	cameraMatricesBuffer.ProjectionInv = camera.getProjectionMat();
+	cameraMatricesBuffer.ProjectionInv	= camera.getProjectionMat();
 	cameraMatricesBuffer.ViewInv		= camera.getViewMat();
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraMatricesBuffer, 0, (const void*)&cameraMatricesBuffer, sizeof(CameraMatricesBuffer));
 

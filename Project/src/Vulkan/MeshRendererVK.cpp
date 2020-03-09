@@ -536,7 +536,7 @@ bool MeshRendererVK::createRenderPass()
 	description.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	m_pBackBufferRenderPass->addAttachment(description);
 
-	description.format			= VK_FORMAT_D24_UNORM_S8_UINT;
+	description.format			= VK_FORMAT_D32_SFLOAT;//VK_FORMAT_D24_UNORM_S8_UINT;
 	description.samples			= VK_SAMPLE_COUNT_1_BIT;
 	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
 	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;

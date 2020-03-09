@@ -40,6 +40,8 @@
 
 Application* Application::s_pInstance = nullptr;
 
+constexpr bool FORCE_RAY_TRACING_OFF = true;
+
 Application::Application()
 	: m_pWindow(nullptr),
 	m_pContext(nullptr),
@@ -90,8 +92,7 @@ void Application::init()
 	//Create context
 	m_pContext = IGraphicsContext::create(m_pWindow, API::VULKAN);
 
-	constexpr bool forceRayTracingOff = false;
-	m_pContext->setRayTracingEnabled(forceRayTracingOff);
+	m_pContext->setRayTracingEnabled(!FORCE_RAY_TRACING_OFF);
 
 	// Create and setup rendering handler
 	m_pRenderingHandler = m_pContext->createRenderingHandler();
