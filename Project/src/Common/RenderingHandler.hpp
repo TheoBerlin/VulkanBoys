@@ -5,6 +5,7 @@
 
 class IMesh;
 class IImgui;
+class IScene;
 class IRenderer;
 class ITexture2D;
 class ITextureCube;
@@ -27,10 +28,7 @@ public:
 
     virtual ITextureCube* generateTextureCube(ITexture2D* pPanorama, ETextureFormat format, uint32_t width, uint32_t miplevels) = 0;
 
-    virtual void beginFrame(const Camera& camera, const LightSetup& lightSetup) = 0;
-    virtual void endFrame() = 0;
-
-    virtual void submitMesh(IMesh* pMesh, const Material& material, const glm::mat4& transform) = 0;
+	virtual void render(IScene* pScene) = 0;
 
     virtual void drawProfilerUI() = 0;
     

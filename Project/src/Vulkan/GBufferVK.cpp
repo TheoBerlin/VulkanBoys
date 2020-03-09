@@ -105,7 +105,7 @@ bool GBufferVK::createImages()
 		m_ColorImages.emplace_back(pImage);
 	}
 
-	imageParams.Usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	imageParams.Usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	imageParams.Format = m_DepthFormat;
 
 	m_pDepthImage = DBG_NEW ImageVK(m_pDevice);
@@ -133,9 +133,9 @@ bool GBufferVK::createImageViews()
 	}
 
 	m_pDepthImageView = DBG_NEW ImageViewVK(m_pDevice, m_pDepthImage);
-	if (m_DepthFormat == VK_FORMAT_D24_UNORM_S8_UINT || m_DepthFormat == VK_FORMAT_D32_SFLOAT_S8_UINT)
+	if (m_DepthFormat == VK_FORMAT_D24_UNORM_S8_UINT || m_DepthFormat == VK_FORMAT_D32_SFLOAT_S8_UINT || m_DepthFormat == VK_FORMAT_D32_SFLOAT)
 	{
-		imageViewParams.AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+		imageViewParams.AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
 	}
 	else
 	{

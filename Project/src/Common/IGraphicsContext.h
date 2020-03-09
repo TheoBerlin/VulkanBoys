@@ -4,6 +4,7 @@
 class IMesh;
 class IImgui;
 class IImage;
+class IScene;
 class IBuffer;
 class IShader;
 class IWindow;
@@ -34,6 +35,8 @@ public:
 	virtual ParticleEmitterHandler* createParticleEmitterHandler() = 0;
 	virtual IImgui* createImgui() = 0;
 
+	virtual IScene* createScene() = 0;
+
 	virtual IShader* createShader() = 0;
 	
     virtual IMesh* createMesh() = 0;
@@ -49,7 +52,8 @@ public:
 
 	virtual void sync() = 0;
 
-	virtual bool supportsRayTracing() const = 0;
+	virtual bool setRayTracingEnabled(bool enabled) = 0;
+	virtual bool isRayTracingEnabled() const = 0;
 	
 public:
 	static IGraphicsContext* create(IWindow* pWindow, API api);

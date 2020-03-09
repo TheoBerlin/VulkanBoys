@@ -2,6 +2,7 @@
 #include "BufferVK.h"
 #include "CopyHandlerVK.h"
 #include "ImguiVK.h"
+#include "SceneVK.h"
 #include "MeshVK.h"
 #include "ShaderVK.h"
 #include "SamplerVK.h"
@@ -21,7 +22,8 @@ GraphicsContextVK::GraphicsContextVK(IWindow* pWindow)
 	: m_pWindow(pWindow),
 	m_pSwapChain(nullptr),
 	m_Device(),
-	m_Instance()
+	m_Instance(),
+	m_RayTracingEnabled(false)
 {}
 
 GraphicsContextVK::~GraphicsContextVK()
@@ -100,6 +102,11 @@ IImgui* GraphicsContextVK::createImgui()
 	return DBG_NEW ImguiVK(this);
 }
 
+IScene* GraphicsContextVK::createScene()
+{
+	return DBG_NEW SceneVK(this);
+}
+
 IMesh* GraphicsContextVK::createMesh()
 {
 	return DBG_NEW MeshVK(&m_Device);
@@ -159,7 +166,9 @@ void GraphicsContextVK::swapBuffers(VkSemaphore renderSemaphore)
 	m_pSwapChain->present(renderSemaphore);
 }
 
-bool GraphicsContextVK::supportsRayTracing() const
+
+bool GraphicsContextVK::setRayTracingEnabled(bool enabled)
 {
-	return m_Device.supportsRayTracing();
+	m_RayTracingEnabled = enabled && m_Device.supportsRayTracing();
+	return m_RayTracingEnabled;
 }

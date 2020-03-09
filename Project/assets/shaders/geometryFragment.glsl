@@ -48,6 +48,6 @@ void main()
 	sampledNormal 		= normalize(tbn * normalize(sampledNormal));
 		
 	out_Albedo 		= vec4(constants.Color.rgb * texColor, constants.Ambient * ao);
-	out_Normals		= vec4(sampledNormal, constants.Metallic * metallic);
-	out_Position 	= vec4(worldPosition, constants.Roughness * roughness);
+	out_Normals		= vec4(sampledNormal, constants.Roughness * roughness);
+	out_Position 	= vec4(worldPosition, constants.Metallic * metallic);
 }

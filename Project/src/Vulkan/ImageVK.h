@@ -31,6 +31,7 @@ public:
 	VkFormat getFormat() const { return m_Params.Format; }
 	VkExtent3D getExtent() const { return m_Params.Extent; }
 	uint32_t getMiplevelCount() const { return m_Params.MipLevels; }
+	uint32_t getArrayLayers() const { return m_Params.ArrayLayers;  }
 
 private:
 	DeviceVK* m_pDevice;

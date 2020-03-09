@@ -30,6 +30,7 @@ class PipelineLayoutVK;
 class PipelineVK;
 class RenderingHandlerVK;
 class RenderPassVK;
+class ImageViewVK;
 
 //Geometry pass
 #define CAMERA_BUFFER_BINDING	0
@@ -48,6 +49,7 @@ class RenderPassVK;
 #define ENVIRONMENT_BINDING			5
 #define BRDF_LUT_BINDING			6
 #define LIGHT_BUFFER_BINDING		7
+#define RAY_TRACING_RESULT_BINDING  8
 
 struct MeshFilter
 {
@@ -91,8 +93,8 @@ public:
 
 	virtual bool init() override;
 
-	virtual void beginFrame(const Camera& camera, const LightSetup& lightSetup) override;
-	virtual void endFrame() override;
+	virtual void beginFrame(IScene* pScene) override;
+	virtual void endFrame(IScene* pScene) override;
 
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
 	
@@ -101,8 +103,9 @@ public:
 	void setClearColor(float r, float g, float b);
 	void setClearColor(const glm::vec3& color);
 	void setSkybox(TextureCubeVK* pSkybox, TextureCubeVK* pIrradiance, TextureCubeVK* pEnvironmentMap);
+	void setRayTracingResult(ImageViewVK* pRayTracingResultImageView);
 
-	void submitMesh(const MeshVK* pMesh, const Material* pMaterial, const glm::vec3& materialProperties, const glm::mat4& transform);
+	void submitMesh(const MeshVK* pMesh, const Material* pMaterial, const glm::mat4& transform);
 	
 	void buildLightPass(RenderPassVK* pRenderPass, FrameBufferVK* pFramebuffer);
 

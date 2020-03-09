@@ -40,12 +40,13 @@ public:
 	ITexture2D* getAmbientOcclusionMap() const { return m_pAmbientOcclusionMap; }
 	ITexture2D* getMetallicMap() const { return m_pMetallicMap; }
 	ITexture2D* getRoughnessMap() const { return m_pRoughnessMap; }
-	ISampler* getSampler() const { return m_pSampler; };
+	ISampler* getSampler() const { assert(m_pSampler != nullptr); return m_pSampler; };
 	const glm::vec4& getAlbedo() const { return m_Albedo; }
 	uint32_t getMaterialID() const { return m_ID; }
 	float getAmbientOcclusion() const { return m_Ambient; }
 	float getRoughness() const { return m_Roughness; }
 	float getMetallic() const { return m_Metallic; }
+	const glm::vec3& getMaterialProperties() const { return m_MaterialProperties; }
 
 private:
 	//Resources should not be owned by the material?
@@ -56,9 +57,18 @@ private:
 	ITexture2D* m_pRoughnessMap;
 	ISampler* m_pSampler;
 	glm::vec4 m_Albedo;
-	float m_Metallic;
-	float m_Roughness;
-	float m_Ambient;
+	union
+	{
+		struct
+		{
+			float m_Ambient;
+			float m_Metallic;
+			float m_Roughness;
+		};
+
+		glm::vec3 m_MaterialProperties;
+	};
+	
 	const uint32_t m_ID;
 
 	static uint32_t s_ID;

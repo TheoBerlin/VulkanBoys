@@ -20,14 +20,10 @@ class MeshVK;
 class SkyboxRendererVK;
 class ImguiVK;
 class GBufferVK;
-
-struct SubmitedMesh
-{
-    const MeshVK*       pMesh               = nullptr;
-    const Material*     pMaterial           = nullptr;
-    glm::vec3           MaterialProperties  = glm::vec3(1.0f);
-    glm::mat4           Transform           = glm::mat4(1.0f);
-};
+class IScene;
+class SceneVK;
+class ImageVK;
+class ImageViewVK;
 
 class RenderingHandlerVK : public RenderingHandler
 {
@@ -39,12 +35,9 @@ public:
 
     virtual ITextureCube* generateTextureCube(ITexture2D* pPanorama, ETextureFormat format, uint32_t width, uint32_t miplevels) override;
 
-    virtual void beginFrame(const Camera& camera, const LightSetup& lightsetup) override;
-    virtual void endFrame() override;
+	virtual void render(IScene* pScene) override;
 
     virtual void swapBuffers() override;
-
-    virtual void submitMesh(IMesh* pMesh, const Material& material, const glm::mat4& transform) override;
 
     virtual void drawProfilerUI() override;
 
@@ -72,11 +65,15 @@ public:
 	GBufferVK*				getGBuffer() const							{ return m_pGBuffer; }
 
 private:
+	void beginFrame(SceneVK* pScene);
+	void endFrame(SceneVK* pScene);
+
     bool createBackBuffers();
     bool createCommandPoolAndBuffers();
     bool createRenderPasses();
     bool createSemaphores();
     bool createBuffers();
+	bool createRayTracingRenderImage(uint32_t width, uint32_t height);
 	bool createGBuffer();
 
     void releaseBackBuffers();
@@ -86,8 +83,6 @@ private:
     void submitParticles();
 
 private:
-    std::vector<SubmitedMesh> m_SubmitedMeshes;
-
     GraphicsContextVK* m_pGraphicsContext;
 
     SkyboxRendererVK* m_pSkyboxRenderer;
@@ -96,7 +91,6 @@ private:
     RayTracingRendererVK* m_pRayTracer;
     ImguiVK* m_pImGuiRenderer;
 
-	GBufferVK* m_pGBuffer;
 
     FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
@@ -126,5 +120,8 @@ private:
 
     BufferVK* m_pCameraMatricesBuffer, *m_pCameraDirectionsBuffer;
 
-    bool m_EnableRayTracing;
+	//Render Results
+	ImageVK* m_pRayTracingStorageImage;
+	ImageViewVK* m_pRayTracingStorageImageView;
+	GBufferVK* m_pGBuffer;
 };

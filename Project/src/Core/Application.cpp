@@ -10,6 +10,7 @@
 #include "Common/IWindow.h"
 #include "Common/IShader.h"
 #include "Common/ISampler.h"
+#include "Common/IScene.h"
 #include "Common/IMesh.h"
 #include "Common/IRenderer.h"
 #include "Common/IShader.h"
@@ -39,6 +40,8 @@
 
 Application* Application::s_pInstance = nullptr;
 
+constexpr bool FORCE_RAY_TRACING_OFF = true;
+
 Application::Application()
 	: m_pWindow(nullptr),
 	m_pContext(nullptr),
@@ -46,6 +49,7 @@ Application::Application()
 	m_pMeshRenderer(nullptr),
 	m_pRayTracingRenderer(nullptr),
 	m_pImgui(nullptr),
+	m_pScene(nullptr),
 	m_pMesh(nullptr),
 	m_pAlbedo(nullptr),
 	m_pInputHandler(nullptr),
@@ -88,8 +92,7 @@ void Application::init()
 	//Create context
 	m_pContext = IGraphicsContext::create(m_pWindow, API::VULKAN);
 
-	constexpr bool forceRayTracingOff = false;
-	m_EnableRayTracing = m_pContext->supportsRayTracing() && !forceRayTracingOff;
+	m_pContext->setRayTracingEnabled(!FORCE_RAY_TRACING_OFF);
 
 	// Create and setup rendering handler
 	m_pRenderingHandler = m_pContext->createRenderingHandler();
@@ -104,7 +107,7 @@ void Application::init()
 	m_pParticleRenderer = m_pContext->createParticleRenderer(m_pRenderingHandler);
 	m_pParticleRenderer->init();
 
-	if (m_EnableRayTracing)
+	if (m_pContext->isRayTracingEnabled()) 
 	{
 		m_pRayTracingRenderer = m_pContext->createRayTracingRenderer(m_pRenderingHandler);
 		m_pRayTracingRenderer->init();
@@ -125,13 +128,12 @@ void Application::init()
 	m_pRenderingHandler->setParticleRenderer(m_pParticleRenderer);
 	m_pRenderingHandler->setImguiRenderer(m_pImgui);
 
-	if (m_EnableRayTracing)
+	if (m_pContext->isRayTracingEnabled())
 	{
 		m_pRenderingHandler->setRayTracer(m_pRayTracingRenderer);
 	}
 
 	m_pRenderingHandler->setClearColor(0.0f, 0.0f, 0.0f);
-	m_pRenderingHandler->setParticleEmitterHandler(m_pParticleEmitterHandler);
 
 	//Load resources
 	ITexture2D* pPanorama = m_pContext->createTexture2D();
@@ -150,7 +152,7 @@ void Application::init()
 	m_pSphere = m_pContext->createMesh();
 	TaskDispatcher::execute([&]
 		{
-			m_pSphere->initFromFile("assets/meshes/sphere.obj");
+			m_pSphere->initFromFile("assets/meshes/sphere2.obj");
 		});
 
 	m_pAlbedo = m_pContext->createTexture2D();
@@ -210,7 +212,6 @@ void Application::init()
 	m_GunMaterial.setMetallicMap(m_pMetallic);
 	m_GunMaterial.setRoughnessMap(m_pRoughness);
 
-	m_RedMaterial.setAmbientOcclusion(1.0f);
 
 	SamplerParams samplerParams = {};
 	samplerParams.MinFilter = VK_FILTER_LINEAR;
@@ -218,7 +219,19 @@ void Application::init()
 	samplerParams.WrapModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerParams.WrapModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	m_GunMaterial.createSampler(m_pContext, samplerParams);
-	m_RedMaterial.createSampler(m_pContext, samplerParams);
+
+	for (uint32_t y = 0; y < SPHERE_COUNT_DIMENSION; y++)
+	{
+		for (uint32_t x = 0; x < SPHERE_COUNT_DIMENSION; x++)
+		{
+			Material& material = m_SphereMaterials[x + y * SPHERE_COUNT_DIMENSION];
+			material.setAmbientOcclusion(1.0f);
+			material.setMetallic(float(y) / float(SPHERE_COUNT_DIMENSION));
+			material.setRoughness(glm::clamp((float(x) / float(SPHERE_COUNT_DIMENSION)), 0.05f, 1.0f));
+			material.createSampler(m_pContext, samplerParams);
+		}
+	}
+	
 
 	//Setup lights
 	m_LightSetup.addPointLight(PointLight(glm::vec3( 10.0f,  10.0f, -10.0f), glm::vec4(300.0f)));
@@ -238,6 +251,32 @@ void Application::init()
 	m_pWindow->show();
 
 	SAFEDELETE(pPanorama);
+
+	//Create Scene
+	m_pScene = m_pContext->createScene();
+
+	//Add Game Objects to Scene
+	m_GraphicsIndex0 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
+	m_GraphicsIndex1 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
+	m_GraphicsIndex2 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
+	
+	
+	for (uint32_t y = 0; y < SPHERE_COUNT_DIMENSION; y++)
+	{
+		float yCoord = ((float(SPHERE_COUNT_DIMENSION) * 0.5f) / -2.0f) + float(y * 0.5);
+
+		for (uint32_t x = 0; x < SPHERE_COUNT_DIMENSION; x++)
+		{
+			float xCoord = ((float(SPHERE_COUNT_DIMENSION) * 0.5f) / -2.0f) + float(x * 0.5);
+
+			m_SphereIndexes[x + y * SPHERE_COUNT_DIMENSION] = m_pScene->submitGraphicsObject(
+				m_pSphere, &m_SphereMaterials[x + y * SPHERE_COUNT_DIMENSION], 
+				glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)), glm::vec3(0.25f)));
+		}
+	}
+	
+	//Finalize after (more efficient)
+	m_pScene->finalize();
 }
 
 void Application::run()
@@ -280,7 +319,11 @@ void Application::release()
 	m_pContext->sync();
 
 	m_GunMaterial.release();
-	m_RedMaterial.release();
+	
+	for (uint32_t i = 0; i < SPHERE_COUNT_DIMENSION * SPHERE_COUNT_DIMENSION; i++)
+	{
+		m_SphereMaterials->release();
+	}
 
 	SAFEDELETE(m_pSkybox);
 	SAFEDELETE(m_pSphere);
@@ -297,6 +340,7 @@ void Application::release()
 	SAFEDELETE(m_pParticleEmitterHandler);
 	SAFEDELETE(m_pImgui);
 	SAFEDELETE(m_pContext);
+	SAFEDELETE(m_pScene);
 
 	SAFEDELETE(m_pInputHandler);
 	Input::setInputHandler(nullptr);
@@ -380,6 +424,8 @@ Application* Application::get()
 	return s_pInstance;
 }
 
+static glm::vec4 g_Color = glm::vec4(0.5f, 0.0f, 0.0f, 1.0f);
+
 void Application::update(double dt)
 {
 	//TODO: Is float enough precision on fast systems?
@@ -450,9 +496,25 @@ void Application::update(double dt)
 
 	//TODO: Is float enough precision on fast systems?
 	m_pParticleEmitterHandler->update((float)dt);
-}
 
-static glm::vec4 g_Color = glm::vec4(0.5f, 0.0f, 0.0f, 1.0f);
+	//Set sphere color
+	static glm::mat4 rotation = glm::mat4(1.0f);
+	rotation = glm::rotate(rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
+	m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex0, glm::mat4(1.0f) * rotation);
+	m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex1, glm::translate(glm::mat4(1.0f), glm::vec3(1.5f, 0.0f, 0.0f)));
+	m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex2, glm::translate(glm::mat4(1.0f), glm::vec3(-1.5f, 0.0f, 0.0f)));
+
+	for (uint32_t i = 0; i < SPHERE_COUNT_DIMENSION * SPHERE_COUNT_DIMENSION; i++)
+	{
+		m_SphereMaterials[i].setAlbedo(g_Color);
+	}
+
+	m_pScene->updateCamera(m_Camera);
+	m_pScene->updateLightSetup(m_LightSetup);
+
+	m_pScene->update();
+	m_pScene->updateMaterials();
+}
 
 void Application::renderUI(double dt)
 {
@@ -596,33 +658,5 @@ void Application::renderUI(double dt)
 
 void Application::render(double dt)
 {
-	m_pRenderingHandler->beginFrame(m_Camera, m_LightSetup);
-
-	static glm::mat4 rotation = glm::mat4(1.0f);
-	rotation = glm::rotate(rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
-
-	m_pRenderingHandler->submitMesh(m_pMesh, m_GunMaterial, glm::mat4(1.0f) * rotation);
-	m_pRenderingHandler->submitMesh(m_pMesh, m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(1.5f, 0.0f, 0.0f)));
-	m_pRenderingHandler->submitMesh(m_pMesh, m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(-1.5f, 0.0f, 0.0f)));
-
-	//Set sphere color
-	m_RedMaterial.setAlbedo(g_Color);
-
-	constexpr uint32_t sphereCount = 8;
-	for (uint32_t y = 0; y < sphereCount; y++)
-	{
-		float yCoord = ((float(sphereCount) * 0.5f) / -2.0f) + float(y * 0.5);
-		m_RedMaterial.setMetallic(float(y) / float(sphereCount));
-
-		for (uint32_t x = 0; x < sphereCount; x++)
-		{
-			float xCoord = ((float(sphereCount) * 0.5f) / -2.0f) + float(x * 0.5);
-			m_RedMaterial.setRoughness(glm::clamp((float(x) / float(sphereCount)), 0.05f, 1.0f));
-
-			m_pRenderingHandler->submitMesh(m_pSphere, m_RedMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)));
-		}
-	}
-
-	m_pRenderingHandler->endFrame();
-	m_pRenderingHandler->swapBuffers();
+	m_pRenderingHandler->render(m_pScene);
 }

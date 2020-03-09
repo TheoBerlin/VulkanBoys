@@ -38,6 +38,9 @@ public:
 
 	static Application* get();
 
+	//Temp
+	IScene* getScene() { return m_pScene; }
+
 private:
 	void update(double dt);
 	void renderUI(double dt);
@@ -55,7 +58,11 @@ private:
 	IImgui* m_pImgui;
 	IInputHandler* m_pInputHandler;
 
+	IScene* m_pScene;
+
 	//TODO: Resoures should they be here?
+	static constexpr uint32_t SPHERE_COUNT_DIMENSION = 8;
+
 	IMesh* m_pMesh;
 	IMesh* m_pSphere;
 	ITexture2D* m_pAlbedo;
@@ -64,7 +71,8 @@ private:
 	ITexture2D* m_pRoughness;
 	ITextureCube* m_pSkybox;
 	Material m_GunMaterial;
-	Material m_RedMaterial;
+	Material m_SphereMaterials[SPHERE_COUNT_DIMENSION * SPHERE_COUNT_DIMENSION];
+	uint32_t m_SphereIndexes[SPHERE_COUNT_DIMENSION * SPHERE_COUNT_DIMENSION];
 
 	ParticleEmitterHandler* m_pParticleEmitterHandler;
 	ITexture2D* m_pParticleTexture;
@@ -76,7 +84,12 @@ private:
 
 	bool m_IsRunning;
 	bool m_UpdateCamera;
-	bool m_EnableRayTracing;
+
+	uint32_t m_GraphicsIndex0;
+	uint32_t m_GraphicsIndex1;
+	uint32_t m_GraphicsIndex2;
+
+
 
 	static Application* s_pInstance;
 };
