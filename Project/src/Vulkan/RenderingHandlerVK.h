@@ -59,6 +59,7 @@ public:
     RenderPassVK*           getBackBufferRenderPass() const             { return m_pBackBufferRenderPass; }
     BufferVK*               getCameraMatricesBuffer() const             { return m_pCameraMatricesBuffer; }
     BufferVK*               getCameraDirectionsBuffer() const           { return m_pCameraDirectionsBuffer; }
+    BufferVK*               getCameraBuffer() const                     { return m_pCameraBuffer; }
     FrameBufferVK*          getCurrentBackBuffer() const                { return m_ppBackbuffers[m_BackBufferIndex]; }
     CommandBufferVK*        getCurrentGraphicsCommandBuffer() const     { return m_ppGraphicsCommandBuffers[m_CurrentFrame]; }
 	CommandBufferVK*        getCurrentComputeCommandBuffer() const      { return m_ppComputeCommandBuffers[m_CurrentFrame]; }
@@ -118,7 +119,7 @@ private:
     VkViewport m_Viewport;
 	VkRect2D m_ScissorRect;
 
-    BufferVK* m_pCameraMatricesBuffer, *m_pCameraDirectionsBuffer;
+    BufferVK* m_pCameraMatricesBuffer, *m_pCameraDirectionsBuffer, *m_pCameraBuffer;
 
 	//Render Results
 	ImageVK* m_pRayTracingStorageImage;

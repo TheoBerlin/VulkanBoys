@@ -42,7 +42,9 @@ RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 	m_pGBuffer(nullptr),
 	m_pGeometryRenderPass(nullptr),
 	m_pBackBufferRenderPass(nullptr),
+	m_pCameraMatricesBuffer(nullptr),
 	m_pCameraDirectionsBuffer(nullptr),
+	m_pCameraBuffer(nullptr),
     m_CurrentFrame(0),
 	m_BackBufferIndex(0),
 	m_ClearColor(),
@@ -65,6 +67,7 @@ RenderingHandlerVK::~RenderingHandlerVK()
 {
 	SAFEDELETE(m_pCameraMatricesBuffer);
 	SAFEDELETE(m_pCameraDirectionsBuffer);
+	SAFEDELETE(m_pCameraBuffer);
 	SAFEDELETE(m_pGeometryRenderPass);
 	SAFEDELETE(m_pBackBufferRenderPass);
 	SAFEDELETE(m_pSkyboxRenderer);
@@ -211,7 +214,7 @@ void RenderingHandlerVK::beginFrame(SceneVK* pScene)
 		m_pParticleRenderer->beginFrame(pScene);
 		submitParticles();
 	}
-	
+
 	//startRenderPass();
 }
 
@@ -782,6 +785,12 @@ void RenderingHandlerVK::updateBuffers(const Camera& camera)
 	cameraDirectionsBuffer.Up		= glm::vec4(camera.getUpVec(), 0.0f);
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraDirectionsBuffer, 0, (const void*)&cameraDirectionsBuffer, sizeof(CameraDirectionsBuffer));
 
+	CameraBuffer cameraBuffer = {};
+	cameraBuffer.Projection		= camera.getProjectionMat();
+	cameraBuffer.View			= camera.getViewMat();
+	cameraBuffer.Position		= glm::vec4(camera.getPosition(), 1.0f);
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraBuffer, 0, (const void*)&cameraBuffer, sizeof(CameraBuffer));
+
 	// Update particle buffers
 	m_pParticleEmitterHandler->updateRenderingBuffers(this);
 }
@@ -824,6 +833,14 @@ bool RenderingHandlerVK::createBuffers()
 	if (!m_pCameraDirectionsBuffer->init(cameraBufferParams))
 	{
 		LOG("Failed to create camera directions buffer");
+		return false;
+	}
+
+	cameraBufferParams.SizeInBytes = sizeof(CameraBuffer);
+
+	m_pCameraBuffer = DBG_NEW BufferVK(m_pGraphicsContext->getDevice());
+	if (!m_pCameraBuffer->init(cameraBufferParams)) {
+		LOG("Failed to create camera buffer");
 		return false;
 	}
 
