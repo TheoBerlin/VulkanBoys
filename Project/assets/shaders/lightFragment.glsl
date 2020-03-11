@@ -37,60 +37,7 @@ layout (binding = 7) uniform LightBuffer
 	PointLight lights[MAX_POINT_LIGHTS];
 } u_Lights;
 
-const float PI 		= 3.14159265359f;
 const float GAMMA	= 2.2f;
-
-/*
-	Schlick Fresnel function
-*/
-vec3 Fresnel(vec3 F0, float cosTheta)
-{
-	return F0 + ((vec3(1.0f) - F0) * pow(1.0f - cosTheta, 5.0f));
-}
-
-/*
-	Schlick Fresnel function with roughness
-*/
-vec3 FresnelRoughness(vec3 F0, float cosTheta, float roughness)
-{
-	return F0 + ((max(vec3(1.0f - roughness), F0) - F0) * pow(1.0f - cosTheta, 5.0f));
-}
-
-/*
-	GGX Distrubution function
-*/
-float Distrubution(vec3 normal, vec3 halfVector, float roughness)
-{
-	float roughnessSqrd = roughness*roughness;
-	float alphaSqrd 	= roughnessSqrd *roughnessSqrd;
-
-	float NdotH = max(dot(normal, halfVector), 0.0f);
-
-	float denom = ((NdotH * NdotH) * (alphaSqrd - 1.0f)) + 1.0f;
-	return alphaSqrd / (PI * denom * denom);
-}
-
-/*
-	Schlick and GGX Geometry-Function
-*/
-float GeometryGGX(float NdotV, float roughness)
-{
-	float r 		= roughness + 1.0f;
-	float k_Direct 	= (r*r) / 8.0f;
-
-	return NdotV / ((NdotV * (1.0f - k_Direct)) + k_Direct);
-}
-
-/*
-	Smith Geometry-Function
-*/
-float Geometry(vec3 normal, vec3 viewDir, vec3 lightDirection, float roughness)
-{
-	float NdotV = max(dot(normal, viewDir), 0.0f);
-	float NdotL = max(dot(normal, lightDirection), 0.0f);
-
-	return GeometryGGX(NdotV, roughness) * GeometryGGX(NdotL, roughness);
-}
 
 vec4 ColorPost(vec3 finalColor)
 {
@@ -113,7 +60,7 @@ void main()
 	vec3 worldPosition 	= sampledWorldPosition.xyz;
 
 	//Just skybox
-	if (length(normal) == 0)
+	if (dot(normal,  normal) < 0.5f)
 	{
 	    out_Color = ColorPost(albedo);
 		return;
@@ -151,7 +98,7 @@ void main()
 		vec3 radiance = lightColor * attenuation;
 
 		vec3 f 		= Fresnel(f0, clamp(dot(halfVector, viewDir), 0.0f, 1.0f));
-		float ndf 	= Distrubution(normal, halfVector, roughness);
+		float ndf 	= Distribution(normal, halfVector, roughness);
 		float g 	= Geometry(normal, viewDir, lightDirection, roughness);
 
 		float denom 	= (4.0f * max(dot(normal, viewDir), 0.0f) * max(dot(normal, lightDirection), 0.0f)) + 0.0001f;
@@ -189,6 +136,6 @@ void main()
 	vec3 ambient 	= ((kDiffuse * diffuse) + specular) * ao;
 
 	vec3 finalColor = ambient + L0;
-    out_Color = ColorPost(finalColor);
-	//out_Color.rgb = rayTracedGlossy.rgb;
+    //out_Color = ColorPost(finalColor);
+	out_Color = ColorPost(prefilteredColor);
 }
