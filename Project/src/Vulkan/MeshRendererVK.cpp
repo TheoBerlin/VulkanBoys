@@ -84,7 +84,6 @@ MeshRendererVK::~MeshRendererVK()
 	SAFEDELETE(m_pLightPipelineLayout);
 	SAFEDELETE(m_pDescriptorPool);
 	SAFEDELETE(m_pLightDescriptorSetLayout);
-	SAFEDELETE(m_pCameraBuffer);
 	SAFEDELETE(m_pLightBuffer);
 	SAFEDELETE(m_pDefaultTexture);
 	SAFEDELETE(m_pDefaultNormal);
@@ -223,13 +222,6 @@ void MeshRendererVK::setupFrame(CommandBufferVK* pPrimaryBuffer, const Camera& c
 
 void MeshRendererVK::updateBuffers(CommandBufferVK* pPrimaryBuffer, const Camera& camera, const LightSetup& lightSetup)
 {
-	//Update camera
-	CameraBuffer cameraBuffer = {};
-	cameraBuffer.Projection		= camera.getProjectionMat();
-	cameraBuffer.View			= camera.getViewMat();
-	cameraBuffer.Position		= glm::vec4(camera.getPosition(), 1.0f);
-	pPrimaryBuffer->updateBuffer(m_pCameraBuffer, 0, (const void*)&cameraBuffer, sizeof(CameraBuffer));
-
 	//Update lights
 	const uint32_t numPointLights = lightSetup.getPointLightCount();
 	pPrimaryBuffer->updateBuffer(m_pLightBuffer, 0, (const void*)lightSetup.getPointLights(), sizeof(PointLight) * numPointLights);
@@ -812,16 +804,7 @@ bool MeshRendererVK::createPipelineLayouts()
 
 bool MeshRendererVK::createBuffersAndTextures()
 {
-	BufferParams cameraBufferParams = {};
-	cameraBufferParams.Usage			= VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-	cameraBufferParams.SizeInBytes		= sizeof(CameraBuffer);
-	cameraBufferParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-	m_pCameraBuffer = DBG_NEW BufferVK(m_pContext->getDevice());
-	if (!m_pCameraBuffer->init(cameraBufferParams))
-	{
-		return false;
-	}
+	m_pCameraBuffer = m_pRenderingHandler->getCameraBuffer();
 
 	BufferParams lightBufferParams = {};
 	lightBufferParams.Usage				= VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
