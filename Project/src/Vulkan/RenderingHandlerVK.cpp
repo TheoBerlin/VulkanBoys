@@ -179,6 +179,7 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 	}
 
 	createRayTracingRenderImage(width, height);
+	m_pMeshRenderer->setRayTracingResult(m_pRayTracingStorageImageView);
 
 	createBackBuffers();
 }
@@ -279,7 +280,6 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 
 		TaskDispatcher::execute([this]
 			{
-				m_pMeshRenderer->setRayTracingResult(m_pRayTracingStorageImageView);
 				m_pMeshRenderer->buildLightPass(m_pBackBufferRenderPass, getCurrentBackBuffer());
 			});
 
@@ -396,6 +396,7 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 	{
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->reset(true);
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->acquireImagesOwnership(
 			m_pGBuffer->getColorImages(),
 			m_pGBuffer->getColorImageCount(),
