@@ -107,7 +107,7 @@ void Application::init()
 	m_pParticleRenderer = m_pContext->createParticleRenderer(m_pRenderingHandler);
 	m_pParticleRenderer->init();
 
-	if (m_pContext->isRayTracingEnabled()) 
+	if (m_pContext->isRayTracingEnabled())
 	{
 		m_pRayTracingRenderer = m_pContext->createRayTracingRenderer(m_pRenderingHandler);
 		m_pRayTracingRenderer->init();
@@ -115,7 +115,7 @@ void Application::init()
 
 	//Create particlehandler
 	m_pParticleEmitterHandler = m_pContext->createParticleEmitterHandler();
-	m_pParticleEmitterHandler->initialize(m_pContext, &m_Camera);
+	m_pParticleEmitterHandler->initialize(m_pContext, m_pRenderingHandler, &m_Camera);
 
 	//Setup Imgui
 	m_pImgui = m_pContext->createImgui();
@@ -231,7 +231,7 @@ void Application::init()
 			material.createSampler(m_pContext, samplerParams);
 		}
 	}
-	
+
 
 	//Setup lights
 	m_LightSetup.addPointLight(PointLight(glm::vec3( 10.0f,  10.0f, -10.0f), glm::vec4(300.0f)));
@@ -259,8 +259,8 @@ void Application::init()
 	m_GraphicsIndex0 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
 	m_GraphicsIndex1 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
 	m_GraphicsIndex2 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
-	
-	
+
+
 	for (uint32_t y = 0; y < SPHERE_COUNT_DIMENSION; y++)
 	{
 		float yCoord = ((float(SPHERE_COUNT_DIMENSION) * 0.5f) / -2.0f) + float(y * 0.5);
@@ -270,11 +270,11 @@ void Application::init()
 			float xCoord = ((float(SPHERE_COUNT_DIMENSION) * 0.5f) / -2.0f) + float(x * 0.5);
 
 			m_SphereIndexes[x + y * SPHERE_COUNT_DIMENSION] = m_pScene->submitGraphicsObject(
-				m_pSphere, &m_SphereMaterials[x + y * SPHERE_COUNT_DIMENSION], 
+				m_pSphere, &m_SphereMaterials[x + y * SPHERE_COUNT_DIMENSION],
 				glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)), glm::vec3(0.25f)));
 		}
 	}
-	
+
 	//Finalize after (more efficient)
 	m_pScene->finalize();
 }
@@ -319,7 +319,7 @@ void Application::release()
 	m_pContext->sync();
 
 	m_GunMaterial.release();
-	
+
 	for (uint32_t i = 0; i < SPHERE_COUNT_DIMENSION * SPHERE_COUNT_DIMENSION; i++)
 	{
 		m_SphereMaterials->release();
@@ -532,9 +532,15 @@ void Application::renderUI(double dt)
 	ImGui::SetNextWindowSize(ImVec2(420, 210), ImGuiCond_Always);
 	if (ImGui::Begin("Particles", NULL)) {
 		ImGui::Text("Toggle Computation Device");
-		const char* btnLabel = m_pParticleEmitterHandler->gpuComputed() ? "GPU" : "CPU";
-		if (ImGui::Button(btnLabel, ImVec2(40, 25))) {
+		const char* btnLabelCompute = m_pParticleEmitterHandler->gpuComputed() ? "GPU" : "CPU";
+		if (ImGui::Button(btnLabelCompute, ImVec2(40, 25))) {
 			m_pParticleEmitterHandler->toggleComputationDevice();
+		}
+
+		ImGui::Text("Collisions");
+		const char* btnLabelCollisions = m_pParticleEmitterHandler->collisionsEnabled() ? "On" : "Off";
+		if (ImGui::Button(btnLabelCollisions)) {
+			m_pParticleEmitterHandler->toggleCollisions();
 		}
 
 		std::vector<ParticleEmitter*> particleEmitters = m_pParticleEmitterHandler->getParticleEmitters();
@@ -658,5 +664,6 @@ void Application::renderUI(double dt)
 
 void Application::render(double dt)
 {
+	UNREFERENCED_PARAMETER(dt);
 	m_pRenderingHandler->render(m_pScene);
 }

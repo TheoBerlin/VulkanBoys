@@ -3,11 +3,13 @@
 layout (local_size_x_id=1, local_size_y=1, local_size_z=1) in;
 
 #define TWO_PI 2.0 * 3.1415926535897932384626433832795
+#define BOUNCE_COEFFICIENT 0.8
 
 layout (push_constant) uniform Constants
 {
 	float dt;
-} g_Time;
+    bool performCollisions;
+} g_PushConstant;
 
 layout (binding = 0) buffer Positions
 {
@@ -31,6 +33,16 @@ layout (binding = 3) uniform EmitterProperties
     vec2 particleSize;
     float particleDuration, initialSpeed, spread, particleCount;
 } g_EmitterProperties;
+
+layout (binding = 4) uniform Camera
+{
+	mat4 View;
+	mat4 Projection;
+    vec4 Position;
+} g_Cam;
+
+layout(binding = 5) uniform sampler2D g_DepthBuffer;
+layout(binding = 6) uniform sampler2D g_NormalMap;
 
 float rand1(float p, float minVal, float maxVal)
 {
@@ -75,6 +87,32 @@ void createParticle(uint particleIdx, float particleAge)
     g_Ages.ages[particleIdx] = particleAge;
 }
 
+void collide(uint particleIdx)
+{
+    // Translate particle's world coordinates into screen coordinates
+    vec4 worldPos = g_Positions.positions[particleIdx];
+    vec4 clipSpace = g_Cam.Projection * g_Cam.View * worldPos;
+
+    vec2 ndc = clipSpace.xy / clipSpace.w;
+    if (abs(ndc.x) > 1.0 || abs(ndc.y) > 1.0) {
+        // The particle's center is off-screen, abort
+        return;
+    }
+
+    vec2 screenCoords = ndc * 0.5 + 0.5;
+
+    // Compare camera distance and depth value to decide whether or not the particle is colliding with geometry
+    float depthVal = texture(g_DepthBuffer, screenCoords).r;
+    float cameraDistance = length(worldPos - g_Cam.Position);
+
+    if (abs(depthVal - cameraDistance) < 0.1) {
+        // Handle collision
+        vec3 normal = texture(g_NormalMap, screenCoords).xyz;
+
+        g_Velocities.velocities[particleIdx] = vec4(reflect(g_Velocities.velocities[particleIdx].xyz, normal) * BOUNCE_COEFFICIENT, 0.0);
+    }
+}
+
 void main()
 {
     uint particleIdx = gl_GlobalInvocationID.x;
@@ -82,7 +120,7 @@ void main()
         return;
     }
 
-	float dt = g_Time.dt;
+	float dt = g_PushConstant.dt;
     float age = g_Ages.ages[particleIdx] + dt;
 
     // Move particle
@@ -95,4 +133,8 @@ void main()
 		float newParticleAge = age - g_EmitterProperties.particleDuration;
         createParticle(particleIdx, newParticleAge);
 	}
+
+    if (g_PushConstant.performCollisions) {
+        collide(particleIdx);
+    }
 }

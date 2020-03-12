@@ -11,6 +11,7 @@
 #include "Vulkan/DescriptorPoolVK.h"
 #include "Vulkan/DescriptorSetVK.h"
 #include "Vulkan/DescriptorSetLayoutVK.h"
+#include "Vulkan/GBufferVK.h"
 #include "Vulkan/GraphicsContextVK.h"
 #include "Vulkan/PipelineLayoutVK.h"
 #include "Vulkan/PipelineVK.h"
@@ -18,12 +19,22 @@
 #include "Vulkan/SamplerVK.h"
 #include "Vulkan/ShaderVK.h"
 
+// Compute shader bindings
+#define POSITIONS_BINDING   0
+#define VELOCITIES_BINDING  1
+#define AGES_BINDING        2
+#define EMITTER_BINDING     3
+#define CAMERA_BINDING      4
+#define DEPTH_BINDING       5
+#define NORMAL_MAP_BINDING  6
+
 ParticleEmitterHandlerVK::ParticleEmitterHandlerVK()
 	:m_pDescriptorPool(nullptr),
 	m_pDescriptorSetLayout(nullptr),
 	m_pPipelineLayout(nullptr),
 	m_pPipeline(nullptr),
 	m_pCommandPoolGraphics(nullptr),
+	m_pGBufferSampler(nullptr),
 	m_WorkGroupSize(0),
 	m_CurrentFrame(0),
 	m_pProfiler(nullptr)
@@ -39,6 +50,7 @@ ParticleEmitterHandlerVK::~ParticleEmitterHandlerVK()
         SAFEDELETE(m_ppCommandPools[i]);
     }
 
+	SAFEDELETE(m_pGBufferSampler);
 	SAFEDELETE(m_pDescriptorPool);
 	SAFEDELETE(m_pDescriptorSetLayout);
 	SAFEDELETE(m_pPipelineLayout);
@@ -96,6 +108,10 @@ void ParticleEmitterHandlerVK::drawProfilerUI()
 bool ParticleEmitterHandlerVK::initializeGPUCompute()
 {
     if (!createCommandPoolAndBuffers()) {
+		return false;
+	}
+
+	if (!createSamplers()) {
 		return false;
 	}
 
@@ -255,10 +271,20 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 	BufferVK* pAgesBuffer = reinterpret_cast<BufferVK*>(pEmitter->getAgesBuffer());
 	BufferVK* pEmitterBuffer = reinterpret_cast<BufferVK*>(pEmitter->getEmitterBuffer());
 
-	pEmitterDescriptorSet->writeStorageBufferDescriptor(pPositionsBuffer, 0);
-	pEmitterDescriptorSet->writeStorageBufferDescriptor(pVelocitiesBuffer, 1);
-	pEmitterDescriptorSet->writeStorageBufferDescriptor(pAgesBuffer, 2);
-	pEmitterDescriptorSet->writeUniformBufferDescriptor(pEmitterBuffer, 3);
+	// Fetch image views
+	RenderingHandlerVK* pRenderingHandler = reinterpret_cast<RenderingHandlerVK*>(m_pRenderingHandler);
+	GBufferVK* pGBuffer = pRenderingHandler->getGBuffer();
+
+	ImageViewVK* pNormalMap = pGBuffer->getColorAttachment(1);
+	ImageViewVK* pDepthBuffer = pGBuffer->getDepthAttachment();
+
+	pEmitterDescriptorSet->writeStorageBufferDescriptor(pPositionsBuffer, POSITIONS_BINDING);
+	pEmitterDescriptorSet->writeStorageBufferDescriptor(pVelocitiesBuffer, VELOCITIES_BINDING);
+	pEmitterDescriptorSet->writeStorageBufferDescriptor(pAgesBuffer, AGES_BINDING);
+	pEmitterDescriptorSet->writeUniformBufferDescriptor(pEmitterBuffer, EMITTER_BINDING);
+	pEmitterDescriptorSet->writeUniformBufferDescriptor(pRenderingHandler->getCameraBuffer(), CAMERA_BINDING);
+	pEmitterDescriptorSet->writeCombinedImageDescriptors(&pNormalMap, &m_pGBufferSampler, 1, NORMAL_MAP_BINDING);
+	pEmitterDescriptorSet->writeCombinedImageDescriptors(&pDepthBuffer, &m_pGBufferSampler, 1, DEPTH_BINDING);
 
 	pEmitter->setDescriptorSetCompute(pEmitterDescriptorSet);
 
@@ -280,6 +306,8 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 		pTempCommandBufferCompute->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 		if (m_GPUComputed) {
+			// Simulate the synchronization barriers used when updating a buffer
+			acquireForCompute(pPositionsBuffer, pTempCommandBufferCompute);
 			releaseFromCompute(pPositionsBuffer, pTempCommandBufferCompute);
 		}
 
@@ -312,8 +340,28 @@ void ParticleEmitterHandlerVK::updateGPU(float dt)
 	DeviceVK* pDevice = pGraphicsContext->getDevice();
 	const QueueFamilyIndices& queueFamilyIndices = pDevice->getQueueFamilyIndices();
 
+	// Update push-constant
+	PushConstant pushConstant = {dt, m_CollisionsEnabled};
+	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstant), (const void*)&pushConstant);
+
 	bool transferOwnerships = queueFamilyIndices.graphicsFamily.value() != queueFamilyIndices.computeFamily.value();
-	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float), (const void*)&dt);
+
+	RenderingHandlerVK* pRenderingHandler = reinterpret_cast<RenderingHandlerVK*>(m_pRenderingHandler);
+	GBufferVK* pGBuffer = pRenderingHandler->getGBuffer();
+
+	// Acquire ownership of the depth buffer and transition its layout
+	if (transferOwnerships) {
+		m_ppCommandBuffers[m_CurrentFrame]->acquireImageOwnership(
+				pGBuffer->getDepthImage(),
+				VK_ACCESS_MEMORY_READ_BIT,
+				pDevice->getQueueFamilyIndices().graphicsFamily.value(),
+				pDevice->getQueueFamilyIndices().computeFamily.value(),
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+				VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+				VK_IMAGE_ASPECT_DEPTH_BIT);
+	}
+
+	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(pGBuffer->getDepthImage(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1, VK_IMAGE_ASPECT_DEPTH_BIT);
 
 	for (ParticleEmitter* pEmitter : m_ParticleEmitters) {
 		pEmitter->updateGPU(dt);
@@ -328,7 +376,6 @@ void ParticleEmitterHandlerVK::updateGPU(float dt)
 			acquireForCompute(pPositionsBuffer, m_ppCommandBuffers[m_CurrentFrame]);
 		}
 
-		// TODO: Use constant variables or define macros for binding indices
 		DescriptorSetVK* pDescriptorSet = reinterpret_cast<DescriptorSetVK*>(pEmitter->getDescriptorSetCompute());
 		m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, m_pPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
 
@@ -343,6 +390,19 @@ void ParticleEmitterHandlerVK::updateGPU(float dt)
 			releaseFromCompute(pPositionsBuffer, m_ppCommandBuffers[m_CurrentFrame]);
 		}
     }
+
+	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(pGBuffer->getDepthImage(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, 0, 1, 0, 1, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+	if (transferOwnerships) {
+		m_ppCommandBuffers[m_CurrentFrame]->releaseImageOwnership(
+				pGBuffer->getDepthImage(),
+				VK_ACCESS_MEMORY_READ_BIT,
+				pDevice->getQueueFamilyIndices().computeFamily.value(),
+				pDevice->getQueueFamilyIndices().graphicsFamily.value(),
+				VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+				VK_IMAGE_ASPECT_DEPTH_BIT);
+	}
 
 	endUpdateFrame();
 }
@@ -411,6 +471,21 @@ bool ParticleEmitterHandlerVK::createCommandPoolAndBuffers()
 	return m_pCommandPoolGraphics->init();
 }
 
+bool ParticleEmitterHandlerVK::createSamplers()
+{
+	SamplerParams params = {};
+	params.MagFilter = VK_FILTER_NEAREST;
+	params.MinFilter = VK_FILTER_NEAREST;
+	params.WrapModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	params.WrapModeV = params.WrapModeU;
+	params.WrapModeW = params.WrapModeU;
+
+	GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
+
+	m_pGBufferSampler = DBG_NEW SamplerVK(pGraphicsContext->getDevice());
+	return m_pGBufferSampler->init(params);
+}
+
 bool ParticleEmitterHandlerVK::createPipelineLayout()
 {
 	GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
@@ -419,17 +494,13 @@ bool ParticleEmitterHandlerVK::createPipelineLayout()
 	// Descriptor Set Layout
 	m_pDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(pDevice);
 
-	// Positions
-	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_COMPUTE_BIT, 0, 1);
-
-	// Velocities
-	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_COMPUTE_BIT, 1, 1);
-
-	// Ages
-	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_COMPUTE_BIT, 2, 1);
-
-	// Emitter properties
-	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_COMPUTE_BIT, 3, 1);
+	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_COMPUTE_BIT, POSITIONS_BINDING, 1);
+	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_COMPUTE_BIT, VELOCITIES_BINDING, 1);
+	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_COMPUTE_BIT, AGES_BINDING, 1);
+	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_COMPUTE_BIT, EMITTER_BINDING, 1);
+	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_COMPUTE_BIT, CAMERA_BINDING, 1);
+	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_COMPUTE_BIT, nullptr, DEPTH_BINDING, 1);
+	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_COMPUTE_BIT, nullptr, NORMAL_MAP_BINDING, 1);
 
 	if (!m_pDescriptorSetLayout->finalize()) {
 		LOG("Failed to finalize descriptor set layout");
@@ -453,7 +524,7 @@ bool ParticleEmitterHandlerVK::createPipelineLayout()
 	m_pPipelineLayout = DBG_NEW PipelineLayoutVK(pDevice);
 
 	VkPushConstantRange pushConstantRange = {};
-	pushConstantRange.size = sizeof(float);
+	pushConstantRange.size = sizeof(PushConstant);
 	pushConstantRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 	pushConstantRange.offset = 0;
 

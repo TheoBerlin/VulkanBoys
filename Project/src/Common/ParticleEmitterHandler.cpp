@@ -6,7 +6,8 @@
 
 ParticleEmitterHandler::ParticleEmitterHandler()
     : m_pGraphicsContext(nullptr),
-    m_GPUComputed(false)
+    m_GPUComputed(false),
+    m_CollisionsEnabled(false)
 {
 }
 
@@ -17,11 +18,13 @@ ParticleEmitterHandler::~ParticleEmitterHandler()
 	}
 }
 
-void ParticleEmitterHandler::initialize(IGraphicsContext* pGraphicsContext, const Camera* pCamera)
+void ParticleEmitterHandler::initialize(IGraphicsContext* pGraphicsContext, RenderingHandler* pRenderingHandler, const Camera* pCamera)
 {
     UNREFERENCED_PARAMETER(pCamera);
 
+    m_pCamera = pCamera;
     m_pGraphicsContext = pGraphicsContext;
+    m_pRenderingHandler = pRenderingHandler;
 
     if (!initializeGPUCompute()) {
         LOG("Failed to initialize Particle Emitter Handler GPU compute resources");

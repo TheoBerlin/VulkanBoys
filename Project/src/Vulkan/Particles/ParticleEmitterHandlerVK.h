@@ -43,6 +43,11 @@ public:
     void acquireForCompute(BufferVK* pBuffer, CommandBufferVK* pCommandBuffer);
 
 private:
+    struct PushConstant {
+		float dt;
+		bool performCollisions;
+	};
+
     // Initializes an emitter and prepares its buffers for computing or rendering
     virtual void initializeEmitter(ParticleEmitter* pEmitter) override;
 
@@ -52,6 +57,7 @@ private:
     void endUpdateFrame();
 
     bool createCommandPoolAndBuffers();
+    bool createSamplers();
     bool createPipelineLayout();
     bool createPipeline();
     void createProfiler();
@@ -68,6 +74,8 @@ private:
 
     PipelineLayoutVK* m_pPipelineLayout;
     PipelineVK* m_pPipeline;
+
+    SamplerVK* m_pGBufferSampler;
 
     // Work items per work group launched in a compute shader dispatch
     uint32_t m_WorkGroupSize;
