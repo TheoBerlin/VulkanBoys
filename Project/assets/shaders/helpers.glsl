@@ -27,12 +27,12 @@ vec4 bilateralBlur13Roughness(sampler2D image, vec4 centerColor, vec2 texCoords,
     float closenessCoeff4 = 1.0f - distance(centerColor, color4) / denom;
     float closenessCoeff5 = 1.0f - distance(centerColor, color5) / denom;
 
-    float weight0 = color0.a * closenessCoeff0 * 0.2969069646728344f;
-    float weight1 = color1.a * closenessCoeff1 * 0.2969069646728344f;
-    float weight2 = color2.a * closenessCoeff2 * 0.09447039785044732f;
-    float weight3 = color3.a * closenessCoeff3 * 0.09447039785044732f;
-    float weight4 = color4.a * closenessCoeff4 * 0.010381362401148057f;
-    float weight5 = color5.a * closenessCoeff5 * 0.010381362401148057f;
+    float weight0 = color0.a /** closenessCoeff0*/ * 0.2969069646728344f;
+    float weight1 = color1.a /** closenessCoeff1*/ * 0.2969069646728344f;
+    float weight2 = color2.a /** closenessCoeff2*/ * 0.09447039785044732f;
+    float weight3 = color3.a /** closenessCoeff3*/ * 0.09447039785044732f;
+    float weight4 = color4.a /** closenessCoeff4*/ * 0.010381362401148057f;
+    float weight5 = color5.a /** closenessCoeff5*/ * 0.010381362401148057f;
 
     color += centerColor.rgb * 0.1964825501511404f;
     color += color0.rgb * weight0;
@@ -51,6 +51,91 @@ vec4 bilateralBlur13Roughness(sampler2D image, vec4 centerColor, vec2 texCoords,
     normalization += weight5;
 
     return vec4(color.rgb, 1.0f) / normalization;
+    //return centerColor;
+}
+
+vec3 blur5(sampler2D image, vec4 centerColor, vec2 texCoords, vec2 normalizedDirection) 
+{
+    vec3 color = vec3(0.0f);
+    vec2 off1 = vec2(1.3333333333333333f) * normalizedDirection;
+    color += centerColor.rgb * 0.29411764705882354f;
+    color += texture(image, texCoords + off1).rgb * 0.35294117647058826f;
+    color += texture(image, texCoords - off1).rgb * 0.35294117647058826f;
+    return color; 
+}
+
+vec3 blur9(sampler2D image, vec4 centerColor, vec2 texCoords, vec2 normalizedDirection) 
+{
+    vec3 color = vec3(0.0f);
+    vec2 off1 = vec2(1.3846153846f) * normalizedDirection;
+    vec2 off2 = vec2(3.2307692308f) * normalizedDirection;
+    color += centerColor.rgb * 0.2270270270f;
+    color += texture(image, texCoords + off1).rgb * 0.3162162162f;
+    color += texture(image, texCoords - off1).rgb * 0.3162162162f;
+    color += texture(image, texCoords + off2).rgb * 0.0702702703f;
+    color += texture(image, texCoords - off2).rgb * 0.0702702703f;
+    return color;
+}
+
+vec3 blur13(sampler2D image, vec4 centerColor, vec2 texCoords, vec2 normalizedDirection) 
+{
+    vec3 color = vec3(0.0f);
+    vec2 off1 = vec2(1.411764705882353f) * normalizedDirection;
+    vec2 off2 = vec2(3.2941176470588234f) * normalizedDirection;
+    vec2 off3 = vec2(5.176470588235294f) * normalizedDirection;
+    color += centerColor.rgb * 0.1964825501511404f;
+    color += texture(image, texCoords + off1).rgb * 0.2969069646728344f;
+    color += texture(image, texCoords - off1).rgb * 0.2969069646728344f;
+    color += texture(image, texCoords + off2).rgb * 0.09447039785044732f;
+    color += texture(image, texCoords - off2).rgb * 0.09447039785044732f;
+    color += texture(image, texCoords + off3).rgb * 0.010381362401148057f;
+    color += texture(image, texCoords - off3).rgb * 0.010381362401148057f;
+    return color;
+}
+
+vec4 blur(sampler2D image, vec4 centerColor, vec2 texCoords, vec2 direction, float gamma)
+{
+    const float barrier0 = 1.0f / 3.0f;
+    const float barrier1 = 2.0f / 3.0f;
+
+    vec2 imageResolution = textureSize(image, 0);
+    vec2 normalizedDirection = direction / imageResolution;
+
+    vec3 bottomBlur = vec3(0.0f);
+    vec3 topBlur = vec3(0.0f);
+    float alpha = 0.0f;
+
+    bottomBlur = blur5(image, centerColor, texCoords, normalizedDirection);
+    topBlur = blur9(image, centerColor, texCoords, normalizedDirection);
+    alpha = gamma;
+
+    // if (gamma < barrier0)
+    // {
+    //     bottomBlur = centerColor.rgb;
+    //     topBlur = blur5(image, centerColor, texCoords, normalizedDirection);
+    //     alpha = gamma * 3.0f;
+    // }
+    // else if (gamma < barrier1)
+    // {
+    //     bottomBlur = blur5(image, centerColor, texCoords, normalizedDirection);
+    //     topBlur = blur9(image, centerColor, texCoords, normalizedDirection);
+    //     alpha = (gamma - barrier0) * 3.0f;
+    // }
+    // else
+    // {
+    //     bottomBlur = blur9(image, centerColor, texCoords, normalizedDirection);
+    //     topBlur = blur13(image, centerColor, texCoords, normalizedDirection);
+    //     alpha = (gamma - barrier1) * 3.0f;
+    // }
+
+    return vec4(mix(bottomBlur, topBlur, alpha), 1.0f);
+    //return centerColor;
+}
+
+float LinearizeDepth(float depth, float near, float far)
+{
+    float z = depth * 2.0 - 1.0;
+    return (2.0 * near * far) / (far + near - z * (far - near));
 }
 
 /*
@@ -139,9 +224,37 @@ vec3 ReflectanceDirection(vec3 seed, vec3 reflDir, float roughness)
     const vec3 offset1 = vec3(1.0f, 2.0f, 3.0f);
     const vec3 offset2 = vec3(-3.0f, -2.0f, -1.0f);
 
-    float theta = roughness * PI / 8.0f;
+    float theta = roughness * PI / 2.0f;
     float z = gold_noise3(seed + offset1, goldseed, cos(theta), 1.0f);
     float phi = gold_noise3(seed + offset2, goldseed, 0.0f, 2 * PI);
+    float sinTheta = sqrt(1.0f - z * z);
+
+    vec3 coneVector = vec3(sinTheta * cos(phi), sinTheta * sin(phi), z);
+    
+    float c = dot(coneVector, reflDir);
+
+    // if (1.0f - abs(c) < EPSILON)
+    //     return mix(reflDir, coneVector, roughness);
+
+    vec3 v = cross(coneVector, reflDir);
+    float s = length(v);
+
+    mat3 Vx =  mat3(vec3( 0.0f,  -v.z,    v.y),
+                    vec3( v.z,    0.0f,  -v.x),
+                    vec3(-v.y,    v.x,    0.0f));
+    mat3 R = mat3(1.0f) + Vx + Vx * Vx / (1.0f + c);
+
+    vec3 result = R * coneVector;
+    
+
+    return vec3(-result.x, -result.y, result.z);
+}
+
+vec3 ReflectanceDirection2(vec3 reflDir, float roughness, vec2 uniformRandom)
+{
+    float theta = roughness * PI / 2.0f;
+    float z = mix(cos(theta), 1.0f, uniformRandom.x);
+    float phi = mix(0.0f, 2.0f * PI, uniformRandom.y);
     float sinTheta = sqrt(1.0f - z * z);
 
     vec3 coneVector = vec3(sinTheta * cos(phi), sinTheta * sin(phi), z);

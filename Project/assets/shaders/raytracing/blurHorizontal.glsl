@@ -26,8 +26,11 @@ void main()
     if (centerColor.a > 0.0f)
     {
         float roughness = texture(u_Normal_Roughness, texCoords).a;
-        vec4 blurColor = bilateralBlur13Roughness(u_RawRayTracedResult, centerColor, texCoords, vec2(1.0f, 0.0f), roughness);
-        imageStore(u_BlurResultImage, dstPixelCoords, blurColor);
+        float depth = texture(u_Depth, texCoords).r;
+        float modifiedDepth = pow(LinearizeDepth(depth, 0.01f, 100.0f), 3.0f);
+        float factor = roughness * (1.0f - modifiedDepth);
+        vec4 blurColor = blur(u_RawRayTracedResult, centerColor, texCoords, vec2(1.0f, 0.0f), factor);
+        imageStore(u_BlurResultImage, dstPixelCoords, vec4(blurColor.rgb, factor));
     }
     else
     {

@@ -65,6 +65,13 @@ layout (binding = 16) uniform LightBuffer
 {
 	PointLight lights[MAX_POINT_LIGHTS];
 } u_Lights;
+layout(binding = 18, set = 0) uniform sampler2D u_BrdfLUT;
+layout(binding = 20, set = 0) uniform sampler2D u_BlueNoiseLUT;
+
+layout (push_constant) uniform PushConstants
+{
+	float counter;
+} u_PushConstants;
 
 vec3 myRefract(vec3 I, vec3 N, float ior)
 {
@@ -135,16 +142,11 @@ void main()
 
 	//Sample necessary Textures
 	vec3 sampledAlbedo = texture(u_SceneAlbedoMaps[materialIndex], texCoords).rgb;
-	float sampledAO = texture(u_SceneAOMaps[materialIndex], texCoords).r;
 	
 	MaterialParameters mp = u_MaterialParameters.mp[materialIndex];
 
 	//Combine Samples with Material Parameters
 	vec3 albedo = mp.Albedo.rgb * sampledAlbedo;
-	float ao = mp.AO * sampledAO;
-	
-	//Init Ambient
-	vec3 ambient = vec3(0.03f) * albedo * ao;
 
 	if (recursionNumber < MAX_RECURSION)
 	{
@@ -161,9 +163,10 @@ void main()
 		//Sample rest of textures
 		float sampledMetallic = texture(u_SceneMetallicMaps[materialIndex], texCoords).r;
 		float sampledRoughness = texture(u_SceneRougnessMaps[materialIndex], texCoords).r;
+		float sampledAO = texture(u_SceneAOMaps[materialIndex], texCoords).r;
 		float metallic = mp.Metallic * sampledMetallic;
 		float roughness = mp.Roughness * sampledRoughness;
-
+		float ao = mp.AO * sampledAO;
 		
 		//Init BRDF values
 		vec3 viewDir = -gl_WorldRayDirectionNV;
@@ -212,40 +215,29 @@ void main()
 			}
 		}
 
-		vec3 f 		= Fresnel(f0, NdotV);
-		float averageFresnel = (f.x + f.y + f.z) / 3.0f; 
+		//Irradiance from surroundings
+		vec3 diffuse 	= albedo * vec3(0.03f);
+		vec3 f 			= FresnelRoughness(f0, NdotV, roughness);
+		vec3 kDiffuse 	= (vec3(1.0f) - f) * metallicFactor;
 
-		vec3 reflectionLo = vec3(0.0f);
+		vec3 reflDir = reflect(gl_WorldRayDirectionNV, normal);
+		//reflDir = ReflectanceDirection(hitPos + u_PushConstants.counter, reflDir, roughness);
 
-		//if (averageFresnel > 0.1f)
-		{
-			vec3 reflDir = reflect(gl_WorldRayDirectionNV, normal);
-			reflDir = ReflectanceDirection(hitPos, reflDir, roughness);
+		rayPayload.Radiance = vec3(0.0f);
+		rayPayload.Recursion = recursionNumber + 1;
+		traceNV(u_TopLevelAS, rayFlags, cullMask, 0, 0, 0, reflectedRaysOrigin, tmin, reflDir, tmax, 0);
 
-			rayPayload.Radiance = vec3(0.0f);
-			rayPayload.Recursion = recursionNumber + 1;
-			traceNV(u_TopLevelAS, rayFlags, cullMask, 0, 0, 0, reflectedRaysOrigin, tmin, reflDir, tmax, 0);
+		vec2 envBRDF 	= texture(u_BrdfLUT, vec2(NdotV, roughness)).rg;
+		vec3 specular	= rayPayload.Recursion * (f * envBRDF.x + envBRDF.y);
 
-			float NdotL = max(dot(normal, reflDir), 0.0f);
-			vec3 halfVector = normalize(viewDir + reflDir);
+		vec3 ambient 	= ((kDiffuse * diffuse) + specular) * ao; //Approximate diffuse with albedo * vec3(0.03f)
 
-			float ndf 	= 1.0f / roughness;
-			float g 	= GeometryOpt(NdotV, NdotL, roughness);
+		vec3 finalColor = ambient + Lo;
 
-			float denom 	= 4.0f * NdotV * NdotL + 0.0001f;
-			vec3 specular   = (ndf * g * f) / denom;
-
-			//Take 1.0f minus the incoming radiance to get the diffuse (Energy conservation)
-			vec3 diffuse = (vec3(1.0f) - f) * metallicFactor;
-
-			reflectionLo = ((diffuse * (albedo / PI)) + specular) * rayPayload.Radiance * NdotL;
-		}
-		
-		rayPayload.Radiance = ambient + Lo + reflectionLo;
-		//rayPayload.Radiance = Lo;
+		rayPayload.Radiance = Lo + rayPayload.Radiance;
 	}
 	else
 	{
-		rayPayload.Radiance = ambient;
+		rayPayload.Radiance = albedo;
 	}
 }

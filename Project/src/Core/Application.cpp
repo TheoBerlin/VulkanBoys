@@ -271,7 +271,7 @@ void Application::init()
 
 			m_SphereIndexes[x + y * SPHERE_COUNT_DIMENSION] = m_pScene->submitGraphicsObject(
 				m_pSphere, &m_SphereMaterials[x + y * SPHERE_COUNT_DIMENSION], 
-				glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)), glm::vec3(0.25f)));
+				glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)), glm::vec3(0.2f)));
 		}
 	}
 	
@@ -424,7 +424,7 @@ Application* Application::get()
 	return s_pInstance;
 }
 
-static glm::vec4 g_Color = glm::vec4(0.5f, 0.0f, 0.0f, 1.0f);
+static glm::vec4 g_Color = glm::vec4(1.0f);
 
 void Application::update(double dt)
 {

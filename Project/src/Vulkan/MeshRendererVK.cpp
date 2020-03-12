@@ -262,9 +262,10 @@ void MeshRendererVK::setSkybox(TextureCubeVK* pSkybox, TextureCubeVK* pIrradianc
 	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pEnvironmentMapView, &m_pSkyboxSampler, 1, ENVIRONMENT_BINDING);
 }
 
-void MeshRendererVK::setRayTracingResult(ImageViewVK* pRayTracingResultImageView)
+void MeshRendererVK::setRayTracingResultImages(ImageViewVK* pRadianceImageView, ImageViewVK* pGlossyImageView)
 {
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pRayTracingResultImageView, &m_pGBufferSampler, 1, RAY_TRACING_RESULT_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pRadianceImageView, &m_pRTSampler, 1, RADIANCE_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pGlossyImageView, &m_pRTSampler, 1, GLOSSY_BINDING);
 }
 
 void MeshRendererVK::submitMesh(const MeshVK* pMesh, const Material* pMaterial, const glm::mat4& transform)
@@ -762,7 +763,8 @@ bool MeshRendererVK::createPipelineLayouts()
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, IRRADIANCE_BINDING, 1);
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ENVIRONMENT_BINDING, 1);
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, BRDF_LUT_BINDING, 1);
-	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, RAY_TRACING_RESULT_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, RADIANCE_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GLOSSY_BINDING, 1);
 	if (!m_pLightDescriptorSetLayout->finalize())
 	{
 		return false;
@@ -869,6 +871,19 @@ bool MeshRendererVK::createSamplers()
 
 	m_pBRDFSampler = DBG_NEW SamplerVK(m_pContext->getDevice());
 	if (!m_pBRDFSampler->init(params))
+	{
+		return false;
+	}
+
+	SamplerParams rtParams = {};
+	rtParams.MagFilter = VK_FILTER_LINEAR;
+	rtParams.MinFilter = VK_FILTER_LINEAR;
+	rtParams.WrapModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	rtParams.WrapModeV = params.WrapModeU;
+	rtParams.WrapModeW = params.WrapModeU;
+
+	m_pRTSampler = DBG_NEW SamplerVK(m_pContext->getDevice());
+	if (!m_pRTSampler->init(rtParams))
 	{
 		return false;
 	}

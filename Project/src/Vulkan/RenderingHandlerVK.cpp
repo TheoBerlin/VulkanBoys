@@ -37,8 +37,10 @@ RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 	m_pMeshRenderer(nullptr),
 	m_pRayTracer(nullptr),
 	m_pParticleRenderer(nullptr),
-	m_pRayTracingStorageImage(nullptr),
-	m_pRayTracingStorageImageView(nullptr),
+	m_pRadianceImage(nullptr),
+	m_pRadianceImageView(nullptr),
+	m_pGlossyImage(nullptr),
+	m_pGlossyImageView(nullptr),
 	m_pGBuffer(nullptr),
 	m_pGeometryRenderPass(nullptr),
 	m_pBackBufferRenderPass(nullptr),
@@ -68,8 +70,10 @@ RenderingHandlerVK::~RenderingHandlerVK()
 	SAFEDELETE(m_pGeometryRenderPass);
 	SAFEDELETE(m_pBackBufferRenderPass);
 	SAFEDELETE(m_pSkyboxRenderer);
-	SAFEDELETE(m_pRayTracingStorageImage);
-	SAFEDELETE(m_pRayTracingStorageImageView);
+	SAFEDELETE(m_pRadianceImage);
+	SAFEDELETE(m_pRadianceImageView);
+	SAFEDELETE(m_pGlossyImage);
+	SAFEDELETE(m_pGlossyImageView);
 	SAFEDELETE(m_pGBuffer);
 	releaseBackBuffers();
 
@@ -125,7 +129,7 @@ bool RenderingHandlerVK::initialize()
 		return false;
 	}
 
-	if (!createRayTracingRenderImage(m_pGraphicsContext->getSwapChain()->getExtent().width, m_pGraphicsContext->getSwapChain()->getExtent().height))
+	if (!createRayTracingRenderImages(m_pGraphicsContext->getSwapChain()->getExtent().width, m_pGraphicsContext->getSwapChain()->getExtent().height))
 	{
 		return false;
 	}
@@ -175,7 +179,7 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 		m_pRayTracer->setResolution(width / RAY_TRACING_RESOLUTION_DENOMINATOR, height / RAY_TRACING_RESOLUTION_DENOMINATOR);
 	}
 
-	createRayTracingRenderImage(width, height);
+	createRayTracingRenderImages(width, height);
 
 	createBackBuffers();
 }
@@ -276,7 +280,7 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 
 		TaskDispatcher::execute([this]
 			{
-				m_pMeshRenderer->setRayTracingResult(m_pRayTracingStorageImageView);
+				m_pMeshRenderer->setRayTracingResultImages(m_pRadianceImageView, m_pGlossyImageView);
 				m_pMeshRenderer->buildLightPass(m_pBackBufferRenderPass, getCurrentBackBuffer());
 			});
 
@@ -302,8 +306,9 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 			VK_SHADER_STAGE_RAYGEN_BIT_NV,
 			VK_IMAGE_ASPECT_DEPTH_BIT);
 
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->releaseImageOwnership(
-			m_pRayTracingStorageImage,
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->acquireImagesOwnership(
+			m_RayTracingImages,
+			2,
 			VK_ACCESS_MEMORY_WRITE_BIT,
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
@@ -341,8 +346,9 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pGBuffer->getDepthImage(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1, VK_IMAGE_ASPECT_DEPTH_BIT);
 
 
-		m_ppComputeCommandBuffers[m_CurrentFrame]->acquireImageOwnership(
-			m_pRayTracingStorageImage,
+		m_ppComputeCommandBuffers[m_CurrentFrame]->acquireImagesOwnership(
+			m_RayTracingImages,
+			2,
 			VK_ACCESS_MEMORY_WRITE_BIT,
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
@@ -350,9 +356,10 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 			VK_SHADER_STAGE_RAYGEN_BIT_NV);
 
 		//Todo: Combine this and acquire to same
-		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pRayTracingStorageImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 1);
+		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pRadianceImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 1);
+		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pGlossyImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 1);
 
-		m_pRayTracer->setRayTracingResult(m_pRayTracingStorageImageView, m_pGraphicsContext->getSwapChain()->getExtent().width, m_pGraphicsContext->getSwapChain()->getExtent().height);
+		m_pRayTracer->setRayTracingResultTextures(m_pRadianceImageView, m_pGlossyImageView, m_pGraphicsContext->getSwapChain()->getExtent().width, m_pGraphicsContext->getSwapChain()->getExtent().height);
 		m_pRayTracer->render(pScene, m_pGBuffer);
 		m_ppComputeCommandBuffers[m_CurrentFrame]->executeSecondary(m_pRayTracer->getComputeCommandBuffer());
 
@@ -378,10 +385,12 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 			VK_IMAGE_ASPECT_DEPTH_BIT);
 
 		//Todo: Combine this and release to same
-		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pRayTracingStorageImage, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1);
+		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pRadianceImage, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1);
+		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pGlossyImage, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1);
 
-		m_ppComputeCommandBuffers[m_CurrentFrame]->releaseImageOwnership(
-			m_pRayTracingStorageImage,
+		m_ppComputeCommandBuffers[m_CurrentFrame]->acquireImagesOwnership(
+			m_RayTracingImages,
+			2,
 			VK_ACCESS_MEMORY_READ_BIT,
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
@@ -411,8 +420,9 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 			VK_IMAGE_ASPECT_DEPTH_BIT);
 
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->acquireImageOwnership(
-			m_pRayTracingStorageImage,
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->acquireImagesOwnership(
+			m_RayTracingImages,
+			2,
 			VK_ACCESS_MEMORY_READ_BIT,
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
@@ -537,6 +547,7 @@ void RenderingHandlerVK::setSkybox(ITextureCube* pSkybox)
 	if (m_pRayTracer != nullptr)
 	{
 		m_pRayTracer->setSkybox(reinterpret_cast<TextureCubeVK*>(pSkybox));
+		m_pRayTracer->setBRDFLookUp(m_pMeshRenderer->getBRDFLookUp());
 	}
 }
 
@@ -830,10 +841,13 @@ bool RenderingHandlerVK::createBuffers()
 	return true;
 }
 
-bool RenderingHandlerVK::createRayTracingRenderImage(uint32_t width, uint32_t height)
+bool RenderingHandlerVK::createRayTracingRenderImages(uint32_t width, uint32_t height)
 {
-	SAFEDELETE(m_pRayTracingStorageImage);
-	SAFEDELETE(m_pRayTracingStorageImageView);
+	SAFEDELETE(m_pRadianceImage);
+	SAFEDELETE(m_pRadianceImageView);
+
+	SAFEDELETE(m_pGlossyImage);
+	SAFEDELETE(m_pGlossyImageView);
 
 	ImageParams imageParams = {};
 	imageParams.Type = VK_IMAGE_TYPE_2D;
@@ -847,8 +861,11 @@ bool RenderingHandlerVK::createRayTracingRenderImage(uint32_t width, uint32_t he
 	imageParams.Usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	imageParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-	m_pRayTracingStorageImage = new ImageVK(m_pGraphicsContext->getDevice());
-	m_pRayTracingStorageImage->init(imageParams);
+	m_pRadianceImage = new ImageVK(m_pGraphicsContext->getDevice());
+	m_pRadianceImage->init(imageParams);
+
+	m_pGlossyImage = new ImageVK(m_pGraphicsContext->getDevice());
+	m_pGlossyImage->init(imageParams);
 
 	ImageViewParams imageViewParams = {};
 	imageViewParams.Type = VK_IMAGE_VIEW_TYPE_2D;
@@ -858,13 +875,17 @@ bool RenderingHandlerVK::createRayTracingRenderImage(uint32_t width, uint32_t he
 	imageViewParams.FirstLayer = 0;
 	imageViewParams.LayerCount = 1;
 
-	m_pRayTracingStorageImageView = new ImageViewVK(m_pGraphicsContext->getDevice(), m_pRayTracingStorageImage);
-	m_pRayTracingStorageImageView->init(imageViewParams);
+	m_pRadianceImageView = new ImageViewVK(m_pGraphicsContext->getDevice(), m_pRadianceImage);
+	m_pRadianceImageView->init(imageViewParams);
+
+	m_pGlossyImageView = new ImageViewVK(m_pGraphicsContext->getDevice(), m_pGlossyImage);
+	m_pGlossyImageView->init(imageViewParams);
 
 	CommandBufferVK* pTempCommandBuffer = m_ppComputeCommandPools[0]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 	pTempCommandBuffer->reset(true);
 	pTempCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	pTempCommandBuffer->transitionImageLayout(m_pRayTracingStorageImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1);
+	pTempCommandBuffer->transitionImageLayout(m_pRadianceImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1);
+	pTempCommandBuffer->transitionImageLayout(m_pGlossyImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1);
 	pTempCommandBuffer->end();
 
 	m_pGraphicsContext->getDevice()->executeCommandBuffer(m_pGraphicsContext->getDevice()->getComputeQueue(), pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);

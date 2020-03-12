@@ -3,7 +3,8 @@
 
 #include "../helpers.glsl"
 
-layout(binding = 0, set = 0, rgb10_a2) uniform image2D u_ResultImage;
+layout(binding = 0, set = 0, rgb10_a2) uniform image2D u_RadianceImage;
+layout(binding = 19, set = 0, rgb10_a2) uniform image2D u_ReflectionImage;
 layout(binding = 1, set = 0) uniform CameraProperties 
 {
 	mat4 viewInverse;
@@ -13,6 +14,9 @@ layout(binding = 2, set = 0) uniform accelerationStructureNV u_TopLevelAS;
 layout(binding = 3, set = 0) uniform sampler2D u_Albedo_AO;
 layout(binding = 4, set = 0) uniform sampler2D u_Normal_Roughness;
 layout(binding = 5, set = 0) uniform sampler2D u_Depth;
+layout(binding = 17, set = 0) uniform sampler2D u_World_Metallic;
+layout(binding = 18, set = 0) uniform sampler2D u_BrdfLUT;
+layout(binding = 20, set = 0) uniform sampler2D u_BlueNoiseLUT;
 
 layout (constant_id = 2) const int MAX_POINT_LIGHTS = 4;
 
@@ -37,6 +41,11 @@ struct ShadowRayPayload
 {
 	float occluderFactor;
 };
+
+layout (push_constant) uniform PushConstants
+{
+	float counter;
+} u_PushConstants;
 
 layout(location = 0) rayPayloadNV RayPayload rayPayload;
 layout(location = 1) rayPayloadNV ShadowRayPayload shadowRayPayload;
@@ -76,13 +85,15 @@ void main()
 	//Skybox
 	if (dot(normal, normal) < 0.5f)
 	{
-		imageStore(u_ResultImage, ivec2(gl_LaunchIDNV.xy), vec4(1.0f, 0.0f, 1.0f, 0.0f));
+		imageStore(u_RadianceImage, ivec2(gl_LaunchIDNV.xy), vec4(1.0f, 0.0f, 1.0f, 0.0f));
+		imageStore(u_ReflectionImage, ivec2(gl_LaunchIDNV.xy), vec4(1.0f, 0.0f, 1.0f, 0.0f));
 		return;
 	}
 
 	//Sample GBuffer
 	vec4 sampledAlbedoAO = texture(u_Albedo_AO, uvCoords);
 	float sampledDepth = texture(u_Depth, uvCoords).r;
+	float sampledMetallic = texture(u_World_Metallic, uvCoords).a;
 
 	//Define Constants
 	vec3 hitPos = vec3(0.0f);
@@ -104,11 +115,9 @@ void main()
 	vec3 albedo = sampledAlbedoAO.rgb;
 	float ao = sampledAlbedoAO.a;
 	float roughness = sampledNormalRoughness.a;
-	float metallic = 0.5f;
+	float metallic = sampledMetallic;
 
 	//Init BRDF values
-	vec3 ambient = vec3(0.03f) * albedo * ao;
-
 	vec3 f0 = vec3(0.04f);
 	f0 = mix(f0, albedo, metallic);
 
@@ -153,34 +162,17 @@ void main()
 		}
 	}
 
-	vec3 f 		= Fresnel(f0, NdotV);
-	float averageFresnel = (f.x + f.y + f.z) / 3.0f; 
+	imageStore(u_RadianceImage, ivec2(gl_LaunchIDNV.xy), vec4(Lo, 1.0f));
 
-	vec3 reflectionLo = vec3(0.0f);
+	//Reflection
+	vec2 uniformRandom = texture(u_BlueNoiseLUT, uvCoords).rg;
+	reflDir = ReflectanceDirection2(reflDir, roughness, uniformRandom);
+	rayPayload.Radiance = vec3(0.0f);
+	rayPayload.Recursion = 0;
+	traceNV(u_TopLevelAS, rayFlags, cullMask, 0, 0, 0, reflectedRaysOrigin, tmin, reflDir, tmax, 0);
 
-	//if (averageFresnel > 0.1f)
-	{
-		reflDir = ReflectanceDirection(hitPos, reflDir, roughness);
-
-		rayPayload.Radiance = vec3(0.0f);
-		rayPayload.Recursion = 0;
-		traceNV(u_TopLevelAS, rayFlags, cullMask, 0, 0, 0, reflectedRaysOrigin, tmin, reflDir, tmax, 0);
-
-		float NdotL = max(dot(normal, reflDir), 0.0f);
-
-		float g 	= GeometryOpt(NdotV, NdotL, roughness);
-
-		float denom 	= 4.0f * NdotV * NdotL + 0.0001f;
-		vec3 specular   = (g * f) / denom;
-
-		//Take 1.0f minus the incoming radiance to get the diffuse (Energy conservation)
-		vec3 diffuse = (vec3(1.0f) - f) * metallicFactor;
-
-		reflectionLo = ((diffuse * (albedo / PI)) + specular) * rayPayload.Radiance * NdotL;
-	}
-	
-	vec3 finalColor = ambient + Lo + reflectionLo;
-	//vec3 finalColor = reflectionLo;
-
-	imageStore(u_ResultImage, ivec2(gl_LaunchIDNV.xy), vec4(finalColor, 1.0f));
+	const float hysterisis = 1.0f;
+	vec3 oldRadiance = imageLoad(u_ReflectionImage, ivec2(gl_LaunchIDNV.xy)).rgb;
+	vec3 newColor = mix(oldRadiance, rayPayload.Radiance, hysterisis);
+	imageStore(u_ReflectionImage, ivec2(gl_LaunchIDNV.xy), vec4(newColor, 1.0f));
 }

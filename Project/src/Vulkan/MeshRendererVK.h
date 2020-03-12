@@ -49,7 +49,8 @@ class ImageViewVK;
 #define ENVIRONMENT_BINDING			5
 #define BRDF_LUT_BINDING			6
 #define LIGHT_BUFFER_BINDING		7
-#define RAY_TRACING_RESULT_BINDING  8
+#define RADIANCE_BINDING			8
+#define GLOSSY_BINDING				9
 
 struct MeshFilter
 {
@@ -103,13 +104,15 @@ public:
 	void setClearColor(float r, float g, float b);
 	void setClearColor(const glm::vec3& color);
 	void setSkybox(TextureCubeVK* pSkybox, TextureCubeVK* pIrradiance, TextureCubeVK* pEnvironmentMap);
-	void setRayTracingResult(ImageViewVK* pRayTracingResultImageView);
+	void setRayTracingResultImages(ImageViewVK* pRadianceImageView, ImageViewVK* pGlossyImageView);
 
 	void submitMesh(const MeshVK* pMesh, const Material* pMaterial, const glm::mat4& transform);
 	
 	void buildLightPass(RenderPassVK* pRenderPass, FrameBufferVK* pFramebuffer);
 
 	void onWindowResize(uint32_t width, uint32_t height);
+
+	Texture2DVK* getBRDFLookUp() { return m_pIntegrationLUT; }
 		
 	FORCEINLINE ProfilerVK*			getProfiler() const					{ return m_pProfiler; }
 	FORCEINLINE CommandBufferVK*	getGeometryCommandBuffer() const	{ return m_ppGeometryPassBuffers[m_CurrentFrame]; }
@@ -149,6 +152,7 @@ private:
 	SamplerVK* m_pSkyboxSampler;
 	SamplerVK* m_pGBufferSampler;
 	SamplerVK* m_pBRDFSampler;
+	SamplerVK* m_pRTSampler;
 	Texture2DVK* m_pDefaultTexture;
 	Texture2DVK* m_pDefaultNormal;
 	BufferVK* m_pCameraBuffer;
