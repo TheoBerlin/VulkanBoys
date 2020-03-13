@@ -397,7 +397,7 @@ void Application::onKeyPressed(EKey key)
 	}
 	else if (key == EKey::KEY_1)
 	{
-		//m_pWindow->toggleFullscreenState();
+		m_pWindow->toggleFullscreenState();
 	}
 	else if (key == EKey::KEY_2)
 	{

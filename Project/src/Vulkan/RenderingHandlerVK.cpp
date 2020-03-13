@@ -169,19 +169,23 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 
 	m_pGraphicsContext->getSwapChain()->resize(width, height);
 
-	m_pMeshRenderer->onWindowResize(width, height);
+	m_pGBuffer->resize(width, height);
+	createBackBuffers();
 
-	if (m_pRayTracer != nullptr)
+	if (m_pMeshRenderer)
 	{
-		m_pRayTracer->onWindowResize(width, height);
+		m_pMeshRenderer->onWindowResize(width, height);
+	}
+
+	if (m_pRayTracer)
+	{
+		//m_pRayTracer->onWindowResize(width, height);
 		//Temp?
 		m_pRayTracer->setResolution(width / RAY_TRACING_RESOLUTION_DENOMINATOR, height / RAY_TRACING_RESOLUTION_DENOMINATOR);
 	}
 
 	createRayTracingRenderImage(width, height);
 	m_pMeshRenderer->setRayTracingResult(m_pRayTracingStorageImageView);
-
-	createBackBuffers();
 }
 
 void RenderingHandlerVK::beginFrame(SceneVK* pScene)

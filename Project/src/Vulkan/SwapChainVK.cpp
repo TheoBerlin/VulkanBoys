@@ -19,8 +19,6 @@
 SwapChainVK::SwapChainVK(InstanceVK* pInstance, DeviceVK* pDevice)
 	: m_pDevice(pDevice),
 	m_pInstance(pInstance),
-	m_pDepthStencilImage(nullptr),
-	m_pDepthStencilImageView(nullptr),
 	m_SwapChain(VK_NULL_HANDLE),
 	m_Surface(VK_NULL_HANDLE),
 	m_Extent(),
@@ -54,9 +52,7 @@ void SwapChainVK::init(IWindow* pWindow, VkFormat requestedFormat, uint32_t imag
 		int32_t width	= pWindow->getWidth();
 		int32_t height	= pWindow->getHeight();
 		createSwapChain(width, height);
-
 		createImageViews();
-		createDepthStencil();
 	}
 	else
 	{
@@ -104,13 +100,10 @@ void SwapChainVK::resize(uint32_t width, uint32_t height)
 	//Handle minimize
 	if (width != 0 && height != 0)
 	{
-		m_pDevice->wait();
-
 		releaseResources();
 
 		createSwapChain(width, height);
 		createImageViews();
-		createDepthStencil();
 	}
 }
 
@@ -262,33 +255,6 @@ void SwapChainVK::createImageViews()
 	}
 }
 
-void SwapChainVK::createDepthStencil()
-{
-	ImageParams depthStencilParams = {};
-	depthStencilParams.Type				= VK_IMAGE_TYPE_2D;
-	depthStencilParams.Extent			= { m_Extent.width, m_Extent.height, 1 };
-	depthStencilParams.MipLevels		= 1;
-	depthStencilParams.ArrayLayers		= 1;
-	depthStencilParams.Format			= VK_FORMAT_D24_UNORM_S8_UINT;
-	depthStencilParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	depthStencilParams.Samples			= VK_SAMPLE_COUNT_1_BIT;
-	depthStencilParams.Usage			= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-
-	m_pDepthStencilImage = DBG_NEW ImageVK(m_pDevice);
-	m_pDepthStencilImage->init(depthStencilParams);
-
-	ImageViewParams depthStencilViewParams = {};
-	depthStencilViewParams.Type				= VK_IMAGE_VIEW_TYPE_2D;
-	depthStencilViewParams.FirstLayer		= 0;
-	depthStencilViewParams.LayerCount		= 1;
-	depthStencilViewParams.MipLevels		= 1;
-	depthStencilViewParams.FirstMipLevel	= 0;
-	depthStencilViewParams.AspectFlags		= VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
-	
-	m_pDepthStencilImageView = DBG_NEW ImageViewVK(m_pDevice, m_pDepthStencilImage);
-	m_pDepthStencilImageView->init(depthStencilViewParams);
-}
-
 void SwapChainVK::releaseResources()
 {
 	m_pDevice->wait();
@@ -309,7 +275,4 @@ void SwapChainVK::releaseResources()
 		SAFEDELETE(imageView);
 	}
 	m_ImageViews.clear();
-
-	SAFEDELETE(m_pDepthStencilImage);
-	SAFEDELETE(m_pDepthStencilImageView);
 }
