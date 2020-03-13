@@ -36,13 +36,19 @@ layout (binding = 3) uniform EmitterProperties
 
 layout (binding = 4) uniform Camera
 {
-	mat4 View;
 	mat4 Projection;
+	mat4 View;
     vec4 Position;
 } g_Cam;
 
-layout(binding = 5) uniform sampler2D g_DepthBuffer;
-layout(binding = 6) uniform sampler2D g_NormalMap;
+layout (binding = 5) uniform CameraMatrices
+{
+	mat4 ViewInv;
+	mat4 ProjectionInv;
+} g_CamMatrices;
+
+layout(binding = 6) uniform sampler2D g_DepthBuffer;
+layout(binding = 7) uniform sampler2D g_NormalMap;
 
 float rand1(float p, float minVal, float maxVal)
 {
@@ -82,7 +88,7 @@ void createParticle(uint particleIdx, float particleAge)
     float gt = -9.82 * particleAge;
     vec3 V0 = particleDirection * g_EmitterProperties.initialSpeed;
 
-    g_Velocities.velocities[particleIdx] = vec4(vec3(0.0, gt, 0.0) + V0, particleAge);
+    g_Velocities.velocities[particleIdx] = vec4(vec3(0.0, gt, 0.0) + V0, 0.0);
     g_Positions.positions[particleIdx] = vec4(vec3(0.0, gt * particleAge * 0.5, 0.0) + V0 * particleAge + g_EmitterProperties.position.xyz, 1.0);
     g_Ages.ages[particleIdx] = particleAge;
 }
@@ -94,8 +100,8 @@ void collide(uint particleIdx)
     vec4 clipSpace = g_Cam.Projection * g_Cam.View * worldPos;
 
     vec2 ndc = clipSpace.xy / clipSpace.w;
+
     if (abs(ndc.x) > 1.0 || abs(ndc.y) > 1.0) {
-        // The particle's center is off-screen, abort
         return;
     }
 
@@ -103,9 +109,18 @@ void collide(uint particleIdx)
 
     // Compare camera distance and depth value to decide whether or not the particle is colliding with geometry
     float depthVal = texture(g_DepthBuffer, screenCoords).r;
-    float cameraDistance = length(worldPos - g_Cam.Position);
 
-    if (abs(depthVal - cameraDistance) < 0.1) {
+    // World position of geometry behind the particle
+    // vec4 geometryViewPos = g_CamMatrices.ProjectionInv * vec4(clipSpace.xy, depthVal, 1.0);
+    // geometryViewPos /= geometryViewPos.w;
+    // vec4 geometryWorldPos = g_CamMatrices.ViewInv * geometryViewPos;
+
+    vec4 geometryWorldPos = g_CamMatrices.ViewInv * g_CamMatrices.ProjectionInv * vec4(clipSpace.xy, depthVal, 1.0);
+
+    float distToGeometry = length(geometryWorldPos.xyz - worldPos.xyz);
+    g_Velocities.velocities[particleIdx].w = distToGeometry;
+
+    if (distToGeometry < 0.1) {
         // Handle collision
         vec3 normal = texture(g_NormalMap, screenCoords).xyz;
 
@@ -124,7 +139,7 @@ void main()
     float age = g_Ages.ages[particleIdx] + dt;
 
     // Move particle
-    g_Positions.positions[particleIdx] += g_Velocities.velocities[particleIdx] * dt;
+    g_Positions.positions[particleIdx].xyz += g_Velocities.velocities[particleIdx].xyz * dt;
     g_Velocities.velocities[particleIdx].y -= 9.82 * dt;
     g_Ages.ages[particleIdx] = age;
 

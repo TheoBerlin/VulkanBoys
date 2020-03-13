@@ -330,7 +330,7 @@ bool ParticleRendererVK::bindDescriptorSet(ParticleEmitter* pEmitter)
 		BufferVK* pVertBuffer = reinterpret_cast<BufferVK*>(m_pQuadMesh->getVertexBuffer());
 
 		// Camera buffers
-		BufferVK* pCameraMatricesBuffer = m_pRenderingHandler->getCameraMatricesBuffer();
+		BufferVK* pCameraMatricesBuffer = m_pRenderingHandler->getCameraBuffer();
 		BufferVK* pCameraDirectionsBuffer = m_pRenderingHandler->getCameraDirectionsBuffer();
 
 		// TODO: Use constant variables or define macros for binding indices

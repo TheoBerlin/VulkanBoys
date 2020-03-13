@@ -765,8 +765,8 @@ void RenderingHandlerVK::updateBuffers(const Camera& camera)
 {
 	// Update camera buffers
 	CameraMatricesBuffer cameraMatricesBuffer = {};
-	cameraMatricesBuffer.ProjectionInv	= camera.getProjectionMat();
-	cameraMatricesBuffer.ViewInv		= camera.getViewMat();
+	cameraMatricesBuffer.ProjectionInv	= glm::inverse(camera.getProjectionMat());
+	cameraMatricesBuffer.ViewInv		= glm::inverse(camera.getViewMat());
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraMatricesBuffer, 0, (const void*)&cameraMatricesBuffer, sizeof(CameraMatricesBuffer));
 
 	CameraDirectionsBuffer cameraDirectionsBuffer = {};

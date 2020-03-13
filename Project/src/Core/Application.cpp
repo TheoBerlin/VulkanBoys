@@ -188,13 +188,13 @@ void Application::init()
 	}
 
 	ParticleEmitterInfo emitterInfo = {};
-	emitterInfo.position = glm::vec3(8.0f, 0.0f, 0.0f);
-	emitterInfo.direction = glm::normalize(glm::vec3(0.0f, 0.9f, 0.1f));
+	emitterInfo.position = glm::vec3(0.541, 1.351f, 0.933f);
+	emitterInfo.direction = glm::normalize(glm::vec3(-0.144f, 0.710f, 0.689f));
 	emitterInfo.particleSize = glm::vec2(0.2f, 0.2f);
 	emitterInfo.initialSpeed = 5.5f;
 	emitterInfo.particleDuration = 3.0f;
 	emitterInfo.particlesPerSecond = 200.0f;
-	emitterInfo.spread = glm::quarter_pi<float>() / 1.3f;
+	emitterInfo.spread = 0.0f;
 	emitterInfo.pTexture = m_pParticleTexture;
 	m_pParticleEmitterHandler->createEmitter(emitterInfo);
 
@@ -231,7 +231,6 @@ void Application::init()
 			material.createSampler(m_pContext, samplerParams);
 		}
 	}
-
 
 	//Setup lights
 	m_LightSetup.addPointLight(PointLight(glm::vec3( 10.0f,  10.0f, -10.0f), glm::vec4(300.0f)));
@@ -364,7 +363,7 @@ void Application::onWindowResize(uint32_t width, uint32_t height)
 			m_pRenderingHandler->onWindowResize(width, height);
 		}
 
-		m_Camera.setProjection(90.0f, float(width), float(height), 0.1f, 100.0f);
+		m_Camera.setProjection(90.0f, float(width), float(height), 0.1f, g_ViewDistance);
 	}
 }
 

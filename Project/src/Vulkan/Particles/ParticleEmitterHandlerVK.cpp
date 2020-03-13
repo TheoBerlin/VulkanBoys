@@ -20,13 +20,14 @@
 #include "Vulkan/ShaderVK.h"
 
 // Compute shader bindings
-#define POSITIONS_BINDING   0
-#define VELOCITIES_BINDING  1
-#define AGES_BINDING        2
-#define EMITTER_BINDING     3
-#define CAMERA_BINDING      4
-#define DEPTH_BINDING       5
-#define NORMAL_MAP_BINDING  6
+#define POSITIONS_BINDING   	0
+#define VELOCITIES_BINDING  	1
+#define AGES_BINDING        	2
+#define EMITTER_BINDING     	3
+#define CAMERA_BINDING      	4
+#define CAMERA_MATRICES_BINDING	5
+#define DEPTH_BINDING			6
+#define NORMAL_MAP_BINDING  	7
 
 ParticleEmitterHandlerVK::ParticleEmitterHandlerVK()
 	:m_pDescriptorPool(nullptr),
@@ -275,6 +276,7 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 	RenderingHandlerVK* pRenderingHandler = reinterpret_cast<RenderingHandlerVK*>(m_pRenderingHandler);
 	GBufferVK* pGBuffer = pRenderingHandler->getGBuffer();
 
+	// TODO: This indexing for color attachments is horrid
 	ImageViewVK* pNormalMap = pGBuffer->getColorAttachment(1);
 	ImageViewVK* pDepthBuffer = pGBuffer->getDepthAttachment();
 
@@ -283,6 +285,7 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 	pEmitterDescriptorSet->writeStorageBufferDescriptor(pAgesBuffer, AGES_BINDING);
 	pEmitterDescriptorSet->writeUniformBufferDescriptor(pEmitterBuffer, EMITTER_BINDING);
 	pEmitterDescriptorSet->writeUniformBufferDescriptor(pRenderingHandler->getCameraBuffer(), CAMERA_BINDING);
+	pEmitterDescriptorSet->writeUniformBufferDescriptor(pRenderingHandler->getCameraMatricesBuffer(), CAMERA_MATRICES_BINDING);
 	pEmitterDescriptorSet->writeCombinedImageDescriptors(&pNormalMap, &m_pGBufferSampler, 1, NORMAL_MAP_BINDING);
 	pEmitterDescriptorSet->writeCombinedImageDescriptors(&pDepthBuffer, &m_pGBufferSampler, 1, DEPTH_BINDING);
 
@@ -294,9 +297,6 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 
 	// Transfer ownership of buffers to compute queue
 	if (queueFamilyIndices.graphicsFamily.value() != queueFamilyIndices.computeFamily.value()) {
-		BufferVK* pVelocitiesBuffer = reinterpret_cast<BufferVK*>(pEmitter->getVelocitiesBuffer());
-		BufferVK* pAgesBuffer = reinterpret_cast<BufferVK*>(pEmitter->getAgesBuffer());
-
 		CommandBufferVK* pTempCommandBufferGraphics = m_pCommandPoolGraphics->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 		pTempCommandBufferGraphics->reset(true);
 		pTempCommandBufferGraphics->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -368,9 +368,6 @@ void ParticleEmitterHandlerVK::updateGPU(float dt)
 
 		// Update descriptor set
 		BufferVK* pPositionsBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
-		BufferVK* pVelocitiesBuffer = reinterpret_cast<BufferVK*>(pEmitter->getVelocitiesBuffer());
-		BufferVK* pAgesBuffer = reinterpret_cast<BufferVK*>(pEmitter->getAgesBuffer());
-		BufferVK* pEmitterBuffer = reinterpret_cast<BufferVK*>(pEmitter->getEmitterBuffer());
 
 		if (transferOwnerships) {
 			acquireForCompute(pPositionsBuffer, m_ppCommandBuffers[m_CurrentFrame]);
@@ -499,6 +496,7 @@ bool ParticleEmitterHandlerVK::createPipelineLayout()
 	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_COMPUTE_BIT, AGES_BINDING, 1);
 	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_COMPUTE_BIT, EMITTER_BINDING, 1);
 	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_COMPUTE_BIT, CAMERA_BINDING, 1);
+	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_COMPUTE_BIT, CAMERA_MATRICES_BINDING, 1);
 	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_COMPUTE_BIT, nullptr, DEPTH_BINDING, 1);
 	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_COMPUTE_BIT, nullptr, NORMAL_MAP_BINDING, 1);
 
