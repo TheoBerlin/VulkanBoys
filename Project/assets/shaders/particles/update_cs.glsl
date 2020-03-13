@@ -111,16 +111,17 @@ void collide(uint particleIdx)
     float depthVal = texture(g_DepthBuffer, screenCoords).r;
 
     // World position of geometry behind the particle
-    // vec4 geometryViewPos = g_CamMatrices.ProjectionInv * vec4(clipSpace.xy, depthVal, 1.0);
-    // geometryViewPos /= geometryViewPos.w;
-    // vec4 geometryWorldPos = g_CamMatrices.ViewInv * geometryViewPos;
-
-    vec4 geometryWorldPos = g_CamMatrices.ViewInv * g_CamMatrices.ProjectionInv * vec4(clipSpace.xy, depthVal, 1.0);
+    vec4 geometryViewPos = g_CamMatrices.ProjectionInv * vec4(ndc, depthVal, 1.0);
+    geometryViewPos /= geometryViewPos.w;
+    vec4 geometryWorldPos = g_CamMatrices.ViewInv * geometryViewPos;
 
     float distToGeometry = length(geometryWorldPos.xyz - worldPos.xyz);
-    g_Velocities.velocities[particleIdx].w = distToGeometry;
 
-    if (distToGeometry < 0.1) {
+    // Calculate the collision threshold - the faster the particle, the less precision is used
+    float particleSpeed = length(g_Velocities.velocities[particleIdx]);
+    float collisionThreshold = 0.008 + particleSpeed * 0.01;
+
+    if (distToGeometry < collisionThreshold) {
         // Handle collision
         vec3 normal = texture(g_NormalMap, screenCoords).xyz;
 
@@ -138,6 +139,10 @@ void main()
 	float dt = g_PushConstant.dt;
     float age = g_Ages.ages[particleIdx] + dt;
 
+    if (g_PushConstant.performCollisions) {
+        collide(particleIdx);
+    }
+
     // Move particle
     g_Positions.positions[particleIdx].xyz += g_Velocities.velocities[particleIdx].xyz * dt;
     g_Velocities.velocities[particleIdx].y -= 9.82 * dt;
@@ -148,8 +153,4 @@ void main()
 		float newParticleAge = age - g_EmitterProperties.particleDuration;
         createParticle(particleIdx, newParticleAge);
 	}
-
-    if (g_PushConstant.performCollisions) {
-        collide(particleIdx);
-    }
 }
