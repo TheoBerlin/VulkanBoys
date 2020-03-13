@@ -5,11 +5,9 @@ layout(location = 0) in vec3 in_Normal;
 layout(location = 1) in vec3 in_Tangent;
 layout(location = 2) in vec3 in_Bitangent;
 layout(location = 3) in vec2 in_TexCoord;
-layout(location = 4) in vec3 in_WorldPosition;
 
 layout(location = 0) out vec4 out_Albedo;
 layout(location = 1) out vec4 out_Normals;
-layout(location = 2) out vec4 out_Position;
 
 layout (push_constant) uniform Constants
 {
@@ -30,7 +28,6 @@ const float GAMMA = 2.2f;
 
 void main()
 {
-	vec3 worldPosition = in_WorldPosition;
 	vec3 normal 	= normalize(in_Normal);
 	vec3 tangent 	= normalize(in_Tangent);
 	vec3 bitangent	= normalize(in_Bitangent);
@@ -46,8 +43,15 @@ void main()
 	
 	vec3 sampledNormal 	= ((normalMap * 2.0f) - 1.0f);
 	sampledNormal 		= normalize(tbn * normalize(sampledNormal));
-		
+	
+	//Store normal in 2 component x^2 + y^2 + z^2 = 1, store the sign with metallic 
+	vec2 storedNormal 	= sampledNormal.xy;
+	metallic 			= max(constants.Metallic * metallic, 0.00001f);
+	if (sampledNormal.z < 0)
+	{
+		metallic = -metallic;
+	}
+
 	out_Albedo 		= vec4(constants.Color.rgb * texColor, constants.Ambient * ao);
-	out_Normals		= vec4(sampledNormal, constants.Roughness * roughness);
-	out_Position 	= vec4(worldPosition, constants.Metallic * metallic);
+	out_Normals		= vec4(storedNormal, metallic, constants.Roughness * roughness);
 }

@@ -67,20 +67,27 @@ void main()
 
 	vec4 sampledAlbedoAO = texture(u_Albedo_AO, uvCoords);
 	vec4 sampledNormalRoughness = texture(u_Normal_Roughness, uvCoords);
-	vec3 normal = normalize(sampledNormalRoughness.xyz);
+	vec3 normal;
+	normal.xy 	= sampledNormalRoughness.xy;
+	normal.z 	= sqrt(1.0f - dot(normal.xy, normal.xy));
+	if (sampledNormalRoughness.z < 0)
+	{
+		normal.z = -normal.z;
+	}
+	normal = normalize(normal);
+
 	float sampledDepth = texture(u_Depth, uvCoords).r;
 
-	if (dot(sampledNormalRoughness.xyz, sampledNormalRoughness.xyz) < 0.5f)
+	if (dot(normal, normal) < 0.5f)
 	{
 		imageStore(u_ResultImage, ivec2(gl_LaunchIDNV.xy), vec4(1.0f, 0.0f, 1.0f, 0.0f));
 		return;
 	}
 
 	vec3 hitPosition = calculateHitPosition(uvCoords, sampledDepth);
-	vec3 origin = hitPosition + sampledNormalRoughness.xyz * EPSILON;
+	vec3 origin = hitPosition + normal * EPSILON;
 
-	vec3 direction = calculateDirection(uvCoords, origin, sampledNormalRoughness.xyz);
-	
+	vec3 direction = calculateDirection(uvCoords, origin, normal);
 
 	uint rayFlags = gl_RayFlagsOpaqueNV;
 	uint cullMask = 0xff;

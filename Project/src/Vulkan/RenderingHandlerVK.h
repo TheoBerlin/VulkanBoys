@@ -92,7 +92,6 @@ private:
     RayTracingRendererVK* m_pRayTracer;
     ImguiVK* m_pImGuiRenderer;
 
-
     FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_RenderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
@@ -119,7 +118,9 @@ private:
     VkViewport m_Viewport;
 	VkRect2D m_ScissorRect;
 
-    BufferVK* m_pCameraMatricesBuffer, *m_pCameraDirectionsBuffer, *m_pCameraBuffer;
+    BufferVK* m_pCameraMatricesBuffer;
+    BufferVK* m_pCameraDirectionsBuffer;
+    BufferVK* m_pCameraBuffer;
 
 	//Render Results
 	ImageVK* m_pRayTracingStorageImage;

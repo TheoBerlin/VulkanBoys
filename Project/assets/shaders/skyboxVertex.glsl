@@ -5,6 +5,9 @@ layout(binding = 0) uniform CameraBuffer
 {
 	mat4 Projection;
 	mat4 View;
+	mat4 InvView;
+	mat4 InvProjection;
+	vec4 Position;
 } camera;
 
 layout(location = 0) out vec3 out_TexCoord;

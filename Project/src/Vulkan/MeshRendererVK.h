@@ -44,7 +44,7 @@ class ImageViewVK;
 //Light pass
 #define GBUFFER_ALBEDO_BINDING		1
 #define GBUFFER_NORMAL_BINDING		2
-#define GBUFFER_POSITION_BINDING	3
+#define GBUFFER_DEPTH_BINDING	3
 #define IRRADIANCE_BINDING			4
 #define ENVIRONMENT_BINDING			5
 #define BRDF_LUT_BINDING			6
@@ -118,13 +118,13 @@ public:
 private:
 	bool generateBRDFLookUp();
 	bool createCommandPoolAndBuffers();
-	bool createRenderPass();
 	bool createPipelines();
 	bool createPipelineLayouts();
 	bool createBuffersAndTextures();
 	bool createSamplers();
 	void createProfiler();
 
+	void updateGBufferDescriptors();
 	void updateBuffers(CommandBufferVK* pPrimaryBuffer, const Camera& camera, const LightSetup& lightsetup);
 
 	DescriptorSetVK* getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial);
@@ -141,8 +141,6 @@ private:
 
 	CommandPoolVK* m_ppLightPassPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppLightPassBuffers[MAX_FRAMES_IN_FLIGHT];
-
-	RenderPassVK* m_pBackBufferRenderPass;
 
 	DescriptorPoolVK* m_pDescriptorPool;
 	

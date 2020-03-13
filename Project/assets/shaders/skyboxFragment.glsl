@@ -5,7 +5,6 @@ layout(location = 0) in vec3 in_TexCoord;
 
 layout(location = 0) out vec4 out_Albedo;
 layout(location = 1) out vec4 out_Normal;
-layout(location = 2) out vec4 out_Position;
 
 layout(binding = 1) uniform samplerCube u_Skybox;
 
@@ -13,5 +12,4 @@ void main()
 {
 	out_Albedo = texture(u_Skybox, in_TexCoord);
 	out_Normal = vec4(0.0f, 0.0f, 0.0f, 0.0f);
-	out_Position = out_Normal;
 }

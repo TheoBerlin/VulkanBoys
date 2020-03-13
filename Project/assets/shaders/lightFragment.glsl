@@ -13,7 +13,7 @@ layout (constant_id = 0) const int RAY_TRACING_ENABLED = 0;
 
 layout(binding = 1) uniform sampler2D 	u_Albedo;
 layout(binding = 2) uniform sampler2D 	u_Normal;
-layout(binding = 3) uniform sampler2D 	u_WorldPosition;
+layout(binding = 3) uniform sampler2D 	u_Depth;
 layout(binding = 4) uniform samplerCube u_IrradianceMap;
 layout(binding = 5) uniform samplerCube u_EnvironmentMap;
 layout(binding = 6) uniform sampler2D 	u_BrdfLUT;
@@ -29,6 +29,8 @@ layout (binding = 0) uniform PerFrameBuffer
 {
 	mat4 Projection;
 	mat4 View;
+	mat4 InvView;
+	mat4 InvProjection;
 	vec4 Position;
 } g_PerFrame;
 
@@ -39,6 +41,19 @@ layout (binding = 7) uniform LightBuffer
 
 const float PI 		= 3.14159265359f;
 const float GAMMA	= 2.2f;
+
+/*
+	Get position from depth
+*/
+vec3 WorldPositionFromDepth(vec2 texCoord, float depth)
+{
+	vec4 clipspace = vec4((texCoord * 2.0f) - 1.0f, depth, 1.0f);
+	vec4 viewSpace = g_PerFrame.InvProjection * clipspace;
+	viewSpace = viewSpace / viewSpace.w;
+
+	vec4 worldPosition = g_PerFrame.InvView * viewSpace;
+	return worldPosition.xyz;
+}
 
 /*
 	Schlick Fresnel function
@@ -92,7 +107,7 @@ float Geometry(vec3 normal, vec3 viewDir, vec3 lightDirection, float roughness)
 	return GeometryGGX(NdotV, roughness) * GeometryGGX(NdotL, roughness);
 }
 
-vec4 ColorPost(vec3 finalColor)
+vec4 ColorWrite(vec3 finalColor)
 {
 	vec3 result = finalColor / (finalColor + vec3(0.75f));
 	result = pow(result, vec3(1.0f / GAMMA));
@@ -104,26 +119,33 @@ void main()
 	vec2 texCoord = in_TexCoord;
 
 	//Unpack
-	vec4 sampledAlbedo 			= texture(u_Albedo, texCoord);
-	vec4 sampledNormal 			= texture(u_Normal, texCoord);
-	vec4 sampledWorldPosition 	= texture(u_WorldPosition, texCoord);
+	vec4 	sampledAlbedo 	= texture(u_Albedo, texCoord);
+	vec4 	sampledNormal 	= texture(u_Normal, texCoord);
+	float 	sampledDepth 	= texture(u_Depth, texCoord).r;
 
 	vec3 albedo 		= sampledAlbedo.rgb;
-	vec3 normal 		= sampledNormal.xyz;
-	vec3 worldPosition 	= sampledWorldPosition.xyz;
+	vec3 worldPosition 	= WorldPositionFromDepth(texCoord, sampledDepth);
+
+	//Get normal from z = sqrt(1 - (x^2 + y^2))), negative metallic = negative normal.z 
+	vec3 normal;
+	normal.xy 	= sampledNormal.xy;
+	normal.z 	= sqrt(1.0f - dot(normal.xy, normal.xy));
+	if (sampledNormal.z < 0)
+	{
+		normal.z = -normal.z;
+	}
+	normal = normalize(normal);
 
 	//Just skybox
-	if (length(normal) == 0)
+	if (abs(normal.z) == 1.0f)
 	{
-	    out_Color = ColorPost(albedo);
+	    out_Color = ColorWrite(albedo);
 		return;
 	}
 
 	float ao 			= sampledAlbedo.a;
 	float roughness 	= sampledNormal.a;
-	float metallic 		= sampledWorldPosition.a;
-	
-	normal = normalize(normal);
+	float metallic		= abs(sampledNormal.z);
 
 	vec3 cameraPosition = g_PerFrame.Position.xyz;
 	vec3 viewDir 		= normalize(cameraPosition - worldPosition);
@@ -187,6 +209,6 @@ void main()
 	vec3 ambient 	= ((kDiffuse * diffuse) + specular) * ao;
 
 	vec3 finalColor = ambient + L0;
-    out_Color = ColorPost(finalColor);
+    out_Color = ColorWrite(finalColor);
 	//out_Color.rgb = rayTracedGlossy.rgb;
 }

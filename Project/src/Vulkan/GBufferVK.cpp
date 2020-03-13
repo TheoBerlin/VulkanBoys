@@ -84,13 +84,13 @@ void GBufferVK::releaseBuffers()
 bool GBufferVK::createImages()
 {
 	ImageParams imageParams = {};
-	imageParams.Usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-	imageParams.Extent = { m_Extent.width, m_Extent.height, 1 };
-	imageParams.ArrayLayers = 1;
-	imageParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	imageParams.MipLevels = 1;
-	imageParams.Samples = VK_SAMPLE_COUNT_1_BIT;
-	imageParams.Type = VK_IMAGE_TYPE_2D;
+	imageParams.Usage			= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	imageParams.Extent			= { m_Extent.width, m_Extent.height, 1 };
+	imageParams.ArrayLayers		= 1;
+	imageParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	imageParams.MipLevels		= 1;
+	imageParams.Samples			= VK_SAMPLE_COUNT_1_BIT;
+	imageParams.Type			= VK_IMAGE_TYPE_2D;
 	for (VkFormat format : m_ColorFormats)
 	{
 		imageParams.Format = format;
@@ -104,8 +104,8 @@ bool GBufferVK::createImages()
 		m_ColorImages.emplace_back(pImage);
 	}
 
-	imageParams.Usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-	imageParams.Format = m_DepthFormat;
+	imageParams.Usage	= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	imageParams.Format	= m_DepthFormat;
 
 	m_pDepthImage = DBG_NEW ImageVK(m_pDevice);
 	return m_pDepthImage->init(imageParams);
@@ -114,12 +114,12 @@ bool GBufferVK::createImages()
 bool GBufferVK::createImageViews()
 {
 	ImageViewParams imageViewParams = {};
-	imageViewParams.AspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
-	imageViewParams.FirstLayer = 0;
-	imageViewParams.LayerCount = 1;
-	imageViewParams.FirstMipLevel = 0;
-	imageViewParams.MipLevels = 1;
-	imageViewParams.Type = VK_IMAGE_VIEW_TYPE_2D;
+	imageViewParams.AspectFlags		= VK_IMAGE_ASPECT_COLOR_BIT;
+	imageViewParams.FirstLayer		= 0;
+	imageViewParams.LayerCount		= 1;
+	imageViewParams.FirstMipLevel	= 0;
+	imageViewParams.MipLevels		= 1;
+	imageViewParams.Type			= VK_IMAGE_VIEW_TYPE_2D;
 	for (ImageVK* pImage : m_ColorImages)
 	{
 		ImageViewVK* pImageView = DBG_NEW ImageViewVK(m_pDevice, pImage);
