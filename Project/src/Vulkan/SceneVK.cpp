@@ -264,8 +264,8 @@ uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMate
 
 		m_TopLevelIsDirty = true;
 
-		auto& newBLASPerMesh = m_NewBottomLevelAccelerationStructures.find(pVulkanMesh);
-		auto& finalizedBLASPerMesh = m_FinalizedBottomLevelAccelerationStructures.find(pVulkanMesh);
+		auto newBLASPerMesh			= m_NewBottomLevelAccelerationStructures.find(pVulkanMesh);
+		auto finalizedBLASPerMesh	= m_FinalizedBottomLevelAccelerationStructures.find(pVulkanMesh);
 
 		const BottomLevelAccelerationStructure* pBottomLevelAccelerationStructure = nullptr;
 

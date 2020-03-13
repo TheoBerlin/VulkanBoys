@@ -21,15 +21,15 @@ public:
 	void setDepthAttachmentFormat(VkFormat format);
 	bool finalize(RenderPassVK* pRenderPass, uint32_t width, uint32_t height);
 
-	FORCEINLINE ImageVK* getDepthImage() const { return m_pDepthImage; }
-	FORCEINLINE ImageViewVK* getDepthImageView() const { return m_pDepthImageView; }
-	FORCEINLINE ImageVK* const * getColorImages() const { return m_ColorImages.data(); }
-	FORCEINLINE ImageViewVK* const * getColorImageViews() const { return m_ColorImageViews.data(); }
-	FORCEINLINE uint32_t getColorImageCount() const { return m_ColorImages.size(); }
-	FORCEINLINE ImageViewVK* getDepthAttachment() const { return m_pDepthImageView; }
-	FORCEINLINE ImageViewVK* getColorAttachment(uint32_t index) const { return m_ColorImageViews[index]; }
-	FORCEINLINE FrameBufferVK* getFrameBuffer() const { return m_pFrameBuffer; }
-	FORCEINLINE VkExtent2D getExtent() const { return m_Extent; }
+	FORCEINLINE ImageVK*				getDepthImage() const						{ return m_pDepthImage; }
+	FORCEINLINE ImageViewVK*			getDepthImageView() const					{ return m_pDepthImageView; }
+	FORCEINLINE ImageVK* const *		getColorImages() const						{ return m_ColorImages.data(); }
+	FORCEINLINE ImageViewVK* const *	getColorImageViews() const					{ return m_ColorImageViews.data(); }
+	FORCEINLINE uint32_t				getColorImageCount() const					{ return uint32_t(m_ColorImages.size()); }
+	FORCEINLINE ImageViewVK*			getDepthAttachment() const					{ return m_pDepthImageView; }
+	FORCEINLINE ImageViewVK*			getColorAttachment(uint32_t index) const	{ return m_ColorImageViews[index]; }
+	FORCEINLINE FrameBufferVK*			getFrameBuffer() const						{ return m_pFrameBuffer; }
+	FORCEINLINE VkExtent2D				getExtent() const							{ return m_Extent; }
 
 private:
 	void releaseBuffers();

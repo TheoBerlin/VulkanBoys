@@ -150,6 +150,9 @@ bool MeshRendererVK::init()
 
 void MeshRendererVK::onWindowResize(uint32_t width, uint32_t height)
 {
+	UNREFERENCED_PARAMETER(width);
+	UNREFERENCED_PARAMETER(height);
+
 	GBufferVK* pGBuffer = m_pRenderingHandler->getGBuffer();
 	ImageViewVK* pAttachment0 = pGBuffer->getColorAttachment(0);
 	ImageViewVK* pAttachment1 = pGBuffer->getColorAttachment(1);
@@ -189,6 +192,8 @@ void MeshRendererVK::beginFrame(IScene* pScene)
 
 void MeshRendererVK::endFrame(IScene* pScene)
 {
+	UNREFERENCED_PARAMETER(pScene);
+
 	m_pProfiler->endFrame();
 
 	m_ppGeometryPassBuffers[m_CurrentFrame]->bindPipeline(m_pSkyboxPipeline);
@@ -222,6 +227,8 @@ void MeshRendererVK::setupFrame(CommandBufferVK* pPrimaryBuffer, const Camera& c
 
 void MeshRendererVK::updateBuffers(CommandBufferVK* pPrimaryBuffer, const Camera& camera, const LightSetup& lightSetup)
 {
+	UNREFERENCED_PARAMETER(camera);
+
 	//Update lights
 	const uint32_t numPointLights = lightSetup.getPointLightCount();
 	pPrimaryBuffer->updateBuffer(m_pLightBuffer, 0, (const void*)lightSetup.getPointLights(), sizeof(PointLight) * numPointLights);
@@ -561,6 +568,8 @@ bool MeshRendererVK::createRenderPass()
 	{
 		return false;
 	}
+
+	return true;
 }
 
 bool MeshRendererVK::createPipelines()

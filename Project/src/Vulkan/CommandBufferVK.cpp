@@ -228,17 +228,17 @@ void CommandBufferVK::releaseImagesOwnership(ImageVK* const* ppImages, uint32_t 
 	for (uint32_t i = 0; i < count; i++)
 	{
 		VkImageMemoryBarrier imageMemoryBarrier = {};
-		imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-		imageMemoryBarrier.pNext = nullptr;
-		imageMemoryBarrier.srcAccessMask = srcAccessMask;
-		imageMemoryBarrier.dstAccessMask = 0;
-		imageMemoryBarrier.srcQueueFamilyIndex = srcQueueFamilyIndex;
-		imageMemoryBarrier.dstQueueFamilyIndex = dstQueueFamilyIndex;
-		imageMemoryBarrier.image = ppImages[i]->getImage();
-		imageMemoryBarrier.subresourceRange = { aspectMask, 0, ppImages[i]->getMiplevelCount(), 0, ppImages[i]->getArrayLayers() };
+		imageMemoryBarrier.sType				= VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+		imageMemoryBarrier.pNext				= nullptr;
+		imageMemoryBarrier.srcAccessMask		= srcAccessMask;
+		imageMemoryBarrier.dstAccessMask		= 0;
+		imageMemoryBarrier.srcQueueFamilyIndex	= srcQueueFamilyIndex;
+		imageMemoryBarrier.dstQueueFamilyIndex	= dstQueueFamilyIndex;
+		imageMemoryBarrier.image				= ppImages[i]->getImage();
+		imageMemoryBarrier.subresourceRange		= { aspectMask, 0, ppImages[i]->getMiplevelCount(), 0, ppImages[i]->getArrayLayers() };
 	}
 
-	vkCmdPipelineBarrier(m_CommandBuffer, srcStageMask, dstStageMask, 0, 0, nullptr, 0, nullptr, imageMemoryBarriers.size(), imageMemoryBarriers.data());
+	vkCmdPipelineBarrier(m_CommandBuffer, srcStageMask, dstStageMask, 0, 0, nullptr, 0, nullptr, uint32_t(imageMemoryBarriers.size()), imageMemoryBarriers.data());
 }
 
 void CommandBufferVK::acquireImagesOwnership(ImageVK* const * ppImages, uint32_t count, VkAccessFlags dstAccessMask, uint32_t srcQueueFamilyIndex, uint32_t dstQueueFamilyIndex, VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask, VkImageAspectFlags aspectMask)
@@ -249,17 +249,17 @@ void CommandBufferVK::acquireImagesOwnership(ImageVK* const * ppImages, uint32_t
 	for (uint32_t i = 0; i < count; i++)
 	{
 		VkImageMemoryBarrier imageMemoryBarrier = {};
-		imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-		imageMemoryBarrier.pNext = nullptr;
-		imageMemoryBarrier.srcAccessMask = 0;
-		imageMemoryBarrier.dstAccessMask = dstAccessMask;
-		imageMemoryBarrier.srcQueueFamilyIndex = srcQueueFamilyIndex;
-		imageMemoryBarrier.dstQueueFamilyIndex = dstQueueFamilyIndex;
-		imageMemoryBarrier.image = ppImages[i]->getImage();
-		imageMemoryBarrier.subresourceRange = { aspectMask, 0, ppImages[i]->getMiplevelCount(), 0, ppImages[i]->getArrayLayers() };
+		imageMemoryBarrier.sType				= VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+		imageMemoryBarrier.pNext				= nullptr;
+		imageMemoryBarrier.srcAccessMask		= 0;
+		imageMemoryBarrier.dstAccessMask		= dstAccessMask;
+		imageMemoryBarrier.srcQueueFamilyIndex	= srcQueueFamilyIndex;
+		imageMemoryBarrier.dstQueueFamilyIndex	= dstQueueFamilyIndex;
+		imageMemoryBarrier.image				= ppImages[i]->getImage();
+		imageMemoryBarrier.subresourceRange		= { aspectMask, 0, ppImages[i]->getMiplevelCount(), 0, ppImages[i]->getArrayLayers() };
 	}
 
-	vkCmdPipelineBarrier(m_CommandBuffer, srcStageMask, dstStageMask, 0, 0, nullptr, 0, nullptr, imageMemoryBarriers.size(), imageMemoryBarriers.data());
+	vkCmdPipelineBarrier(m_CommandBuffer, srcStageMask, dstStageMask, 0, 0, nullptr, 0, nullptr, uint32_t(imageMemoryBarriers.size()), imageMemoryBarriers.data());
 }
 
 
@@ -484,6 +484,7 @@ void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLa
 		break;
 	default:
 		// Other source layouts aren't handled (yet)
+		LOG("Unsupported layout transition");
 		break;
 	}
 
@@ -526,6 +527,7 @@ void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLa
 		break;
 	default:
 		// Other source layouts aren't handled (yet)
+		LOG("Unsupported layout transition");
 		break;
 	}
 

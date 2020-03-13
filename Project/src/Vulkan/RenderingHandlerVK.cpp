@@ -270,7 +270,6 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 
 		TaskDispatcher::execute([pScene, this]
 			{
-
 				for (auto& graphicsObject : pScene->getGraphicsObjects())
 				{
 					m_pMeshRenderer->submitMesh(graphicsObject.pMesh, graphicsObject.pMaterial, graphicsObject.Transform);

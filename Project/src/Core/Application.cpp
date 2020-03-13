@@ -40,7 +40,7 @@
 
 Application* Application::s_pInstance = nullptr;
 
-constexpr bool FORCE_RAY_TRACING_OFF = true;
+constexpr bool FORCE_RAY_TRACING_OFF = false;
 
 Application::Application()
 	: m_pWindow(nullptr),
@@ -658,5 +658,7 @@ void Application::renderUI(double dt)
 
 void Application::render(double dt)
 {
+	UNREFERENCED_PARAMETER(dt);
+
 	m_pRenderingHandler->render(m_pScene);
 }
