@@ -3,8 +3,8 @@
 
 #include "../helpers.glsl"
 
-layout(binding = 0, set = 0, rgb10_a2) uniform image2D u_RadianceImage;
-layout(binding = 19, set = 0, rgb10_a2) uniform image2D u_ReflectionImage;
+layout(binding = 0, set = 0, rgba16f) uniform image2D u_RadianceImage;
+layout(binding = 19, set = 0, rgba16f) uniform image2D u_ReflectionImage;
 layout(binding = 1, set = 0) uniform CameraProperties 
 {
 	mat4 viewInverse;
@@ -166,7 +166,7 @@ void main()
 
 	//Reflection
 	vec2 uniformRandom = texture(u_BlueNoiseLUT, uvCoords).rg;
-	reflDir = ReflectanceDirection2(reflDir, roughness, uniformRandom);
+	//reflDir = ReflectanceDirection2(reflDir, roughness, uniformRandom);
 	rayPayload.Radiance = vec3(0.0f);
 	rayPayload.Recursion = 0;
 	traceNV(u_TopLevelAS, rayFlags, cullMask, 0, 0, 0, reflectedRaysOrigin, tmin, reflDir, tmax, 0);
@@ -174,5 +174,5 @@ void main()
 	const float hysterisis = 1.0f;
 	vec3 oldRadiance = imageLoad(u_ReflectionImage, ivec2(gl_LaunchIDNV.xy)).rgb;
 	vec3 newColor = mix(oldRadiance, rayPayload.Radiance, hysterisis);
-	imageStore(u_ReflectionImage, ivec2(gl_LaunchIDNV.xy), vec4(newColor, 1.0f));
+	imageStore(u_ReflectionImage, ivec2(gl_LaunchIDNV.xy), vec4(newColor, roughness));
 }

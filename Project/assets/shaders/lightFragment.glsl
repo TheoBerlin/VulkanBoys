@@ -129,8 +129,8 @@ void main()
 	if (RAY_TRACING_ENABLED == 1)
 	{
 		vec4 centerRayTracedGlossy = texture(u_Glossy, texCoord);
-		vec4 rayTracedGlossy = blur(u_Glossy, centerRayTracedGlossy, texCoord, vec2(0.0f, 1.0f), centerRayTracedGlossy.a);//texture(u_RayTracingResult, texCoord);
-		prefilteredColor = rayTracedGlossy.rgb;
+		//vec4 rayTracedGlossy = blur(u_Glossy, centerRayTracedGlossy, texCoord, vec2(0.0f, 1.0f), centerRayTracedGlossy.a);//texture(u_RayTracingResult, texCoord);
+		prefilteredColor = centerRayTracedGlossy.rgb;
 	}
 	else
 	{

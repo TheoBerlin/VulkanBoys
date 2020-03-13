@@ -105,9 +105,11 @@ vec4 blur(sampler2D image, vec4 centerColor, vec2 texCoords, vec2 direction, flo
     vec3 topBlur = vec3(0.0f);
     float alpha = 0.0f;
 
-    bottomBlur = blur5(image, centerColor, texCoords, normalizedDirection);
-    topBlur = blur9(image, centerColor, texCoords, normalizedDirection);
-    alpha = gamma;
+    return vec4(blur13(image, centerColor, texCoords, normalizedDirection), centerColor.a);
+
+    // bottomBlur = blur5(image, centerColor, texCoords, normalizedDirection);
+    // topBlur = blur9(image, centerColor, texCoords, normalizedDirection);
+    // alpha = gamma;
 
     // if (gamma < barrier0)
     // {
@@ -128,7 +130,7 @@ vec4 blur(sampler2D image, vec4 centerColor, vec2 texCoords, vec2 direction, flo
     //     alpha = (gamma - barrier1) * 3.0f;
     // }
 
-    return vec4(mix(bottomBlur, topBlur, alpha), 1.0f);
+    //return vec4(mix(bottomBlur, topBlur, alpha), 1.0f);
     //return centerColor;
 }
 

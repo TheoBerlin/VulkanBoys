@@ -24,7 +24,7 @@
 "tools/glslc.exe" -fshader-stage=rchit assets/shaders/raytracing/closesthit.glsl -o assets/shaders/raytracing/closesthit.spv 
 "tools/glslc.exe" -fshader-stage=rmiss assets/shaders/raytracing/missShadow.glsl -o assets/shaders/raytracing/missShadow.spv 
 "tools/glslc.exe" -fshader-stage=rchit assets/shaders/raytracing/closesthitShadow.glsl -o assets/shaders/raytracing/closesthitShadow.spv 
-"tools/glslc.exe" -fshader-stage=compute assets/shaders/raytracing/blurHorizontal.glsl -o assets/shaders/raytracing/blurHorizontal.spv 
+"tools/glslc.exe" -fshader-stage=compute assets/shaders/raytracing/blur.glsl -o assets/shaders/raytracing/blur.spv 
 :: Particles
 "tools/glslc.exe" -fshader-stage=vertex assets/shaders/particles/vertex.glsl -o assets/shaders/particles/vertex.spv
 "tools/glslc.exe" -fshader-stage=fragment assets/shaders/particles/fragment.glsl -o assets/shaders/particles/fragment.spv

@@ -359,7 +359,7 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pRadianceImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 1);
 		m_ppComputeCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pGlossyImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 1);
 
-		m_pRayTracer->setRayTracingResultTextures(m_pRadianceImageView, m_pGlossyImageView, m_pGraphicsContext->getSwapChain()->getExtent().width, m_pGraphicsContext->getSwapChain()->getExtent().height);
+		m_pRayTracer->setRayTracingResultTextures(m_pRadianceImage, m_pRadianceImageView, m_pGlossyImage, m_pGlossyImageView, m_pGraphicsContext->getSwapChain()->getExtent().width, m_pGraphicsContext->getSwapChain()->getExtent().height);
 		m_pRayTracer->render(pScene, m_pGBuffer);
 		m_ppComputeCommandBuffers[m_CurrentFrame]->executeSecondary(m_pRayTracer->getComputeCommandBuffer());
 
@@ -851,7 +851,8 @@ bool RenderingHandlerVK::createRayTracingRenderImages(uint32_t width, uint32_t h
 
 	ImageParams imageParams = {};
 	imageParams.Type = VK_IMAGE_TYPE_2D;
-	imageParams.Format = VK_FORMAT_A2B10G10R10_UNORM_PACK32; //Todo: What format should this be?
+
+	imageParams.Format = VK_FORMAT_R16G16B16A16_SFLOAT; //Todo: What format should this be?
 	imageParams.Extent.width = width / RAY_TRACING_RESOLUTION_DENOMINATOR;
 	imageParams.Extent.height = height / RAY_TRACING_RESOLUTION_DENOMINATOR;
 	imageParams.Extent.depth = 1;

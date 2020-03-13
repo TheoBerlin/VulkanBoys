@@ -48,8 +48,8 @@ constexpr uint32_t RT_BRDF_LUT_BINDING = 18;
 constexpr uint32_t RT_RAW_REFLECTION_IMAGE_BINDING = 19;
 constexpr uint32_t RT_BLUE_NOISE_LOOKUP_BINDING = 20;
 
-constexpr uint32_t RT_BP_BLUR_RESULT_BINDING = 0;
-constexpr uint32_t RT_BP_RAW_RESULT_BINDING = 1;
+constexpr uint32_t RT_BP_INPUT_BINDING = 0;
+constexpr uint32_t RT_BP_OUTPUT_BINDING = 1;
 constexpr uint32_t RT_BP_GBUFFER_ALBEDO_BINDING = 2;
 constexpr uint32_t RT_BP_GBUFFER_NORMAL_BINDING = 3;
 constexpr uint32_t RT_BP_GBUFFER_DEPTH_BINDING = 4;
@@ -73,7 +73,7 @@ public:
 	
 	void onWindowResize(uint32_t width, uint32_t height);
 
-	void setRayTracingResultTextures(ImageViewVK* pRadianceImageView, ImageViewVK* pReflectionImageView, uint32_t width, uint32_t height);
+	void setRayTracingResultTextures(ImageVK* pRadianceImage, ImageViewVK* pRadianceImageView, ImageVK* pGlossyImage, ImageViewVK* pGlossyImageView, uint32_t width, uint32_t height);
 	void setSkybox(TextureCubeVK* pSkybox);
 
 	void setBRDFLookUp(Texture2DVK* pTexture);
@@ -120,7 +120,9 @@ private:
 
 	PipelineLayoutVK* m_pBlurPassPipelineLayout;
 
-	DescriptorSetVK* m_pBlurPassDescriptorSet;
+	DescriptorSetVK* m_pHorizontalBlurPassDescriptorSet;
+	DescriptorSetVK* m_pVerticalBlurPassDescriptorSet;
+
 	DescriptorPoolVK* m_pBlurPassDescriptorPool;
 	DescriptorSetLayoutVK* m_pBlurPassDescriptorSetLayout;
 	uint32_t m_WorkGroupSize[3];
@@ -133,8 +135,11 @@ private:
 	Texture2DVK* m_pBRDFLookUp;
 	Texture2DVK* m_pBlueNoise;
 
-	ImageVK* m_pReflectionImage;
-	ImageViewVK* m_pRawReflectionImageView;
+	ImageVK* m_pReflectionFinalImage;
+	ImageViewVK* m_pReflectionFinalImageView;
+
+	ImageVK* m_pReflectionIntermediateImage;
+	ImageViewVK* m_pReflectionIntermediateImageView;
 
 	BufferVK* m_pCameraBuffer;
 	BufferVK* m_pLightsBuffer;
