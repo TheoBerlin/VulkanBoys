@@ -15,6 +15,7 @@ class ITexture2D;
 class IFrameBuffer;
 class IFrameBuffer;
 class IResourceLoader;
+class LightSetup;
 class RenderingHandler;
 class ParticleEmitterHandler;
 
@@ -32,15 +33,16 @@ public:
 	virtual IRenderer* createMeshRenderer(RenderingHandler* pRenderingHandler) = 0;
 	virtual IRenderer* createParticleRenderer(RenderingHandler* pRenderingHandler) = 0;
 	virtual IRenderer* createRayTracingRenderer(RenderingHandler* pRenderingHandler) = 0;
+	virtual IRenderer* createVolumetricLightRenderer(RenderingHandler* pRenderingHandler, LightSetup* pLightSetup) = 0;
 	virtual ParticleEmitterHandler* createParticleEmitterHandler() = 0;
 	virtual IImgui* createImgui() = 0;
 
 	virtual IScene* createScene() = 0;
 
 	virtual IShader* createShader() = 0;
-	
+
     virtual IMesh* createMesh() = 0;
-    
+
 	virtual IBuffer* createBuffer() = 0;
 	virtual void updateBuffer(IBuffer* pDestination, uint64_t destinationOffset, const void* pSource, uint64_t sizeInBytes) = 0;
 	virtual IFrameBuffer* createFrameBuffer() = 0;
@@ -54,7 +56,7 @@ public:
 
 	virtual bool setRayTracingEnabled(bool enabled) = 0;
 	virtual bool isRayTracingEnabled() const = 0;
-	
+
 public:
 	static IGraphicsContext* create(IWindow* pWindow, API api);
 };

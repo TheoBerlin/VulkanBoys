@@ -31,7 +31,7 @@ public:
 	virtual void render(IScene* pScene) = 0;
 
     virtual void drawProfilerUI() = 0;
-    
+
     virtual void swapBuffers() = 0;
 
     virtual void setClearColor(float r, float g, float b) = 0;
@@ -43,10 +43,11 @@ public:
     virtual void setMeshRenderer(IRenderer* pMeshRenderer) = 0;
     virtual void setRayTracer(IRenderer* pRayTracer) = 0;
     virtual void setParticleRenderer(IRenderer* pParticleRenderer) = 0;
+    virtual void setVolumetricLightRenderer(IRenderer* pVolumetricLightRenderer) = 0;
     virtual void setImguiRenderer(IImgui* pImGui) = 0;
 
     virtual void onWindowResize(uint32_t width, uint32_t height) = 0;
-    
+
     void setParticleEmitterHandler(ParticleEmitterHandler* pParticleEmitterHandler) { m_pParticleEmitterHandler = pParticleEmitterHandler; }
 
 protected:

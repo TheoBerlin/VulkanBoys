@@ -8,22 +8,23 @@ class BufferVK;
 class CommandBufferVK;
 class CommandPoolVK;
 class FrameBufferVK;
+class GBufferVK;
 class GraphicsContextVK;
 class IGraphicsContext;
+class ImageVK;
+class ImageViewVK;
+class ImguiVK;
 class IRenderer;
+class IScene;
 class MeshRendererVK;
+class MeshVK;
 class ParticleRendererVK;
 class PipelineVK;
 class RayTracingRendererVK;
 class RenderPassVK;
-class MeshVK;
-class SkyboxRendererVK;
-class ImguiVK;
-class GBufferVK;
-class IScene;
 class SceneVK;
-class ImageVK;
-class ImageViewVK;
+class SkyboxRendererVK;
+class VolumetricLightRendererVK;
 
 class RenderingHandlerVK : public RenderingHandler
 {
@@ -41,9 +42,10 @@ public:
 
     virtual void drawProfilerUI() override;
 
-	virtual void setRayTracer(IRenderer* pRayTracer) override				{ m_pRayTracer = reinterpret_cast<RayTracingRendererVK*>(pRayTracer); }
-    virtual void setMeshRenderer(IRenderer* pMeshRenderer) override         { m_pMeshRenderer = reinterpret_cast<MeshRendererVK*>(pMeshRenderer); }
-    virtual void setParticleRenderer(IRenderer* pParticleRenderer) override { m_pParticleRenderer = reinterpret_cast<ParticleRendererVK*>(pParticleRenderer); }
+	virtual void setRayTracer(IRenderer* pRayTracer) override				                { m_pRayTracer = reinterpret_cast<RayTracingRendererVK*>(pRayTracer); }
+    virtual void setMeshRenderer(IRenderer* pMeshRenderer) override                         { m_pMeshRenderer = reinterpret_cast<MeshRendererVK*>(pMeshRenderer); }
+    virtual void setParticleRenderer(IRenderer* pParticleRenderer) override                 { m_pParticleRenderer = reinterpret_cast<ParticleRendererVK*>(pParticleRenderer); }
+    virtual void setVolumetricLightRenderer(IRenderer* pVolumetricLightRenderer) override   { m_pVolumetricLightRenderer = reinterpret_cast<VolumetricLightRendererVK*>(pVolumetricLightRenderer); }
     virtual void setImguiRenderer(IImgui* pImGui) override                  { m_pImGuiRenderer = reinterpret_cast<ImguiVK*>(pImGui); }
 
     virtual void setClearColor(float r, float g, float b) override;
@@ -90,6 +92,7 @@ private:
     MeshRendererVK* m_pMeshRenderer;
     ParticleRendererVK* m_pParticleRenderer;
     RayTracingRendererVK* m_pRayTracer;
+    VolumetricLightRendererVK* m_pVolumetricLightRenderer;
     ImguiVK* m_pImGuiRenderer;
 
     FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];

@@ -55,6 +55,7 @@ private:
 	IRenderer* m_pMeshRenderer;
 	IRenderer* m_pParticleRenderer;
 	IRenderer* m_pRayTracingRenderer;
+	IRenderer* m_pVolumetricLightRenderer;
 	IImgui* m_pImgui;
 	IInputHandler* m_pInputHandler;
 

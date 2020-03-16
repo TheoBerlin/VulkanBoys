@@ -10,6 +10,7 @@
 #include "Texture2DVK.h"
 #include "MeshRendererVK.h"
 #include "RenderingHandlerVK.h"
+#include "VolumetricLight/VolumetricLightRendererVK.h"
 
 #include "Particles/ParticleRendererVK.h"
 #include "Particles/ParticleEmitterHandlerVK.h"
@@ -90,6 +91,11 @@ IRenderer* GraphicsContextVK::createParticleRenderer(RenderingHandler* pRenderin
 IRenderer* GraphicsContextVK::createRayTracingRenderer(RenderingHandler* pRenderingHandler)
 {
 	return DBG_NEW RayTracingRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler));
+}
+
+IRenderer* GraphicsContextVK::createVolumetricLightRenderer(RenderingHandler* pRenderingHandler, LightSetup* pLightSetup)
+{
+	return DBG_NEW VolumetricLightRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler), pLightSetup);
 }
 
 ParticleEmitterHandler* GraphicsContextVK::createParticleEmitterHandler()

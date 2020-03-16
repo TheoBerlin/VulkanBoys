@@ -1,24 +1,9 @@
 #include "PointLight.h"
 
-#include "Common/IDescriptorSet.h"
-#include "Common/IImage.h"
-#include "Common/IImageView.h"
-
-PointLight::PointLight(const glm::vec3& position, const glm::vec4& color, bool castsVolumetricLight)
+PointLight::PointLight(const glm::vec3& position, const glm::vec4& color)
 	: m_Position(position, 0.0f),
-	m_Color(color),
-	m_CastsVolumetricLight(castsVolumetricLight),
-	m_pVolumetricLight(nullptr),
-	m_pVolumetricLightView(nullptr),
-	m_pDescriptorSet(nullptr)
+	m_Color(color)
 {
-}
-
-PointLight::~PointLight()
-{
-	SAFEDELETE(m_pVolumetricLight);
-	SAFEDELETE(m_pVolumetricLightView);
-	SAFEDELETE(m_pDescriptorSet);
 }
 
 void PointLight::setColor(const glm::vec4& color)

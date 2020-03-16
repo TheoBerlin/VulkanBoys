@@ -40,7 +40,7 @@
 
 Application* Application::s_pInstance = nullptr;
 
-constexpr bool FORCE_RAY_TRACING_OFF = false;
+constexpr bool FORCE_RAY_TRACING_OFF = true;
 
 Application::Application()
 	: m_pWindow(nullptr),
@@ -48,6 +48,7 @@ Application::Application()
 	m_pRenderingHandler(nullptr),
 	m_pMeshRenderer(nullptr),
 	m_pRayTracingRenderer(nullptr),
+	m_pVolumetricLightRenderer(nullptr),
 	m_pImgui(nullptr),
 	m_pScene(nullptr),
 	m_pMesh(nullptr),
@@ -107,7 +108,7 @@ void Application::init()
 	m_pParticleRenderer = m_pContext->createParticleRenderer(m_pRenderingHandler);
 	m_pParticleRenderer->init();
 
-	if (m_pContext->isRayTracingEnabled()) 
+	if (m_pContext->isRayTracingEnabled())
 	{
 		m_pRayTracingRenderer = m_pContext->createRayTracingRenderer(m_pRenderingHandler);
 		m_pRayTracingRenderer->init();
@@ -116,6 +117,10 @@ void Application::init()
 	//Create particlehandler
 	m_pParticleEmitterHandler = m_pContext->createParticleEmitterHandler();
 	m_pParticleEmitterHandler->initialize(m_pContext, &m_Camera);
+
+	// Create volumetric light renderer
+	m_pVolumetricLightRenderer = m_pContext->createVolumetricLightRenderer(m_pRenderingHandler, &m_LightSetup);
+	m_pVolumetricLightRenderer->init();
 
 	//Setup Imgui
 	m_pImgui = m_pContext->createImgui();
@@ -126,6 +131,7 @@ void Application::init()
 	m_pRenderingHandler->setMeshRenderer(m_pMeshRenderer);
 	m_pRenderingHandler->setParticleEmitterHandler(m_pParticleEmitterHandler);
 	m_pRenderingHandler->setParticleRenderer(m_pParticleRenderer);
+	m_pRenderingHandler->setVolumetricLightRenderer(m_pVolumetricLightRenderer);
 	m_pRenderingHandler->setImguiRenderer(m_pImgui);
 
 	if (m_pContext->isRayTracingEnabled())
@@ -231,7 +237,7 @@ void Application::init()
 			material.createSampler(m_pContext, samplerParams);
 		}
 	}
-	
+
 
 	//Setup lights
 	m_LightSetup.addPointLight(PointLight(glm::vec3( 10.0f,  10.0f, -10.0f), glm::vec4(300.0f)));
@@ -259,8 +265,8 @@ void Application::init()
 	m_GraphicsIndex0 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
 	m_GraphicsIndex1 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
 	m_GraphicsIndex2 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
-	
-	
+
+
 	for (uint32_t y = 0; y < SPHERE_COUNT_DIMENSION; y++)
 	{
 		float yCoord = ((float(SPHERE_COUNT_DIMENSION) * 0.5f) / -2.0f) + float(y * 0.5);
@@ -270,11 +276,11 @@ void Application::init()
 			float xCoord = ((float(SPHERE_COUNT_DIMENSION) * 0.5f) / -2.0f) + float(x * 0.5);
 
 			m_SphereIndexes[x + y * SPHERE_COUNT_DIMENSION] = m_pScene->submitGraphicsObject(
-				m_pSphere, &m_SphereMaterials[x + y * SPHERE_COUNT_DIMENSION], 
+				m_pSphere, &m_SphereMaterials[x + y * SPHERE_COUNT_DIMENSION],
 				glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)), glm::vec3(0.25f)));
 		}
 	}
-	
+
 	//Finalize after (more efficient)
 	m_pScene->finalize();
 }
@@ -319,7 +325,7 @@ void Application::release()
 	m_pContext->sync();
 
 	m_GunMaterial.release();
-	
+
 	for (uint32_t i = 0; i < SPHERE_COUNT_DIMENSION * SPHERE_COUNT_DIMENSION; i++)
 	{
 		m_SphereMaterials->release();
@@ -338,6 +344,7 @@ void Application::release()
 	SAFEDELETE(m_pParticleRenderer);
 	SAFEDELETE(m_pParticleTexture);
 	SAFEDELETE(m_pParticleEmitterHandler);
+	SAFEDELETE(m_pVolumetricLightRenderer);
 	SAFEDELETE(m_pImgui);
 	SAFEDELETE(m_pContext);
 	SAFEDELETE(m_pScene);

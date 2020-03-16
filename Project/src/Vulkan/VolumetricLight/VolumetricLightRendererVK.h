@@ -16,12 +16,13 @@ class PipelineVK;
 class PipelineLayoutVK;
 class PointLight;
 class RenderingHandlerVK;
+class RenderPassVK;
 class SamplerVK;
 
 class VolumetricLightRendererVK : public IRenderer
 {
 public:
-    VolumetricLightRendererVK(GraphicsContextVK* pGraphicsContext, RenderingHandlerVK* pRenderingHandler);
+    VolumetricLightRendererVK(GraphicsContextVK* pGraphicsContext, RenderingHandlerVK* pRenderingHandler, LightSetup* pLightSetup);
     ~VolumetricLightRendererVK();
 
     virtual bool init() override;
@@ -29,28 +30,46 @@ public:
     virtual void beginFrame(IScene* pScene) override;
     virtual void endFrame(IScene* pScene) override;
 
-    void submitPointLight(PointLight* pPointLight);
+    // Renders volumetric light to a light buffer
+    void renderLightBuffer();
+    // Applies the light buffer to the backbuffer
+    void applyLightBuffer();
+    // void submitPointLight(PointLight* pPointLight);
 
     virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
 
 private:
+    struct PushConstants {
+        glm::mat4 worldMatrix;
+
+        alignas(16) glm::vec3 lightPosition, lightColor;
+        float lightRadius, lightScatterAmount;
+
+        float particleG;
+
+        uint32_t raymarchSteps;
+    };
+
     bool createCommandPoolAndBuffers();
+    bool createRenderPass();
     bool createFrameBuffer();
 	bool createPipelineLayout();
 	bool createPipeline();
 	bool createSphereMesh();
 	void createProfiler();
 
-    bool bindDescriptorSet(PointLight* pPointLight);
-    bool createRenderResources(PointLight* pPointLight);
+    //bool bindDescriptorSet(PointLight* pPointLight);
+    //bool createRenderResources(PointLight* pPointLight);
 
 private:
-    const LightSetup* m_pLightSetup;
+    LightSetup* m_pLightSetup;
     IMesh* m_pSphereMesh;
 
+    RenderPassVK* m_pLightBufferPass;
+
     FrameBufferVK* m_pLightFrameBuffer;
-    ImageVK* m_ppLightBufferImages[MAX_FRAMES_IN_FLIGHT];
-    ImageViewVK* m_ppLightBufferImageViews[MAX_FRAMES_IN_FLIGHT];
+    ImageVK* m_pLightBufferImage;
+    ImageViewVK* m_pLightBufferImageView;
 
     GraphicsContextVK* m_pGraphicsContext;
     RenderingHandlerVK* m_pRenderingHandler;

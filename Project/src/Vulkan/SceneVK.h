@@ -42,7 +42,7 @@ class SceneVK : public IScene
 		uint32_t Flags : 8;
 		uint64_t AccelerationStructureHandle;
 	};
-	
+
 	struct BottomLevelAccelerationStructure
 	{
 		VkDeviceMemory Memory = VK_NULL_HANDLE;
@@ -68,7 +68,7 @@ class SceneVK : public IScene
 		float AO;
 		float Padding;
 	};
-	
+
 public:
 	DECL_NO_COPY(SceneVK);
 
@@ -107,7 +107,7 @@ public:
 	const TopLevelAccelerationStructure& getTLAS() { return m_TopLevelAccelerationStructure; }
 
 	ProfilerVK* getProfiler() { return m_pProfiler; }
-	
+
 	void generateLightProbeGeometry(float probeStepX, float probeStepY, float probeStepZ, uint32_t samplesPerProbe, uint32_t numProbesPerDimension);
 
 private:

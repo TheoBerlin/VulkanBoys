@@ -38,6 +38,7 @@ RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 	:m_pGraphicsContext(pGraphicsContext),
 	m_pMeshRenderer(nullptr),
 	m_pRayTracer(nullptr),
+	m_pVolumetricLightRenderer(nullptr),
 	m_pParticleRenderer(nullptr),
 	m_pRayTracingStorageImage(nullptr),
 	m_pRayTracingStorageImageView(nullptr),
@@ -427,7 +428,7 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 				VK_SHADER_STAGE_RAYGEN_BIT_NV,
 				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 				VK_IMAGE_ASPECT_DEPTH_BIT);
-		
+
 			m_ppGraphicsCommandBuffers[m_CurrentFrame]->acquireImageOwnership(
 				m_pRayTracingStorageImage,
 				VK_ACCESS_MEMORY_READ_BIT,
@@ -482,17 +483,17 @@ void RenderingHandlerVK::swapBuffers()
 
 void RenderingHandlerVK::drawProfilerUI()
 {
-	if (m_pMeshRenderer) 
+	if (m_pMeshRenderer)
 	{
 		m_pMeshRenderer->getProfiler()->drawResults();
 	}
 
-	if (m_pParticleRenderer) 
+	if (m_pParticleRenderer)
 	{
 		m_pParticleRenderer->getProfiler()->drawResults();
 	}
 
-	if (m_pRayTracer) 
+	if (m_pRayTracer)
 	{
 		m_pRayTracer->getProfiler()->drawResults();
 	}
