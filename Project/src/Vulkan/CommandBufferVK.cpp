@@ -439,6 +439,10 @@ void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLa
 	// before it will be transitioned to the new layout
 	switch (oldLayout)
 	{
+	case VK_IMAGE_LAYOUT_GENERAL:
+		//Nothing
+		break;
+
 	case VK_IMAGE_LAYOUT_UNDEFINED:
 		// Image layout is undefined (or does not matter)
 		// Only valid as initial layout
@@ -492,6 +496,10 @@ void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLa
 	// Destination access mask controls the dependency for the new image layout
 	switch (newLayout)
 	{
+	case VK_IMAGE_LAYOUT_GENERAL:
+		//Nothing
+		break;
+
 	case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
 		// Image will be used as a transfer destination
 		// Make sure any writes to the image have been finished

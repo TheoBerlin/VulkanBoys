@@ -12,9 +12,9 @@ layout(binding = 1, set = 0) uniform CameraProperties
 } u_Cam;
 layout(binding = 2, set = 0) uniform accelerationStructureNV u_TopLevelAS;
 layout(binding = 3, set = 0) uniform sampler2D u_Albedo_AO;
-layout(binding = 4, set = 0) uniform sampler2D u_Normal_Roughness;
+layout(binding = 4, set = 0) uniform sampler2D u_Normal_Metallic_Roughness;
 layout(binding = 5, set = 0) uniform sampler2D u_Depth;
-layout(binding = 17, set = 0) uniform sampler2D u_World_Metallic;
+layout(binding = 17, set = 0) uniform sampler2D u_Velocity;
 layout(binding = 18, set = 0) uniform sampler2D u_BrdfLUT;
 layout(binding = 20, set = 0) uniform sampler2D u_BlueNoiseLUT;
 
@@ -72,6 +72,19 @@ void calculateDirections(in vec2 uvCoords, in vec3 hitPosition, in vec3 normal, 
 	viewDir = -origDirection;
 }
 
+vec3 calculateNormal(vec4 sampledNormalMetallicRoughness)
+{
+	vec3 normal;
+	normal.xy 	= sampledNormalMetallicRoughness.xy;
+	normal.z 	= sqrt(1.0f - dot(normal.xy, normal.xy));
+	if (sampledNormalMetallicRoughness.a < 0)
+	{
+		normal.z = -normal.z;
+	}
+	normal = normalize(normal);
+	return normal;
+}
+
 void main() 
 {
 	//Calculate Screen Coords
@@ -80,17 +93,8 @@ void main()
 	vec2 uvCoords = (pixelCenter / vec2(gl_LaunchSizeNV.xy));
 
 	//Sample GBuffer
-	vec4 sampledNormalRoughness = texture(u_Normal_Roughness, uvCoords);
-	vec3 normal;
-	normal.xy 	= sampledNormalRoughness.xy;
-	normal.z 	= sqrt(1.0f - dot(normal.xy, normal.xy));
-	if (sampledNormalRoughness.a < 0)
-	{
-		normal.z = -normal.z;
-	}
-	normal = normalize(normal);
-
-	float sampledDepth = texture(u_Depth, uvCoords).r;
+	vec4 sampledNormalMetallicRoughness = texture(u_Normal_Metallic_Roughness, uvCoords);
+	vec3 normal = calculateNormal(sampledNormalMetallicRoughness);
 
 	//Skybox
 	if (dot(normal, normal) < 0.5f)
@@ -103,7 +107,6 @@ void main()
 	//Sample GBuffer
 	vec4 sampledAlbedoAO = texture(u_Albedo_AO, uvCoords);
 	float sampledDepth = texture(u_Depth, uvCoords).r;
-	float sampledMetallic = texture(u_World_Metallic, uvCoords).a;
 
 	//Define Constants
 	vec3 hitPos = vec3(0.0f);
@@ -124,8 +127,8 @@ void main()
 	//Setup PBR Parameters
 	vec3 albedo = sampledAlbedoAO.rgb;
 	float ao = sampledAlbedoAO.a;
-	float roughness = sampledNormalRoughness.a;
-	float metallic = sampledMetallic;
+	float roughness = sampledNormalMetallicRoughness.a;
+	float metallic = sampledNormalMetallicRoughness.z;
 
 	//Init BRDF values
 	vec3 f0 = vec3(0.04f);
@@ -189,13 +192,13 @@ void main()
 
 	//Temporal Filtering
 	//vec4 motion = texelFetch(TEX_PT_MOTION, ipos, 0);
-	vec4 motion = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	vec4 motion = texture(u_Velocity, uvCoords);
 
 	ivec2 currentReflectionDimensions = imageSize(u_ReflectionImage); 
-	ivec2 prevReflectionDimensions = currentReflectionDimensions;
+	ivec2 prevReflectionDimensions = currentReflectionDimensions; //Todo: Fix this?
 
 	vec2 currentScreenCoords = pixelCoords;
-	vec2 prevScreenCoords = (uvCoords + motion.xy) * prevReflectionDimensions;
+	vec2 prevScreenCoords = (uvCoords - motion.xy) * prevReflectionDimensions;
 
 	bool temporal_sample_valid = false;
 	vec4 temporal_color_histlen_spec = vec4(0);
@@ -204,17 +207,6 @@ void main()
 
 	vec2 prevFlooredScreenCoords = floor(prevScreenCoords - vec2(0.5f));
 	vec2 prevSubpixel = fract(prevScreenCoords - vec2(0.5f) - prevFlooredScreenCoords);
-
-	
-
-	//Calculate fields to check for Out of Bounds pixels
-	int field_left = 0;
-	int field_right = prevReflectionDimensions.x / 2;
-	if(pixelCoords.x >= currentReflectionDimensions.x / 2)
-	{
-		field_left = field_right;
-		field_right = prevReflectionDimensions.x;
-	}
 
 	// Bilinear/bilateral filter
 	const ivec2 off[4] = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } };
@@ -229,15 +221,15 @@ void main()
 	for(int i = 0; i < 4; i++) 
 	{
 		ivec2 p = ivec2(prevFlooredScreenCoords) + off[i];
-		vec2 p_temp = vec2(p) / prevReflectionDimensions;
+		vec2 p_temp = (vec2(p) + 0.5f) / prevReflectionDimensions;
 
-		if(p.x < field_left || p.x >= field_right || p.y >= prevReflectionDimensions.y)
+		if(p.x < 0.0f || p.x >= prevReflectionDimensions.x || p.y  < 0.0f || p.y >= prevReflectionDimensions.y)
 			continue;
 
 		float previousDepth = texture(u_Depth, p_temp).x;
-		vec3 previousNormal = texture(u_Normal_Roughness, p_temp).xyz;
+		vec3 previousNormal = calculateNormal(texture(u_Normal_Metallic_Roughness, p_temp));
 
-		float dist_depth = abs(sampledDepth - previousDepth + motion.z) * motion.a;
+		float dist_depth = abs(sampledDepth - previousDepth);// + motion.z) * motion.a;
 		float CNdotPN = dot(normal, previousNormal);
 		
 		// if(sampledDepth < 0)
@@ -273,7 +265,7 @@ void main()
 
 	if(temporal_sample_valid)
 	{
-		float hist_len_spec = min(temporal_color_histlen_spec.a + 1.0, 256.0);
+		float hist_len_spec = min(temporal_color_histlen_spec.a + 1.0f, 512.0f);
 
 		// Compute the blending weights based on history length, so that the filter
 		// converges faster. I.e. the first frame has weight of 1.0, the second frame 1/2, third 1/3 and so on.
@@ -281,7 +273,7 @@ void main()
 		//float alpha_color_spec = 0.25f;
 		
 	   	out_color_histlen_spec.rgb = mix(temporal_color_histlen_spec.rgb, color_curr_spec.rgb, alpha_color_spec);
-		//out_color_histlen_spec.rgb = color_curr_spec.rgb;
+		//out_color_histlen_spec.rgb = temporal_color_histlen_spec.rgb;
 
 		out_color_histlen_spec.a = hist_len_spec;
 		//out_color_histlen_spec.a = 1.0f;
@@ -290,6 +282,7 @@ void main()
 	{
 		// No valid history - just use the current color and spatial moments
 		out_color_histlen_spec = vec4(color_curr_spec, 1.0f);
+		out_color_histlen_spec = vec4(0.0f);
 	}
 
 	imageStore(u_ReflectionImage, pixelCoords, out_color_histlen_spec);

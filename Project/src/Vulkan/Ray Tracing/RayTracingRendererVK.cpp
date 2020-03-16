@@ -154,7 +154,7 @@ void RayTracingRendererVK::render(IScene* pScene, GBufferVK* pGBuffer)
 	ImageViewVK* pDepthImageView[1] = { pGBuffer->getDepthImageView() };
 	ImageViewVK* pAlbedoImageView[1] = { pGBuffer->getColorAttachment(0) };
 	ImageViewVK* pNormalImageView[1] = { pGBuffer->getColorAttachment(1) };
-	ImageViewVK* pWorldMetalic[1] = { pGBuffer->getColorAttachment(2) };
+	ImageViewVK* pVelocityImageView[1] = { pGBuffer->getColorAttachment(2) };
 
 	//Ray Trace
 	{
@@ -175,6 +175,7 @@ void RayTracingRendererVK::render(IScene* pScene, GBufferVK* pGBuffer)
 		m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(pAlbedoImageView, &m_pNearestSampler,		1,											RT_GBUFFER_ALBEDO_BINDING);
 		m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(pNormalImageView, &m_pNearestSampler,		1,											RT_GBUFFER_NORMAL_BINDING);
 		m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(pDepthImageView, &m_pNearestSampler,		1,											RT_GBUFFER_DEPTH_BINDING);
+		m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(pVelocityImageView, &m_pNearestSampler,		1,										RT_GBUFFER_VELOCITY_BINDING);
 		m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pVulkanScene->getCombinedVertexBuffer(),												RT_COMBINED_VERTEX_BINDING);
 		m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pVulkanScene->getCombinedIndexBuffer(),												RT_COMBINED_INDEX_BINDING);
 		m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pVulkanScene->getMeshIndexBuffer(),													RT_MESH_INDEX_BINDING);
@@ -184,7 +185,6 @@ void RayTracingRendererVK::render(IScene* pScene, GBufferVK* pGBuffer)
 		m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(metallicMaps.data(), samplers.data(),		MAX_NUM_UNIQUE_MATERIALS,					RT_COMBINED_METALLIC_BINDING);
 		m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(roughnessMaps.data(), samplers.data(),	MAX_NUM_UNIQUE_MATERIALS,					RT_COMBINED_ROUGHNESS_BINDING);
 		m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pMaterialParametersBuffer,																RT_COMBINED_MATERIAL_PARAMETERS_BINDING);
-		m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(pWorldMetalic, &m_pNearestSampler,		1,											RT_GBUFFER_TEMP);
 
 		static float counter = 0.0f;
 		counter += 0.01f;
@@ -390,6 +390,7 @@ bool RayTracingRendererVK::createPipelineLayouts()
 		m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_RAYGEN_BIT_NV, nullptr, RT_GBUFFER_ALBEDO_BINDING, 1);
 		m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_RAYGEN_BIT_NV, nullptr, RT_GBUFFER_NORMAL_BINDING, 1);
 		m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_RAYGEN_BIT_NV, nullptr, RT_GBUFFER_DEPTH_BINDING, 1);
+		m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_RAYGEN_BIT_NV, nullptr, RT_GBUFFER_VELOCITY_BINDING, 1);
 
 		//Scene Mesh Information
 		m_pRayTracingDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, RT_COMBINED_VERTEX_BINDING, 1);
@@ -409,9 +410,6 @@ bool RayTracingRendererVK::createPipelineLayouts()
 
 		//Light Buffer
 		m_pRayTracingDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, RT_LIGHT_BUFFER_BINDING, 1);
-
-		//TEMP GBUFFER
-		m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_RAYGEN_BIT_NV, nullptr, RT_GBUFFER_TEMP, 1);
 
 		//Look Ups
 		m_pRayTracingDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, nullptr, RT_BRDF_LUT_BINDING, 1);

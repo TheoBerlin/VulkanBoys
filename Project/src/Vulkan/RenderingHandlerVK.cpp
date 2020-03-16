@@ -324,14 +324,15 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 				VK_SHADER_STAGE_RAYGEN_BIT_NV,
 				VK_IMAGE_ASPECT_DEPTH_BIT);
 
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->releaseImagesOwnership(
-			m_RayTracingImages,
-			2,
-			VK_ACCESS_MEMORY_WRITE_BIT,
-			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
-			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
-			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-			VK_SHADER_STAGE_RAYGEN_BIT_NV);
+			m_ppGraphicsCommandBuffers[m_CurrentFrame]->releaseImagesOwnership(
+				m_RayTracingImages,
+				2,
+				VK_ACCESS_MEMORY_WRITE_BIT,
+				m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
+				m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+				VK_SHADER_STAGE_RAYGEN_BIT_NV);
+		}
 
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->end();
 		pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppGraphicsCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);

@@ -38,12 +38,25 @@ layout (binding = 0) uniform PerFrameBuffer
 	vec4 Position;
 } g_PerFrame;
 
-layout (binding = 9) uniform LightBuffer
+layout (binding = 10) uniform LightBuffer
 {
 	PointLight lights[MAX_POINT_LIGHTS];
 } u_Lights;
 
 const float GAMMA	= 2.2f;
+
+/*
+	Get position from depth
+*/
+vec3 WorldPositionFromDepth(vec2 texCoord, float depth)
+{
+	vec4 clipspace = vec4((texCoord * 2.0f) - 1.0f, depth, 1.0f);
+	vec4 viewSpace = g_PerFrame.InvProjection * clipspace;
+	viewSpace = viewSpace / viewSpace.w;
+
+	vec4 worldPosition = g_PerFrame.InvView * viewSpace;
+	return worldPosition.xyz;
+}
 
 vec4 ColorWrite(vec3 finalColor)
 {
@@ -156,5 +169,5 @@ void main()
 
 	vec3 finalColor = ambient + L0;
     out_Color = ColorWrite(finalColor);
-	//out_Color.rgb = rayTracedGlossy.rgb;
+	//out_Color.rgb = texture(u_Velocity, texCoord).rgb * 10.0f;
 }
