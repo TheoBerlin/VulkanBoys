@@ -339,8 +339,9 @@ void Application::release()
 	SAFEDELETE(m_pParticleTexture);
 	SAFEDELETE(m_pParticleEmitterHandler);
 	SAFEDELETE(m_pImgui);
-	SAFEDELETE(m_pContext);
 	SAFEDELETE(m_pScene);
+
+	SAFEDELETE(m_pContext);
 
 	SAFEDELETE(m_pInputHandler);
 	Input::setInputHandler(nullptr);
