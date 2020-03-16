@@ -13,10 +13,11 @@ layout (constant_id = 0) const int RAY_TRACING_ENABLED = 0;
 
 layout(binding = 1) uniform sampler2D 	u_Albedo;
 layout(binding = 2) uniform sampler2D 	u_Normal;
-layout(binding = 3) uniform sampler2D 	u_Depth;
-layout(binding = 4) uniform samplerCube u_IrradianceMap;
-layout(binding = 5) uniform samplerCube u_EnvironmentMap;
-layout(binding = 6) uniform sampler2D 	u_BrdfLUT;
+layout(binding = 3) uniform sampler2D 	u_Velocity;
+layout(binding = 4) uniform sampler2D 	u_Depth;
+layout(binding = 5) uniform samplerCube u_IrradianceMap;
+layout(binding = 6) uniform samplerCube u_EnvironmentMap;
+layout(binding = 7) uniform sampler2D 	u_BrdfLUT;
 layout(binding = 8) uniform sampler2D 	u_RayTracingResult;
 
 struct PointLight
@@ -29,12 +30,14 @@ layout (binding = 0) uniform PerFrameBuffer
 {
 	mat4 Projection;
 	mat4 View;
+	mat4 LastProjection;
+	mat4 LastView;
 	mat4 InvView;
 	mat4 InvProjection;
 	vec4 Position;
 } g_PerFrame;
 
-layout (binding = 7) uniform LightBuffer
+layout (binding = 9) uniform LightBuffer
 {
 	PointLight lights[MAX_POINT_LIGHTS];
 } u_Lights;
@@ -119,9 +122,10 @@ void main()
 	vec2 texCoord = in_TexCoord;
 
 	//Unpack
-	vec4 	sampledAlbedo 	= texture(u_Albedo, texCoord);
-	vec4 	sampledNormal 	= texture(u_Normal, texCoord);
-	float 	sampledDepth 	= texture(u_Depth, texCoord).r;
+	vec4 	sampledAlbedo 		= texture(u_Albedo, texCoord);
+	vec4 	sampledNormal 		= texture(u_Normal, texCoord);
+	vec4 	sampledVelocity 	= texture(u_Velocity, texCoord);
+	float 	sampledDepth 		= texture(u_Depth, texCoord).r;
 
 	vec3 albedo 		= sampledAlbedo.rgb;
 	vec3 worldPosition 	= WorldPositionFromDepth(texCoord, sampledDepth);
@@ -130,7 +134,7 @@ void main()
 	vec3 normal;
 	normal.xy 	= sampledNormal.xy;
 	normal.z 	= sqrt(1.0f - dot(normal.xy, normal.xy));
-	if (sampledNormal.z < 0)
+	if (sampledNormal.a < 0)
 	{
 		normal.z = -normal.z;
 	}
@@ -144,8 +148,8 @@ void main()
 	}
 
 	float ao 			= sampledAlbedo.a;
-	float roughness 	= sampledNormal.a;
-	float metallic		= abs(sampledNormal.z);
+	float roughness 	= abs(sampledNormal.a);
+	float metallic		= sampledNormal.z;
 
 	vec3 cameraPosition = g_PerFrame.Position.xyz;
 	vec3 viewDir 		= normalize(cameraPosition - worldPosition);

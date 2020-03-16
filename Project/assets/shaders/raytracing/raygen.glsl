@@ -70,7 +70,7 @@ void main()
 	vec3 normal;
 	normal.xy 	= sampledNormalRoughness.xy;
 	normal.z 	= sqrt(1.0f - dot(normal.xy, normal.xy));
-	if (sampledNormalRoughness.z < 0)
+	if (sampledNormalRoughness.a < 0)
 	{
 		normal.z = -normal.z;
 	}
@@ -119,7 +119,7 @@ void main()
 		finalLightColor += attenuation * lightColor * (1.0f - shadowRayPayload.occluderFactor * tempFactor);
 	}
 
-	const float reflectiveness = 1.0f - sampledNormalRoughness.a;
+	const float reflectiveness = 1.0f - abs(sampledNormalRoughness.a);
 	vec3 finalColor = (reflectiveness * rayPayload.color + (1.0f - reflectiveness) * sampledAlbedoAO.rgb) * finalLightColor;
 
 	imageStore(u_ResultImage, ivec2(gl_LaunchIDNV.xy), vec4(finalColor, 1.0f));

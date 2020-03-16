@@ -125,8 +125,8 @@ bool MeshRendererVK::init()
 	}
 
 	updateGBufferDescriptors();
-	m_pLightDescriptorSet->writeUniformBufferDescriptor(m_pLightBuffer, LIGHT_BUFFER_BINDING);
-	m_pLightDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer, CAMERA_BUFFER_BINDING);
+	m_pLightDescriptorSet->writeUniformBufferDescriptor(m_pLightBuffer,		LIGHT_BUFFER_BINDING);
+	m_pLightDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer,	CAMERA_BUFFER_BINDING);
 
 	ImageViewVK* pIntegrationLUT = m_pIntegrationLUT->getImageView();
 	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pIntegrationLUT, &m_pBRDFSampler, 1, BRDF_LUT_BINDING);
@@ -212,9 +212,11 @@ void MeshRendererVK::updateGBufferDescriptors()
 	GBufferVK* pGBuffer				= m_pRenderingHandler->getGBuffer();
 	ImageViewVK* pAttachment0		= pGBuffer->getColorAttachment(0);
 	ImageViewVK* pAttachment1		= pGBuffer->getColorAttachment(1);
+	ImageViewVK* pAttachment2		= pGBuffer->getColorAttachment(2);
 	ImageViewVK* pDepthAttachment	= pGBuffer->getDepthAttachment();
 	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment0, &m_pGBufferSampler, 1, GBUFFER_ALBEDO_BINDING);
 	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment1, &m_pGBufferSampler, 1, GBUFFER_NORMAL_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment2, &m_pGBufferSampler, 1, GBUFFER_VELOCITY_BINDING);
 	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pDepthAttachment, &m_pGBufferSampler, 1, GBUFFER_DEPTH_BINDING);
 }
 
@@ -539,6 +541,7 @@ bool MeshRendererVK::createPipelines()
 	blendAttachment.colorWriteMask	= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	m_pGeometryPipeline->addColorBlendAttachment(blendAttachment);
 	m_pGeometryPipeline->addColorBlendAttachment(blendAttachment);
+	m_pGeometryPipeline->addColorBlendAttachment(blendAttachment);
 
 	VkPipelineRasterizationStateCreateInfo rasterizerState = {};
 	rasterizerState.cullMode				= VK_CULL_MODE_BACK_BIT;
@@ -627,6 +630,7 @@ bool MeshRendererVK::createPipelines()
 	blendAttachment.colorWriteMask	= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	m_pSkyboxPipeline->addColorBlendAttachment(blendAttachment);
 	m_pSkyboxPipeline->addColorBlendAttachment(blendAttachment);
+	m_pSkyboxPipeline->addColorBlendAttachment(blendAttachment);
 
 	rasterizerState.cullMode				= VK_CULL_MODE_BACK_BIT;
 	rasterizerState.frontFace				= VK_FRONT_FACE_CLOCKWISE;
@@ -656,9 +660,9 @@ bool MeshRendererVK::createPipelineLayouts()
 {
 	//Descriptorpool
 	DescriptorCounts descriptorCounts = {};
-	descriptorCounts.m_SampledImages = 1024;
-	descriptorCounts.m_StorageBuffers = 256;
-	descriptorCounts.m_UniformBuffers = 256;
+	descriptorCounts.m_SampledImages	= 1024;
+	descriptorCounts.m_StorageBuffers	= 256;
+	descriptorCounts.m_UniformBuffers	= 256;
 
 	m_pDescriptorPool = DBG_NEW DescriptorPoolVK(m_pContext->getDevice());
 	if (!m_pDescriptorPool->init(descriptorCounts, 256))
@@ -683,9 +687,9 @@ bool MeshRendererVK::createPipelineLayouts()
 
 	//Transform and Color
 	VkPushConstantRange pushConstantRange = {};
-	pushConstantRange.size = sizeof(glm::mat4) + sizeof(glm::vec4) + sizeof(glm::vec3);
-	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-	pushConstantRange.offset = 0;
+	pushConstantRange.size			= sizeof(glm::mat4) + sizeof(glm::vec4) + sizeof(glm::vec3);
+	pushConstantRange.stageFlags	= VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+	pushConstantRange.offset		= 0;
 	std::vector<VkPushConstantRange> pushConstantRanges = { pushConstantRange };
 	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { m_pGeometryDescriptorSetLayout };
 
@@ -701,6 +705,7 @@ bool MeshRendererVK::createPipelineLayouts()
 	m_pLightDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, CAMERA_BUFFER_BINDING, 1);
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_ALBEDO_BINDING, 1);
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_NORMAL_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_VELOCITY_BINDING, 1);
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_DEPTH_BINDING, 1);
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, IRRADIANCE_BINDING, 1);
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ENVIRONMENT_BINDING, 1);

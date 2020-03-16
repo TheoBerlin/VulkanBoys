@@ -42,14 +42,15 @@ class ImageViewVK;
 #define ROUGHNESS_MAP_BINDING	6
 
 //Light pass
-#define GBUFFER_ALBEDO_BINDING		1
-#define GBUFFER_NORMAL_BINDING		2
-#define GBUFFER_DEPTH_BINDING	3
-#define IRRADIANCE_BINDING			4
-#define ENVIRONMENT_BINDING			5
-#define BRDF_LUT_BINDING			6
-#define LIGHT_BUFFER_BINDING		7
-#define RAY_TRACING_RESULT_BINDING  8
+#define GBUFFER_ALBEDO_BINDING			1
+#define GBUFFER_NORMAL_BINDING			2
+#define GBUFFER_VELOCITY_BINDING		3
+#define GBUFFER_DEPTH_BINDING			4
+#define IRRADIANCE_BINDING				5
+#define ENVIRONMENT_BINDING				6
+#define BRDF_LUT_BINDING				7
+#define RAY_TRACING_RESULT_BINDING		8
+#define LIGHT_BUFFER_BINDING			9
 
 struct MeshFilter
 {
@@ -69,7 +70,7 @@ namespace std
 {
 	template<> struct hash<MeshFilter>
 	{
-		size_t operator()(const MeshFilter& filter) const
+		FORCEINLINE size_t operator()(const MeshFilter& filter) const
 		{
 			ASSERT(filter.pMesh);
 			ASSERT(filter.pMaterial);

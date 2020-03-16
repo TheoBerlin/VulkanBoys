@@ -270,8 +270,8 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 	if (m_pMeshRenderer)
 	{
 		//Start renderpass
-		VkClearValue clearValues[] = { m_ClearColor, m_ClearColor, m_ClearDepth };
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pGeometryRenderPass, m_pGBuffer->getFrameBuffer(), (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 3, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+		VkClearValue clearValues[] = { m_ClearColor, m_ClearColor, m_ClearColor, m_ClearDepth };
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pGeometryRenderPass, m_pGBuffer->getFrameBuffer(), (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 4, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
 #if MULTITHREADED
 		TaskDispatcher::execute([pScene, this]
@@ -688,7 +688,7 @@ bool RenderingHandlerVK::createRenderPasses()
 	//Create Geometry Renderpass
 	m_pGeometryRenderPass = DBG_NEW RenderPassVK(m_pGraphicsContext->getDevice());
 
-	//Albedo
+	//Albedo + AO
 	description.format			= VK_FORMAT_R8G8B8A8_UNORM;
 	description.samples			= VK_SAMPLE_COUNT_1_BIT;
 	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -699,7 +699,18 @@ bool RenderingHandlerVK::createRenderPasses()
 	description.finalLayout		= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	m_pGeometryRenderPass->addAttachment(description);
 
-	//Normals
+	//Normals + Metallic + Roughness 
+	description.format			= VK_FORMAT_R16G16B16A16_SFLOAT;
+	description.samples			= VK_SAMPLE_COUNT_1_BIT;
+	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
+	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
+	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
+	description.finalLayout		= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	m_pGeometryRenderPass->addAttachment(description);
+
+	//Velocity
 	description.format			= VK_FORMAT_R16G16B16A16_SFLOAT;
 	description.samples			= VK_SAMPLE_COUNT_1_BIT;
 	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -721,18 +732,22 @@ bool RenderingHandlerVK::createRenderPasses()
 	description.finalLayout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	m_pGeometryRenderPass->addAttachment(description);
 
-	VkAttachmentReference colorAttachmentRefs[2];
-	//Albedo
+	constexpr uint32_t COLOR_REF_COUNT = 3;
+	VkAttachmentReference colorAttachmentRefs[COLOR_REF_COUNT];
+	//Albedo + AO
 	colorAttachmentRefs[0].attachment	= 0;
 	colorAttachmentRefs[0].layout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	//Normals
+	//Normals + Metallic + Roughness
 	colorAttachmentRefs[1].attachment	= 1;
 	colorAttachmentRefs[1].layout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	//Velocity
+	colorAttachmentRefs[2].attachment	= 2;
+	colorAttachmentRefs[2].layout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentReference depthStencilAttachmentRef = {};
-	depthStencilAttachmentRef.attachment	= 2;
+	depthStencilAttachmentRef.attachment	= COLOR_REF_COUNT;
 	depthStencilAttachmentRef.layout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	m_pGeometryRenderPass->addSubpass(colorAttachmentRefs, 2, &depthStencilAttachmentRef);
+	m_pGeometryRenderPass->addSubpass(colorAttachmentRefs, COLOR_REF_COUNT, &depthStencilAttachmentRef);
 
 	dependency.dependencyFlags	= VK_DEPENDENCY_BY_REGION_BIT;
 	dependency.srcSubpass		= VK_SUBPASS_EXTERNAL;
@@ -793,13 +808,14 @@ void RenderingHandlerVK::updateBuffers(const Camera& camera)
 	cameraDirectionsBuffer.Up		= glm::vec4(camera.getUpVec(), 0.0f);
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraDirectionsBuffer, 0, (const void*)&cameraDirectionsBuffer, sizeof(CameraDirectionsBuffer));
 
-	CameraBuffer cameraBuffer = {};
-	cameraBuffer.Projection		= camera.getProjectionMat();
-	cameraBuffer.View			= camera.getViewMat();
-	cameraBuffer.InvView		= camera.getViewInvMat();
-	cameraBuffer.InvProjection	= camera.getProjectionInvMat();
-	cameraBuffer.Position		= glm::vec4(camera.getPosition(), 1.0f);
-	m_ppGraphicsCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraBuffer, 0, (const void*)&cameraBuffer, sizeof(CameraBuffer));
+	m_CameraBuffer.LastProjection	= m_CameraBuffer.Projection;
+	m_CameraBuffer.LastView			= m_CameraBuffer.View;
+	m_CameraBuffer.Projection		= camera.getProjectionMat();
+	m_CameraBuffer.View				= camera.getViewMat();
+	m_CameraBuffer.InvView			= camera.getViewInvMat();
+	m_CameraBuffer.InvProjection	= camera.getProjectionInvMat();
+	m_CameraBuffer.Position			= glm::vec4(camera.getPosition(), 1.0f);
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraBuffer, 0, (const void*)&m_CameraBuffer, sizeof(CameraBuffer));
 
 	// Update particle buffers
 	m_pParticleEmitterHandler->updateRenderingBuffers(this);
@@ -908,6 +924,7 @@ bool RenderingHandlerVK::createGBuffer()
 
 	m_pGBuffer = DBG_NEW GBufferVK(m_pGraphicsContext->getDevice());
 	m_pGBuffer->addColorAttachmentFormat(VK_FORMAT_R8G8B8A8_UNORM);
+	m_pGBuffer->addColorAttachmentFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
 	m_pGBuffer->addColorAttachmentFormat(VK_FORMAT_R16G16B16A16_SFLOAT);
 	m_pGBuffer->setDepthAttachmentFormat(VK_FORMAT_D32_SFLOAT);
 	return m_pGBuffer->finalize(m_pGeometryRenderPass, extent.width, extent.height);

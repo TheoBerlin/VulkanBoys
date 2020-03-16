@@ -5,6 +5,8 @@ layout(binding = 0) uniform CameraBuffer
 {
 	mat4 Projection;
 	mat4 View;
+	mat4 LastProjection;
+	mat4 LastView;
 	mat4 InvView;
 	mat4 InvProjection;
 	vec4 Position;

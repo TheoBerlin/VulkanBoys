@@ -5,9 +5,12 @@ layout(location = 0) in vec3 in_Normal;
 layout(location = 1) in vec3 in_Tangent;
 layout(location = 2) in vec3 in_Bitangent;
 layout(location = 3) in vec2 in_TexCoord;
+layout(location = 4) in vec4 in_Position;
+layout(location = 5) in vec4 in_PrevPosition;
 
-layout(location = 0) out vec4 out_Albedo;
-layout(location = 1) out vec4 out_Normals;
+layout(location = 0) out vec4 out_Albedo_AO;
+layout(location = 1) out vec4 out_Normals_Metall_Rough;
+layout(location = 2) out vec4 out_Velocity;
 
 layout (push_constant) uniform Constants
 {
@@ -44,14 +47,19 @@ void main()
 	vec3 sampledNormal 	= ((normalMap * 2.0f) - 1.0f);
 	sampledNormal 		= normalize(tbn * normalize(sampledNormal));
 	
-	//Store normal in 2 component x^2 + y^2 + z^2 = 1, store the sign with metallic 
+	//Store normal in 2 component x^2 + y^2 + z^2 = 1, store the sign with roughness 
 	vec2 storedNormal 	= sampledNormal.xy;
-	metallic 			= max(constants.Metallic * metallic, 0.00001f);
+	roughness 			= max(constants.Roughness * roughness, 0.00001f);
 	if (sampledNormal.z < 0)
 	{
-		metallic = -metallic;
+		roughness = -roughness;
 	}
 
-	out_Albedo 		= vec4(constants.Color.rgb * texColor, constants.Ambient * ao);
-	out_Normals		= vec4(storedNormal, metallic, constants.Roughness * roughness);
+	vec3 a 			= (in_Position.xyz / in_Position.w) * 0.5f + 0.5f;
+	vec3 b 			= (in_PrevPosition.xyz / in_PrevPosition.w) * 0.5f + 0.5f; 
+	vec3 velocity 	= a - b;
+
+	out_Albedo_AO 				= vec4(constants.Color.rgb * texColor, constants.Ambient * ao);
+	out_Normals_Metall_Rough	= vec4(storedNormal, constants.Metallic * metallic, roughness);
+	out_Velocity				= vec4(velocity, 1.0f);
 }

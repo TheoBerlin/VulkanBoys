@@ -484,7 +484,7 @@ void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLa
 		break;
 	default:
 		// Other source layouts aren't handled (yet)
-		LOG("Unsupported layout transition");
+		D_LOG("Unsupported layout transition");
 		break;
 	}
 
@@ -527,7 +527,7 @@ void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLa
 		break;
 	default:
 		// Other source layouts aren't handled (yet)
-		LOG("Unsupported layout transition");
+		D_LOG("Unsupported layout transition");
 		break;
 	}
 

@@ -126,4 +126,6 @@ private:
 	ImageVK* m_pRayTracingStorageImage;
 	ImageViewVK* m_pRayTracingStorageImageView;
 	GBufferVK* m_pGBuffer;
+
+    CameraBuffer m_CameraBuffer;
 };
