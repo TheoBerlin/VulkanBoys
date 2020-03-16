@@ -252,30 +252,49 @@ vec3 ReflectanceDirection(vec3 seed, vec3 reflDir, float roughness)
     return vec3(-result.x, -result.y, result.z);
 }
 
-vec3 ReflectanceDirection2(vec3 reflDir, float roughness, vec2 uniformRandom)
+void createCoordinateSystem(in vec3 N, out vec3 Nt, out vec3 Nb) 
+{ 
+    // if (abs(N.x) > abs(N.y)) 
+    //     Nt = vec3(N.z, 0, -N.x) / sqrt(N.x * N.x + N.z * N.z); 
+    // else 
+    //     Nt = vec3(0, -N.z, N.y) / sqrt(N.y * N.y + N.z * N.z); 
+    Nt = vec3(N.z, 0, -N.x) / sqrt(N.x * N.x + N.z * N.z); 
+    Nb = cross(N, Nt); 
+} 
+
+vec3 ReflectanceDirection2(vec3 reflDir, vec3 Rt, vec3 Rb, float roughness, vec2 uniformRandom)
 {
-    float theta = roughness * PI / 2.0f;
-    float z = mix(cos(theta), 1.0f, uniformRandom.x);
+    float specularExponent = 2.0f / (pow(roughness, 4.0f)) - 2.0f;
+
+    //if (specularExponent > 2048.0f)
+        //return reflDir;
+
+    float cosTheta = pow(0.244f, 1.0f / (specularExponent + 1.0f));
+    float z = mix(cosTheta, 1.0f, uniformRandom.x);
     float phi = mix(0.0f, 2.0f * PI, uniformRandom.y);
     float sinTheta = sqrt(1.0f - z * z);
 
-    vec3 coneVector = vec3(sinTheta * cos(phi), sinTheta * sin(phi), z);
+    vec3 coneVector = vec3(sinTheta * cos(phi), z, sinTheta * sin(phi));
+    return vec3(
+        coneVector.x * Rb.x + coneVector.y * reflDir.x + coneVector.z * Rt.x, 
+        coneVector.x * Rb.y + coneVector.y * reflDir.y + coneVector.z * Rt.y, 
+        coneVector.x * Rb.z + coneVector.y * reflDir.z + coneVector.z * Rt.z); 
     
-    float c = dot(coneVector, reflDir);
+    // float c = dot(coneVector, reflDir);
 
-    // if (1.0f - abs(c) < EPSILON)
-    //     return mix(reflDir, coneVector, roughness);
+    // // if (1.0f - abs(c) < EPSILON)
+    // //     return mix(reflDir, coneVector, roughness);
 
-    vec3 v = cross(coneVector, reflDir);
-    float s = length(v);
+    // vec3 v = cross(coneVector, reflDir);
+    // float s = length(v);
 
-    mat3 Vx =  mat3(vec3( 0.0f,  -v.z,    v.y),
-                    vec3( v.z,    0.0f,  -v.x),
-                    vec3(-v.y,    v.x,    0.0f));
-    mat3 R = mat3(1.0f) + Vx + Vx * Vx / (1.0f + c);
+    // mat3 Vx =  mat3(vec3( 0.0f,  -v.z,    v.y),
+    //                 vec3( v.z,    0.0f,  -v.x),
+    //                 vec3(-v.y,    v.x,    0.0f));
+    // mat3 R = mat3(1.0f) + Vx + Vx * Vx / (1.0f + c);
 
-    vec3 result = R * coneVector;
+    // vec3 result = R * coneVector;
     
 
-    return vec3(-result.x, -result.y, result.z);
+    // return vec3(-result.x, -result.y, result.z);
 }

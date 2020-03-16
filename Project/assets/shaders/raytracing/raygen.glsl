@@ -75,7 +75,8 @@ void calculateDirections(in vec2 uvCoords, in vec3 hitPosition, in vec3 normal, 
 void main() 
 {
 	//Calculate Screen Coords
-	const vec2 pixelCenter = vec2(gl_LaunchIDNV.xy) + vec2(0.5f);
+	const ivec2 pixelCoords = ivec2(gl_LaunchIDNV.xy);
+	const vec2 pixelCenter = vec2(pixelCoords) + vec2(0.5f);
 	vec2 uvCoords = (pixelCenter / vec2(gl_LaunchSizeNV.xy));
 
 	//Sample GBuffer
@@ -85,8 +86,8 @@ void main()
 	//Skybox
 	if (dot(normal, normal) < 0.5f)
 	{
-		imageStore(u_RadianceImage, ivec2(gl_LaunchIDNV.xy), vec4(1.0f, 0.0f, 1.0f, 0.0f));
-		imageStore(u_ReflectionImage, ivec2(gl_LaunchIDNV.xy), vec4(1.0f, 0.0f, 1.0f, 0.0f));
+		imageStore(u_RadianceImage, pixelCoords, vec4(1.0f, 0.0f, 1.0f, 0.0f));
+		imageStore(u_ReflectionImage, pixelCoords, vec4(1.0f, 0.0f, 1.0f, 0.0f));
 		return;
 	}
 
@@ -162,17 +163,125 @@ void main()
 		}
 	}
 
-	imageStore(u_RadianceImage, ivec2(gl_LaunchIDNV.xy), vec4(Lo, 1.0f));
+	imageStore(u_RadianceImage, pixelCoords, vec4(Lo, 1.0f));
 
 	//Reflection
-	vec2 uniformRandom = texture(u_BlueNoiseLUT, uvCoords).rg;
-	//reflDir = ReflectanceDirection2(reflDir, roughness, uniformRandom);
+	vec2 uniformRandom = texture(u_BlueNoiseLUT, uvCoords + vec2(u_PushConstants.counter)).rg;
+
+	vec3 Rt = vec3(0.0f);
+	vec3 Rb = vec3(0.0f);
+	createCoordinateSystem(reflDir, Rt, Rb);
+
+	reflDir = ReflectanceDirection2(reflDir, Rt, Rb, roughness, uniformRandom);
 	rayPayload.Radiance = vec3(0.0f);
 	rayPayload.Recursion = 0;
 	traceNV(u_TopLevelAS, rayFlags, cullMask, 0, 0, 0, reflectedRaysOrigin, tmin, reflDir, tmax, 0);
 
-	const float hysterisis = 1.0f;
-	vec3 oldRadiance = imageLoad(u_ReflectionImage, ivec2(gl_LaunchIDNV.xy)).rgb;
-	vec3 newColor = mix(oldRadiance, rayPayload.Radiance, hysterisis);
-	imageStore(u_ReflectionImage, ivec2(gl_LaunchIDNV.xy), vec4(newColor, roughness));
+
+	//Temporal Filtering
+	//vec4 motion = texelFetch(TEX_PT_MOTION, ipos, 0);
+	vec4 motion = vec4(0.0f, 0.0f, 0.0f, 1.0f);
+
+	ivec2 currentReflectionDimensions = imageSize(u_ReflectionImage); 
+	ivec2 prevReflectionDimensions = currentReflectionDimensions;
+
+	vec2 currentScreenCoords = pixelCoords;
+	vec2 prevScreenCoords = (uvCoords + motion.xy) * prevReflectionDimensions;
+
+	bool temporal_sample_valid = false;
+	vec4 temporal_color_histlen_spec = vec4(0);
+
+	float temporalSumSpecularWeight = 0.0f;
+
+	vec2 prevFlooredScreenCoords = floor(prevScreenCoords - vec2(0.5f));
+	vec2 prevSubpixel = fract(prevScreenCoords - vec2(0.5f) - prevFlooredScreenCoords);
+
+	
+
+	//Calculate fields to check for Out of Bounds pixels
+	int field_left = 0;
+	int field_right = prevReflectionDimensions.x / 2;
+	if(pixelCoords.x >= currentReflectionDimensions.x / 2)
+	{
+		field_left = field_right;
+		field_right = prevReflectionDimensions.x;
+	}
+
+	// Bilinear/bilateral filter
+	const ivec2 off[4] = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } };
+	float w[4] = 
+	{
+		(1.0f - prevSubpixel.x) * (1.0f - prevSubpixel.y),
+		(prevSubpixel.x       ) * (1.0f - prevSubpixel.y),
+		(1.0f - prevSubpixel.x) * (prevSubpixel.y       ),
+		(prevSubpixel.x       ) * (prevSubpixel.y       )
+	};
+
+	for(int i = 0; i < 4; i++) 
+	{
+		ivec2 p = ivec2(prevFlooredScreenCoords) + off[i];
+		vec2 p_temp = vec2(p) / prevReflectionDimensions;
+
+		if(p.x < field_left || p.x >= field_right || p.y >= prevReflectionDimensions.y)
+			continue;
+
+		float previousDepth = texture(u_Depth, p_temp).x;
+		vec3 previousNormal = texture(u_Normal_Roughness, p_temp).xyz;
+
+		float dist_depth = abs(sampledDepth - previousDepth + motion.z) * motion.a;
+		float CNdotPN = dot(normal, previousNormal);
+		
+		// if(sampledDepth < 0)
+		// {
+		// 	// Reduce the filter sensitivity to depth for secondary surfaces,
+		// 	// because reflection/refraction motion vectors are often inaccurate.
+		// 	dist_depth *= 0.25f;
+		// }
+
+		if(dist_depth < 2.0 && CNdotPN > 0.5f) 
+		{
+			float w_diff = w[i];
+			float w_spec = w_diff * pow(max(CNdotPN, 0.0f), 128.0f);
+
+			temporal_color_histlen_spec   += imageLoad(u_ReflectionImage, p)      * w_spec;
+			temporalSumSpecularWeight           += w_spec;
+		}
+	}
+
+	// We found some relevant surface - good
+	if(temporalSumSpecularWeight > 1e-6)
+	{
+		float inv_w_spec = 1.0 / temporalSumSpecularWeight;
+		temporal_color_histlen_spec   *= inv_w_spec;
+		temporal_sample_valid         = true;
+	}
+	
+	vec3 color_curr_spec = rayPayload.Radiance;
+	
+	vec4 out_color_histlen_spec;
+
+	float flt_min_alpha_color_spec = 0.001f;
+
+	if(temporal_sample_valid)
+	{
+		float hist_len_spec = min(temporal_color_histlen_spec.a + 1.0, 256.0);
+
+		// Compute the blending weights based on history length, so that the filter
+		// converges faster. I.e. the first frame has weight of 1.0, the second frame 1/2, third 1/3 and so on.
+		float alpha_color_spec = max(flt_min_alpha_color_spec, 1.0 / hist_len_spec);
+		//float alpha_color_spec = 0.25f;
+		
+	   	out_color_histlen_spec.rgb = mix(temporal_color_histlen_spec.rgb, color_curr_spec.rgb, alpha_color_spec);
+		//out_color_histlen_spec.rgb = color_curr_spec.rgb;
+
+		out_color_histlen_spec.a = hist_len_spec;
+		//out_color_histlen_spec.a = 1.0f;
+	}
+	else
+	{
+		// No valid history - just use the current color and spatial moments
+		out_color_histlen_spec = vec4(color_curr_spec, 1.0f);
+	}
+
+	imageStore(u_ReflectionImage, pixelCoords, out_color_histlen_spec);
 }

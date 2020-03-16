@@ -187,7 +187,7 @@ void RayTracingRendererVK::render(IScene* pScene, GBufferVK* pGBuffer)
 		m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(pWorldMetalic, &m_pNearestSampler,		1,											RT_GBUFFER_TEMP);
 
 		static float counter = 0.0f;
-		counter += 1.0f;
+		counter += 0.01f;
 		m_ppComputeCommandBuffers[currentFrame]->pushConstants(m_pRayTracingPipelineLayout, VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, 0, sizeof(float), &counter);
 
 		vkCmdBindPipeline(m_ppComputeCommandBuffers[currentFrame]->getCommandBuffer(), VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipeline->getPipeline());
@@ -202,50 +202,50 @@ void RayTracingRendererVK::render(IScene* pScene, GBufferVK* pGBuffer)
 
 	constexpr uint32_t NUM_BLUR_PASSES = 8;
 
-	m_pHorizontalBlurPassDescriptorSet->writeCombinedImageDescriptors(pAlbedoImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_ALBEDO_BINDING);
-	m_pHorizontalBlurPassDescriptorSet->writeCombinedImageDescriptors(pNormalImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_NORMAL_BINDING);
-	m_pHorizontalBlurPassDescriptorSet->writeCombinedImageDescriptors(pDepthImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_DEPTH_BINDING);
+	//m_pHorizontalBlurPassDescriptorSet->writeCombinedImageDescriptors(pAlbedoImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_ALBEDO_BINDING);
+	//m_pHorizontalBlurPassDescriptorSet->writeCombinedImageDescriptors(pNormalImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_NORMAL_BINDING);
+	//m_pHorizontalBlurPassDescriptorSet->writeCombinedImageDescriptors(pDepthImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_DEPTH_BINDING);
 
-	m_pVerticalBlurPassDescriptorSet->writeCombinedImageDescriptors(pAlbedoImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_ALBEDO_BINDING);
-	m_pVerticalBlurPassDescriptorSet->writeCombinedImageDescriptors(pNormalImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_NORMAL_BINDING);
-	m_pVerticalBlurPassDescriptorSet->writeCombinedImageDescriptors(pDepthImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_DEPTH_BINDING);
+	//m_pVerticalBlurPassDescriptorSet->writeCombinedImageDescriptors(pAlbedoImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_ALBEDO_BINDING);
+	//m_pVerticalBlurPassDescriptorSet->writeCombinedImageDescriptors(pNormalImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_NORMAL_BINDING);
+	//m_pVerticalBlurPassDescriptorSet->writeCombinedImageDescriptors(pDepthImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_DEPTH_BINDING);
 
-	m_ppComputeCommandBuffers[currentFrame]->bindPipeline(m_pBlurPassPipeline);
+	//m_ppComputeCommandBuffers[currentFrame]->bindPipeline(m_pBlurPassPipeline);
 
-	glm::u32vec3 workGroupSize(1 + m_NumBlurImagePixels / m_WorkGroupSize[0], 1, 1);
+	//glm::u32vec3 workGroupSize(1 + m_NumBlurImagePixels / m_WorkGroupSize[0], 1, 1);
 
-	for (uint32_t blurPass = 0; blurPass < NUM_BLUR_PASSES; blurPass++)
-	{
-		//Horizontal Blur
-		{
-			constexpr float BLUR_DIRECTION[2] = { 1.0f, 0.0f };
-			//Read Final
-			//Write Intermediate
-			m_ppComputeCommandBuffers[currentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, m_pBlurPassPipelineLayout, 0, 1, &m_pHorizontalBlurPassDescriptorSet, 0, nullptr);
+	//for (uint32_t blurPass = 0; blurPass < NUM_BLUR_PASSES; blurPass++)
+	//{
+	//	//Horizontal Blur
+	//	{
+	//		constexpr float BLUR_DIRECTION[2] = { 1.0f, 0.0f };
+	//		//Read Final
+	//		//Write Intermediate
+	//		m_ppComputeCommandBuffers[currentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, m_pBlurPassPipelineLayout, 0, 1, &m_pHorizontalBlurPassDescriptorSet, 0, nullptr);
 
-			m_ppComputeCommandBuffers[currentFrame]->transitionImageLayout(m_pReflectionFinalImage, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1);
-			m_ppComputeCommandBuffers[currentFrame]->transitionImageLayout(m_pReflectionIntermediateImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 1);
+	//		m_ppComputeCommandBuffers[currentFrame]->transitionImageLayout(m_pReflectionFinalImage, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1);
+	//		m_ppComputeCommandBuffers[currentFrame]->transitionImageLayout(m_pReflectionIntermediateImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 1);
 
-			m_ppComputeCommandBuffers[currentFrame]->pushConstants(m_pBlurPassPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, 2 * sizeof(float), &BLUR_DIRECTION);
+	//		m_ppComputeCommandBuffers[currentFrame]->pushConstants(m_pBlurPassPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, 2 * sizeof(float), &BLUR_DIRECTION);
 
-			m_ppComputeCommandBuffers[currentFrame]->dispatch(workGroupSize);
-		}
+	//		m_ppComputeCommandBuffers[currentFrame]->dispatch(workGroupSize);
+	//	}
 
-		//Vertical Blur
-		{
-			constexpr float BLUR_DIRECTION[2] = { 0.0f, 1.0f };
-			//Write Final
-			//Read Intermediate
-			m_ppComputeCommandBuffers[currentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, m_pBlurPassPipelineLayout, 0, 1, &m_pVerticalBlurPassDescriptorSet, 0, nullptr);
+	//	//Vertical Blur
+	//	{
+	//		constexpr float BLUR_DIRECTION[2] = { 0.0f, 1.0f };
+	//		//Write Final
+	//		//Read Intermediate
+	//		m_ppComputeCommandBuffers[currentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, m_pBlurPassPipelineLayout, 0, 1, &m_pVerticalBlurPassDescriptorSet, 0, nullptr);
 
-			m_ppComputeCommandBuffers[currentFrame]->transitionImageLayout(m_pReflectionIntermediateImage, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1);
-			m_ppComputeCommandBuffers[currentFrame]->transitionImageLayout(m_pReflectionFinalImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 1);
+	//		m_ppComputeCommandBuffers[currentFrame]->transitionImageLayout(m_pReflectionIntermediateImage, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1);
+	//		m_ppComputeCommandBuffers[currentFrame]->transitionImageLayout(m_pReflectionFinalImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 1);
 
-			m_ppComputeCommandBuffers[currentFrame]->pushConstants(m_pBlurPassPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, 2 * sizeof(float), &BLUR_DIRECTION);
+	//		m_ppComputeCommandBuffers[currentFrame]->pushConstants(m_pBlurPassPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, 2 * sizeof(float), &BLUR_DIRECTION);
 
-			m_ppComputeCommandBuffers[currentFrame]->dispatch(workGroupSize);
-		}
-	}
+	//		m_ppComputeCommandBuffers[currentFrame]->dispatch(workGroupSize);
+	//	}
+	//}
 
 	m_ppComputeCommandBuffers[currentFrame]->end();
 }
@@ -340,7 +340,6 @@ void RayTracingRendererVK::setBRDFLookUp(Texture2DVK* pTexture)
 	ImageViewVK* pBRDFLookUp = m_pBRDFLookUp->getImageView();
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(&pBRDFLookUp, &m_pNearestSampler, 1, RT_BRDF_LUT_BINDING);
 }
-
 
 CommandBufferVK* RayTracingRendererVK::getComputeCommandBuffer() const
 {
