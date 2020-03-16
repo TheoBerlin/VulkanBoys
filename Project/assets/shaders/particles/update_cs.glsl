@@ -8,7 +8,7 @@ layout (local_size_x_id=1, local_size_y=1, local_size_z=1) in;
 layout (push_constant) uniform Constants
 {
 	float dt;
-    bool performCollisions;
+    int performCollisions;
 } g_PushConstant;
 
 layout (binding = 0) buffer Positions
@@ -139,7 +139,7 @@ void main()
 	float dt = g_PushConstant.dt;
     float age = g_Ages.ages[particleIdx] + dt;
 
-    if (g_PushConstant.performCollisions) {
+    if (g_PushConstant.performCollisions != 0) {
         collide(particleIdx);
     }
 

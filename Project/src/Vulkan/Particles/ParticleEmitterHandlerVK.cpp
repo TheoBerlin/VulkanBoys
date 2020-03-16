@@ -341,7 +341,7 @@ void ParticleEmitterHandlerVK::updateGPU(float dt)
 	const QueueFamilyIndices& queueFamilyIndices = pDevice->getQueueFamilyIndices();
 
 	// Update push-constant
-	PushConstant pushConstant = {dt, m_CollisionsEnabled};
+	PushConstant pushConstant = {dt, m_CollisionsEnabled ? 1 : 0};
 	m_ppCommandBuffers[m_CurrentFrame]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(PushConstant), (const void*)&pushConstant);
 
 	bool transferOwnerships = queueFamilyIndices.graphicsFamily.value() != queueFamilyIndices.computeFamily.value();

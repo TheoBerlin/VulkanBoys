@@ -45,7 +45,7 @@ public:
 private:
     struct PushConstant {
 		float dt;
-		bool performCollisions;
+		int performCollisions;
 	};
 
     // Initializes an emitter and prepares its buffers for computing or rendering
