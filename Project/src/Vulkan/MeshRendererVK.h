@@ -51,6 +51,7 @@ class ImageViewVK;
 #define LIGHT_BUFFER_BINDING		7
 #define RADIANCE_BINDING			8
 #define GLOSSY_BINDING				9
+#define GBUFFER_VELOCITY_BINDING		3
 
 struct MeshFilter
 {
@@ -70,7 +71,7 @@ namespace std
 {
 	template<> struct hash<MeshFilter>
 	{
-		size_t operator()(const MeshFilter& filter) const
+		FORCEINLINE size_t operator()(const MeshFilter& filter) const
 		{
 			ASSERT(filter.pMesh);
 			ASSERT(filter.pMaterial);
@@ -121,13 +122,13 @@ public:
 private:
 	bool generateBRDFLookUp();
 	bool createCommandPoolAndBuffers();
-	bool createRenderPass();
 	bool createPipelines();
 	bool createPipelineLayouts();
 	bool createBuffersAndTextures();
 	bool createSamplers();
 	void createProfiler();
 
+	void updateGBufferDescriptors();
 	void updateBuffers(CommandBufferVK* pPrimaryBuffer, const Camera& camera, const LightSetup& lightsetup);
 
 	DescriptorSetVK* getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial);
@@ -144,8 +145,6 @@ private:
 
 	CommandPoolVK* m_ppLightPassPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppLightPassBuffers[MAX_FRAMES_IN_FLIGHT];
-
-	RenderPassVK* m_pBackBufferRenderPass;
 
 	DescriptorPoolVK* m_pDescriptorPool;
 	

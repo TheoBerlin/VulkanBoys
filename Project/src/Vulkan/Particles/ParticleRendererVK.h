@@ -38,9 +38,8 @@ public:
 
 	void submitParticles(ParticleEmitter* pEmitter);
 
-	FORCEINLINE CommandBufferVK* getCommandBuffer(uint32_t frameindex) const { return m_ppCommandBuffers[frameindex]; }
-
-	ProfilerVK* getProfiler() { return m_pProfiler; }
+	FORCEINLINE CommandBufferVK*	getCommandBuffer(uint32_t frameindex) const { return m_ppCommandBuffers[frameindex]; }
+	FORCEINLINE ProfilerVK*			getProfiler()								{ return m_pProfiler; }
 
 private:
 	bool createCommandPoolAndBuffers();

@@ -182,6 +182,8 @@ private:
 	Texture2DVK* m_pDefaultNormal;
 	SamplerVK* m_pDefaultSampler;
 
+	bool m_RayTracingEnabled;
+
 	//Temp / Debug
 	CommandPoolVK* m_pTempCommandPool;
 	CommandBufferVK* m_pTempCommandBuffer;

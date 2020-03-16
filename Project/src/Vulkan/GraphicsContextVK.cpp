@@ -166,7 +166,6 @@ void GraphicsContextVK::swapBuffers(VkSemaphore renderSemaphore)
 	m_pSwapChain->present(renderSemaphore);
 }
 
-
 bool GraphicsContextVK::setRayTracingEnabled(bool enabled)
 {
 	m_RayTracingEnabled = enabled && m_Device.supportsRayTracing();

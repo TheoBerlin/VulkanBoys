@@ -240,12 +240,12 @@ uint32_t MeshVK::vertexForEdge(std::map<std::pair<uint32_t, uint32_t>, uint32_t>
 	if (key.first > key.second)
 		std::swap(key.first, key.second);
 
-	auto inserted = lookup.insert({ key, vertices.size() });
+	auto inserted = lookup.insert({ key, uint32_t(vertices.size()) });
 	if (inserted.second)
 	{
-		auto& edge0 = vertices[first];
-		auto& edge1 = vertices[second];
-		auto point = glm::normalize(edge0 + edge1);
+		glm::vec3& edge0 = vertices[first];
+		glm::vec3& edge1 = vertices[second];
+		glm::vec3 point = glm::normalize(edge0 + edge1);
 		vertices.push_back(point);
 	}
 

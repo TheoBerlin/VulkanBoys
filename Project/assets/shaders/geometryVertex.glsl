@@ -13,7 +13,8 @@ layout(location = 0) out vec3 out_Normal;
 layout(location = 1) out vec3 out_Tangent;
 layout(location = 2) out vec3 out_Bitangent;
 layout(location = 3) out vec2 out_TexCoord;
-layout(location = 4) out vec3 out_WorldPosition;
+layout(location = 4) out vec4 out_Position;
+layout(location = 5) out vec4 out_PrevPosition;
 
 layout (push_constant) uniform Constants
 {
@@ -28,6 +29,10 @@ layout (binding = 0) uniform PerFrameBuffer
 {
 	mat4 Projection;
 	mat4 View;
+	mat4 LastProjection;
+	mat4 LastView;
+	mat4 InvView;
+	mat4 InvProjection;
 	vec4 Position;
 } g_PerFrame;
 
@@ -53,6 +58,7 @@ void main()
 	out_Tangent 		= tangent;
 	out_Bitangent 		= bitangent;
 	out_TexCoord 		= texCoord;
-	out_WorldPosition 	= worldPosition.xyz;
-	gl_Position = g_PerFrame.Projection * g_PerFrame.View * worldPosition;
+	out_Position		= g_PerFrame.Projection * g_PerFrame.View * worldPosition;
+	out_PrevPosition	= g_PerFrame.LastProjection * g_PerFrame.LastView * worldPosition;
+	gl_Position = out_Position;
 }

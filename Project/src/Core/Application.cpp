@@ -397,7 +397,7 @@ void Application::onKeyPressed(EKey key)
 	}
 	else if (key == EKey::KEY_1)
 	{
-		//m_pWindow->toggleFullscreenState();
+		m_pWindow->toggleFullscreenState();
 	}
 	else if (key == EKey::KEY_2)
 	{
@@ -658,5 +658,7 @@ void Application::renderUI(double dt)
 
 void Application::render(double dt)
 {
+	UNREFERENCED_PARAMETER(dt);
+
 	m_pRenderingHandler->render(m_pScene);
 }

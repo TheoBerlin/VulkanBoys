@@ -486,24 +486,25 @@ bool ImguiVK::createRenderPass()
 	description.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;		
 	m_pRenderPass->addAttachment(description);
 
-	description.format			= VK_FORMAT_D32_SFLOAT;//VK_FORMAT_D24_UNORM_S8_UINT;
-	description.samples			= VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
-	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;	
-	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;	
-	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;	
-	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;	
-	description.finalLayout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	m_pRenderPass->addAttachment(description);
+	//description.format			= VK_FORMAT_D32_SFLOAT;//VK_FORMAT_D24_UNORM_S8_UINT;
+	//description.samples			= VK_SAMPLE_COUNT_1_BIT;
+	//description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
+	//description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;	
+	//description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;	
+	//description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;	
+	//description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;	
+	//description.finalLayout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	//m_pRenderPass->addAttachment(description);
 
 	VkAttachmentReference colorAttachmentRef = {};
 	colorAttachmentRef.attachment	= 0;
 	colorAttachmentRef.layout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-	VkAttachmentReference depthStencilAttachmentRef = {};
-	depthStencilAttachmentRef.attachment	= 1;
-	depthStencilAttachmentRef.layout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	m_pRenderPass->addSubpass(&colorAttachmentRef, 1, &depthStencilAttachmentRef);
+	//VkAttachmentReference depthStencilAttachmentRef = {};
+	//depthStencilAttachmentRef.attachment	= 1;
+	//depthStencilAttachmentRef.layout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	//m_pRenderPass->addSubpass(&colorAttachmentRef, 1, &depthStencilAttachmentRef);
+	m_pRenderPass->addSubpass(&colorAttachmentRef, 1, nullptr);
 
 	VkSubpassDependency dependency = {};
 	dependency.dependencyFlags	= VK_DEPENDENCY_BY_REGION_BIT;
@@ -514,9 +515,7 @@ bool ImguiVK::createRenderPass()
 	dependency.srcAccessMask	= 0;
 	dependency.dstAccessMask	= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 	m_pRenderPass->addSubpassDependency(dependency);
-	m_pRenderPass->finalize();
-
-	return true;
+	return m_pRenderPass->finalize();
 }
 
 bool ImguiVK::createPipeline()

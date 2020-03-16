@@ -1,5 +1,4 @@
 #include "QueryPoolVK.h"
-
 #include "DeviceVK.h"
 
 QueryPoolVK::QueryPoolVK(DeviceVK* pDevice) :
@@ -21,11 +20,11 @@ QueryPoolVK::~QueryPoolVK()
 bool QueryPoolVK::init(VkQueryType queryType, uint32_t queryCount, VkQueryPipelineStatisticFlags statisticsFlags)
 {
 	VkQueryPoolCreateInfo createInfo = {};
-	createInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-	createInfo.pNext = nullptr;
-	createInfo.queryType = queryType;
-	createInfo.queryCount = queryCount;
-	createInfo.pipelineStatistics = statisticsFlags;
+	createInfo.sType				= VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+	createInfo.pNext				= nullptr;
+	createInfo.queryType			= queryType;
+	createInfo.queryCount			= queryCount;
+	createInfo.pipelineStatistics	= statisticsFlags;
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateQueryPool(m_pDevice->getDevice(), &createInfo, nullptr, &m_QueryPool), "--- QueryPoolVK: vkCreateQueryPool failed!");
 

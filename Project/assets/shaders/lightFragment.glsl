@@ -13,10 +13,11 @@ layout (constant_id = 0) const int RAY_TRACING_ENABLED = 0;
 
 layout(binding = 1) uniform sampler2D 	u_Albedo;
 layout(binding = 2) uniform sampler2D 	u_Normal;
-layout(binding = 3) uniform sampler2D 	u_WorldPosition;
-layout(binding = 4) uniform samplerCube u_IrradianceMap;
-layout(binding = 5) uniform samplerCube u_EnvironmentMap;
-layout(binding = 6) uniform sampler2D 	u_BrdfLUT;
+layout(binding = 3) uniform sampler2D 	u_Velocity;
+layout(binding = 4) uniform sampler2D 	u_Depth;
+layout(binding = 5) uniform samplerCube u_IrradianceMap;
+layout(binding = 6) uniform samplerCube u_EnvironmentMap;
+layout(binding = 7) uniform sampler2D 	u_BrdfLUT;
 layout(binding = 8) uniform sampler2D 	u_Radiance;
 layout(binding = 9) uniform sampler2D 	u_Glossy;
 
@@ -30,17 +31,21 @@ layout (binding = 0) uniform PerFrameBuffer
 {
 	mat4 Projection;
 	mat4 View;
+	mat4 LastProjection;
+	mat4 LastView;
+	mat4 InvView;
+	mat4 InvProjection;
 	vec4 Position;
 } g_PerFrame;
 
-layout (binding = 7) uniform LightBuffer
+layout (binding = 9) uniform LightBuffer
 {
 	PointLight lights[MAX_POINT_LIGHTS];
 } u_Lights;
 
 const float GAMMA	= 2.2f;
 
-vec4 ColorPost(vec3 finalColor)
+vec4 ColorWrite(vec3 finalColor)
 {
 	vec3 result = finalColor / (finalColor + vec3(0.75f));
 	result = pow(result, vec3(1.0f / GAMMA));
@@ -52,26 +57,34 @@ void main()
 	vec2 texCoord = in_TexCoord;
 
 	//Unpack
-	vec4 sampledAlbedo 			= texture(u_Albedo, texCoord);
-	vec4 sampledNormal 			= texture(u_Normal, texCoord);
-	vec4 sampledWorldPosition 	= texture(u_WorldPosition, texCoord);
+	vec4 	sampledAlbedo 		= texture(u_Albedo, texCoord);
+	vec4 	sampledNormal 		= texture(u_Normal, texCoord);
+	vec4 	sampledVelocity 	= texture(u_Velocity, texCoord);
+	float 	sampledDepth 		= texture(u_Depth, texCoord).r;
 
 	vec3 albedo 		= sampledAlbedo.rgb;
-	vec3 normal 		= sampledNormal.xyz;
-	vec3 worldPosition 	= sampledWorldPosition.xyz;
+	vec3 worldPosition 	= WorldPositionFromDepth(texCoord, sampledDepth);
+
+	//Get normal from z = sqrt(1 - (x^2 + y^2))), negative metallic = negative normal.z 
+	vec3 normal;
+	normal.xy 	= sampledNormal.xy;
+	normal.z 	= sqrt(1.0f - dot(normal.xy, normal.xy));
+	if (sampledNormal.a < 0)
+	{
+		normal.z = -normal.z;
+	}
+	normal = normalize(normal);
 
 	//Just skybox
-	if (dot(normal,  normal) < 0.5f)
+	if (abs(normal.z) == 1.0f)
 	{
-	    out_Color = ColorPost(albedo);
+	    out_Color = ColorWrite(albedo);
 		return;
 	}
 
 	float ao 			= sampledAlbedo.a;
-	float roughness 	= sampledNormal.a;
-	float metallic 		= sampledWorldPosition.a;
-	
-	normal = normalize(normal);
+	float roughness 	= abs(sampledNormal.a);
+	float metallic		= sampledNormal.z;
 
 	vec3 cameraPosition = g_PerFrame.Position.xyz;
 	vec3 viewDir 		= normalize(cameraPosition - worldPosition);
@@ -139,12 +152,9 @@ void main()
 	
 	vec2 envBRDF 	= texture(u_BrdfLUT, vec2(max(dot(normal, viewDir), 0.0f), roughness)).rg;
 	vec3 specular	= prefilteredColor * (f * envBRDF.x + envBRDF.y);
-
-
 	vec3 ambient 	= ((kDiffuse * diffuse) + specular) * ao;
 
 	vec3 finalColor = ambient + L0;
-    out_Color = ColorPost(finalColor);
-	//out_Color = ColorPost(ambient);
-	//out_Color = ColorPost(prefilteredColor);
+    out_Color = ColorWrite(finalColor);
+	//out_Color.rgb = rayTracedGlossy.rgb;
 }

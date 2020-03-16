@@ -59,6 +59,7 @@ public:
     RenderPassVK*           getBackBufferRenderPass() const             { return m_pBackBufferRenderPass; }
     BufferVK*               getCameraMatricesBuffer() const             { return m_pCameraMatricesBuffer; }
     BufferVK*               getCameraDirectionsBuffer() const           { return m_pCameraDirectionsBuffer; }
+    BufferVK*               getCameraBuffer() const                     { return m_pCameraBuffer; }
     FrameBufferVK*          getCurrentBackBuffer() const                { return m_ppBackbuffers[m_BackBufferIndex]; }
     CommandBufferVK*        getCurrentGraphicsCommandBuffer() const     { return m_ppGraphicsCommandBuffers[m_CurrentFrame]; }
 	CommandBufferVK*        getCurrentComputeCommandBuffer() const      { return m_ppComputeCommandBuffers[m_CurrentFrame]; }
@@ -91,7 +92,6 @@ private:
     RayTracingRendererVK* m_pRayTracer;
     ImguiVK* m_pImGuiRenderer;
 
-
     FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_RenderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
@@ -118,7 +118,9 @@ private:
     VkViewport m_Viewport;
 	VkRect2D m_ScissorRect;
 
-    BufferVK* m_pCameraMatricesBuffer, *m_pCameraDirectionsBuffer;
+    BufferVK* m_pCameraMatricesBuffer;
+    BufferVK* m_pCameraDirectionsBuffer;
+    BufferVK* m_pCameraBuffer;
 
 	//Render Results
 
@@ -147,4 +149,6 @@ private:
 	};
 
 	GBufferVK* m_pGBuffer;
+
+    CameraBuffer m_CameraBuffer;
 };

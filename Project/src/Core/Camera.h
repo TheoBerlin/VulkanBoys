@@ -3,9 +3,13 @@
 
 struct CameraBuffer
 {
-	glm::mat4 Projection	= glm::mat4(1.0f);
-	glm::mat4 View			= glm::mat4(1.0f);
-	glm::vec4 Position		= glm::vec4(0.0f);
+	glm::mat4 Projection		= glm::mat4(1.0f);
+	glm::mat4 View				= glm::mat4(1.0f);
+	glm::mat4 LastProjection	= glm::mat4(1.0f);
+	glm::mat4 LastView			= glm::mat4(1.0f);
+	glm::mat4 InvView			= glm::mat4(1.0f);
+	glm::mat4 InvProjection		= glm::mat4(1.0f);
+	glm::vec4 Position			= glm::vec4(0.0f);
 };
 
 struct CameraMatricesBuffer

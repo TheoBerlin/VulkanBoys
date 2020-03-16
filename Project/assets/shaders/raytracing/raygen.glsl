@@ -81,7 +81,16 @@ void main()
 
 	//Sample GBuffer
 	vec4 sampledNormalRoughness = texture(u_Normal_Roughness, uvCoords);
-	vec3 normal = sampledNormalRoughness.xyz;
+	vec3 normal;
+	normal.xy 	= sampledNormalRoughness.xy;
+	normal.z 	= sqrt(1.0f - dot(normal.xy, normal.xy));
+	if (sampledNormalRoughness.a < 0)
+	{
+		normal.z = -normal.z;
+	}
+	normal = normalize(normal);
+
+	float sampledDepth = texture(u_Depth, uvCoords).r;
 
 	//Skybox
 	if (dot(normal, normal) < 0.5f)

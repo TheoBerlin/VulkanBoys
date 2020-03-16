@@ -39,7 +39,8 @@ SceneVK::SceneVK(IGraphicsContext* pContext) :
 	m_pDefaultTexture(nullptr),
 	m_pDefaultNormal(nullptr),
 	m_pDefaultSampler(nullptr),
-	m_pMaterialParametersBuffer(nullptr)
+	m_pMaterialParametersBuffer(nullptr),
+	m_RayTracingEnabled(pContext->isRayTracingEnabled())
 {
 	m_pDevice = reinterpret_cast<DeviceVK*>(m_pContext->getDevice());
 }
@@ -112,41 +113,44 @@ bool SceneVK::finalize()
 
 	m_pTempCommandBuffer = m_pTempCommandPool->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 	
-	if (!createTLAS())
-	{
-		LOG("--- SceneVK: Failed to create TLAS!");
-		return false;
-	}
-
 	if (!createDefaultTexturesAndSamplers())
 	{
 		LOG("--- SceneVK: Failed to create Default Textures and/or Samplers!");
 		return false;
 	}
 
-	initBuildBuffers();
-
-	//Build BLASs
-	if (!buildBLASs())
+	if (m_RayTracingEnabled)
 	{
-		LOG("--- SceneVK: Failed to initialize BLASs!");
-		return false;
-	}
+		if (!createTLAS())
+		{
+			LOG("--- SceneVK: Failed to create TLAS!");
+			return false;
+		}
 
-	//Build TLASs
-	if (!buildTLAS())
-	{
-		LOG("--- SceneVK: Failed to initialize TLAS!");
-		return false;
-	}
+		initBuildBuffers();
 
-	if (!createCombinedGraphicsObjectData())
-	{
-		LOG("--- SceneVK: Failed to create Combined Graphics Object Data!");
-		return false;
-	}
+		//Build BLASs
+		if (!buildBLASs())
+		{
+			LOG("--- SceneVK: Failed to initialize BLASs!");
+			return false;
+		}
 
-	updateMaterials();
+		//Build TLASs
+		if (!buildTLAS())
+		{
+			LOG("--- SceneVK: Failed to initialize TLAS!");
+			return false;
+		}
+
+		if (!createCombinedGraphicsObjectData())
+		{
+			LOG("--- SceneVK: Failed to create Combined Graphics Object Data!");
+			return false;
+		}
+
+		updateMaterials();
+	}
 	
 	createProfiler();
 
@@ -156,73 +160,79 @@ bool SceneVK::finalize()
 
 void SceneVK::update()
 {
-	if (!m_BottomLevelIsDirty)
+	if (m_RayTracingEnabled)
 	{
-		updateTLAS();
-	}
-	else
-	{
-		buildBLASs();
-		updateTLAS();
-		createCombinedGraphicsObjectData();
+		if (!m_BottomLevelIsDirty)
+		{
+			updateTLAS();
+		}
+		else
+		{
+			buildBLASs();
+			updateTLAS();
+			createCombinedGraphicsObjectData();
+		}
 	}
 }
 
 void SceneVK::updateMaterials()
 {
-	for (uint32_t i = 0; i < MAX_NUM_UNIQUE_MATERIALS; i++)
+	if (m_RayTracingEnabled)
 	{
-		if (i < m_Materials.size())
+		for (uint32_t i = 0; i < MAX_NUM_UNIQUE_MATERIALS; i++)
 		{
-			const Material* pMaterial = m_Materials[i];
-
-			const Texture2DVK* pAlbedoMap = reinterpret_cast<const Texture2DVK*>(pMaterial->getAlbedoMap());
-			const Texture2DVK* pNormalMap = reinterpret_cast<const Texture2DVK*>(pMaterial->getNormalMap());
-			const Texture2DVK* pAOMap = reinterpret_cast<const Texture2DVK*>(pMaterial->getAmbientOcclusionMap());
-			const Texture2DVK* pMetallicMap = reinterpret_cast<const Texture2DVK*>(pMaterial->getMetallicMap());
-			const Texture2DVK* pRoughnessMap = reinterpret_cast<const Texture2DVK*>(pMaterial->getRoughnessMap());
-			const SamplerVK* pSampler = reinterpret_cast<const SamplerVK*>(pMaterial->getSampler());
-
-			m_AlbedoMaps[i] = pAlbedoMap != nullptr ? pAlbedoMap->getImageView() : m_pDefaultTexture->getImageView();
-			m_NormalMaps[i] = pNormalMap != nullptr ? pNormalMap->getImageView() : m_pDefaultNormal->getImageView();
-			m_AOMaps[i] = pAOMap != nullptr ? pAOMap->getImageView() : m_pDefaultTexture->getImageView();
-			m_MetallicMaps[i] = pMetallicMap != nullptr ? pMetallicMap->getImageView() : m_pDefaultTexture->getImageView();
-			m_RoughnessMaps[i] = pRoughnessMap != nullptr ? pRoughnessMap->getImageView() : m_pDefaultTexture->getImageView();
-			m_Samplers[i] = pSampler != nullptr ? pSampler : m_pDefaultSampler;
-			m_MaterialParameters[i] =
+			if (i < m_Materials.size())
 			{
-				pMaterial->getAlbedo(),
-				pMaterial->getMetallic(),
-				pMaterial->getRoughness(),
-				pMaterial->getAmbientOcclusion(),
-				1.0f
-			};
-		}
-		else
-		{
-			m_AlbedoMaps[i] = m_pDefaultTexture->getImageView();
-			m_NormalMaps[i] =m_pDefaultNormal->getImageView();
-			m_AOMaps[i] = m_pDefaultTexture->getImageView();
-			m_MetallicMaps[i] = m_pDefaultTexture->getImageView();
-			m_RoughnessMaps[i] = m_pDefaultTexture->getImageView();
-			m_Samplers[i] =m_pDefaultSampler;
-			m_MaterialParameters[i] =
+				const Material* pMaterial = m_Materials[i];
+
+				const Texture2DVK* pAlbedoMap = reinterpret_cast<const Texture2DVK*>(pMaterial->getAlbedoMap());
+				const Texture2DVK* pNormalMap = reinterpret_cast<const Texture2DVK*>(pMaterial->getNormalMap());
+				const Texture2DVK* pAOMap = reinterpret_cast<const Texture2DVK*>(pMaterial->getAmbientOcclusionMap());
+				const Texture2DVK* pMetallicMap = reinterpret_cast<const Texture2DVK*>(pMaterial->getMetallicMap());
+				const Texture2DVK* pRoughnessMap = reinterpret_cast<const Texture2DVK*>(pMaterial->getRoughnessMap());
+				const SamplerVK* pSampler = reinterpret_cast<const SamplerVK*>(pMaterial->getSampler());
+
+				m_AlbedoMaps[i] = pAlbedoMap != nullptr ? pAlbedoMap->getImageView() : m_pDefaultTexture->getImageView();
+				m_NormalMaps[i] = pNormalMap != nullptr ? pNormalMap->getImageView() : m_pDefaultNormal->getImageView();
+				m_AOMaps[i] = pAOMap != nullptr ? pAOMap->getImageView() : m_pDefaultTexture->getImageView();
+				m_MetallicMaps[i] = pMetallicMap != nullptr ? pMetallicMap->getImageView() : m_pDefaultTexture->getImageView();
+				m_RoughnessMaps[i] = pRoughnessMap != nullptr ? pRoughnessMap->getImageView() : m_pDefaultTexture->getImageView();
+				m_Samplers[i] = pSampler != nullptr ? pSampler : m_pDefaultSampler;
+				m_MaterialParameters[i] =
+				{
+					pMaterial->getAlbedo(),
+					pMaterial->getMetallic(),
+					pMaterial->getRoughness(),
+					pMaterial->getAmbientOcclusion(),
+					1.0f
+				};
+			}
+			else
 			{
-				glm::vec4(1.0f),
-				1.0f,
-				1.0f,
-				1.0f,
-				1.0f
-			};
+				m_AlbedoMaps[i] = m_pDefaultTexture->getImageView();
+				m_NormalMaps[i] = m_pDefaultNormal->getImageView();
+				m_AOMaps[i] = m_pDefaultTexture->getImageView();
+				m_MetallicMaps[i] = m_pDefaultTexture->getImageView();
+				m_RoughnessMaps[i] = m_pDefaultTexture->getImageView();
+				m_Samplers[i] = m_pDefaultSampler;
+				m_MaterialParameters[i] =
+				{
+					glm::vec4(1.0f),
+					1.0f,
+					1.0f,
+					1.0f,
+					1.0f
+				};
+			}
 		}
+
+		constexpr uint32_t SIZE_IN_BYTES = MAX_NUM_UNIQUE_MATERIALS * sizeof(MaterialParameters);
+
+		void* pDest;
+		m_pMaterialParametersBuffer->map(&pDest);
+		memcpy(pDest, m_MaterialParameters.data(), SIZE_IN_BYTES);
+		m_pMaterialParametersBuffer->unmap();
 	}
-
-	constexpr uint32_t SIZE_IN_BYTES = MAX_NUM_UNIQUE_MATERIALS * sizeof(MaterialParameters);
-
-	void* pDest;
-	m_pMaterialParametersBuffer->map(&pDest);
-	memcpy(pDest, m_MaterialParameters.data(), SIZE_IN_BYTES);
-	m_pMaterialParametersBuffer->unmap();
 }
 
 void SceneVK::updateCamera(const Camera& camera)
@@ -244,40 +254,67 @@ uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMate
 
 	const MeshVK* pVulkanMesh = reinterpret_cast<const MeshVK*>(pMesh);
 
-	if (pVulkanMesh == nullptr || pMaterial == nullptr)
+	if (m_RayTracingEnabled)
 	{
-		LOG("--- SceneVK: addGraphicsObjectInstance failed, Mesh or Material is nullptr!");
-		return false;
-	}
-	
-	m_TopLevelIsDirty = true;
-
-	auto& newBLASPerMesh = m_NewBottomLevelAccelerationStructures.find(pVulkanMesh);
-	auto& finalizedBLASPerMesh = m_FinalizedBottomLevelAccelerationStructures.find(pVulkanMesh);
-
-	const BottomLevelAccelerationStructure* pBottomLevelAccelerationStructure = nullptr;
-
-	if (newBLASPerMesh == m_NewBottomLevelAccelerationStructures.end())
-	{
-		//Not in new BLAS per Mesh
-
-		if (finalizedBLASPerMesh == m_FinalizedBottomLevelAccelerationStructures.end())
+		if (pVulkanMesh == nullptr || pMaterial == nullptr)
 		{
-			//Not in finalized BLAS per Mesh either, create new BLAS
-
-			m_BottomLevelIsDirty = true;
-
-			pBottomLevelAccelerationStructure = createBLAS(pVulkanMesh, pMaterial);
-			m_AllMeshes.push_back(pVulkanMesh);
-			m_TotalNumberOfVertices += static_cast<uint32_t>(pVulkanMesh->getVertexBuffer()->getSizeInBytes() / sizeof(Vertex));
-			m_TotalNumberOfIndices += pVulkanMesh->getIndexBuffer()->getSizeInBytes() / sizeof(uint32_t);
+			LOG("--- SceneVK: addGraphicsObjectInstance failed, Mesh or Material is nullptr!");
+			return false;
 		}
-		else if (finalizedBLASPerMesh->second.find(pMaterial) == finalizedBLASPerMesh->second.end())
+
+		m_TopLevelIsDirty = true;
+
+		auto newBLASPerMesh			= m_NewBottomLevelAccelerationStructures.find(pVulkanMesh);
+		auto finalizedBLASPerMesh	= m_FinalizedBottomLevelAccelerationStructures.find(pVulkanMesh);
+
+		const BottomLevelAccelerationStructure* pBottomLevelAccelerationStructure = nullptr;
+
+		if (newBLASPerMesh == m_NewBottomLevelAccelerationStructures.end())
 		{
-			//In finalized BLAS per Mesh but not in finalized BLAS per Material, create copy from finalized, add new BLASs per MESH to new, add BLAS to that
+			//Not in new BLAS per Mesh
+
+			if (finalizedBLASPerMesh == m_FinalizedBottomLevelAccelerationStructures.end())
+			{
+				//Not in finalized BLAS per Mesh either, create new BLAS
+
+				m_BottomLevelIsDirty = true;
+
+				pBottomLevelAccelerationStructure = createBLAS(pVulkanMesh, pMaterial);
+				m_AllMeshes.push_back(pVulkanMesh);
+				m_TotalNumberOfVertices += static_cast<uint32_t>(pVulkanMesh->getVertexBuffer()->getSizeInBytes() / sizeof(Vertex));
+				m_TotalNumberOfIndices += pVulkanMesh->getIndexBuffer()->getSizeInBytes() / sizeof(uint32_t);
+			}
+			else if (finalizedBLASPerMesh->second.find(pMaterial) == finalizedBLASPerMesh->second.end())
+			{
+				//In finalized BLAS per Mesh but not in finalized BLAS per Material, create copy from finalized, add new BLASs per MESH to new, add BLAS to that
+
+				m_BottomLevelIsDirty = true;
+				BottomLevelAccelerationStructure blasCopy = finalizedBLASPerMesh->second.begin()->second;
+
+				blasCopy.Index = m_NumBottomLevelAccelerationStructures;
+				m_NumBottomLevelAccelerationStructures++;
+
+				blasCopy.MaterialIndex = m_Materials.size();
+				m_Materials.push_back(pMaterial);
+
+				std::unordered_map<const Material*, BottomLevelAccelerationStructure> tempBLASPerMesh;
+				tempBLASPerMesh[pMaterial] = blasCopy;
+				m_NewBottomLevelAccelerationStructures[pVulkanMesh] = tempBLASPerMesh;
+
+				pBottomLevelAccelerationStructure = &m_NewBottomLevelAccelerationStructures[pVulkanMesh][pMaterial];
+			}
+			else
+			{
+				//In finalized BLAS per Mesh and and finalized BLAS per Material
+				pBottomLevelAccelerationStructure = &finalizedBLASPerMesh->second[pMaterial];
+			}
+		}
+		else if (newBLASPerMesh->second.find(pMaterial) == newBLASPerMesh->second.end())
+		{
+			//In new BLAS per Mesh but not in new BLAS per material, create copy from new
 
 			m_BottomLevelIsDirty = true;
-			BottomLevelAccelerationStructure blasCopy = finalizedBLASPerMesh->second.begin()->second;
+			BottomLevelAccelerationStructure blasCopy = newBLASPerMesh->second.begin()->second;
 
 			blasCopy.Index = m_NumBottomLevelAccelerationStructures;
 			m_NumBottomLevelAccelerationStructures++;
@@ -285,48 +322,24 @@ uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMate
 			blasCopy.MaterialIndex = m_Materials.size();
 			m_Materials.push_back(pMaterial);
 
-			std::unordered_map<const Material*, BottomLevelAccelerationStructure> tempBLASPerMesh;
-			tempBLASPerMesh[pMaterial] = blasCopy;
-			m_NewBottomLevelAccelerationStructures[pVulkanMesh] = tempBLASPerMesh;
-
-			pBottomLevelAccelerationStructure = &m_NewBottomLevelAccelerationStructures[pVulkanMesh][pMaterial];
+			newBLASPerMesh->second[pMaterial] = blasCopy;
+			pBottomLevelAccelerationStructure = &newBLASPerMesh->second[pMaterial];
 		}
 		else
 		{
-			//In finalized BLAS per Mesh and and finalized BLAS per Material
-			pBottomLevelAccelerationStructure = &finalizedBLASPerMesh->second[pMaterial];
+			//In new BLAS per Mesh and and new BLAS per Material
+			pBottomLevelAccelerationStructure = &newBLASPerMesh->second[pMaterial];
 		}
+
+		GeometryInstance geometryInstance = {};
+		geometryInstance.Transform = glm::transpose(transform);
+		geometryInstance.InstanceId = pBottomLevelAccelerationStructure->Index; //This is not really used anymore, Todo: remove this
+		geometryInstance.Mask = customMask;
+		geometryInstance.InstanceOffset = 0;
+		geometryInstance.Flags = VK_GEOMETRY_INSTANCE_TRIANGLE_CULL_DISABLE_BIT_NV;
+		geometryInstance.AccelerationStructureHandle = pBottomLevelAccelerationStructure->Handle;
+		m_GeometryInstances.push_back(geometryInstance);
 	}
-	else if (newBLASPerMesh->second.find(pMaterial) == newBLASPerMesh->second.end())
-	{
-		//In new BLAS per Mesh but not in new BLAS per material, create copy from new
-
-		m_BottomLevelIsDirty = true;
-		BottomLevelAccelerationStructure blasCopy = newBLASPerMesh->second.begin()->second;
-
-		blasCopy.Index = m_NumBottomLevelAccelerationStructures;
-		m_NumBottomLevelAccelerationStructures++;
-
-		blasCopy.MaterialIndex = m_Materials.size();
-		m_Materials.push_back(pMaterial);
-
-		newBLASPerMesh->second[pMaterial] = blasCopy;
-		pBottomLevelAccelerationStructure = &newBLASPerMesh->second[pMaterial];
-	}
-	else
-	{
-		//In new BLAS per Mesh and and new BLAS per Material
-		pBottomLevelAccelerationStructure = &newBLASPerMesh->second[pMaterial];
-	}
-
-	GeometryInstance geometryInstance = {};
-	geometryInstance.Transform = glm::transpose(transform);
-	geometryInstance.InstanceId = pBottomLevelAccelerationStructure->Index; //This is not really used anymore, Todo: remove this
-	geometryInstance.Mask = customMask;
-	geometryInstance.InstanceOffset = 0;
-	geometryInstance.Flags = VK_GEOMETRY_INSTANCE_TRIANGLE_CULL_DISABLE_BIT_NV;
-	geometryInstance.AccelerationStructureHandle = pBottomLevelAccelerationStructure->Handle;
-	m_GeometryInstances.push_back(geometryInstance);
 
 	m_GraphicsObjects.push_back({ pVulkanMesh, pMaterial, transform });
 	
@@ -335,7 +348,11 @@ uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMate
 
 void SceneVK::updateGraphicsObjectTransform(uint32_t index, const glm::mat4& transform)
 {
-	m_GeometryInstances[index].Transform = glm::transpose(transform);
+	if (m_RayTracingEnabled)
+	{
+		m_GeometryInstances[index].Transform = glm::transpose(transform);
+	}
+
 	m_GraphicsObjects[index].Transform = transform;
 }
 
@@ -553,7 +570,7 @@ bool SceneVK::buildBLASs()
 
 	m_pTempCommandBuffer->end();
 	m_pContext->getDevice()->executeCommandBuffer(m_pContext->getDevice()->getComputeQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
-	m_pContext->getDevice()->wait();
+	//m_pContext->getDevice()->wait();
 
 	return true;
 }
@@ -635,7 +652,7 @@ bool SceneVK::buildTLAS()
 
 	m_pTempCommandBuffer->end();
 	m_pContext->getDevice()->executeCommandBuffer(m_pContext->getDevice()->getComputeQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
-	m_pContext->getDevice()->wait();
+	//m_pContext->getDevice()->wait();
 
 	return true;
 }
@@ -701,7 +718,7 @@ bool SceneVK::updateTLAS()
 		m_pProfiler->endFrame();
 		m_pTempCommandBuffer->end();
 		m_pContext->getDevice()->executeCommandBuffer(m_pContext->getDevice()->getComputeQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
-		m_pContext->getDevice()->wait();
+		//m_pContext->getDevice()->wait();
 	}
 	else
 	{
@@ -749,7 +766,7 @@ bool SceneVK::updateTLAS()
 		m_pProfiler->endFrame();
 		m_pTempCommandBuffer->end();
 		m_pContext->getDevice()->executeCommandBuffer(m_pContext->getDevice()->getComputeQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
-		m_pContext->getDevice()->wait();
+		//m_pContext->getDevice()->wait();
 	}
 
 	return true;
