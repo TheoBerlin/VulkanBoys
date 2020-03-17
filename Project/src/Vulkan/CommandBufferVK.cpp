@@ -486,6 +486,9 @@ void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLa
 		// Make sure any shader reads from the image have been finished
 		barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
 		break;
+	case VK_IMAGE_LAYOUT_GENERAL:
+		barrier.srcAccessMask = 0;
+		break;
 	default:
 		// Other source layouts aren't handled (yet)
 		D_LOG("Unsupported layout transition");
@@ -532,6 +535,9 @@ void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLa
 			barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
 		}
 		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		break;
+	case VK_IMAGE_LAYOUT_GENERAL:
+		barrier.dstAccessMask = 0;		
 		break;
 	default:
 		// Other source layouts aren't handled (yet)

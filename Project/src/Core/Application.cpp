@@ -26,6 +26,7 @@
 
 #include <thread>
 #include <chrono>
+
 #include <imgui/imgui.h>
 
 #include <glm/gtc/type_ptr.hpp>
@@ -40,7 +41,8 @@
 
 Application* Application::s_pInstance = nullptr;
 
-constexpr bool FORCE_RAY_TRACING_OFF = false;
+constexpr bool FORCE_RAY_TRACING_OFF	= false;
+constexpr bool HIGH_RESOLUTION_SPHERE	= false;
 
 Application::Application()
 	: m_pWindow(nullptr),
@@ -152,7 +154,14 @@ void Application::init()
 	m_pSphere = m_pContext->createMesh();
 	TaskDispatcher::execute([&]
 		{
-			m_pSphere->initFromFile("assets/meshes/sphere2.obj");
+			if (HIGH_RESOLUTION_SPHERE)
+			{
+				m_pSphere->initFromFile("assets/meshes/sphere2.obj");
+			}
+			else
+			{
+				m_pSphere->initFromFile("assets/meshes/sphere.obj");
+			}
 		});
 
 	m_pCube = m_pContext->createMesh();
@@ -281,7 +290,7 @@ void Application::init()
 	//Setup camera
 	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
 	m_Camera.setPosition(glm::vec3(0.0f, 1.0f, -3.0f));
-	m_Camera.setProjection(90.0f, (float)m_pWindow->getWidth(), (float)m_pWindow->getHeight(), 0.01f, 100.0f);
+	m_Camera.setProjection(90.0f, (float)m_pWindow->getWidth(), (float)m_pWindow->getHeight(), 0.0001f, 50.0f);
 	m_Camera.update();
 
 	TaskDispatcher::waitForTasks();
@@ -299,6 +308,8 @@ void Application::init()
 	m_GraphicsIndex1 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
 	m_GraphicsIndex2 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
 	m_GraphicsIndex3 = m_pScene->submitGraphicsObject(m_pCube, &m_PlaneMaterial, glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.5f, 0.0f)), glm::vec3(10.0f, 0.1f, 10.0f)));
+		
+	constexpr float SPHERE_SCALE = HIGH_RESOLUTION_SPHERE ? 0.25f : 1.15f;
 	
 	for (uint32_t y = 0; y < SPHERE_COUNT_DIMENSION; y++)
 	{
@@ -310,7 +321,7 @@ void Application::init()
 
 			m_SphereIndexes[x + y * SPHERE_COUNT_DIMENSION] = m_pScene->submitGraphicsObject(
 				m_pSphere, &m_SphereMaterials[x + y * SPHERE_COUNT_DIMENSION], 
-				glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)), glm::vec3(0.2f)));
+				glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)), glm::vec3(SPHERE_SCALE)));
 		}
 	}
 	
@@ -378,8 +389,9 @@ void Application::release()
 	SAFEDELETE(m_pParticleTexture);
 	SAFEDELETE(m_pParticleEmitterHandler);
 	SAFEDELETE(m_pImgui);
-	SAFEDELETE(m_pContext);
 	SAFEDELETE(m_pScene);
+
+	SAFEDELETE(m_pContext);
 
 	SAFEDELETE(m_pInputHandler);
 	Input::setInputHandler(nullptr);

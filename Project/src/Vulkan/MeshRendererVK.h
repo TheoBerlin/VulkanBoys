@@ -115,7 +115,8 @@ public:
 
 	Texture2DVK* getBRDFLookUp() { return m_pIntegrationLUT; }
 		
-	FORCEINLINE ProfilerVK*			getProfiler() const					{ return m_pProfiler; }
+	FORCEINLINE ProfilerVK*			getLightProfiler() const			{ return m_pLightPassProfiler; }
+	FORCEINLINE ProfilerVK*			getGeometryProfiler() const			{ return m_pGPassProfiler; }
 	FORCEINLINE CommandBufferVK*	getGeometryCommandBuffer() const	{ return m_ppGeometryPassBuffers[m_CurrentFrame]; }
 	FORCEINLINE CommandBufferVK*	getLightCommandBuffer() const		{ return m_ppLightPassBuffers[m_CurrentFrame]; }
 
@@ -138,7 +139,8 @@ private:
 
 	GraphicsContextVK* m_pContext;
 	RenderingHandlerVK* m_pRenderingHandler;
-	ProfilerVK* m_pProfiler;
+	ProfilerVK* m_pGPassProfiler;
+	ProfilerVK* m_pLightPassProfiler;
 
 	CommandPoolVK* m_ppGeometryPassPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppGeometryPassBuffers[MAX_FRAMES_IN_FLIGHT];
@@ -180,6 +182,7 @@ private:
 	VkViewport m_Viewport;
 	VkRect2D m_ScissorRect;
 
-	Timestamp m_TimestampDrawIndexed;
+	//Timestamp m_TimestampLight;
+	//Timestamp m_TimestampGeometry;
 	uint64_t m_CurrentFrame;
 };

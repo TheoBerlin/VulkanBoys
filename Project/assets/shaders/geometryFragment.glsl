@@ -55,11 +55,12 @@ void main()
 		roughness = -roughness;
 	}
 
-	vec3 a 			= (in_Position.xyz / in_Position.w) * 0.5f + 0.5f;
-	vec3 b 			= (in_PrevPosition.xyz / in_PrevPosition.w) * 0.5f + 0.5f; 
-	vec3 velocity 	= a - b;
+	vec2 a 			= (in_Position.xy 		/ in_Position.w) 		* 0.5f + 0.5f;
+	vec2 b 			= (in_PrevPosition.xy 	/ in_PrevPosition.w) 	* 0.5f + 0.5f; 
+	vec2 velocity 	= b - a;
+	float distance 	= in_PrevPosition.z - in_Position.z;
 
 	out_Albedo_AO 				= vec4(constants.Color.rgb * texColor, constants.Ambient * ao);
 	out_Normals_Metall_Rough	= vec4(storedNormal, constants.Metallic * metallic, roughness);
-	out_Velocity				= vec4(velocity, 1.0f);
+	out_Velocity				= vec4(velocity, distance, 1.0f);
 }

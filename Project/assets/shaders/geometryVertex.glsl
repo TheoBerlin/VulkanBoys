@@ -47,18 +47,30 @@ void main()
     vec3 normal 		= vertices[gl_VertexIndex].Normal.xyz;
 	vec3 tangent 		= vertices[gl_VertexIndex].Tangent.xyz;
 	vec4 worldPosition 	= constants.Transform * vec4(position, 1.0);
-	
+		
 	normal 	= normalize((constants.Transform * vec4(normal, 0.0)).xyz);
 	tangent = normalize((constants.Transform * vec4(tangent, 0.0)).xyz);
 	
 	vec3 bitangent 	= normalize(cross(normal, tangent));
 	vec2 texCoord 	= vertices[gl_VertexIndex].TexCoord.xy;
 	
+	vec4 viewPosition 		= g_PerFrame.View 		* worldPosition;
+	vec4 prevViewPosition 	= g_PerFrame.LastView 	* worldPosition;
+
+	float distance 		= length(viewPosition.xyz);
+	float prevDistance 	= length(prevViewPosition.xyz);
+
+	vec4 projPosition 		=  g_PerFrame.Projection 		* viewPosition;
+	vec4 prevProjPosition 	=  g_PerFrame.LastProjection 	* prevViewPosition;
+	gl_Position = projPosition;
+
+	projPosition.z 		= distance;
+	prevProjPosition.z 	= prevDistance;
+
 	out_Normal 			= normal;
 	out_Tangent 		= tangent;
 	out_Bitangent 		= bitangent;
 	out_TexCoord 		= texCoord;
-	out_Position		= g_PerFrame.Projection * g_PerFrame.View * worldPosition;
-	out_PrevPosition	= g_PerFrame.LastProjection * g_PerFrame.LastView * worldPosition;
-	gl_Position = out_Position;
+	out_Position		= projPosition;
+	out_PrevPosition	= prevProjPosition;
 }
