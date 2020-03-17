@@ -26,6 +26,7 @@
 
 #include <thread>
 #include <chrono>
+
 #include <imgui/imgui.h>
 
 #include <glm/gtc/type_ptr.hpp>
@@ -40,7 +41,7 @@
 
 Application* Application::s_pInstance = nullptr;
 
-constexpr bool FORCE_RAY_TRACING_OFF	= false;
+constexpr bool FORCE_RAY_TRACING_OFF	= true;
 constexpr bool HIGH_RESOLUTION_SPHERE	= false;
 
 Application::Application()
@@ -250,7 +251,7 @@ void Application::init()
 	//Setup camera
 	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
 	m_Camera.setPosition(glm::vec3(0.0f, 1.0f, -3.0f));
-	m_Camera.setProjection(90.0f, (float)m_pWindow->getWidth(), (float)m_pWindow->getHeight(), 0.01f, 100.0f);
+	m_Camera.setProjection(90.0f, (float)m_pWindow->getWidth(), (float)m_pWindow->getHeight(), 0.0001f, 50.0f);
 	m_Camera.update();
 
 	TaskDispatcher::waitForTasks();
