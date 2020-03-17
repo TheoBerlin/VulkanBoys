@@ -484,7 +484,8 @@ void RenderingHandlerVK::drawProfilerUI()
 {
 	if (m_pMeshRenderer) 
 	{
-		m_pMeshRenderer->getProfiler()->drawResults();
+		m_pMeshRenderer->getGeometryProfiler()->drawResults();
+		m_pMeshRenderer->getLightProfiler()->drawResults();
 	}
 
 	if (m_pParticleRenderer) 

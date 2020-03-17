@@ -43,7 +43,8 @@ MeshRendererVK::MeshRendererVK(GraphicsContextVK* pContext, RenderingHandlerVK* 
 	m_pLightBuffer(nullptr),
 	m_pEnvironmentMap(nullptr),
 	m_pIntegrationLUT(nullptr),
-	m_pProfiler(nullptr),
+	m_pGPassProfiler(nullptr),
+	m_pLightPassProfiler(nullptr),
 	m_ClearColor(),
 	m_ClearDepth(),
 	m_Viewport(),
@@ -64,7 +65,9 @@ MeshRendererVK::~MeshRendererVK()
 		SAFEDELETE(m_ppLightPassPools[i]);
 	}
 
-	SAFEDELETE(m_pProfiler);
+	SAFEDELETE(m_pGPassProfiler);
+	SAFEDELETE(m_pLightPassProfiler);
+
 	SAFEDELETE(m_pBRDFSampler);
 	SAFEDELETE(m_pIntegrationLUT);
 	SAFEDELETE(m_pEnvironmentMap);
@@ -165,7 +168,7 @@ void MeshRendererVK::beginFrame(IScene* pScene)
 	inheritanceInfo.framebuffer = m_pRenderingHandler->getGBuffer()->getFrameBuffer()->getFrameBuffer();
 
 	m_ppGeometryPassBuffers[m_CurrentFrame]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
-	m_pProfiler->beginFrame(m_ppGeometryPassBuffers[m_CurrentFrame]);
+	m_pGPassProfiler->beginFrame(m_ppGeometryPassBuffers[m_CurrentFrame]);
 
 	// Begin geometrypass
 	m_ppGeometryPassBuffers[m_CurrentFrame]->setViewports(&m_Viewport, 1);
@@ -176,7 +179,7 @@ void MeshRendererVK::endFrame(IScene* pScene)
 {
 	UNREFERENCED_PARAMETER(pScene);
 
-	m_pProfiler->endFrame();
+	m_pGPassProfiler->endFrame();
 
 	m_ppGeometryPassBuffers[m_CurrentFrame]->bindPipeline(m_pSkyboxPipeline);
 	m_ppGeometryPassBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pSkyboxPipelineLayout, 0, 1, &m_pSkyboxDescriptorSet, 0, nullptr);
@@ -202,7 +205,8 @@ void MeshRendererVK::setViewport(float width, float height, float minDepth, floa
 
 void MeshRendererVK::setupFrame(CommandBufferVK* pPrimaryBuffer, const Camera& camera, const LightSetup& lightsetup)
 {
-	m_pProfiler->reset(m_CurrentFrame, pPrimaryBuffer);
+	m_pGPassProfiler->reset(m_CurrentFrame, pPrimaryBuffer);
+	m_pLightPassProfiler->reset(m_CurrentFrame, pPrimaryBuffer);
 
 	updateBuffers(pPrimaryBuffer, camera, lightsetup);
 }
@@ -277,9 +281,9 @@ void MeshRendererVK::submitMesh(const MeshVK* pMesh, const Material* pMaterial, 
 	DescriptorSetVK* pDescriptorSet = getDescriptorSetFromMeshAndMaterial(pMesh, pMaterial);
 	m_ppGeometryPassBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pGeometryPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
 
-	//m_pProfiler->beginTimestamp(&m_TimestampDrawIndexed);
+	//m_pGPassProfiler->beginTimestamp(&m_TimestampDrawIndexed);
 	m_ppGeometryPassBuffers[m_CurrentFrame]->drawIndexInstanced(pMesh->getIndexCount(), 1, 0, 0, 0);
-	//m_pProfiler->endTimestamp(&m_TimestampDrawIndexed);
+	//m_pGPassProfiler->endTimestamp(&m_TimestampDrawIndexed);
 }
 
 void MeshRendererVK::buildLightPass(RenderPassVK* pRenderPass, FrameBufferVK* pFramebuffer)
@@ -296,6 +300,8 @@ void MeshRendererVK::buildLightPass(RenderPassVK* pRenderPass, FrameBufferVK* pF
 	inheritanceInfo.subpass		= 0;
 	inheritanceInfo.framebuffer = pFramebuffer->getFrameBuffer();
 	m_ppLightPassBuffers[m_CurrentFrame]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
+	
+	m_pLightPassProfiler->beginFrame(m_ppLightPassBuffers[m_CurrentFrame]);
 
 	m_ppLightPassBuffers[m_CurrentFrame]->bindPipeline(m_pLightPipeline);
 	m_ppLightPassBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pLightPipelineLayout, 0, 1, &m_pLightDescriptorSet, 0, nullptr);
@@ -304,6 +310,9 @@ void MeshRendererVK::buildLightPass(RenderPassVK* pRenderPass, FrameBufferVK* pF
 	m_ppLightPassBuffers[m_CurrentFrame]->setScissorRects(&m_ScissorRect, 1);
 
 	m_ppLightPassBuffers[m_CurrentFrame]->drawInstanced(3, 1, 0, 0);
+
+	m_pLightPassProfiler->endFrame();
+	
 	m_ppLightPassBuffers[m_CurrentFrame]->end();
 }
 
@@ -908,6 +917,7 @@ DescriptorSetVK* MeshRendererVK::getDescriptorSetFromMeshAndMaterial(const MeshV
 
 void MeshRendererVK::createProfiler()
 {
-	m_pProfiler = DBG_NEW ProfilerVK("Mesh Renderer", m_pContext->getDevice());
-	m_pProfiler->initTimestamp(&m_TimestampDrawIndexed, "Draw indexed");
+	m_pGPassProfiler		= DBG_NEW ProfilerVK("Mesh Renderer: Geometry Pass", m_pContext->getDevice());
+	m_pLightPassProfiler	= DBG_NEW ProfilerVK("Mesh Renderer: Light Pass", m_pContext->getDevice());
+	//m_pGPassProfiler->initTimestamp(&m_TimestampGeometry, "Draw indexed");
 }

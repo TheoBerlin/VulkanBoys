@@ -40,7 +40,8 @@
 
 Application* Application::s_pInstance = nullptr;
 
-constexpr bool FORCE_RAY_TRACING_OFF = false;
+constexpr bool FORCE_RAY_TRACING_OFF	= false;
+constexpr bool HIGH_RESOLUTION_SPHERE	= false;
 
 Application::Application()
 	: m_pWindow(nullptr),
@@ -152,7 +153,14 @@ void Application::init()
 	m_pSphere = m_pContext->createMesh();
 	TaskDispatcher::execute([&]
 		{
-			m_pSphere->initFromFile("assets/meshes/sphere2.obj");
+			if (HIGH_RESOLUTION_SPHERE)
+			{
+				m_pSphere->initFromFile("assets/meshes/sphere2.obj");
+			}
+			else
+			{
+				m_pSphere->initFromFile("assets/meshes/sphere.obj");
+			}
 		});
 
 	m_pAlbedo = m_pContext->createTexture2D();
@@ -259,8 +267,8 @@ void Application::init()
 	m_GraphicsIndex0 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
 	m_GraphicsIndex1 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
 	m_GraphicsIndex2 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
-	
-	
+		
+	constexpr float SPHERE_SCALE = HIGH_RESOLUTION_SPHERE ? 0.25f : 1.15f;
 	for (uint32_t y = 0; y < SPHERE_COUNT_DIMENSION; y++)
 	{
 		float yCoord = ((float(SPHERE_COUNT_DIMENSION) * 0.5f) / -2.0f) + float(y * 0.5);
@@ -271,7 +279,7 @@ void Application::init()
 
 			m_SphereIndexes[x + y * SPHERE_COUNT_DIMENSION] = m_pScene->submitGraphicsObject(
 				m_pSphere, &m_SphereMaterials[x + y * SPHERE_COUNT_DIMENSION], 
-				glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)), glm::vec3(0.25f)));
+				glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)), glm::vec3(SPHERE_SCALE)));
 		}
 	}
 	
