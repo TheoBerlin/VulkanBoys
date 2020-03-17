@@ -36,6 +36,7 @@ MeshRendererVK::MeshRendererVK(GraphicsContextVK* pContext, RenderingHandlerVK* 
 	m_pSkyboxPipeline(nullptr),
 	m_pLightDescriptorSet(nullptr),
 	m_pGBufferSampler(nullptr),
+	m_pRTSampler(nullptr),
 	m_pSkyboxPipelineLayout(nullptr),
 	m_pDescriptorPool(nullptr),
 	m_pLightDescriptorSetLayout(nullptr),
@@ -79,6 +80,7 @@ MeshRendererVK::~MeshRendererVK()
 	SAFEDELETE(m_pSkyboxPipelineLayout);
 	SAFEDELETE(m_pSkyboxDescriptorSetLayout);
 	SAFEDELETE(m_pGBufferSampler);
+	SAFEDELETE(m_pRTSampler);
 	SAFEDELETE(m_pSkyboxPipelineLayout);
 	SAFEDELETE(m_pSkyboxPipeline);
 	SAFEDELETE(m_pGeometryPipeline);

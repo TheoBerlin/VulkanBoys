@@ -177,7 +177,6 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 	m_pGraphicsContext->getSwapChain()->resize(width, height);
 
 	m_pGBuffer->resize(width, height);
-	createBackBuffers();
 
 	if (m_pMeshRenderer)
 	{
@@ -952,10 +951,10 @@ bool RenderingHandlerVK::createRayTracingRenderImages(uint32_t width, uint32_t h
 	imageParams.Usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	imageParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-	m_pRadianceImage = new ImageVK(m_pGraphicsContext->getDevice());
+	m_pRadianceImage = DBG_NEW ImageVK(m_pGraphicsContext->getDevice());
 	m_pRadianceImage->init(imageParams);
 
-	m_pGlossyImage = new ImageVK(m_pGraphicsContext->getDevice());
+	m_pGlossyImage = DBG_NEW ImageVK(m_pGraphicsContext->getDevice());
 	m_pGlossyImage->init(imageParams);
 
 	ImageViewParams imageViewParams = {};
@@ -966,10 +965,10 @@ bool RenderingHandlerVK::createRayTracingRenderImages(uint32_t width, uint32_t h
 	imageViewParams.FirstLayer = 0;
 	imageViewParams.LayerCount = 1;
 
-	m_pRadianceImageView = new ImageViewVK(m_pGraphicsContext->getDevice(), m_pRadianceImage);
+	m_pRadianceImageView = DBG_NEW ImageViewVK(m_pGraphicsContext->getDevice(), m_pRadianceImage);
 	m_pRadianceImageView->init(imageViewParams);
 
-	m_pGlossyImageView = new ImageViewVK(m_pGraphicsContext->getDevice(), m_pGlossyImage);
+	m_pGlossyImageView = DBG_NEW ImageViewVK(m_pGraphicsContext->getDevice(), m_pGlossyImage);
 	m_pGlossyImageView->init(imageViewParams);
 
 	CommandBufferVK* pTempCommandBuffer = m_ppComputeCommandPools[0]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);

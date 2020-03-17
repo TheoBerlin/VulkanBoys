@@ -42,6 +42,9 @@ RayTracingRendererVK::RayTracingRendererVK(GraphicsContextVK* pContext, Renderin
 	m_pBlurPassPipelineLayout(nullptr),
 	m_pBlurPassDescriptorPool(nullptr),
 	m_pBlurPassDescriptorSetLayout(nullptr),
+	m_pSkybox(nullptr),
+	m_pBRDFLookUp(nullptr),
+	m_pBlueNoise(nullptr),
 	m_pCameraBuffer(nullptr),
 	m_pLightsBuffer(nullptr),
 	m_pReflectionIntermediateImage(nullptr),
@@ -56,8 +59,6 @@ RayTracingRendererVK::RayTracingRendererVK(GraphicsContextVK* pContext, Renderin
 	{
 		m_ppComputeCommandPools[i] = nullptr;
 	}
-
-	m_TempSubmitLimit = false;
 }
 
 RayTracingRendererVK::~RayTracingRendererVK()
@@ -85,6 +86,11 @@ RayTracingRendererVK::~RayTracingRendererVK()
 
 	SAFEDELETE(m_pNearestSampler);
 	SAFEDELETE(m_pLinearSampler);
+
+	SAFEDELETE(m_pReflectionIntermediateImage);
+	SAFEDELETE(m_pReflectionIntermediateImageView);
+
+	SAFEDELETE(m_pBlueNoise);
 }
 
 bool RayTracingRendererVK::init()
@@ -277,7 +283,7 @@ void RayTracingRendererVK::setResolution(uint32_t width, uint32_t height)
 		imageParams.Usage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 		imageParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-		m_pReflectionIntermediateImage = new ImageVK(m_pContext->getDevice());
+		m_pReflectionIntermediateImage = DBG_NEW ImageVK(m_pContext->getDevice());
 		m_pReflectionIntermediateImage->init(imageParams);
 
 		ImageViewParams imageViewParams = {};
@@ -288,7 +294,7 @@ void RayTracingRendererVK::setResolution(uint32_t width, uint32_t height)
 		imageViewParams.FirstLayer = 0;
 		imageViewParams.LayerCount = 1;
 
-		m_pReflectionIntermediateImageView = new ImageViewVK(m_pContext->getDevice(), m_pReflectionIntermediateImage);
+		m_pReflectionIntermediateImageView = DBG_NEW ImageViewVK(m_pContext->getDevice(), m_pReflectionIntermediateImage);
 		m_pReflectionIntermediateImageView->init(imageViewParams);
 
 		CommandBufferVK* pTempCommandBuffer = m_ppComputeCommandPools[0]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
@@ -353,7 +359,7 @@ bool RayTracingRendererVK::createCommandPoolAndBuffers()
 	const uint32_t computeQueueFamilyIndex = pDevice->getQueueFamilyIndices().computeFamily.value();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		m_ppComputeCommandPools[i] = new CommandPoolVK(pDevice, computeQueueFamilyIndex);
+		m_ppComputeCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, computeQueueFamilyIndex);
 
 		if (!m_ppComputeCommandPools[i]->init())
 		{
@@ -374,7 +380,7 @@ bool RayTracingRendererVK::createPipelineLayouts()
 {
 	//Ray Tracing
 	{
-		m_pRayTracingDescriptorSetLayout = new DescriptorSetLayoutVK(m_pContext->getDevice());
+		m_pRayTracingDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(m_pContext->getDevice());
 
 		//Result
 		m_pRayTracingDescriptorSetLayout->addBindingStorageImage(VK_SHADER_STAGE_RAYGEN_BIT_NV, RT_RADIANCE_IMAGE_BINDING, 1);
@@ -602,7 +608,7 @@ bool RayTracingRendererVK::createSamplers()
 	nearestSamplerParams.WrapModeV = nearestSamplerParams.WrapModeU;
 	nearestSamplerParams.WrapModeW = nearestSamplerParams.WrapModeU;
 
-	m_pNearestSampler = new SamplerVK(m_pContext->getDevice());
+	m_pNearestSampler = DBG_NEW SamplerVK(m_pContext->getDevice());
 	result = result && m_pNearestSampler->init(nearestSamplerParams);
 
 	SamplerParams linearSamplerParams = {};
@@ -612,7 +618,7 @@ bool RayTracingRendererVK::createSamplers()
 	linearSamplerParams.WrapModeV = linearSamplerParams.WrapModeU;
 	linearSamplerParams.WrapModeW = linearSamplerParams.WrapModeU;
 
-	m_pLinearSampler = new SamplerVK(m_pContext->getDevice());
+	m_pLinearSampler = DBG_NEW SamplerVK(m_pContext->getDevice());
 	result = result && m_pLinearSampler->init(linearSamplerParams);
 	return result;
 }

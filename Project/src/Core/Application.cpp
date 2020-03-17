@@ -369,10 +369,11 @@ void Application::release()
 	m_pContext->sync();
 
 	m_GunMaterial.release();
-	
+	m_PlaneMaterial.release();
+
 	for (uint32_t i = 0; i < SPHERE_COUNT_DIMENSION * SPHERE_COUNT_DIMENSION; i++)
 	{
-		m_SphereMaterials->release();
+		m_SphereMaterials[i].release();
 	}
 
 	SAFEDELETE(m_pSkybox);
@@ -381,6 +382,11 @@ void Application::release()
 	SAFEDELETE(m_pGunMetallic);
 	SAFEDELETE(m_pGunNormal);
 	SAFEDELETE(m_pGunAlbedo);
+	SAFEDELETE(m_pCube);
+	SAFEDELETE(m_pCubeAlbedo);
+	SAFEDELETE(m_pCubeNormal);
+	SAFEDELETE(m_pCubeMetallic);
+	SAFEDELETE(m_pCubeRoughness);
 	SAFEDELETE(m_pMesh);
 	SAFEDELETE(m_pRenderingHandler);
 	SAFEDELETE(m_pMeshRenderer);

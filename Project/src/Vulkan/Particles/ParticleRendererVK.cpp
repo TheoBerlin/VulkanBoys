@@ -193,7 +193,7 @@ bool ParticleRendererVK::createPipelineLayout()
 	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, 4, 1);
 
 	// Particle Texture
-	m_pSampler = new SamplerVK(pDevice);
+	m_pSampler = DBG_NEW SamplerVK(pDevice);
 
 	SamplerParams samplerParams = {};
 	samplerParams.MinFilter = VkFilter::VK_FILTER_LINEAR;

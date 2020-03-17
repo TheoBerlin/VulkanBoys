@@ -122,6 +122,7 @@ private:
 	bool createDefaultTexturesAndSamplers();
 
 	void initBuffers();
+	void initAccelerationStructureBuffers();
 
 	BottomLevelAccelerationStructure* createBLAS(const MeshVK* pMesh, const Material* pMaterial);
 	bool buildBLASs();
@@ -163,6 +164,7 @@ private:
 	BufferVK* m_pMeshIndexBuffer;
 
 	std::vector<const Material*> m_Materials;
+	std::unordered_map<const Material*, uint32_t> m_MaterialIndices; //This is only used when Ray Tracing is Disabled
 
 	std::vector<const ImageViewVK*> m_AlbedoMaps;
 	std::vector<const ImageViewVK*> m_NormalMaps;

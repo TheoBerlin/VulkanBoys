@@ -76,20 +76,26 @@ SceneVK::~SceneVK()
 
 	for (auto& bottomLevelAccelerationStructurePerMesh : m_NewBottomLevelAccelerationStructures)
 	{
-		for (auto& bottomLevelAccelerationStructure : bottomLevelAccelerationStructurePerMesh.second)
+		//All these BLASs are the same on GPU side, so we can just grab the first one and free it
+		auto& newBottomLevelAccelerationStructure = bottomLevelAccelerationStructurePerMesh.second.begin();
+
+		if (newBottomLevelAccelerationStructure->second.Memory != VK_NULL_HANDLE)
 		{
-			vkFreeMemory(m_pDevice->getDevice(), bottomLevelAccelerationStructure.second.Memory, nullptr);
-			m_pDevice->vkDestroyAccelerationStructureNV(m_pDevice->getDevice(), bottomLevelAccelerationStructure.second.AccelerationStructure, nullptr);
+			vkFreeMemory(m_pDevice->getDevice(), newBottomLevelAccelerationStructure->second.Memory, nullptr);
+			m_pDevice->vkDestroyAccelerationStructureNV(m_pDevice->getDevice(), newBottomLevelAccelerationStructure->second.AccelerationStructure, nullptr);
 		}
 	}
 	m_NewBottomLevelAccelerationStructures.clear();
 
 	for (auto& bottomLevelAccelerationStructurePerMesh : m_FinalizedBottomLevelAccelerationStructures)
 	{
-		for (auto& bottomLevelAccelerationStructure : bottomLevelAccelerationStructurePerMesh.second)
+		//All these BLASs are the same on GPU side, so we can just grab the first one and free it
+		auto& finalizedBottomLevelAccelerationStructure = bottomLevelAccelerationStructurePerMesh.second.begin();
+
+		if (finalizedBottomLevelAccelerationStructure->second.Memory != VK_NULL_HANDLE)
 		{
-			vkFreeMemory(m_pDevice->getDevice(), bottomLevelAccelerationStructure.second.Memory, nullptr);
-			m_pDevice->vkDestroyAccelerationStructureNV(m_pDevice->getDevice(), bottomLevelAccelerationStructure.second.AccelerationStructure, nullptr);
+			vkFreeMemory(m_pDevice->getDevice(), finalizedBottomLevelAccelerationStructure->second.Memory, nullptr);
+			m_pDevice->vkDestroyAccelerationStructureNV(m_pDevice->getDevice(), finalizedBottomLevelAccelerationStructure->second.AccelerationStructure, nullptr);
 		}
 	}
 	m_FinalizedBottomLevelAccelerationStructures.clear();
@@ -123,6 +129,8 @@ bool SceneVK::finalize()
 		return false;
 	}
 
+	initBuffers();
+
 	if (m_RayTracingEnabled)
 	{
 		if (!createTLAS())
@@ -131,7 +139,7 @@ bool SceneVK::finalize()
 			return false;
 		}
 
-		initBuffers();
+		initAccelerationStructureBuffers();
 
 		//Build BLASs
 		if (!buildBLASs())
@@ -221,6 +229,42 @@ void SceneVK::updateMaterials()
 				m_MetallicMaps[i] = m_pDefaultTexture->getImageView();
 				m_RoughnessMaps[i] = m_pDefaultTexture->getImageView();
 				m_Samplers[i] = m_pDefaultSampler;
+				m_MaterialParameters[i] =
+				{
+					glm::vec4(1.0f),
+					1.0f,
+					1.0f,
+					1.0f,
+					1.0f
+				};
+			}
+		}
+
+		constexpr uint32_t SIZE_IN_BYTES = MAX_NUM_UNIQUE_MATERIALS * sizeof(MaterialParameters);
+
+		void* pDest;
+		m_pMaterialParametersBuffer->map(&pDest);
+		memcpy(pDest, m_MaterialParameters.data(), SIZE_IN_BYTES);
+		m_pMaterialParametersBuffer->unmap();
+	}
+	else
+	{
+		for (uint32_t i = 0; i < MAX_NUM_UNIQUE_MATERIALS; i++)
+		{
+			if (i < m_Materials.size())
+			{
+				const Material* pMaterial = m_Materials[i];
+				m_MaterialParameters[i] =
+				{
+					pMaterial->getAlbedo(),
+					pMaterial->getMetallic(),
+					pMaterial->getRoughness(),
+					pMaterial->getAmbientOcclusion(),
+					1.0f
+				};
+			}
+			else
+			{
 				m_MaterialParameters[i] =
 				{
 					glm::vec4(1.0f),
@@ -350,6 +394,18 @@ uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMate
 
 		materialIndex = pBottomLevelAccelerationStructure->MaterialIndex;
 	}
+	else
+	{
+		auto& entry = m_MaterialIndices.find(pMaterial);
+
+		if (entry == m_MaterialIndices.end())
+		{
+			m_Materials.push_back(pMaterial);
+			m_MaterialIndices[pMaterial] = m_Materials.size() - 1;
+		}
+
+		materialIndex = m_MaterialIndices[pMaterial];
+	}
 
 	m_GraphicsObjects.push_back({ pVulkanMesh, pMaterial, materialIndex });
 	m_SceneTransforms.push_back({ transform, transform });
@@ -392,7 +448,7 @@ bool SceneVK::createDefaultTexturesAndSamplers()
 	samplerParams.WrapModeV = samplerParams.WrapModeU;
 	samplerParams.WrapModeW = samplerParams.WrapModeU;
 
-	m_pDefaultSampler = new SamplerVK(m_pContext->getDevice());
+	m_pDefaultSampler = DBG_NEW SamplerVK(m_pContext->getDevice());
 	if (!m_pDefaultSampler->init(samplerParams))
 	{
 		return false;
@@ -410,6 +466,25 @@ bool SceneVK::createDefaultTexturesAndSamplers()
 }
 
 void SceneVK::initBuffers()
+{
+	BufferParams materialParametersBufferParams = {};
+	materialParametersBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	materialParametersBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	materialParametersBufferParams.SizeInBytes = sizeof(MaterialParameters) * MAX_NUM_UNIQUE_MATERIALS;
+
+	m_pMaterialParametersBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
+	m_pMaterialParametersBuffer->init(materialParametersBufferParams);
+
+	BufferParams transformBufferParams = {};
+	transformBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	transformBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	transformBufferParams.SizeInBytes = sizeof(GraphicsObjectTransforms) * NUM_INITIAL_GRAPHICS_OBJECTS;
+
+	m_pTransformsBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
+	m_pTransformsBuffer->init(transformBufferParams);
+}
+
+void SceneVK::initAccelerationStructureBuffers()
 {
 	// Acceleration structure build requires some scratch space to store temporary information
 	VkAccelerationStructureMemoryRequirementsInfoNV memoryRequirementsInfo = {};
@@ -435,22 +510,6 @@ void SceneVK::initBuffers()
 
 	m_pInstanceBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
 	m_pInstanceBuffer->init(instanceBufferParams);
-
-	BufferParams materialParametersBufferParams = {};
-	materialParametersBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-	materialParametersBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	materialParametersBufferParams.SizeInBytes = sizeof(MaterialParameters) * MAX_NUM_UNIQUE_MATERIALS;
-
-	m_pMaterialParametersBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
-	m_pMaterialParametersBuffer->init(materialParametersBufferParams);
-
-	BufferParams transformBufferParams = {};
-	transformBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-	transformBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	transformBufferParams.SizeInBytes = sizeof(GraphicsObjectTransforms) * NUM_INITIAL_GRAPHICS_OBJECTS;
-
-	m_pTransformsBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
-	m_pTransformsBuffer->init(instanceBufferParams);
 }
 
 SceneVK::BottomLevelAccelerationStructure* SceneVK::createBLAS(const MeshVK* pMesh, const Material* pMaterial)
@@ -1024,7 +1083,7 @@ void SceneVK::generateLightProbeGeometry(float probeStepX, float probeStepY, flo
 {
 	glm::vec3 worldSize = glm::vec3(probeStepX, probeStepY, probeStepZ) * (float)(numProbesPerDimension - 1);
 
-	m_pLightProbeMesh = new MeshVK(m_pDevice);
+	m_pLightProbeMesh = DBG_NEW MeshVK(m_pDevice);
 	m_pLightProbeMesh->initAsSphere(3);
 
 	for (uint32_t x = 0; x < numProbesPerDimension; x++)

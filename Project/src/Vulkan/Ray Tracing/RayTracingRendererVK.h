@@ -146,6 +146,4 @@ private:
 
 	SamplerVK* m_pNearestSampler;
 	SamplerVK* m_pLinearSampler;
-
-	bool m_TempSubmitLimit;
 };
