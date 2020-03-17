@@ -100,15 +100,17 @@ enum class ETextureFormat : uint8_t
 {
 	FORMAT_NONE					= 0,
 	FORMAT_R8G8B8A8_UNORM		= 1,
-	FORMAT_R16G16B16A16_FLOAT	= 2,
-	FORMAT_R32G32B32A32_FLOAT	= 3
+	FORMAT_R16G16_FLOAT			= 2,
+	FORMAT_R16G16B16A16_FLOAT	= 3,
+	FORMAT_R32G32B32A32_FLOAT	= 4
 };
 
 inline uint32_t textureFormatStride(ETextureFormat format)
 {
 	switch (format)
 	{
-	case ETextureFormat::FORMAT_R8G8B8A8_UNORM:     return 4;
+	case ETextureFormat::FORMAT_R8G8B8A8_UNORM:     
+	case ETextureFormat::FORMAT_R16G16_FLOAT:		return 4;
 	case ETextureFormat::FORMAT_R16G16B16A16_FLOAT: return 8;
 	case ETextureFormat::FORMAT_R32G32B32A32_FLOAT: return 16;
 	}
