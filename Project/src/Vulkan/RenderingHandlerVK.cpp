@@ -453,13 +453,10 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 
 	//Gather all renderer's data and finalize the frame
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pBackBufferRenderPass, pBackbuffer, (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, nullptr, 0, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-
 	if (m_pMeshRenderer)
 	{
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pMeshRenderer->getLightCommandBuffer());
 	}
-
-	m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(pSecondaryCommandBuffer);
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
 
 	//Render particles
