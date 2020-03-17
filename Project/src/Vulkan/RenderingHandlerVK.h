@@ -111,6 +111,7 @@ private:
 	RenderPassVK* m_pGeometryRenderPass;
     RenderPassVK* m_pBackBufferRenderPass;
     RenderPassVK* m_pParticleRenderPass;
+    RenderPassVK* m_pUIRenderPass;
     PipelineVK* m_pPipeline;
 
     uint32_t m_CurrentFrame;

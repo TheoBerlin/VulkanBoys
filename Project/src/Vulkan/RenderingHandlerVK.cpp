@@ -44,6 +44,7 @@ RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 	m_pGBuffer(nullptr),
 	m_pGeometryRenderPass(nullptr),
 	m_pBackBufferRenderPass(nullptr),
+	m_pUIRenderPass(nullptr),
 	m_pCameraMatricesBuffer(nullptr),
 	m_pCameraDirectionsBuffer(nullptr),
 	m_pCameraBuffer(nullptr),
@@ -70,10 +71,14 @@ RenderingHandlerVK::~RenderingHandlerVK()
 	SAFEDELETE(m_pCameraMatricesBuffer);
 	SAFEDELETE(m_pCameraDirectionsBuffer);
 	SAFEDELETE(m_pCameraBuffer);
+	
 	SAFEDELETE(m_pGeometryRenderPass);
 	SAFEDELETE(m_pBackBufferRenderPass);
 	SAFEDELETE(m_pParticleRenderPass);
+	SAFEDELETE(m_pUIRenderPass);
+
 	SAFEDELETE(m_pSkyboxRenderer);
+	
 	SAFEDELETE(m_pRayTracingStorageImage);
 	SAFEDELETE(m_pRayTracingStorageImageView);
 	SAFEDELETE(m_pGBuffer);
@@ -444,6 +449,8 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 		}
 	}
 
+	//TODO: Combine these into one renderpass
+
 	//Gather all renderer's data and finalize the frame
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pBackBufferRenderPass, pBackbuffer, (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, nullptr, 0, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
@@ -465,6 +472,11 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
 	}
+
+	//Render UI
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pUIRenderPass, pBackbuffer, (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, nullptr, 0, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(pSecondaryCommandBuffer);
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
 
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->end();
 	m_ppComputeCommandBuffers[m_CurrentFrame]->end();
@@ -650,6 +662,7 @@ bool RenderingHandlerVK::createCommandPoolAndBuffers()
 bool RenderingHandlerVK::createRenderPasses()
 {
 	//Create Backbuffer Renderpass
+	m_pUIRenderPass			= DBG_NEW RenderPassVK(m_pGraphicsContext->getDevice());
 	m_pBackBufferRenderPass = DBG_NEW RenderPassVK(m_pGraphicsContext->getDevice());
 	VkAttachmentDescription description = {};
 	description.format			= VK_FORMAT_B8G8R8A8_UNORM;
@@ -662,10 +675,16 @@ bool RenderingHandlerVK::createRenderPasses()
 	description.finalLayout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	m_pBackBufferRenderPass->addAttachment(description);
 
+	description.loadOp			= VK_ATTACHMENT_LOAD_OP_LOAD;
+	description.initialLayout	= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	description.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	m_pUIRenderPass->addAttachment(description);
+
 	VkAttachmentReference colorAttachmentRef = {};
 	colorAttachmentRef.attachment	= 0;
 	colorAttachmentRef.layout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	m_pBackBufferRenderPass->addSubpass(&colorAttachmentRef, 1, nullptr);
+	m_pUIRenderPass->addSubpass(&colorAttachmentRef, 1, nullptr);
 
 	VkSubpassDependency dependency = {};
 	dependency.srcSubpass		= VK_SUBPASS_EXTERNAL;
@@ -681,6 +700,12 @@ bool RenderingHandlerVK::createRenderPasses()
 		return false;
 	}
 
+	m_pUIRenderPass->addSubpassDependency(dependency);
+	if (!m_pUIRenderPass->finalize())
+	{
+		return false;
+	}
+
 	//Create Backbuffer Renderpass
 	m_pParticleRenderPass = DBG_NEW RenderPassVK(m_pGraphicsContext->getDevice());
 	description.format			= VK_FORMAT_B8G8R8A8_UNORM;
@@ -690,7 +715,7 @@ bool RenderingHandlerVK::createRenderPasses()
 	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	description.initialLayout	= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	description.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	description.finalLayout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	m_pParticleRenderPass->addAttachment(description);
 
 	description.format			= VK_FORMAT_D32_SFLOAT;
