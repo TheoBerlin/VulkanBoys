@@ -72,6 +72,7 @@ RenderingHandlerVK::~RenderingHandlerVK()
 	SAFEDELETE(m_pCameraBuffer);
 	SAFEDELETE(m_pGeometryRenderPass);
 	SAFEDELETE(m_pBackBufferRenderPass);
+	SAFEDELETE(m_pParticleRenderPass);
 	SAFEDELETE(m_pSkyboxRenderer);
 	SAFEDELETE(m_pRayTracingStorageImage);
 	SAFEDELETE(m_pRayTracingStorageImageView);
@@ -243,7 +244,8 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 	}
 
 	//Render all the meshes
-	FrameBufferVK* pBackbuffer = getCurrentBackBuffer();
+	FrameBufferVK*		pBackbuffer				= getCurrentBackBuffer();
+	FrameBufferVK*		pBackbufferWithDepth	= getCurrentBackBufferWithDepth();
 	CommandBufferVK*	pSecondaryCommandBuffer = m_ppCommandBuffersSecondary[m_CurrentFrame];
 	CommandPoolVK*		pSecondaryCommandPool	= m_ppCommandPoolsSecondary[m_CurrentFrame];
 
@@ -443,23 +445,26 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 	}
 
 	//Gather all renderer's data and finalize the frame
-	VkClearValue clearValues[] = { m_ClearColor, m_ClearDepth };
-	m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pBackBufferRenderPass, pBackbuffer, (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 2, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pBackBufferRenderPass, pBackbuffer, (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, nullptr, 0, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
 	if (m_pMeshRenderer)
 	{
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pMeshRenderer->getLightCommandBuffer());
 	}
 
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(pSecondaryCommandBuffer);
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
+
+	//Render particles
 	if (m_pParticleRenderer)
 	{
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pParticleRenderPass, pBackbufferWithDepth, (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, nullptr, 0, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+		
 		m_pParticleRenderer->endFrame(pScene);
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pParticleRenderer->getCommandBuffer(m_CurrentFrame));
+
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
 	}
-
-	m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(pSecondaryCommandBuffer);
-
-	m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
 
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->end();
 	m_ppComputeCommandBuffers[m_CurrentFrame]->end();
@@ -572,14 +577,20 @@ bool RenderingHandlerVK::createBackBuffers()
 	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
 
 	VkExtent2D extent = pSwapChain->getExtent();
-	//ImageViewVK* pDepthStencilView = m_pGBuffer->getDepthAttachment();
+	ImageViewVK* pDepthStencilView = m_pGBuffer->getDepthAttachment();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
 		m_ppBackbuffers[i] = DBG_NEW FrameBufferVK(pDevice);
 		m_ppBackbuffers[i]->addColorAttachment(pSwapChain->getImageView(i));
-		//m_ppBackbuffers[i]->setDepthStencilAttachment(pDepthStencilView);
-
 		if (!m_ppBackbuffers[i]->finalize(m_pBackBufferRenderPass, extent.width, extent.height))
+		{
+			return false;
+		}
+
+		m_ppBackBuffersWithDepth[i] = DBG_NEW FrameBufferVK(pDevice);
+		m_ppBackBuffersWithDepth[i]->addColorAttachment(pSwapChain->getImageView(i));
+		m_ppBackBuffersWithDepth[i]->setDepthStencilAttachment(pDepthStencilView);
+		if (!m_ppBackBuffersWithDepth[i]->finalize(m_pParticleRenderPass, extent.width, extent.height))
 		{
 			return false;
 		}
@@ -643,32 +654,17 @@ bool RenderingHandlerVK::createRenderPasses()
 	VkAttachmentDescription description = {};
 	description.format			= VK_FORMAT_B8G8R8A8_UNORM;
 	description.samples			= VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
+	description.loadOp			= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
 	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
-	description.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	description.finalLayout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	m_pBackBufferRenderPass->addAttachment(description);
-
-	//description.format			= VK_FORMAT_D32_SFLOAT;
-	//description.samples			= VK_SAMPLE_COUNT_1_BIT;
-	//description.loadOp			= VK_ATTACHMENT_LOAD_OP_LOAD;
-	//description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
-	//description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	//description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	//description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
-	//description.finalLayout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	//m_pBackBufferRenderPass->addAttachment(description);
 
 	VkAttachmentReference colorAttachmentRef = {};
 	colorAttachmentRef.attachment	= 0;
 	colorAttachmentRef.layout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	//VkAttachmentReference depthStencilAttachmentRef = {};
-	//depthStencilAttachmentRef.attachment	= 1;
-	//depthStencilAttachmentRef.layout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	//m_pBackBufferRenderPass->addSubpass(&colorAttachmentRef, 1, &depthStencilAttachmentRef);
 	m_pBackBufferRenderPass->addSubpass(&colorAttachmentRef, 1, nullptr);
 
 	VkSubpassDependency dependency = {};
@@ -680,8 +676,50 @@ bool RenderingHandlerVK::createRenderPasses()
 	dependency.srcStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	dependency.dstStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	m_pBackBufferRenderPass->addSubpassDependency(dependency);
-
 	if (!m_pBackBufferRenderPass->finalize())
+	{
+		return false;
+	}
+
+	//Create Backbuffer Renderpass
+	m_pParticleRenderPass = DBG_NEW RenderPassVK(m_pGraphicsContext->getDevice());
+	description.format			= VK_FORMAT_B8G8R8A8_UNORM;
+	description.samples			= VK_SAMPLE_COUNT_1_BIT;
+	description.loadOp			= VK_ATTACHMENT_LOAD_OP_LOAD;
+	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
+	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	description.initialLayout	= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	description.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	m_pParticleRenderPass->addAttachment(description);
+
+	description.format			= VK_FORMAT_D32_SFLOAT;
+	description.samples			= VK_SAMPLE_COUNT_1_BIT;
+	description.loadOp			= VK_ATTACHMENT_LOAD_OP_LOAD;
+	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
+	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	description.initialLayout	= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	description.finalLayout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	m_pParticleRenderPass->addAttachment(description);
+
+	colorAttachmentRef.attachment	= 0;
+	colorAttachmentRef.layout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference depthStencilAttachmentRef = {};
+	depthStencilAttachmentRef.attachment	= 1;
+	depthStencilAttachmentRef.layout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	m_pParticleRenderPass->addSubpass(&colorAttachmentRef, 1, &depthStencilAttachmentRef);
+
+	dependency.srcSubpass		= VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass		= 0;
+	dependency.dependencyFlags	= VK_DEPENDENCY_BY_REGION_BIT;
+	dependency.srcAccessMask	= 0;
+	dependency.dstAccessMask	= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	dependency.srcStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.dstStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	m_pParticleRenderPass->addSubpassDependency(dependency);
+	if (!m_pParticleRenderPass->finalize())
 	{
 		return false;
 	}
@@ -711,7 +749,7 @@ bool RenderingHandlerVK::createRenderPasses()
 	description.finalLayout		= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	m_pGeometryRenderPass->addAttachment(description);
 
-	//Velocity
+	//Motion
 	description.format			= VK_FORMAT_R16G16B16A16_SFLOAT;
 	description.samples			= VK_SAMPLE_COUNT_1_BIT;
 	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -745,7 +783,6 @@ bool RenderingHandlerVK::createRenderPasses()
 	colorAttachmentRefs[2].attachment	= 2;
 	colorAttachmentRefs[2].layout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-	VkAttachmentReference depthStencilAttachmentRef = {};
 	depthStencilAttachmentRef.attachment	= COLOR_REF_COUNT;
 	depthStencilAttachmentRef.layout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	m_pGeometryRenderPass->addSubpass(colorAttachmentRefs, COLOR_REF_COUNT, &depthStencilAttachmentRef);
@@ -793,6 +830,7 @@ void RenderingHandlerVK::releaseBackBuffers()
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
 		SAFEDELETE(m_ppBackbuffers[i]);
+		SAFEDELETE(m_ppBackBuffersWithDepth[i]);
 	}
 }
 

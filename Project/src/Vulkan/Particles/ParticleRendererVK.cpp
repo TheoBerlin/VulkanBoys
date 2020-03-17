@@ -91,9 +91,9 @@ void ParticleRendererVK::beginFrame(IScene* pScene)
 	VkCommandBufferInheritanceInfo inheritanceInfo = {};
 	inheritanceInfo.sType		= VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
 	inheritanceInfo.pNext		= nullptr;
-	inheritanceInfo.renderPass	= m_pRenderingHandler->getBackBufferRenderPass()->getRenderPass();
+	inheritanceInfo.renderPass	= m_pRenderingHandler->getParticleRenderPass()->getRenderPass();
 	inheritanceInfo.subpass		= 0; // TODO: Don't hardcode this :(
-	inheritanceInfo.framebuffer = m_pRenderingHandler->getCurrentBackBuffer()->getFrameBuffer();
+	inheritanceInfo.framebuffer = m_pRenderingHandler->getCurrentBackBufferWithDepth()->getFrameBuffer();
 
 	m_ppCommandBuffers[frameIndex]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
 	m_pProfiler->beginFrame(m_ppCommandBuffers[frameIndex]);
@@ -104,7 +104,6 @@ void ParticleRendererVK::beginFrame(IScene* pScene)
 	// Bind quad
 	BufferVK* pIndexBuffer = reinterpret_cast<BufferVK*>(m_pQuadMesh->getIndexBuffer());
 	m_ppCommandBuffers[frameIndex]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
 	m_ppCommandBuffers[frameIndex]->bindPipeline(m_pPipeline);
 }
 
@@ -269,14 +268,14 @@ bool ParticleRendererVK::createPipeline()
 	m_pPipeline->setRasterizerState(rasterizerState);
 
 	VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
-	//depthStencilState.depthTestEnable	= VK_TRUE;
-	depthStencilState.depthTestEnable	= VK_FALSE;
+	depthStencilState.depthTestEnable	= VK_TRUE;
+	//depthStencilState.depthTestEnable	= VK_FALSE;
 	depthStencilState.depthWriteEnable	= VK_FALSE;
 	depthStencilState.depthCompareOp	= VK_COMPARE_OP_LESS;
 	depthStencilState.stencilTestEnable	= VK_FALSE;
 	m_pPipeline->setDepthStencilState(depthStencilState);
 
-	m_pPipeline->finalizeGraphics(shaders, m_pRenderingHandler->getBackBufferRenderPass(), m_pPipelineLayout);
+	m_pPipeline->finalizeGraphics(shaders, m_pRenderingHandler->getParticleRenderPass(), m_pPipelineLayout);
 
 	SAFEDELETE(pVertexShader);
 	SAFEDELETE(pPixelShader);

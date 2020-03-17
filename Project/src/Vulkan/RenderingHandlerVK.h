@@ -57,10 +57,12 @@ public:
     FrameBufferVK* const*   getBackBuffers() const                      { return m_ppBackbuffers; }
 	RenderPassVK*			getGeometryRenderPass() const				{ return m_pGeometryRenderPass; }
     RenderPassVK*           getBackBufferRenderPass() const             { return m_pBackBufferRenderPass; }
+    RenderPassVK*           getParticleRenderPass() const               { return m_pParticleRenderPass; }
     BufferVK*               getCameraMatricesBuffer() const             { return m_pCameraMatricesBuffer; }
     BufferVK*               getCameraDirectionsBuffer() const           { return m_pCameraDirectionsBuffer; }
     BufferVK*               getCameraBuffer() const                     { return m_pCameraBuffer; }
     FrameBufferVK*          getCurrentBackBuffer() const                { return m_ppBackbuffers[m_BackBufferIndex]; }
+    FrameBufferVK*          getCurrentBackBufferWithDepth() const       { return m_ppBackBuffersWithDepth[m_BackBufferIndex]; }
     CommandBufferVK*        getCurrentGraphicsCommandBuffer() const     { return m_ppGraphicsCommandBuffers[m_CurrentFrame]; }
 	CommandBufferVK*        getCurrentComputeCommandBuffer() const      { return m_ppComputeCommandBuffers[m_CurrentFrame]; }
 	GBufferVK*				getGBuffer() const							{ return m_pGBuffer; }
@@ -93,6 +95,7 @@ private:
     ImguiVK* m_pImGuiRenderer;
 
     FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
+    FrameBufferVK* m_ppBackBuffersWithDepth[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_RenderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
 
