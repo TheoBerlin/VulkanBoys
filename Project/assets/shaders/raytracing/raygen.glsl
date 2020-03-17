@@ -229,7 +229,7 @@ void main()
 		float previousDepth = texture(u_Depth, p_temp).x;
 		vec3 previousNormal = calculateNormal(texture(u_Normal_Metallic_Roughness, p_temp));
 
-		float dist_depth = abs(sampledDepth - previousDepth);// + motion.z) * motion.a;
+		float dist_depth = LinearizeDepth(abs(sampledDepth - previousDepth), 0.1f, 100.0f);// * motion.a;
 		float CNdotPN = dot(normal, previousNormal);
 		
 		// if(sampledDepth < 0)
@@ -239,7 +239,7 @@ void main()
 		// 	dist_depth *= 0.25f;
 		// }
 
-		if(dist_depth < 2.0 && CNdotPN > 0.5f) 
+		if(dist_depth < 0.01f && CNdotPN > 0.5f) 
 		{
 			float w_diff = w[i];
 			float w_spec = w_diff * pow(max(CNdotPN, 0.0f), 128.0f);
@@ -261,11 +261,11 @@ void main()
 	
 	vec4 out_color_histlen_spec;
 
-	float flt_min_alpha_color_spec = 0.001f;
+	float flt_min_alpha_color_spec = 0.0625f;
 
 	if(temporal_sample_valid)
 	{
-		float hist_len_spec = min(temporal_color_histlen_spec.a + 1.0f, 512.0f);
+		float hist_len_spec = clamp(temporal_color_histlen_spec.a + 1.0f, 1.0f, 128.0f);
 
 		// Compute the blending weights based on history length, so that the filter
 		// converges faster. I.e. the first frame has weight of 1.0, the second frame 1/2, third 1/3 and so on.
@@ -282,7 +282,6 @@ void main()
 	{
 		// No valid history - just use the current color and spatial moments
 		out_color_histlen_spec = vec4(color_curr_spec, 1.0f);
-		out_color_histlen_spec = vec4(0.0f);
 	}
 
 	imageStore(u_ReflectionImage, pixelCoords, out_color_histlen_spec);

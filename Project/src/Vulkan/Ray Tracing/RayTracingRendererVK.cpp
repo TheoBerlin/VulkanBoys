@@ -200,7 +200,7 @@ void RayTracingRendererVK::render(IScene* pScene, GBufferVK* pGBuffer)
 		m_pProfiler->endFrame();
 	}
 
-	constexpr uint32_t NUM_BLUR_PASSES = 8;
+	//constexpr uint32_t NUM_BLUR_PASSES = 2;
 
 	//m_pHorizontalBlurPassDescriptorSet->writeCombinedImageDescriptors(pAlbedoImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_ALBEDO_BINDING);
 	//m_pHorizontalBlurPassDescriptorSet->writeCombinedImageDescriptors(pNormalImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_NORMAL_BINDING);

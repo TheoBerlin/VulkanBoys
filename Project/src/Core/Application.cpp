@@ -51,7 +51,7 @@ Application::Application()
 	m_pImgui(nullptr),
 	m_pScene(nullptr),
 	m_pMesh(nullptr),
-	m_pAlbedo(nullptr),
+	m_pGunAlbedo(nullptr),
 	m_pInputHandler(nullptr),
 	m_Camera(),
 	m_IsRunning(false),
@@ -155,28 +155,58 @@ void Application::init()
 			m_pSphere->initFromFile("assets/meshes/sphere2.obj");
 		});
 
-	m_pAlbedo = m_pContext->createTexture2D();
-	TaskDispatcher::execute([this]
+	m_pCube = m_pContext->createMesh();
+	TaskDispatcher::execute([&]
 		{
-			m_pAlbedo->initFromFile("assets/textures/gunAlbedo.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+			m_pCube->initAsCube();
 		});
 
-	m_pNormal = m_pContext->createTexture2D();
+	m_pGunAlbedo = m_pContext->createTexture2D();
 	TaskDispatcher::execute([this]
 		{
-			m_pNormal->initFromFile("assets/textures/gunNormal.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+			m_pGunAlbedo->initFromFile("assets/textures/gunAlbedo.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
 		});
 
-	m_pMetallic = m_pContext->createTexture2D();
+	m_pGunNormal = m_pContext->createTexture2D();
 	TaskDispatcher::execute([this]
 		{
-			m_pMetallic->initFromFile("assets/textures/gunMetallic.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+			m_pGunNormal->initFromFile("assets/textures/gunNormal.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
 		});
 
-	m_pRoughness = m_pContext->createTexture2D();
+	m_pGunMetallic = m_pContext->createTexture2D();
 	TaskDispatcher::execute([this]
 		{
-			m_pRoughness->initFromFile("assets/textures/gunRoughness.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+			m_pGunMetallic->initFromFile("assets/textures/gunMetallic.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+		});
+
+	m_pGunRoughness = m_pContext->createTexture2D();
+	TaskDispatcher::execute([this]
+		{
+			m_pGunRoughness->initFromFile("assets/textures/gunRoughness.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+		});
+
+	m_pCubeAlbedo = m_pContext->createTexture2D();
+	TaskDispatcher::execute([this]
+		{
+			m_pCubeAlbedo->initFromFile("assets/textures/cubeAlbedo.jpg", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+		});
+
+	m_pCubeNormal = m_pContext->createTexture2D();
+	TaskDispatcher::execute([this]
+		{
+			m_pCubeNormal->initFromFile("assets/textures/cubeNormal.jpg", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+		});
+
+	m_pCubeMetallic = m_pContext->createTexture2D();
+	TaskDispatcher::execute([this]
+		{
+			m_pCubeMetallic->initFromFile("assets/textures/cubeMetallic.jpg", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+		});
+
+	m_pCubeRoughness = m_pContext->createTexture2D();
+	TaskDispatcher::execute([this]
+		{
+			m_pCubeRoughness->initFromFile("assets/textures/cubeRoughness.jpg", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
 		});
 
 	// Setup particles
@@ -207,11 +237,19 @@ void Application::init()
 	m_GunMaterial.setAmbientOcclusion(1.0f);
 	m_GunMaterial.setMetallic(1.0f);
 	m_GunMaterial.setRoughness(1.0f);
-	m_GunMaterial.setAlbedoMap(m_pAlbedo);
-	m_GunMaterial.setNormalMap(m_pNormal);
-	m_GunMaterial.setMetallicMap(m_pMetallic);
-	m_GunMaterial.setRoughnessMap(m_pRoughness);
-
+	m_GunMaterial.setAlbedoMap(m_pGunAlbedo);
+	m_GunMaterial.setNormalMap(m_pGunNormal);
+	m_GunMaterial.setMetallicMap(m_pGunMetallic);
+	m_GunMaterial.setRoughnessMap(m_pGunRoughness);
+	
+	m_PlaneMaterial.setAlbedo(glm::vec4(1.0f, 0.5f, 0.5f, 1.0f));
+	m_PlaneMaterial.setAmbientOcclusion(1.0f);
+	m_PlaneMaterial.setMetallic(1.0f);
+	m_PlaneMaterial.setRoughness(1.0f);
+	m_PlaneMaterial.setAlbedoMap(m_pCubeAlbedo);
+	m_PlaneMaterial.setNormalMap(m_pCubeNormal);
+	m_PlaneMaterial.setMetallicMap(m_pCubeMetallic);
+	m_PlaneMaterial.setRoughnessMap(m_pCubeRoughness);
 
 	SamplerParams samplerParams = {};
 	samplerParams.MinFilter = VK_FILTER_LINEAR;
@@ -219,6 +257,7 @@ void Application::init()
 	samplerParams.WrapModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerParams.WrapModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	m_GunMaterial.createSampler(m_pContext, samplerParams);
+	m_PlaneMaterial.createSampler(m_pContext, samplerParams);
 
 	for (uint32_t y = 0; y < SPHERE_COUNT_DIMENSION; y++)
 	{
@@ -259,7 +298,7 @@ void Application::init()
 	m_GraphicsIndex0 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
 	m_GraphicsIndex1 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
 	m_GraphicsIndex2 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
-	
+	m_GraphicsIndex3 = m_pScene->submitGraphicsObject(m_pCube, &m_PlaneMaterial, glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.5f, 0.0f)), glm::vec3(10.0f, 0.1f, 10.0f)));
 	
 	for (uint32_t y = 0; y < SPHERE_COUNT_DIMENSION; y++)
 	{
@@ -327,10 +366,10 @@ void Application::release()
 
 	SAFEDELETE(m_pSkybox);
 	SAFEDELETE(m_pSphere);
-	SAFEDELETE(m_pRoughness);
-	SAFEDELETE(m_pMetallic);
-	SAFEDELETE(m_pNormal);
-	SAFEDELETE(m_pAlbedo);
+	SAFEDELETE(m_pGunRoughness);
+	SAFEDELETE(m_pGunMetallic);
+	SAFEDELETE(m_pGunNormal);
+	SAFEDELETE(m_pGunAlbedo);
 	SAFEDELETE(m_pMesh);
 	SAFEDELETE(m_pRenderingHandler);
 	SAFEDELETE(m_pMeshRenderer);

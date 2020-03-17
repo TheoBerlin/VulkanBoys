@@ -24,7 +24,7 @@ void main()
         return;
 
     ivec2 dstPixelCoords = ivec2(gl_GlobalInvocationID.x % BLUR_IMAGE_SIZE.x, gl_GlobalInvocationID.x / BLUR_IMAGE_SIZE.x);
-    vec2 texCoords = vec2(dstPixelCoords) / vec2(BLUR_IMAGE_SIZE);
+    vec2 texCoords = (vec2(dstPixelCoords) + 0.5f) / vec2(BLUR_IMAGE_SIZE);
 
     vec4 centerColor = texture(u_InputImage, texCoords);
 
@@ -35,7 +35,7 @@ void main()
         float modifiedDepth = pow(LinearizeDepth(depth, 0.01f, 100.0f), 3.0f);
         float factor = roughness * (1.0f - depth);
 
-        vec4 blurColor = blur(u_InputImage, centerColor, texCoords, u_PushConstants.Direction, factor);
+        vec4 blurColor = blur(u_InputImage, centerColor, texCoords, u_PushConstants.Direction, 0.01f);
         imageStore(u_OutputImage, dstPixelCoords, vec4(blurColor.rgb, centerColor.a));
     }
     else
