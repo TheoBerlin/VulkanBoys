@@ -168,6 +168,9 @@ void main()
 	vec3 ambient 	= ((kDiffuse * diffuse) + specular) * ao;
 
 	vec3 finalColor = ambient + L0;
+
+	vec4 velocity = texture(u_Velocity, texCoord);
     out_Color = ColorWrite(finalColor);
+	//out_Color.rgb = vec3(velocity.z * 100.0f);
 	//out_Color.rgb = texture(u_Velocity, texCoord).rgb * 10.0f;
 }

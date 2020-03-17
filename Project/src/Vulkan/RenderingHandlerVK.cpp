@@ -283,9 +283,14 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 #if MULTITHREADED
 		TaskDispatcher::execute([pScene, this]
 			{
-				for (auto& graphicsObject : pScene->getGraphicsObjects())
+				m_pMeshRenderer->setSceneBuffers(pScene->getMaterialParametersBuffer(), pScene->getTransformsBuffer());
+
+				auto& graphicsObjects = pScene->getGraphicsObjects();
+
+				for (uint32_t i = 0; i < graphicsObjects.size(); i++)
 				{
-					m_pMeshRenderer->submitMesh(graphicsObject.pMesh, graphicsObject.pMaterial, graphicsObject.Transform);
+					const GraphicsObjectVK& graphicsObject = graphicsObjects[i];
+					m_pMeshRenderer->submitMesh(graphicsObject.pMesh, graphicsObject.pMaterial, graphicsObject.MaterialParametersIndex, i);
 				}
 				m_pMeshRenderer->endFrame(pScene);
 			});

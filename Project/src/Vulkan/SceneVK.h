@@ -24,13 +24,21 @@ class SamplerVK;
 class CommandPoolVK;
 class CommandBufferVK;
 
+constexpr uint32_t NUM_INITIAL_GRAPHICS_OBJECTS = 10;
+
+struct GraphicsObjectVK
+{
+	const MeshVK* pMesh = nullptr;
+	const Material* pMaterial = nullptr;
+	uint32_t MaterialParametersIndex = 0;
+};
+
 class SceneVK : public IScene
 {
-	struct GraphicsObjectVK
+	struct GraphicsObjectTransforms
 	{
-		const MeshVK* pMesh = nullptr;
-		const Material* pMaterial = nullptr;
 		glm::mat4 Transform;
+		glm::mat4 PrevTransform;
 	};
 
 	struct GeometryInstance
@@ -85,7 +93,6 @@ public:
 	virtual uint32_t submitGraphicsObject(const IMesh* pMesh, const Material* pMaterial, const glm::mat4& transform = glm::mat4(1.0f), uint8_t customMask = 0x80) override;
 	virtual void updateGraphicsObjectTransform(uint32_t index, const glm::mat4& transform) override;
 
-
 	const Camera& getCamera() { return m_Camera; }
 
 	const LightSetup& getLightSetup() { return m_LightSetup; }
@@ -103,6 +110,7 @@ public:
 	const std::vector<const ImageViewVK*>& getRoughnessMaps()		{ return m_RoughnessMaps; }
 	const std::vector<const SamplerVK*>& getSamplers()				{ return m_Samplers; }
 	const BufferVK* getMaterialParametersBuffer()					{ return m_pMaterialParametersBuffer; }
+	const BufferVK* getTransformsBuffer()							{ return m_pTransformsBuffer; }
 
 	const TopLevelAccelerationStructure& getTLAS() { return m_TopLevelAccelerationStructure; }
 
@@ -113,7 +121,7 @@ public:
 private:
 	bool createDefaultTexturesAndSamplers();
 
-	void initBuildBuffers();
+	void initBuffers();
 
 	BottomLevelAccelerationStructure* createBLAS(const MeshVK* pMesh, const Material* pMaterial);
 	bool buildBLASs();
@@ -128,6 +136,7 @@ private:
 	void updateScratchBufferForBLAS();
 	void updateScratchBufferForTLAS();
 	void updateInstanceBuffer();
+	void updateTransformBuffer();
 	bool createCombinedGraphicsObjectData();
 	VkDeviceSize findMaxMemReqBLAS();
 	VkDeviceSize findMaxMemReqTLAS();
@@ -161,8 +170,11 @@ private:
 	std::vector<const ImageViewVK*> m_MetallicMaps;
 	std::vector<const ImageViewVK*> m_RoughnessMaps;
 	std::vector<const SamplerVK*> m_Samplers;
-	std::vector< MaterialParameters> m_MaterialParameters;
+	std::vector<MaterialParameters> m_MaterialParameters;
 	BufferVK* m_pMaterialParametersBuffer;
+
+	std::vector<GraphicsObjectTransforms> m_SceneTransforms;
+	BufferVK* m_pTransformsBuffer;
 
 	TopLevelAccelerationStructure m_OldTopLevelAccelerationStructure;
 	TopLevelAccelerationStructure m_TopLevelAccelerationStructure;
@@ -174,6 +186,7 @@ private:
 	BufferVK* m_pInstanceBuffer;
 	BufferVK* m_pGarbageScratchBuffer;
 	BufferVK* m_pGarbageInstanceBuffer;
+	BufferVK* m_pGarbageTransformsBuffer;
 
 	bool m_BottomLevelIsDirty;
 	bool m_TopLevelIsDirty;

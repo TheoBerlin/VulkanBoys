@@ -50,7 +50,7 @@ layout (push_constant) uniform PushConstants
 layout(location = 0) rayPayloadNV RayPayload rayPayload;
 layout(location = 1) rayPayloadNV ShadowRayPayload shadowRayPayload;
 
-void calculateHitPosition(in vec2 uvCoords, in float z, out vec3 hitPos, out vec3 viewSpacePos)
+void calculatePositions(in vec2 uvCoords, in float z, out vec3 worldPos, out vec3 viewSpacePos)
 {
 	vec2 xy = uvCoords * 2.0f - 1.0f;
 
@@ -59,7 +59,7 @@ void calculateHitPosition(in vec2 uvCoords, in float z, out vec3 hitPos, out vec
 	viewSpacePosition = viewSpacePosition / viewSpacePosition.w;
 	vec4 homogenousPosition = u_Cam.viewInverse * viewSpacePosition;
 
-	hitPos = homogenousPosition.xyz;
+	worldPos = homogenousPosition.xyz;
 	viewSpacePos = viewSpacePosition.xyz;
 }
 
@@ -111,7 +111,7 @@ void main()
 	//Define Constants
 	vec3 hitPos = vec3(0.0f);
 	vec3 viewSpacePos = vec3(0.0f);
-	calculateHitPosition(uvCoords, sampledDepth, hitPos, viewSpacePos);
+	calculatePositions(uvCoords, sampledDepth, hitPos, viewSpacePos);
 
 	//Define new Rays Parameters
 	vec3 reflectedRaysOrigin = hitPos + normal * EPSILON;
@@ -198,7 +198,7 @@ void main()
 	ivec2 prevReflectionDimensions = currentReflectionDimensions; //Todo: Fix this?
 
 	vec2 currentScreenCoords = pixelCoords;
-	vec2 prevScreenCoords = (uvCoords - motion.xy) * prevReflectionDimensions;
+	vec2 prevScreenCoords = (uvCoords + motion.xy) * prevReflectionDimensions;
 
 	bool temporal_sample_valid = false;
 	vec4 temporal_color_histlen_spec = vec4(0);
@@ -218,42 +218,38 @@ void main()
 		(prevSubpixel.x       ) * (prevSubpixel.y       )
 	};
 
+	bool temp_bool = false;
+
 	for(int i = 0; i < 4; i++) 
 	{
 		ivec2 p = ivec2(prevFlooredScreenCoords) + off[i];
-		vec2 p_temp = (vec2(p) + 0.5f) / prevReflectionDimensions;
+		vec2 previousUVCoords = (vec2(p) + 0.5f) / prevReflectionDimensions;
 
 		if(p.x < 0.0f || p.x >= prevReflectionDimensions.x || p.y  < 0.0f || p.y >= prevReflectionDimensions.y)
 			continue;
 
-		float previousDepth = texture(u_Depth, p_temp).x;
-		vec3 previousNormal = calculateNormal(texture(u_Normal_Metallic_Roughness, p_temp));
+		float previousDepth = texture(u_Depth, previousUVCoords).x;
+		vec3 previousNormal = calculateNormal(texture(u_Normal_Metallic_Roughness, previousUVCoords));
 
-		float dist_depth = LinearizeDepth(abs(sampledDepth - previousDepth), 0.1f, 100.0f);// * motion.a;
+		float depthDistance = abs(motion.z) / 2.0f; //Average Delta Depth
 		float CNdotPN = dot(normal, previousNormal);
-		
-		// if(sampledDepth < 0)
-		// {
-		// 	// Reduce the filter sensitivity to depth for secondary surfaces,
-		// 	// because reflection/refraction motion vectors are often inaccurate.
-		// 	dist_depth *= 0.25f;
-		// }
 
-		if(dist_depth < 0.01f && CNdotPN > 0.5f) 
+		if(depthDistance < 0.5f && CNdotPN > 0.5f) 
 		{
-			float w_diff = w[i];
-			float w_spec = w_diff * pow(max(CNdotPN, 0.0f), 128.0f);
+			float wDiff = w[i];
+			float wSpec = wDiff * pow(max(CNdotPN, 0.0f), 128.0f);
 
-			temporal_color_histlen_spec   += imageLoad(u_ReflectionImage, p)      * w_spec;
-			temporalSumSpecularWeight           += w_spec;
+			temporal_color_histlen_spec   += imageLoad(u_ReflectionImage, p) * wSpec;
+			temporalSumSpecularWeight     += wSpec;
+			temp_bool = true;
 		}
 	}
 
 	// We found some relevant surface - good
-	if(temporalSumSpecularWeight > 1e-6)
+	if(temporalSumSpecularWeight > 0.000001f)
 	{
-		float inv_w_spec = 1.0 / temporalSumSpecularWeight;
-		temporal_color_histlen_spec   *= inv_w_spec;
+		float invWSpec = 1.0f / temporalSumSpecularWeight;
+		temporal_color_histlen_spec   *= invWSpec;
 		temporal_sample_valid         = true;
 	}
 	
@@ -263,13 +259,13 @@ void main()
 
 	float flt_min_alpha_color_spec = 0.0625f;
 
-	if(temporal_sample_valid)
+	if(temporal_sample_valid && temp_bool)
 	{
 		float hist_len_spec = clamp(temporal_color_histlen_spec.a + 1.0f, 1.0f, 128.0f);
 
 		// Compute the blending weights based on history length, so that the filter
 		// converges faster. I.e. the first frame has weight of 1.0, the second frame 1/2, third 1/3 and so on.
-		float alpha_color_spec = max(flt_min_alpha_color_spec, 1.0 / hist_len_spec);
+		float alpha_color_spec = max(flt_min_alpha_color_spec, 1.0f / hist_len_spec);
 		//float alpha_color_spec = 0.25f;
 		
 	   	out_color_histlen_spec.rgb = mix(temporal_color_histlen_spec.rgb, color_curr_spec.rgb, alpha_color_spec);

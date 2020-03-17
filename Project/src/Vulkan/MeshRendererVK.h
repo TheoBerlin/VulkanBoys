@@ -33,13 +33,15 @@ class RenderPassVK;
 class ImageViewVK;
 
 //Geometry pass
-#define CAMERA_BUFFER_BINDING	0
-#define VERTEX_BUFFER_BINDING	1
-#define ALBEDO_MAP_BINDING		2
-#define NORMAL_MAP_BINDING		3
-#define AO_MAP_BINDING			4
-#define METALLIC_MAP_BINDING	5
-#define ROUGHNESS_MAP_BINDING	6
+#define CAMERA_BUFFER_BINDING		0
+#define VERTEX_BUFFER_BINDING		1
+#define ALBEDO_MAP_BINDING			2
+#define NORMAL_MAP_BINDING			3
+#define AO_MAP_BINDING				4
+#define METALLIC_MAP_BINDING		5
+#define ROUGHNESS_MAP_BINDING		6
+#define MATERIAL_PARAMETERS_BINDING	7
+#define INSTANCE_TRANSFORMS_BINDING	8
 
 //Light pass
 #define GBUFFER_ALBEDO_BINDING		1
@@ -106,8 +108,9 @@ public:
 	void setClearColor(const glm::vec3& color);
 	void setSkybox(TextureCubeVK* pSkybox, TextureCubeVK* pIrradiance, TextureCubeVK* pEnvironmentMap);
 	void setRayTracingResultImages(ImageViewVK* pRadianceImageView, ImageViewVK* pGlossyImageView);
+	void setSceneBuffers(const BufferVK* pMaterialParametersBuffer, const BufferVK* pTransformsBuffer);
 
-	void submitMesh(const MeshVK* pMesh, const Material* pMaterial, const glm::mat4& transform);
+	void submitMesh(const MeshVK* pMesh, const Material* pMaterial, uint32_t materialIndex, uint32_t transformsIndex);
 	
 	void buildLightPass(RenderPassVK* pRenderPass, FrameBufferVK* pFramebuffer);
 
@@ -158,6 +161,9 @@ private:
 	Texture2DVK* m_pDefaultNormal;
 	BufferVK* m_pCameraBuffer;
 	BufferVK* m_pLightBuffer;
+
+	const BufferVK* m_pMaterialParametersBuffer;
+	const BufferVK* m_pTransformsBuffer;
 
 	PipelineVK* m_pLightPipeline;
 	PipelineLayoutVK* m_pLightPipelineLayout;
