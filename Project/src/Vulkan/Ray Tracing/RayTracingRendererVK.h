@@ -56,6 +56,12 @@ constexpr uint32_t RT_BP_GBUFFER_DEPTH_BINDING = 4;
 
 class RayTracingRendererVK : public IRenderer
 {
+	struct RayTracingParameters
+	{
+		float MaxTemporalFrames = 128.0f;
+		float MinTemporalWeight = 0.01f;
+	};
+
 public:
 	RayTracingRendererVK(GraphicsContextVK* pContext, RenderingHandlerVK* pRenderingHandler);
 	~RayTracingRendererVK();
@@ -66,6 +72,8 @@ public:
 	virtual void endFrame(IScene* pScene) override;
 
 	virtual void render(IScene* pScene, GBufferVK* pGBuffer);
+
+	virtual void renderUI() override;
 
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
 
@@ -120,7 +128,9 @@ private:
 
 	PipelineLayoutVK* m_pBlurPassPipelineLayout;
 
-	DescriptorSetVK* m_pHorizontalBlurPassDescriptorSet;
+	DescriptorSetVK* m_pHorizontalInitialBlurPassDescriptorSet;
+	DescriptorSetVK* m_pHorizontalExtraBlurPassDescriptorSet;
+
 	DescriptorSetVK* m_pVerticalBlurPassDescriptorSet;
 
 	DescriptorPoolVK* m_pBlurPassDescriptorPool;
@@ -135,15 +145,21 @@ private:
 	Texture2DVK* m_pBRDFLookUp;
 	Texture2DVK* m_pBlueNoise;
 
-	ImageVK* m_pReflectionFinalImage;
-	ImageViewVK* m_pReflectionFinalImageView;
+	ImageVK* m_pReflectionTemporalAccumulationImage;
+	ImageViewVK* m_pReflectionTemporalAccumulationImageView;
 
 	ImageVK* m_pReflectionIntermediateImage;
 	ImageViewVK* m_pReflectionIntermediateImageView;
+
+	ImageVK* m_pReflectionFinalImage;
+	ImageViewVK* m_pReflectionFinalImageView;
 
 	BufferVK* m_pCameraBuffer;
 	BufferVK* m_pLightsBuffer;
 
 	SamplerVK* m_pNearestSampler;
 	SamplerVK* m_pLinearSampler;
+
+	//Tuneable Parameters
+	RayTracingParameters m_RayTracingParameters;
 };

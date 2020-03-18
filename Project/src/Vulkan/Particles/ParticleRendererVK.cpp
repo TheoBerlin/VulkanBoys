@@ -115,6 +115,10 @@ void ParticleRendererVK::endFrame(IScene* pScene)
 	m_ppCommandBuffers[currentFrame]->end();
 }
 
+void ParticleRendererVK::renderUI()
+{
+}
+
 void ParticleRendererVK::submitParticles(ParticleEmitter* pEmitter)
 {
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();

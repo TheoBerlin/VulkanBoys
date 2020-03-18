@@ -192,6 +192,10 @@ void MeshRendererVK::endFrame(IScene* pScene)
 	m_ppGeometryPassBuffers[m_CurrentFrame]->end();
 }
 
+void MeshRendererVK::renderUI()
+{
+}
+
 void MeshRendererVK::setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY)
 {
 	m_Viewport.x		= topX;

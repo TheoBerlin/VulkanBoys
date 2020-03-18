@@ -68,11 +68,6 @@ layout (binding = 16) uniform LightBuffer
 layout(binding = 18, set = 0) uniform sampler2D u_BrdfLUT;
 layout(binding = 20, set = 0) uniform sampler2D u_BlueNoiseLUT;
 
-layout (push_constant) uniform PushConstants
-{
-	float counter;
-} u_PushConstants;
-
 vec3 myRefract(vec3 I, vec3 N, float ior)
 {
     float cosi = clamp(-1.0f, 1.0f, dot(I, N));
@@ -165,7 +160,7 @@ void main()
 		float sampledRoughness = texture(u_SceneRougnessMaps[materialIndex], texCoords).r;
 		float sampledAO = texture(u_SceneAOMaps[materialIndex], texCoords).r;
 		float metallic = mp.Metallic * sampledMetallic;
-		float roughness = mp.Roughness * sampledRoughness;
+		float roughness = max(mp.Roughness * sampledRoughness, 0.00001f);
 		float ao = mp.AO * sampledAO;
 		
 		//Init BRDF values
@@ -216,25 +211,26 @@ void main()
 		}
 
 		//Irradiance from surroundings
-		vec3 diffuse 	= albedo * vec3(0.03f);
+		vec3 diffuse 	= albedo;
 		vec3 f 			= FresnelRoughness(f0, NdotV, roughness);
 		vec3 kDiffuse 	= (vec3(1.0f) - f) * metallicFactor;
 
 		vec3 reflDir = reflect(gl_WorldRayDirectionNV, normal);
-		//reflDir = ReflectanceDirection(hitPos + u_PushConstants.counter, reflDir, roughness);
+		//reflDir = ReflectanceDirection(hitPos + u_PushConstants.Counter, reflDir, roughness);
 
 		rayPayload.Radiance = vec3(0.0f);
 		rayPayload.Recursion = recursionNumber + 1;
 		traceNV(u_TopLevelAS, rayFlags, cullMask, 0, 0, 0, reflectedRaysOrigin, tmin, reflDir, tmax, 0);
 
 		vec2 envBRDF 	= texture(u_BrdfLUT, vec2(NdotV, roughness)).rg;
-		vec3 specular	= rayPayload.Recursion * (f * envBRDF.x + envBRDF.y);
+		vec3 specular	= rayPayload.Radiance * (f * envBRDF.x + envBRDF.y);
 
 		vec3 ambient 	= ((kDiffuse * diffuse) + specular) * ao; //Approximate diffuse with albedo * vec3(0.03f)
 
 		vec3 finalColor = ambient + Lo;
 
-		rayPayload.Radiance = Lo + rayPayload.Radiance;
+		rayPayload.Radiance = finalColor;
+		//rayPayload.Radiance = vec3(1.0f, 0.0f, 0.0f);
 	}
 	else
 	{

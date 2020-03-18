@@ -251,7 +251,7 @@ void Application::init()
 	m_GunMaterial.setMetallicMap(m_pGunMetallic);
 	m_GunMaterial.setRoughnessMap(m_pGunRoughness);
 	
-	m_PlaneMaterial.setAlbedo(glm::vec4(1.0f, 0.5f, 0.5f, 1.0f));
+	m_PlaneMaterial.setAlbedo(glm::vec4(1.0f));
 	m_PlaneMaterial.setAmbientOcclusion(1.0f);
 	m_PlaneMaterial.setMetallic(1.0f);
 	m_PlaneMaterial.setRoughness(1.0f);
@@ -586,7 +586,7 @@ void Application::renderUI(double dt)
 	ImGui::End();
 
 	// Particle control panel
-	ImGui::SetNextWindowSize(ImVec2(420, 210), ImGuiCond_Always);
+	ImGui::SetNextWindowSize(ImVec2(420, 210), ImGuiCond_FirstUseEver);
 	if (ImGui::Begin("Particles", NULL)) {
 		ImGui::Text("Toggle Computation Device");
 		const char* btnLabel = m_pParticleEmitterHandler->gpuComputed() ? "GPU" : "CPU";
@@ -663,7 +663,7 @@ void Application::renderUI(double dt)
 	// Emitter creation window
 	if (m_CreatingEmitter) {
 		// Open a new window
-		ImGui::SetNextWindowSize(ImVec2(420, 210), ImGuiCond_Always);
+		ImGui::SetNextWindowSize(ImVec2(420, 210), ImGuiCond_FirstUseEver);
 		if (ImGui::Begin("Emitter Creation", NULL)) {
 			float yaw = getYaw(m_NewEmitterInfo.direction);
 			float oldYaw = yaw;
@@ -709,6 +709,17 @@ void Application::renderUI(double dt)
 		m_pRenderingHandler->drawProfilerUI();
 	}
 	ImGui::End();
+
+	if (m_pContext->isRayTracingEnabled())
+	{
+		// Draw Ray Tracing UI
+		ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);
+		if (ImGui::Begin("Ray Tracer", NULL))
+		{
+			m_pRayTracingRenderer->renderUI();
+		}
+		ImGui::End();
+	}
 
 	m_pImgui->end();
 }

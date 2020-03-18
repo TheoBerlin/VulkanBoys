@@ -100,6 +100,8 @@ public:
 	virtual void beginFrame(IScene* pScene) override;
 	virtual void endFrame(IScene* pScene) override;
 
+	virtual void renderUI() override;
+
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
 	
 	void setupFrame(CommandBufferVK* pPrimaryBuffer, const Camera& camera, const LightSetup& lightsetup);

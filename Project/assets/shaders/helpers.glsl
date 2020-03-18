@@ -2,6 +2,8 @@
 const float PI 		= 3.14159265359f;
 const float EPSILON = 0.001f;
 
+const float MAX_TEMPORAL_FRAMES = 256.0f;
+
 vec4 bilateralBlur13Roughness(sampler2D image, vec4 centerColor, vec2 texCoords, vec2 direction, float roughness) 
 {
     vec3 color = vec3(0.0f);
@@ -59,8 +61,15 @@ vec3 blur5(sampler2D image, vec4 centerColor, vec2 texCoords, vec2 normalizedDir
     vec3 color = vec3(0.0f);
     vec2 off1 = vec2(1.3333333333333333f) * normalizedDirection;
     color += centerColor.rgb * 0.29411764705882354f;
-    color += texture(image, texCoords + off1).rgb * 0.35294117647058826f;
-    color += texture(image, texCoords - off1).rgb * 0.35294117647058826f;
+
+    vec4 color0 = texture(image, texCoords + off1);
+    vec4 color1 = texture(image, texCoords - off1);
+
+    float factor0 = color0.a >= 1.0f ? 1.0f : 0.0f;
+    float factor1 = color1.a >= 1.0f ? 1.0f : 0.0f;
+
+    color += color0.rgb * factor0 * 0.35294117647058826f;
+    color += color1.rgb * factor1 * 0.35294117647058826f;
     return color; 
 }
 
@@ -161,8 +170,8 @@ vec3 FresnelRoughness(vec3 F0, float cosTheta, float roughness)
 */
 float Distribution(vec3 normal, vec3 halfVector, float roughness)
 {
-	float roughnessSqrd = roughness*roughness;
-	float alphaSqrd 	= roughnessSqrd *roughnessSqrd;
+	float roughnessSqrd = roughness * roughness;
+	float alphaSqrd 	= max(roughnessSqrd * roughnessSqrd, 0.0000001f);
 
 	float NdotH = max(dot(normal, halfVector), 0.0f);
 

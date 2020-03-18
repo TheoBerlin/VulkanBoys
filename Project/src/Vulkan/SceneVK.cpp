@@ -349,7 +349,7 @@ uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMate
 				blasCopy.MaterialIndex = m_Materials.size();
 				m_Materials.push_back(pMaterial);
 
-				std::unordered_map<const Material*, BottomLevelAccelerationStructure> tempBLASPerMesh;
+				std::map<const Material*, BottomLevelAccelerationStructure> tempBLASPerMesh;
 				tempBLASPerMesh[pMaterial] = blasCopy;
 				m_NewBottomLevelAccelerationStructures[pVulkanMesh] = tempBLASPerMesh;
 
@@ -574,7 +574,7 @@ SceneVK::BottomLevelAccelerationStructure* SceneVK::createBLAS(const MeshVK* pMe
 	bottomLevelAccelerationStructure.MaterialIndex = m_Materials.size();
 	m_Materials.push_back(pMaterial);
 
-	std::unordered_map<const Material*, BottomLevelAccelerationStructure> newBLASPerMesh;
+	std::map<const Material*, BottomLevelAccelerationStructure> newBLASPerMesh;
 	newBLASPerMesh[pMaterial] = bottomLevelAccelerationStructure;
 	m_NewBottomLevelAccelerationStructures[pMesh] = newBLASPerMesh;
 
@@ -599,13 +599,13 @@ bool SceneVK::buildBLASs()
 	{
 		const MeshVK* pMesh = bottomLevelAccelerationStructurePerMesh.first;
 
-		std::unordered_map<const Material*, BottomLevelAccelerationStructure>* finalizedBLASperMaterial;
+		std::map<const Material*, BottomLevelAccelerationStructure>* finalizedBLASperMaterial;
 		auto finalizedBLASperMaterialIt = m_FinalizedBottomLevelAccelerationStructures.find(pMesh);
 
 		//Check if this map exists in finalized maps
 		if (finalizedBLASperMaterialIt == m_FinalizedBottomLevelAccelerationStructures.end())
 		{
-			m_FinalizedBottomLevelAccelerationStructures[pMesh] = std::unordered_map<const Material*, BottomLevelAccelerationStructure>();
+			m_FinalizedBottomLevelAccelerationStructures[pMesh] = std::map<const Material*, BottomLevelAccelerationStructure>();
 			finalizedBLASperMaterial = &m_FinalizedBottomLevelAccelerationStructures[pMesh];
 		}
 		else
@@ -1011,11 +1011,13 @@ bool SceneVK::createCombinedGraphicsObjectData()
 
 		for (auto& bottomLevelAccelerationStructure : m_FinalizedBottomLevelAccelerationStructures[pMesh])
 		{
-			for (auto& geometryInstance : m_GeometryInstances)
+			for (uint32_t i = 0; i < m_GraphicsObjects.size(); i++)
 			{
-				if (geometryInstance.AccelerationStructureHandle == bottomLevelAccelerationStructure.second.Handle)
+				GraphicsObjectVK& graphicsObject = m_GraphicsObjects[i];
+
+				if (graphicsObject.pMesh == pMesh && graphicsObject.pMaterial == bottomLevelAccelerationStructure.first)
 				{
-					geometryInstance.InstanceId = currentCustomInstanceIndexNV;
+					m_GeometryInstances[i].InstanceId = currentCustomInstanceIndexNV;
 				}
 			}
 

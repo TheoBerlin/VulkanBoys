@@ -13,6 +13,8 @@ layout(binding = 4, set = 0) uniform sampler2D u_Depth;
 layout (push_constant) uniform PushConstants
 {
 	vec2 Direction;
+    float MaxTemporalFrames;
+    float MinTemporalWeight;
 } u_PushConstants;
 
 void main()
@@ -28,15 +30,16 @@ void main()
 
     vec4 centerColor = texture(u_InputImage, texCoords);
 
-    if (centerColor.a > 0.01f)
+    if (centerColor.a < u_PushConstants.MaxTemporalFrames * 0.5f)
     {
-        float roughness = texture(u_Normal_Roughness, texCoords).a;
-        float depth = texture(u_Depth, texCoords).r;
-        float modifiedDepth = pow(LinearizeDepth(depth, 0.01f, 100.0f), 3.0f);
-        float factor = roughness * (1.0f - depth);
+        //float roughness = texture(u_Normal_Roughness, texCoords).a;
+        //float depth = texture(u_Depth, texCoords).r;
 
-        vec4 blurColor = blur(u_InputImage, centerColor, texCoords, u_PushConstants.Direction, 0.01f);
-        imageStore(u_OutputImage, dstPixelCoords, vec4(blurColor.rgb, centerColor.a));
+        vec2 imageResolution = textureSize(u_InputImage, 0);
+        vec2 normalizedDirection = u_PushConstants.Direction / imageResolution;
+
+        vec3 blurColor = blur5(u_InputImage, centerColor, texCoords, normalizedDirection);
+        imageStore(u_OutputImage, dstPixelCoords, vec4(blurColor, (2.0f / (u_PushConstants.Direction.x + 1.0f)) * centerColor.a));
     }
     else
     {

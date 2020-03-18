@@ -6,7 +6,7 @@
 #include "Vulkan/Texture2DVK.h"
 
 #include <vector>
-#include <unordered_map>
+#include <map>
 
 class IGraphicsContext;
 class GraphicsContextVK;
@@ -164,7 +164,7 @@ private:
 	BufferVK* m_pMeshIndexBuffer;
 
 	std::vector<const Material*> m_Materials;
-	std::unordered_map<const Material*, uint32_t> m_MaterialIndices; //This is only used when Ray Tracing is Disabled
+	std::map<const Material*, uint32_t> m_MaterialIndices; //This is only used when Ray Tracing is Disabled
 
 	std::vector<const ImageViewVK*> m_AlbedoMaps;
 	std::vector<const ImageViewVK*> m_NormalMaps;
@@ -180,8 +180,8 @@ private:
 
 	TopLevelAccelerationStructure m_OldTopLevelAccelerationStructure;
 	TopLevelAccelerationStructure m_TopLevelAccelerationStructure;
-	std::unordered_map<const MeshVK*, std::unordered_map<const Material*, BottomLevelAccelerationStructure>> m_NewBottomLevelAccelerationStructures;
-	std::unordered_map<const MeshVK*, std::unordered_map<const Material*, BottomLevelAccelerationStructure>> m_FinalizedBottomLevelAccelerationStructures;
+	std::map<const MeshVK*, std::map<const Material*, BottomLevelAccelerationStructure>> m_NewBottomLevelAccelerationStructures;
+	std::map<const MeshVK*, std::map<const Material*, BottomLevelAccelerationStructure>> m_FinalizedBottomLevelAccelerationStructures;
 	uint32_t m_NumBottomLevelAccelerationStructures;
 
 	BufferVK* m_pScratchBuffer;

@@ -44,7 +44,9 @@ struct ShadowRayPayload
 
 layout (push_constant) uniform PushConstants
 {
-	float counter;
+	float Counter;
+	float MaxTemporalFrames;
+	float MinTemporalWeight;
 } u_PushConstants;
 
 layout(location = 0) rayPayloadNV RayPayload rayPayload;
@@ -97,7 +99,7 @@ void main()
 	vec3 normal = calculateNormal(sampledNormalMetallicRoughness);
 
 	//Skybox
-	if (dot(normal, normal) < 0.5f)
+	if (dot(sampledNormalMetallicRoughness, sampledNormalMetallicRoughness) < EPSILON)
 	{
 		imageStore(u_RadianceImage, pixelCoords, vec4(1.0f, 0.0f, 1.0f, 0.0f));
 		imageStore(u_ReflectionImage, pixelCoords, vec4(1.0f, 0.0f, 1.0f, 0.0f));
@@ -127,7 +129,7 @@ void main()
 	//Setup PBR Parameters
 	vec3 albedo = sampledAlbedoAO.rgb;
 	float ao = sampledAlbedoAO.a;
-	float roughness = sampledNormalMetallicRoughness.a;
+	float roughness = abs(sampledNormalMetallicRoughness.a);
 	float metallic = sampledNormalMetallicRoughness.z;
 
 	//Init BRDF values
@@ -178,7 +180,7 @@ void main()
 	imageStore(u_RadianceImage, pixelCoords, vec4(Lo, 1.0f));
 
 	//Reflection
-	vec2 uniformRandom = texture(u_BlueNoiseLUT, uvCoords + vec2(u_PushConstants.counter)).rg;
+	vec2 uniformRandom = texture(u_BlueNoiseLUT, uvCoords + vec2(u_PushConstants.Counter)).rg;
 
 	vec3 Rt = vec3(0.0f);
 	vec3 Rb = vec3(0.0f);
@@ -193,79 +195,80 @@ void main()
 	//Temporal Filtering
 	//vec4 motion = texelFetch(TEX_PT_MOTION, ipos, 0);
 	vec4 motion = texture(u_Velocity, uvCoords);
-
-	ivec2 currentReflectionDimensions = imageSize(u_ReflectionImage); 
-	ivec2 prevReflectionDimensions = currentReflectionDimensions; //Todo: Fix this?
-
-	vec2 currentScreenCoords = pixelCoords;
-	vec2 prevScreenCoords = (uvCoords + motion.xy) * prevReflectionDimensions;
-
 	bool temporal_sample_valid = false;
+	
 	vec4 temporal_color_histlen_spec = vec4(0);
-
 	float temporalSumSpecularWeight = 0.0f;
 
-	vec2 prevFlooredScreenCoords = floor(prevScreenCoords - vec2(0.5f));
-	vec2 prevSubpixel = fract(prevScreenCoords - vec2(0.5f) - prevFlooredScreenCoords);
-
-	// Bilinear/bilateral filter
-	const ivec2 off[4] = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } };
-	float w[4] = 
+	if (dot(motion.xy, motion.xy) < 1e-6f)
 	{
-		(1.0f - prevSubpixel.x) * (1.0f - prevSubpixel.y),
-		(prevSubpixel.x       ) * (1.0f - prevSubpixel.y),
-		(1.0f - prevSubpixel.x) * (prevSubpixel.y       ),
-		(prevSubpixel.x       ) * (prevSubpixel.y       )
-	};
+		ivec2 currentReflectionDimensions = imageSize(u_ReflectionImage); 
+		ivec2 prevReflectionDimensions = currentReflectionDimensions; //Todo: Fix this?
 
-	bool temp_bool = false;
+		vec2 currentScreenCoords = pixelCoords;
+		vec2 prevScreenCoords = (uvCoords + motion.xy) * prevReflectionDimensions;
 
-	for(int i = 0; i < 4; i++) 
-	{
-		ivec2 p = ivec2(prevFlooredScreenCoords) + off[i];
-		vec2 previousUVCoords = (vec2(p) + 0.5f) / prevReflectionDimensions;
 
-		if(p.x < 0.0f || p.x >= prevReflectionDimensions.x || p.y  < 0.0f || p.y >= prevReflectionDimensions.y)
-			continue;
+		vec2 prevFlooredScreenCoords = floor(prevScreenCoords - vec2(0.5f));
+		vec2 prevSubpixel = fract(prevScreenCoords - vec2(0.5f) - prevFlooredScreenCoords);
 
-		float previousDepth = texture(u_Depth, previousUVCoords).x;
-		vec3 previousNormal = calculateNormal(texture(u_Normal_Metallic_Roughness, previousUVCoords));
-
-		float depthDistance = abs(motion.z) / 2.0f; //Average Delta Depth
-		float CNdotPN = dot(normal, previousNormal);
-
-		if(depthDistance < 0.5f && CNdotPN > 0.5f) 
+		// Bilinear/bilateral filter
+		const ivec2 off[4] = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } };
+		float w[4] = 
 		{
-			float wDiff = w[i];
-			float wSpec = wDiff * pow(max(CNdotPN, 0.0f), 128.0f);
+			(1.0f - prevSubpixel.x) * (1.0f - prevSubpixel.y),
+			(prevSubpixel.x       ) * (1.0f - prevSubpixel.y),
+			(1.0f - prevSubpixel.x) * (prevSubpixel.y       ),
+			(prevSubpixel.x       ) * (prevSubpixel.y       )
+		};
 
-			temporal_color_histlen_spec   += imageLoad(u_ReflectionImage, p) * wSpec;
-			temporalSumSpecularWeight     += wSpec;
-			temp_bool = true;
+		for(int i = 0; i < 4; i++) 
+		{
+			ivec2 p = ivec2(prevFlooredScreenCoords) + off[i];
+			vec2 previousUVCoords = (vec2(p) + 0.5f) / prevReflectionDimensions;
+
+			if(p.x < 0.0f || p.x >= prevReflectionDimensions.x || p.y  < 0.0f || p.y >= prevReflectionDimensions.y)
+				continue;
+
+			float previousDepth = texture(u_Depth, previousUVCoords).x;
+			vec3 previousNormal = calculateNormal(texture(u_Normal_Metallic_Roughness, previousUVCoords));
+
+			float depthDistance = abs(/*sampledDepth - previousDepth + */motion.z) / 2.0f; //Average Delta Depth
+			float CNdotPN = dot(normal, previousNormal);
+
+			if(depthDistance < 0.5f && CNdotPN > 0.5f) 
+			{
+				float wDiff = w[i];
+				float wSpec = wDiff * pow(max(CNdotPN, 0.0f), 128.0f);
+
+				temporal_color_histlen_spec   += imageLoad(u_ReflectionImage, p) * wSpec;
+				temporalSumSpecularWeight     += wSpec;
+			}
 		}
-	}
 
-	// We found some relevant surface - good
-	if(temporalSumSpecularWeight > 0.000001f)
-	{
-		float invWSpec = 1.0f / temporalSumSpecularWeight;
-		temporal_color_histlen_spec   *= invWSpec;
-		temporal_sample_valid         = true;
+		// We found some relevant surface - good
+		if(temporalSumSpecularWeight > 1e-6f)
+		{
+			float invWSpec = 1.0f / temporalSumSpecularWeight;
+			temporal_color_histlen_spec   *= invWSpec;
+			temporal_sample_valid         = true;
+		}
 	}
 	
 	vec3 color_curr_spec = rayPayload.Radiance;
 	
 	vec4 out_color_histlen_spec;
 
-	float flt_min_alpha_color_spec = 0.0625f;
-
-	if(temporal_sample_valid && temp_bool)
+	float minTemporalWeight = clamp(1.0f / pow(1000000.0f, roughness), 0.001f, 1.0f);
+	//float minTemporalWeight = u_PushConstants.MinTemporalWeight
+  
+	if(temporal_sample_valid)
 	{
-		float hist_len_spec = clamp(temporal_color_histlen_spec.a + 1.0f, 1.0f, 128.0f);
+		float hist_len_spec = clamp(temporal_color_histlen_spec.a + 1.0f, 1.0f, u_PushConstants.MaxTemporalFrames);
 
 		// Compute the blending weights based on history length, so that the filter
 		// converges faster. I.e. the first frame has weight of 1.0, the second frame 1/2, third 1/3 and so on.
-		float alpha_color_spec = max(flt_min_alpha_color_spec, 1.0f / hist_len_spec);
+		float alpha_color_spec = max(minTemporalWeight, 1.0f / hist_len_spec);
 		//float alpha_color_spec = 0.25f;
 		
 	   	out_color_histlen_spec.rgb = mix(temporal_color_histlen_spec.rgb, color_curr_spec.rgb, alpha_color_spec);
