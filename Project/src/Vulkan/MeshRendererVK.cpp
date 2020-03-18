@@ -157,7 +157,8 @@ void MeshRendererVK::beginFrame(IScene* pScene)
 	m_ppGeometryPassPools[m_CurrentFrame]->reset();
 
 	// Needed to begin a secondary buffer
-	RenderPassVK* pGeometryRenderPass = m_pRenderingHandler->getGeometryRenderPass();
+	RenderPassVK*	pGeometryRenderPass	= m_pRenderingHandler->getGeometryRenderPass();
+	FrameBufferVK*	pFramebuffer		= m_pRenderingHandler->getGBuffer()->getFrameBuffer();
 
 	VkCommandBufferInheritanceInfo inheritanceInfo = {};
 	inheritanceInfo.sType		= VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
@@ -165,7 +166,7 @@ void MeshRendererVK::beginFrame(IScene* pScene)
 	inheritanceInfo.renderPass	= pGeometryRenderPass->getRenderPass();
 	//TODO: Not use subpass zero all the time?
 	inheritanceInfo.subpass		= 0;
-	inheritanceInfo.framebuffer = m_pRenderingHandler->getGBuffer()->getFrameBuffer()->getFrameBuffer();
+	inheritanceInfo.framebuffer = pFramebuffer->getFrameBuffer();
 
 	m_ppGeometryPassBuffers[m_CurrentFrame]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
 	m_pGPassProfiler->beginFrame(m_ppGeometryPassBuffers[m_CurrentFrame]);

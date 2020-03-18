@@ -1,5 +1,3 @@
-#include "RenderingHandlerVK.h"
-
 #include "Common/IBuffer.h"
 #include "Common/IGraphicsContext.h"
 #include "Common/IImgui.h"
@@ -8,6 +6,7 @@
 
 #include "Core/TaskDispatcher.h"
 
+#include "RenderingHandlerVK.h"
 #include "BufferVK.h"
 #include "CommandBufferVK.h"
 #include "CommandPoolVK.h"
@@ -22,17 +21,18 @@
 #include "ImguiVK.h"
 #include "GBufferVK.h"
 #include "SceneVK.h"
+#include "ImageVK.h"
+#include "ImageViewVK.h"
 
 #include "Particles/ParticleEmitterHandlerVK.h"
 #include "Particles/ParticleRendererVK.h"
 
 #include "Ray Tracing/RayTracingRendererVK.h"
-#include <Vulkan\ImageVK.h>
-#include <Vulkan\ImageViewVK.h>
+
 
 constexpr uint32_t RAY_TRACING_RESOLUTION_DENOMINATOR = 1;
 
-#define MULTITHREADED 1
+#define MULTITHREADED 0
 
 RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 	:m_pGraphicsContext(pGraphicsContext),
@@ -162,42 +162,7 @@ ITextureCube* RenderingHandlerVK::generateTextureCube(ITexture2D* pPanorama, ETe
 
 void RenderingHandlerVK::render(IScene* pScene)
 {
-	SceneVK* pVulkanScene = reinterpret_cast<SceneVK*>(pScene);
-
-	//Todo: These should probably not be seperate anymore
-	beginFrame(pVulkanScene);
-	endFrame(pVulkanScene);
-	swapBuffers();
-}
-
-void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
-{
-	m_pGraphicsContext->getDevice()->wait();
-	releaseBackBuffers();
-
-	m_pGraphicsContext->getSwapChain()->resize(width, height);
-
-	m_pGBuffer->resize(width, height);
-	createBackBuffers();
-
-	if (m_pMeshRenderer)
-	{
-		m_pMeshRenderer->onWindowResize(width, height);
-	}
-
-	if (m_pRayTracer)
-	{
-		//m_pRayTracer->onWindowResize(width, height);
-		//Temp?
-		m_pRayTracer->setResolution(width / RAY_TRACING_RESOLUTION_DENOMINATOR, height / RAY_TRACING_RESOLUTION_DENOMINATOR);
-	}
-
-	createRayTracingRenderImage(width, height);
-	m_pMeshRenderer->setRayTracingResult(m_pRayTracingStorageImageView);
-}
-
-void RenderingHandlerVK::beginFrame(SceneVK* pScene)
-{
+	SceneVK* pVulkanScene	= reinterpret_cast<SceneVK*>(pScene);
 	SwapChainVK* pSwapChain = m_pGraphicsContext->getSwapChain();
 	pSwapChain->acquireNextImage(m_ImageAvailableSemaphores[m_CurrentFrame]);
 	m_BackBufferIndex = pSwapChain->getImageIndex();
@@ -211,41 +176,41 @@ void RenderingHandlerVK::beginFrame(SceneVK* pScene)
 	m_ppComputeCommandPools[m_CurrentFrame]->reset();
 	m_ppComputeCommandBuffers[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-	const Camera& camera = pScene->getCamera();
-	const LightSetup& lightsetup = pScene->getLightSetup();
-
+	const Camera& camera			= pVulkanScene->getCamera();
+	const LightSetup& lightsetup	= pVulkanScene->getLightSetup();
 	updateBuffers(camera);
 
-	if (m_pMeshRenderer != nullptr)
+	if (m_pParticleRenderer)
 	{
-		m_pMeshRenderer->setupFrame(m_ppGraphicsCommandBuffers[m_CurrentFrame], camera, lightsetup);
-		m_pMeshRenderer->beginFrame(pScene);
-	}
-
-	if (m_pParticleRenderer != nullptr)
-	{
-		m_pParticleRenderer->beginFrame(pScene);
+		m_pParticleRenderer->getProfiler()->reset(m_CurrentFrame, m_ppGraphicsCommandBuffers[m_CurrentFrame]);
+#if MULTITHREADED
+		m_pParticleRenderer->beginFrame(pVulkanScene);
+		TaskDispatcher::execute([pVulkanScene, this]
+			{
+				submitParticles();
+				m_pParticleRenderer->endFrame(pVulkanScene);
+			});
+#else
+		m_pParticleRenderer->beginFrame(pVulkanScene);
 		submitParticles();
+		m_pParticleRenderer->endFrame(pVulkanScene);
+#endif
 	}
-
-	//startRenderPass();
-}
-
-void RenderingHandlerVK::endFrame(SceneVK* pScene)
-{
-	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
 
 	// Submit the rendering handler's command buffer
 	if (m_pParticleEmitterHandler)
 	{
-		ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
-		if (pEmitterHandler->gpuComputed())
-		{
-			for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters())
+		TaskDispatcher::execute([&, this]
 			{
-				pEmitterHandler->releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
-			}
-		}
+				ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
+				if (pEmitterHandler->gpuComputed())
+				{
+					for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters())
+					{
+						pEmitterHandler->releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
+					}
+				}
+			});
 	}
 
 	//Render all the meshes
@@ -253,6 +218,22 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 	FrameBufferVK*		pBackbufferWithDepth	= getCurrentBackBufferWithDepth();
 	CommandBufferVK*	pSecondaryCommandBuffer = m_ppCommandBuffersSecondary[m_CurrentFrame];
 	CommandPoolVK*		pSecondaryCommandPool	= m_ppCommandPoolsSecondary[m_CurrentFrame];
+
+	m_pMeshRenderer->setupFrame(m_ppGraphicsCommandBuffers[m_CurrentFrame], camera, lightsetup);
+#if MULTITHREADED
+	m_pMeshRenderer->beginFrame(pVulkanScene);
+	TaskDispatcher::execute([pVulkanScene, this]
+		{
+			for (auto& graphicsObject : pVulkanScene->getGraphicsObjects())
+			{
+				m_pMeshRenderer->submitMesh(graphicsObject.pMesh, graphicsObject.pMaterial, graphicsObject.Transform);
+			}
+			m_pMeshRenderer->endFrame(pVulkanScene);
+		});
+	TaskDispatcher::execute([this]
+		{
+			m_pMeshRenderer->buildLightPass(m_pBackBufferRenderPass, getCurrentBackBuffer());
+		});
 
 	if (m_pImGuiRenderer)
 	{
@@ -263,7 +244,7 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 				inheritanceInfo.sType		= VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
 				inheritanceInfo.pNext		= nullptr;
 				inheritanceInfo.renderPass	= m_pBackBufferRenderPass->getRenderPass();
-				inheritanceInfo.subpass		= 0; // TODO: Don't hardcode this :(
+				inheritanceInfo.subpass		= 0;
 				inheritanceInfo.framebuffer = pBackbuffer->getFrameBuffer();
 
 				pSecondaryCommandBuffer->reset(false);
@@ -274,71 +255,73 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 			});
 	}
 
-	if (m_pMeshRenderer)
-	{
-		//Start renderpass
-		VkClearValue clearValues[] = { m_ClearColor, m_ClearColor, m_ClearColor, m_ClearDepth };
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pGeometryRenderPass, m_pGBuffer->getFrameBuffer(), (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 4, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-
-#if MULTITHREADED
-		TaskDispatcher::execute([pScene, this]
-			{
-				for (auto& graphicsObject : pScene->getGraphicsObjects())
-				{
-					m_pMeshRenderer->submitMesh(graphicsObject.pMesh, graphicsObject.pMaterial, graphicsObject.Transform);
-				}
-				m_pMeshRenderer->endFrame(pScene);
-			});
-		TaskDispatcher::execute([this]
-			{
-				m_pMeshRenderer->buildLightPass(m_pBackBufferRenderPass, getCurrentBackBuffer());
-			});
-
-		TaskDispatcher::waitForTasks();
+	TaskDispatcher::waitForTasks();
 #else
-		for (auto& graphicsObject : pScene->getGraphicsObjects())
-		{
-			m_pMeshRenderer->submitMesh(graphicsObject.pMesh, graphicsObject.pMaterial, graphicsObject.Transform);
-		}
-		m_pMeshRenderer->endFrame(pScene);
-		m_pMeshRenderer->buildLightPass(m_pBackBufferRenderPass, getCurrentBackBuffer());
-#endif
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pMeshRenderer->getGeometryCommandBuffer());
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
+	// Needed to begin a secondary buffer
+	VkCommandBufferInheritanceInfo inheritanceInfo = {};
+	inheritanceInfo.sType		= VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+	inheritanceInfo.pNext		= nullptr;
+	inheritanceInfo.renderPass	= m_pBackBufferRenderPass->getRenderPass();
+	inheritanceInfo.subpass		= 0;
+	inheritanceInfo.framebuffer = pBackbuffer->getFrameBuffer();
 
-		if (m_pRayTracer)
-		{
-			m_ppGraphicsCommandBuffers[m_CurrentFrame]->releaseImagesOwnership(
-				m_pGBuffer->getColorImages(),
-				m_pGBuffer->getColorImageCount(),
-				VK_ACCESS_MEMORY_READ_BIT,
-				m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
-				m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-				VK_SHADER_STAGE_RAYGEN_BIT_NV);
+	pSecondaryCommandBuffer->reset(false);
+	pSecondaryCommandPool->reset();
+	pSecondaryCommandBuffer->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
+	m_pImGuiRenderer->render(pSecondaryCommandBuffer);
+	pSecondaryCommandBuffer->end();
 
-			m_ppGraphicsCommandBuffers[m_CurrentFrame]->releaseImageOwnership(
-				m_pGBuffer->getDepthImage(),
-				VK_ACCESS_MEMORY_READ_BIT,
-				m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
-				m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-				VK_SHADER_STAGE_RAYGEN_BIT_NV,
-				VK_IMAGE_ASPECT_DEPTH_BIT);
-
-			m_ppGraphicsCommandBuffers[m_CurrentFrame]->releaseImageOwnership(
-				m_pRayTracingStorageImage,
-				VK_ACCESS_MEMORY_WRITE_BIT,
-				m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
-				m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-				VK_SHADER_STAGE_RAYGEN_BIT_NV);
-		}
-
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->end();
-		pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppGraphicsCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
-		m_pGraphicsContext->getDevice()->wait();
+	m_pMeshRenderer->beginFrame(pVulkanScene);
+	for (auto& graphicsObject : pVulkanScene->getGraphicsObjects())
+	{
+		m_pMeshRenderer->submitMesh(graphicsObject.pMesh, graphicsObject.pMaterial, graphicsObject.Transform);
 	}
+	m_pMeshRenderer->endFrame(pVulkanScene);
+	m_pMeshRenderer->buildLightPass(m_pBackBufferRenderPass, getCurrentBackBuffer());
+#endif
+
+	//Start renderpass
+	VkClearValue clearValues[] = { m_ClearColor, m_ClearColor, m_ClearColor, m_ClearDepth };
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pGeometryRenderPass, m_pGBuffer->getFrameBuffer(), (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 4, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pMeshRenderer->getGeometryCommandBuffer());
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
+
+	if (m_pRayTracer)
+	{
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->releaseImagesOwnership(
+			m_pGBuffer->getColorImages(),
+			m_pGBuffer->getColorImageCount(),
+			VK_ACCESS_MEMORY_READ_BIT,
+			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
+			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+			VK_SHADER_STAGE_RAYGEN_BIT_NV);
+
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->releaseImageOwnership(
+			m_pGBuffer->getDepthImage(),
+			VK_ACCESS_MEMORY_READ_BIT,
+			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
+			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+			VK_SHADER_STAGE_RAYGEN_BIT_NV,
+			VK_IMAGE_ASPECT_DEPTH_BIT);
+
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->releaseImageOwnership(
+			m_pRayTracingStorageImage,
+			VK_ACCESS_MEMORY_WRITE_BIT,
+			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
+			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+			VK_SHADER_STAGE_RAYGEN_BIT_NV);
+	}
+
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->end();
+
+	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
+	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppGraphicsCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
+
+	//TODO: Remove this
+	m_pGraphicsContext->getDevice()->wait();
 
 	//Ray Tracing
 	if (m_pRayTracer)
@@ -351,7 +334,6 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
 			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 			VK_SHADER_STAGE_RAYGEN_BIT_NV);
-
 
 		m_ppComputeCommandBuffers[m_CurrentFrame]->acquireImageOwnership(
 			m_pGBuffer->getDepthImage(),
@@ -410,63 +392,54 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 	}
 
-	if (m_pMeshRenderer)
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->reset(true);
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+	if (m_pRayTracer)
 	{
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->reset(true);
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->acquireImagesOwnership(
+			m_pGBuffer->getColorImages(),
+			m_pGBuffer->getColorImageCount(),
+			VK_ACCESS_MEMORY_READ_BIT,
+			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
+			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
+			VK_SHADER_STAGE_RAYGEN_BIT_NV,
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 
-		if (m_pRayTracer)
-		{
-			m_ppGraphicsCommandBuffers[m_CurrentFrame]->acquireImagesOwnership(
-				m_pGBuffer->getColorImages(),
-				m_pGBuffer->getColorImageCount(),
-				VK_ACCESS_MEMORY_READ_BIT,
-				m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
-				m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
-				VK_SHADER_STAGE_RAYGEN_BIT_NV,
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->acquireImageOwnership(
+			m_pGBuffer->getDepthImage(),
+			VK_ACCESS_MEMORY_READ_BIT,
+			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
+			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
+			VK_SHADER_STAGE_RAYGEN_BIT_NV,
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+			VK_IMAGE_ASPECT_DEPTH_BIT);
 
-			m_ppGraphicsCommandBuffers[m_CurrentFrame]->acquireImageOwnership(
-				m_pGBuffer->getDepthImage(),
-				VK_ACCESS_MEMORY_READ_BIT,
-				m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
-				m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
-				VK_SHADER_STAGE_RAYGEN_BIT_NV,
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-				VK_IMAGE_ASPECT_DEPTH_BIT);
-		
-			m_ppGraphicsCommandBuffers[m_CurrentFrame]->acquireImageOwnership(
-				m_pRayTracingStorageImage,
-				VK_ACCESS_MEMORY_READ_BIT,
-				m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
-				m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
-				VK_SHADER_STAGE_RAYGEN_BIT_NV,
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-		}
-		else
-		{
-			m_ppGraphicsCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pGBuffer->getDepthImage(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1, VK_IMAGE_ASPECT_DEPTH_BIT);
-		}
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->acquireImageOwnership(
+			m_pRayTracingStorageImage,
+			VK_ACCESS_MEMORY_READ_BIT,
+			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
+			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
+			VK_SHADER_STAGE_RAYGEN_BIT_NV,
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+	}
+	else
+	{
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pGBuffer->getDepthImage(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1, VK_IMAGE_ASPECT_DEPTH_BIT);
 	}
 
 	//TODO: Combine these into one renderpass
 
 	//Gather all renderer's data and finalize the frame
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pBackBufferRenderPass, pBackbuffer, (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, nullptr, 0, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-	if (m_pMeshRenderer)
-	{
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pMeshRenderer->getLightCommandBuffer());
-	}
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pMeshRenderer->getLightCommandBuffer());
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
 
 	//Render particles
 	if (m_pParticleRenderer)
 	{
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pParticleRenderPass, pBackbufferWithDepth, (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, nullptr, 0, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-		
-		m_pParticleRenderer->endFrame(pScene);
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pParticleRenderer->getCommandBuffer(m_CurrentFrame));
-
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
 	}
 
@@ -484,8 +457,49 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 	VkPipelineStageFlags graphicswaitStages[]	= { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 	pDevice->executeCommandBuffer(pDevice->getComputeQueue(), m_ppComputeCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
+
+	//TODO: Remove this
 	m_pGraphicsContext->getDevice()->wait();
+	
 	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppGraphicsCommandBuffers[m_CurrentFrame], graphicsWaitSemaphores, graphicswaitStages, 1, graphicsSignalSemaphores, 1);
+
+	swapBuffers();
+}
+
+void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
+{
+	m_pGraphicsContext->getDevice()->wait();
+	releaseBackBuffers();
+
+	m_pGraphicsContext->getSwapChain()->resize(width, height);
+
+	m_pGBuffer->resize(width, height);
+	createBackBuffers();
+
+	if (m_pMeshRenderer)
+	{
+		m_pMeshRenderer->onWindowResize(width, height);
+	}
+
+	if (m_pRayTracer)
+	{
+		//m_pRayTracer->onWindowResize(width, height);
+		//Temp?
+		m_pRayTracer->setResolution(width / RAY_TRACING_RESOLUTION_DENOMINATOR, height / RAY_TRACING_RESOLUTION_DENOMINATOR);
+	}
+
+	createRayTracingRenderImage(width, height);
+	m_pMeshRenderer->setRayTracingResult(m_pRayTracingStorageImageView);
+}
+
+void RenderingHandlerVK::beginFrame(SceneVK* pScene)
+{
+
+}
+
+void RenderingHandlerVK::endFrame(SceneVK* pScene)
+{
+	
 }
 
 void RenderingHandlerVK::swapBuffers()

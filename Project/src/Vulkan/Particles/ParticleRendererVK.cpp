@@ -85,7 +85,6 @@ void ParticleRendererVK::beginFrame(IScene* pScene)
 
 	m_ppCommandBuffers[frameIndex]->reset(false);
 	m_ppCommandPools[frameIndex]->reset();
-	m_pProfiler->reset(frameIndex, m_pRenderingHandler->getCurrentGraphicsCommandBuffer());
 
 	// Needed to begin a secondary buffer
 	VkCommandBufferInheritanceInfo inheritanceInfo = {};
@@ -269,7 +268,6 @@ bool ParticleRendererVK::createPipeline()
 
 	VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
 	depthStencilState.depthTestEnable	= VK_TRUE;
-	//depthStencilState.depthTestEnable	= VK_FALSE;
 	depthStencilState.depthWriteEnable	= VK_FALSE;
 	depthStencilState.depthCompareOp	= VK_COMPARE_OP_LESS;
 	depthStencilState.stencilTestEnable	= VK_FALSE;
