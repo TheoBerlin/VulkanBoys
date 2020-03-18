@@ -32,7 +32,7 @@
 
 constexpr uint32_t RAY_TRACING_RESOLUTION_DENOMINATOR = 1;
 
-#define MULTITHREADED 0
+#define MULTITHREADED 1
 
 RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 	:m_pGraphicsContext(pGraphicsContext),
