@@ -367,81 +367,39 @@ bool MeshRendererVK::generateBRDFLookUp()
 	constexpr uint32_t size = 512;
 
 	m_pIntegrationLUT = DBG_NEW Texture2DVK(m_pContext->getDevice());
-	if (!m_pIntegrationLUT->initFromMemory(nullptr, size, size, ETextureFormat::FORMAT_R16G16B16A16_FLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false))
+	if (!m_pIntegrationLUT->initFromMemory(nullptr, size, size, ETextureFormat::FORMAT_R16G16B16A16_FLOAT, VK_IMAGE_USAGE_STORAGE_BIT, false))
 	{
 		return false;
 	}
 
-	RenderPassVK* pRenderPass = DBG_NEW RenderPassVK(m_pContext->getDevice());
+	ImageViewVK* pImageView = m_pIntegrationLUT->getImageView();
 
-	VkAttachmentDescription attachment = {};
-	attachment.flags			= 0;
-	attachment.format			= VK_FORMAT_R16G16B16A16_SFLOAT;
-	attachment.samples			= VK_SAMPLE_COUNT_1_BIT;
-	attachment.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
-	attachment.finalLayout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	attachment.loadOp			= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	attachment.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
-	attachment.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	attachment.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	pRenderPass->addAttachment(attachment);
-
-	VkAttachmentReference attachmentRef = {};
-	attachmentRef.attachment	= 0;
-	attachmentRef.layout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	pRenderPass->addSubpass(&attachmentRef, 1, nullptr);
-
-	VkSubpassDependency dependency = {};
-	dependency.srcSubpass		= VK_SUBPASS_EXTERNAL;
-	dependency.dstSubpass		= 0;
-	dependency.dependencyFlags	= VK_DEPENDENCY_BY_REGION_BIT;
-	dependency.srcAccessMask	= 0;
-	dependency.dstAccessMask	= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	dependency.srcStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.dstStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	pRenderPass->addSubpassDependency(dependency);
-	if (!pRenderPass->finalize())
+	IShader* pComputeShader = m_pContext->createShader();
+	pComputeShader->initFromFile(EShader::COMPUTE_SHADER, "main", "assets/shaders/genIntegrationLUTCompute.spv");
+	if (!pComputeShader->finalize())
 	{
 		return false;
 	}
 
-	ImageViewParams imageViewParams = {};
-	imageViewParams.Type			= VK_IMAGE_VIEW_TYPE_2D;
-	imageViewParams.FirstLayer		= 0;
-	imageViewParams.LayerCount		= 1;
-	imageViewParams.FirstMipLevel	= 0;
-	imageViewParams.MipLevels		= 1;
-	imageViewParams.AspectFlags		= VK_IMAGE_ASPECT_COLOR_BIT;
-
-	ImageViewVK* pImageView = DBG_NEW ImageViewVK(m_pContext->getDevice(), m_pIntegrationLUT->getImage());
-	if (!pImageView->init(imageViewParams))
+	DescriptorSetLayoutVK* pDescriptorLayout = DBG_NEW DescriptorSetLayoutVK(m_pContext->getDevice());
+	pDescriptorLayout->addBindingStorageImage(VK_SHADER_STAGE_COMPUTE_BIT, 0, 1);
+	if (!pDescriptorLayout->finalize())
 	{
 		return false;
 	}
 
-	FrameBufferVK* pFrameBuffer = DBG_NEW FrameBufferVK(m_pContext->getDevice());
-	pFrameBuffer->addColorAttachment(pImageView);
-	if (!pFrameBuffer->finalize(pRenderPass, size, size))
+	DescriptorSetVK* pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(pDescriptorLayout);
+	if (pDescriptorSet)
 	{
-		return false;
+		pDescriptorSet->writeStorageImageDescriptor(pImageView, 0);
 	}
-
-	IShader* pVertexShader = m_pContext->createShader();
-	pVertexShader->initFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/fullscreenVertex.spv");
-	if (!pVertexShader->finalize())
-	{
-		return false;
-	}
-
-	IShader* pPixelShader = m_pContext->createShader();
-	pPixelShader->initFromFile(EShader::PIXEL_SHADER, "main", "assets/shaders/genIntegrationMap.spv");
-	if (!pPixelShader->finalize())
+	else
 	{
 		return false;
 	}
 
 	std::vector<VkPushConstantRange> pushConstantRanges = {};
-	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = {};
+	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { pDescriptorLayout };
 
 	PipelineLayoutVK* pPipelineLayout = DBG_NEW PipelineLayoutVK(m_pContext->getDevice());
 	if (!pPipelineLayout->init(descriptorSetLayouts, pushConstantRanges))
@@ -450,32 +408,13 @@ bool MeshRendererVK::generateBRDFLookUp()
 	}
 
 	PipelineVK* pPipeline = DBG_NEW PipelineVK(m_pContext->getDevice());
-
-	VkPipelineColorBlendAttachmentState blendstate = {};
-	blendstate.blendEnable		= VK_FALSE;
-	blendstate.colorWriteMask	= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	pPipeline->addColorBlendAttachment(blendstate);
-
-	VkPipelineDepthStencilStateCreateInfo depthState = {};
-	depthState.depthTestEnable		= VK_FALSE;
-	depthState.depthWriteEnable		= VK_FALSE;
-	depthState.stencilTestEnable	= VK_FALSE;
-	pPipeline->setDepthStencilState(depthState);
-
-	VkPipelineRasterizationStateCreateInfo rasterizerState = {};
-	rasterizerState.cullMode	= VK_CULL_MODE_NONE;
-	rasterizerState.lineWidth	= 1.0f;
-	rasterizerState.frontFace	= VK_FRONT_FACE_CLOCKWISE;
-	pPipeline->setRasterizerState(rasterizerState);
-
-	std::vector<const IShader*> shaders = { pVertexShader, pPixelShader };
-	if (!pPipeline->finalizeGraphics(shaders, pRenderPass, pPipelineLayout))
+	if (!pPipeline->finalizeCompute(pComputeShader, pPipelineLayout))
 	{
 		return false;
 	}
 
 	DeviceVK* pDevice = m_pContext->getDevice();
-	CommandPoolVK* pCommandPool = DBG_NEW CommandPoolVK(pDevice, pDevice->getQueueFamilyIndices().graphicsFamily.value());
+	CommandPoolVK* pCommandPool = DBG_NEW CommandPoolVK(pDevice, pDevice->getQueueFamilyIndices().computeFamily.value());
 	if (!pCommandPool->init())
 	{
 		return false;
@@ -491,45 +430,26 @@ bool MeshRendererVK::generateBRDFLookUp()
 	pCommandPool->reset();
 
 	pCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	pCommandBuffer->transitionImageLayout(m_pIntegrationLUT->getImage(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, 1, 0, 1);
-
-	pCommandBuffer->beginRenderPass(pRenderPass, pFrameBuffer, size, size, nullptr, 0, VK_SUBPASS_CONTENTS_INLINE);
+	pCommandBuffer->transitionImageLayout(m_pIntegrationLUT->getImage(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 1);
 
 	pCommandBuffer->bindPipeline(pPipeline);
+	pCommandBuffer->bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, pPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
 
-	VkViewport viewport = {};
-	viewport.width		= float(size);
-	viewport.height		= float(size);
-	viewport.minDepth	= 0.0f;
-	viewport.maxDepth	= 1.0f;
-	viewport.x			= 0.0f;
-	viewport.y			= 0.0f;
-	pCommandBuffer->setViewports(&viewport, 1);
-
-	VkRect2D scissorRect = {};
-	scissorRect.offset = { 0, 0 };
-	scissorRect.extent = { size, size };
-	pCommandBuffer->setScissorRects(&scissorRect, 1);
-
-	pCommandBuffer->drawInstanced(3, 1, 0, 0);
-
-	pCommandBuffer->endRenderPass();
-
-	pCommandBuffer->transitionImageLayout(m_pIntegrationLUT->getImage(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1);
+	pCommandBuffer->dispatch(size, size, 1);
+	
+	pCommandBuffer->transitionImageLayout(m_pIntegrationLUT->getImage(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1);
 	pCommandBuffer->end();
 
-	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	pDevice->executeCommandBuffer(pDevice->getComputeQueue(), pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 	pDevice->wait();
 
 	SAFEDELETE(pCommandPool);
 	SAFEDELETE(pPipeline);
-	SAFEDELETE(pPipeline);
 	SAFEDELETE(pPipelineLayout);
-	SAFEDELETE(pVertexShader);
-	SAFEDELETE(pPixelShader);
-	SAFEDELETE(pRenderPass);
-	SAFEDELETE(pImageView);
-	SAFEDELETE(pFrameBuffer);
+	SAFEDELETE(pComputeShader);
+	SAFEDELETE(pDescriptorLayout);
+
+	m_pDescriptorPool->deallocateDescriptorSet(pDescriptorSet);
 
 	return true;
 }
@@ -716,6 +636,7 @@ bool MeshRendererVK::createPipelineLayouts()
 	//Descriptorpool
 	DescriptorCounts descriptorCounts = {};
 	descriptorCounts.m_SampledImages	= 1024;
+	descriptorCounts.m_StorageImages	= 256;
 	descriptorCounts.m_StorageBuffers	= 256;
 	descriptorCounts.m_UniformBuffers	= 256;
 

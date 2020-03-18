@@ -6,6 +6,9 @@
 "tools/glslc.exe" -fshader-stage=fragment assets/shaders/skyboxFragment.glsl -o assets/shaders/skyboxFragment.spv
 
 "tools/glslc.exe" -fshader-stage=vertex assets/shaders/fullscreenVertex.glsl -o assets/shaders/fullscreenVertex.spv 
+
+"tools/glslc.exe" -fshader-stage=compute assets/shaders/genIntegrationLUTCompute.glsl -o assets/shaders/genIntegrationLUTCompute.spv
+
 :: Deferred
 "tools/glslc.exe" -fshader-stage=vertex assets/shaders/geometryVertex.glsl -o assets/shaders/geometryVertex.spv 
 "tools/glslc.exe" -fshader-stage=fragment assets/shaders/geometryFragment.glsl -o assets/shaders/geometryFragment.spv
