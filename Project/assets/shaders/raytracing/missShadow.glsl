@@ -3,12 +3,12 @@
 
 struct ShadowRayPayload 
 {
-	float OccluderFactor;
+	float Occlusion;
 };
 
 layout(location = 1) rayPayloadInNV ShadowRayPayload shadowRayPayload;
 
 void main()
 {
-	shadowRayPayload.OccluderFactor = 0.0f;
+	shadowRayPayload.Occlusion = 0.0f;
 }

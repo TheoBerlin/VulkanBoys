@@ -12,7 +12,11 @@
 #include "Vulkan/CommandPoolVK.h"
 #include "Vulkan/CommandBufferVK.h"
 
+#include "Core/TaskDispatcher.h"
+
 #include <algorithm>
+#include <tinyobjloader/tiny_obj_loader.h>
+#include <imgui/imgui.h>
 
 #ifdef max
     #undef max
@@ -114,6 +118,197 @@ SceneVK::~SceneVK()
 	}
 
 	m_TopLevelAccelerationStructure.Handle = VK_NULL_HANDLE;
+
+	for (uint32_t m = 0; m < m_SceneMaterials.size(); m++)
+	{
+		SAFEDELETE(m_SceneMaterials[m]);
+	}
+	m_SceneMaterials.clear();
+
+	for (uint32_t m = 0; m < m_SceneMeshes.size(); m++)
+	{
+		SAFEDELETE(m_SceneMeshes[m]);
+	}
+	m_SceneMeshes.clear();
+}
+
+bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
+{
+	tinyobj::attrib_t attributes;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+	std::string warn, err;
+
+	if (!tinyobj::LoadObj(&attributes, &shapes, &materials, &warn, &err, (dir + fileName).c_str(), dir.c_str(), true, false))
+	{
+		LOG("Failed to load scene '%s'. Warning: %s Error: %s", (dir + fileName).c_str(), warn.c_str(), err.c_str());
+		return false;
+	}
+
+	m_SceneMeshes.resize(shapes.size());
+	m_SceneMaterials.resize(materials.size() + 1);
+
+	for (uint32_t i = 0; i < shapes.size(); i++)
+	{
+		m_SceneMeshes[i] = nullptr;
+	}
+
+	for (uint32_t i = 0; i < materials.size() + 1; i++)
+	{
+		m_SceneMaterials[i] = nullptr;
+	}
+
+	SamplerParams samplerParams = {};
+	samplerParams.MinFilter = VK_FILTER_LINEAR;
+	samplerParams.MagFilter = VK_FILTER_LINEAR;
+	samplerParams.WrapModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerParams.WrapModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+	Material* pDefaultMaterial = new Material();
+	pDefaultMaterial->setAlbedo(glm::vec4(1.0f));
+	pDefaultMaterial->setAmbientOcclusion(1.0f);
+	pDefaultMaterial->setMetallic(1.0f);
+	pDefaultMaterial->setRoughness(1.0f);
+	pDefaultMaterial->createSampler(m_pContext, samplerParams);
+	m_SceneMaterials[0] = pDefaultMaterial;
+
+	for (uint32_t m = 1; m < materials.size() + 1; m++)
+	{
+		tinyobj::material_t& material = materials[m - 1];
+
+		/*ITexture2D* pAlbedoMap = m_pContext->createTexture2D();
+		TaskDispatcher::execute([&, this]
+			{
+				pAlbedoMap->initFromFile(dir + material.diffuse_texname, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+			});
+
+		ITexture2D* pNormalMap = m_pContext->createTexture2D();
+		TaskDispatcher::execute([&, this]
+			{
+				pNormalMap->initFromFile(dir + material.bump_texname, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+			});
+
+		ITexture2D* pMetallicMap = m_pContext->createTexture2D();
+		TaskDispatcher::execute([&, this]
+			{
+				pMetallicMap->initFromFile(dir + material.ambient_texname, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+			});
+
+		ITexture2D* pRoughnessMap = m_pContext->createTexture2D();
+		TaskDispatcher::execute([&, this]
+			{
+				pRoughnessMap->initFromFile(dir + material.specular_highlight_texname, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+			});*/
+		Material* pMaterial = new Material();
+
+		if (material.diffuse_texname.length() > 0)
+		{
+			ITexture2D* pAlbedoMap = m_pContext->createTexture2D();
+			pAlbedoMap->initFromFile(dir + material.diffuse_texname, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+			pMaterial->setAlbedoMap(pAlbedoMap);
+		}
+
+		if (material.bump_texname.length() > 0)
+		{
+			ITexture2D* pNormalMap = m_pContext->createTexture2D();
+			pNormalMap->initFromFile(dir + material.bump_texname, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+			pMaterial->setNormalMap(pNormalMap);
+		}
+
+		if (material.ambient_texname.length() > 0)
+		{
+			ITexture2D* pMetallicMap = m_pContext->createTexture2D();
+			pMetallicMap->initFromFile(dir + material.ambient_texname, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+			pMaterial->setMetallicMap(pMetallicMap);
+		}
+
+		if (material.specular_highlight_texname.length() > 0)
+		{
+			ITexture2D* pRoughnessMap = m_pContext->createTexture2D();
+			pRoughnessMap->initFromFile(dir + material.specular_highlight_texname, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+			pMaterial->setRoughnessMap(pRoughnessMap);
+		}
+
+		pMaterial->setAlbedo(glm::vec4(1.0f));
+		pMaterial->setAmbientOcclusion(1.0f);
+		pMaterial->setMetallic(1.0f);
+		pMaterial->setRoughness(1.0f);
+		pMaterial->createSampler(m_pContext, samplerParams);
+		m_SceneMaterials[m] = pMaterial;
+	}
+
+	glm::mat4 transform = glm::scale(glm::mat4(1.0f), glm::vec3(0.005f));
+
+	for (uint32_t s = 0; s < shapes.size(); s++)
+	{
+		tinyobj::shape_t& shape = shapes[s];
+
+		std::vector<Vertex> vertices = {};
+		std::vector<uint32_t> indices = {};
+		std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
+
+		for (const tinyobj::index_t& index : shape.mesh.indices)
+		{
+			Vertex vertex = {};
+
+			//Normals and texcoords are optional, while positions are required
+			ASSERT(index.vertex_index >= 0);
+
+			vertex.Position =
+			{
+				attributes.vertices[3 * index.vertex_index + 0],
+				attributes.vertices[3 * index.vertex_index + 1],
+				attributes.vertices[3 * index.vertex_index + 2]
+			};
+
+			if (index.normal_index >= 0)
+			{
+				vertex.Normal =
+				{
+					attributes.normals[3 * index.normal_index + 0],
+					attributes.normals[3 * index.normal_index + 1],
+					attributes.normals[3 * index.normal_index + 2]
+				};
+			}
+
+			if (index.texcoord_index >= 0)
+			{
+				vertex.TexCoord =
+				{
+					attributes.texcoords[2 * index.texcoord_index + 0],
+					1.0f - attributes.texcoords[2 * index.texcoord_index + 1]
+				};
+			}
+
+			if (uniqueVertices.count(vertex) == 0)
+			{
+				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+				vertices.push_back(vertex);
+			}
+
+			indices.push_back(uniqueVertices[vertex]);
+		}
+
+		//Calculate tangents
+		for (uint32_t index = 0; index < indices.size(); index += 3)
+		{
+			Vertex& v0 = vertices[indices[index + 0]];
+			Vertex& v1 = vertices[indices[index + 1]];
+			Vertex& v2 = vertices[indices[index + 2]];
+
+			v0.calculateTangent(v1, v2);
+			v1.calculateTangent(v2, v0);
+			v2.calculateTangent(v0, v1);
+		}
+
+		MeshVK* pMesh = reinterpret_cast<MeshVK*>(m_pContext->createMesh()); 
+		pMesh->initFromMemory(vertices.data(), sizeof(Vertex), uint32_t(vertices.size()), indices.data(), uint32_t(indices.size()));
+		m_SceneMeshes[s]  = pMesh;
+
+		Material* pMaterial = m_SceneMaterials[shape.mesh.material_ids[0] + 1];
+
+		submitGraphicsObject(pMesh, pMaterial, transform);
+	}
 }
 
 bool SceneVK::finalize()
@@ -215,9 +410,9 @@ void SceneVK::updateMaterials()
 				m_MaterialParameters[i] =
 				{
 					pMaterial->getAlbedo(),
-					pMaterial->getMetallic(),
-					pMaterial->getRoughness(),
-					pMaterial->getAmbientOcclusion(),
+					pMaterial->getMetallic()* m_SceneParameters.MetallicScale,
+					pMaterial->getRoughness()* m_SceneParameters.RoughnessScale,
+					pMaterial->getAmbientOcclusion()* m_SceneParameters.AOScale,
 					1.0f
 				};
 			}
@@ -232,9 +427,9 @@ void SceneVK::updateMaterials()
 				m_MaterialParameters[i] =
 				{
 					glm::vec4(1.0f),
-					1.0f,
-					1.0f,
-					1.0f,
+					m_SceneParameters.MetallicScale,
+					m_SceneParameters.RoughnessScale,
+					m_SceneParameters.AOScale,
 					1.0f
 				};
 			}
@@ -257,9 +452,9 @@ void SceneVK::updateMaterials()
 				m_MaterialParameters[i] =
 				{
 					pMaterial->getAlbedo(),
-					pMaterial->getMetallic(),
-					pMaterial->getRoughness(),
-					pMaterial->getAmbientOcclusion(),
+					pMaterial->getMetallic() * m_SceneParameters.MetallicScale,
+					pMaterial->getRoughness() * m_SceneParameters.RoughnessScale,
+					pMaterial->getAmbientOcclusion() * m_SceneParameters.AOScale,
 					1.0f
 				};
 			}
@@ -268,9 +463,9 @@ void SceneVK::updateMaterials()
 				m_MaterialParameters[i] =
 				{
 					glm::vec4(1.0f),
-					1.0f,
-					1.0f,
-					1.0f,
+					m_SceneParameters.MetallicScale,
+					m_SceneParameters.RoughnessScale,
+					m_SceneParameters.AOScale,
 					1.0f
 				};
 			}
@@ -1109,4 +1304,11 @@ void SceneVK::generateLightProbeGeometry(float probeStepX, float probeStepY, flo
 			}
 		}
 	}
+}
+
+void SceneVK::renderUI()
+{
+	ImGui::SliderFloat("Roughness Scale", &m_SceneParameters.RoughnessScale, 0.01f, 10.0f);
+	ImGui::SliderFloat("Metallic Scale", &m_SceneParameters.MetallicScale, 0.01f, 10.0f);
+	ImGui::SliderFloat("Ambient Occlusion Scale", &m_SceneParameters.AOScale, 0.01f, 1.0f);
 }

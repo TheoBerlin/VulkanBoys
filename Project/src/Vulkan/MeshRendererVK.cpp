@@ -636,13 +636,13 @@ bool MeshRendererVK::createPipelineLayouts()
 {
 	//Descriptorpool
 	DescriptorCounts descriptorCounts = {};
-	descriptorCounts.m_SampledImages	= 1024;
-	descriptorCounts.m_StorageImages	= 256;
-	descriptorCounts.m_StorageBuffers	= 256;
-	descriptorCounts.m_UniformBuffers	= 256;
+	descriptorCounts.m_SampledImages	= 4096;
+	descriptorCounts.m_StorageImages	= 1024;
+	descriptorCounts.m_StorageBuffers	= 2048;
+	descriptorCounts.m_UniformBuffers	= 1024;
 
 	m_pDescriptorPool = DBG_NEW DescriptorPoolVK(m_pContext->getDevice());
-	if (!m_pDescriptorPool->init(descriptorCounts, 256))
+	if (!m_pDescriptorPool->init(descriptorCounts, 512))
 	{
 		return false;
 	}

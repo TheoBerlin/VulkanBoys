@@ -39,7 +39,7 @@ struct RayPayload
 
 struct ShadowRayPayload
 {
-	float occluderFactor;
+	float Occlusion;
 };
 
 layout (push_constant) uniform PushConstants
@@ -47,6 +47,8 @@ layout (push_constant) uniform PushConstants
 	float Counter;
 	float MaxTemporalFrames;
 	float MinTemporalWeight;
+	float ReflectionRayBias;
+	float ShadowRayBias;
 } u_PushConstants;
 
 layout(location = 0) rayPayloadNV RayPayload rayPayload;
@@ -101,8 +103,8 @@ void main()
 	//Skybox
 	if (dot(sampledNormalMetallicRoughness, sampledNormalMetallicRoughness) < EPSILON)
 	{
-		imageStore(u_RadianceImage, pixelCoords, vec4(1.0f, 0.0f, 1.0f, 0.0f));
-		imageStore(u_ReflectionImage, pixelCoords, vec4(1.0f, 0.0f, 1.0f, 0.0f));
+		imageStore(u_RadianceImage, pixelCoords, vec4(0.0f, 0.0f, 0.0f, 0.0f));
+		imageStore(u_ReflectionImage, pixelCoords, vec4(0.0f, 0.0f, 0.0f, 0.0f));
 		return;
 	}
 
@@ -116,7 +118,6 @@ void main()
 	calculatePositions(uvCoords, sampledDepth, hitPos, viewSpacePos);
 
 	//Define new Rays Parameters
-	vec3 reflectedRaysOrigin = hitPos + normal * EPSILON;
 	uint rayFlags = gl_RayFlagsOpaqueNV;
 	uint cullMask = 0xff;
 	float tmin = 0.001f;
@@ -140,6 +141,8 @@ void main()
 	
 	float NdotV = max(dot(viewDir, normal), 0.0f);
 
+	vec3 shadowRaysOrigin = hitPos + normal * u_PushConstants.ShadowRayBias;
+
 	vec3 Lo = vec3(0.0f);
 	for (int i = 0; i < MAX_POINT_LIGHTS; i++)
 	{
@@ -149,9 +152,9 @@ void main()
 		vec3 lightVector 	= (lightPosition - hitPos);
 		vec3 lightDir 		= normalize(lightVector);
 
-		traceNV(u_TopLevelAS, rayFlags, cullMask, 1, 0, 1, reflectedRaysOrigin, tmin, lightDir, tmax, 1);
+		traceNV(u_TopLevelAS, rayFlags, cullMask, 1, 0, 1, shadowRaysOrigin, tmin, lightDir, tmax, 1);
 
-		if (shadowRayPayload.occluderFactor < 0.1f)
+		if (shadowRayPayload.Occlusion < 0.1f)
 		{
 			float lightDistance	= length(lightVector);
 			float attenuation 	= 1.0f / (lightDistance * lightDistance);
@@ -173,7 +176,7 @@ void main()
 			//Take 1.0f minus the incoming radiance to get the diffuse (Energy conservation)
 			vec3 diffuse = (vec3(1.0f) - f) * metallicFactor;
 
-			Lo += ((diffuse * (albedo / PI)) + specular) * radiance * NdotL;
+			Lo =+ ((diffuse * (albedo / PI)) + specular) * radiance * NdotL;
 		}
 	}
 
@@ -186,10 +189,11 @@ void main()
 	vec3 Rb = vec3(0.0f);
 	createCoordinateSystem(reflDir, Rt, Rb);
 
+	vec3 reflectionRaysOrigin = hitPos + normal * u_PushConstants.ReflectionRayBias;
 	reflDir = ReflectanceDirection2(reflDir, Rt, Rb, roughness, uniformRandom);
 	rayPayload.Radiance = vec3(0.0f);
 	rayPayload.Recursion = 0;
-	traceNV(u_TopLevelAS, rayFlags, cullMask, 0, 0, 0, reflectedRaysOrigin, tmin, reflDir, tmax, 0);
+	traceNV(u_TopLevelAS, rayFlags, cullMask, 0, 0, 0, reflectionRaysOrigin, tmin, reflDir, tmax, 0);
 
 
 	//Temporal Filtering
