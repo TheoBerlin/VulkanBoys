@@ -3,8 +3,8 @@
 
 struct RayPayload 
 {
-	vec3 color;
-	uint recursion;
+	vec3 Radiance;
+	uint Recursion;
 };
 
 layout(location = 0) rayPayloadInNV RayPayload rayPayload;
@@ -19,6 +19,6 @@ void main()
 	// vec3 unitDir = normalize(gl_WorldRayDirectionNV);
 	// float t = 0.5f * (unitDir.y + 1.0f);
 	// rayPayload.color = (1.0f-t) * gradientStart + t * gradientEnd;
-	rayPayload.color = texture(u_Skybox, gl_WorldRayDirectionNV).rgb;
-	rayPayload.recursion = rayPayload.recursion + 1;
+	rayPayload.Radiance = texture(u_Skybox, gl_WorldRayDirectionNV).rgb;
+	rayPayload.Recursion = rayPayload.Recursion + 1;
 }

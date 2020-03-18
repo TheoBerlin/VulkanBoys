@@ -9,6 +9,21 @@ struct Vertex
 	vec4 TexCoord;
 };
 
+struct MaterialParameters
+{
+	vec4 Albedo;
+	float Metallic;
+	float Roughness;
+	float AO;
+	float Padding;
+};
+
+struct InstanceTransforms
+{
+	mat4 CurrTransform;
+	mat4 PrevTransform;
+};
+
 layout(location = 0) out vec3 out_Normal;
 layout(location = 1) out vec3 out_Tangent;
 layout(location = 2) out vec3 out_Bitangent;
@@ -18,11 +33,8 @@ layout(location = 5) out vec4 out_PrevPosition;
 
 layout (push_constant) uniform Constants
 {
-	mat4 Transform;
-	vec4 Color;
-	float Ambient;
-	float Metallic;
-	float Roughness;
+	int MaterialIndex;
+	int TransformsIndex;
 } constants;
 
 layout (binding = 0) uniform PerFrameBuffer
@@ -41,21 +53,35 @@ layout(binding = 1) buffer vertexBuffer
 	Vertex vertices[];
 };
 
+layout(binding = 7, set = 0) buffer CombinedMaterialParameters 
+{ 
+	MaterialParameters mp[]; 
+} u_MaterialParameters;
+
+layout(binding = 8, set = 0) buffer CombinedInstanceTransforms 
+{ 
+	InstanceTransforms t[]; 
+} u_Transforms;
+
 void main() 
 {
-	vec3 position 		= vertices[gl_VertexIndex].Position.xyz;
-    vec3 normal 		= vertices[gl_VertexIndex].Normal.xyz;
-	vec3 tangent 		= vertices[gl_VertexIndex].Tangent.xyz;
-	vec4 worldPosition 	= constants.Transform * vec4(position, 1.0);
+	mat4 currTransform = u_Transforms.t[constants.TransformsIndex].CurrTransform;
+	mat4 prevTransform = u_Transforms.t[constants.TransformsIndex].PrevTransform;
+
+	vec3 position 				= vertices[gl_VertexIndex].Position.xyz;
+    vec3 normal 				= vertices[gl_VertexIndex].Normal.xyz;
+	vec3 tangent 				= vertices[gl_VertexIndex].Tangent.xyz;
+	vec4 worldPosition 			= currTransform * vec4(position, 1.0);
+	vec4 prevWorldPosition 		= prevTransform * vec4(position, 1.0);
 		
-	normal 	= normalize((constants.Transform * vec4(normal, 0.0)).xyz);
-	tangent = normalize((constants.Transform * vec4(tangent, 0.0)).xyz);
+	normal 	= normalize((currTransform * vec4(normal, 0.0)).xyz);
+	tangent = normalize((currTransform * vec4(tangent, 0.0)).xyz);
 	
 	vec3 bitangent 	= normalize(cross(normal, tangent));
 	vec2 texCoord 	= vertices[gl_VertexIndex].TexCoord.xy;
 	
 	vec4 viewPosition 		= g_PerFrame.View 		* worldPosition;
-	vec4 prevViewPosition 	= g_PerFrame.LastView 	* worldPosition;
+	vec4 prevViewPosition 	= g_PerFrame.LastView 	* prevWorldPosition;
 
 	float distance 		= length(viewPosition.xyz);
 	float prevDistance 	= length(prevViewPosition.xyz);
