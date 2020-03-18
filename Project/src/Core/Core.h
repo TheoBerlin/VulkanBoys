@@ -80,6 +80,24 @@ struct Vertex
 	{
 		return Position == other.Position && Normal == other.Normal && Tangent == other.Tangent && TexCoord == other.TexCoord;
 	}
+
+	void calculateTangent(const Vertex& v1, const Vertex& v2)
+	{
+		glm::vec3 edge1 = v1.Position - this->Position;
+		glm::vec3 edge2 = v2.Position - this->Position;
+		glm::vec2 deltaUV1 = v1.TexCoord - this->TexCoord;
+		glm::vec2 deltaUV2 = v2.TexCoord - this->TexCoord;
+
+		float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+		glm::vec3 tangent;
+		tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+		tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+		tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+		tangent = glm::normalize(tangent);
+
+		this->Tangent = tangent;
+	}
 };
 
 namespace std 

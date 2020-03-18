@@ -15,6 +15,8 @@ layout (push_constant) uniform PushConstants
 	vec2 Direction;
     float MaxTemporalFrames;
     float MinTemporalWeight;
+	float ReflectionRayBias;
+	float ShadowRayBias;
 } u_PushConstants;
 
 void main()

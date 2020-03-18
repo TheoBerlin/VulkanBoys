@@ -282,16 +282,24 @@ void Application::init()
 	
 
 	//Setup lights
-	m_LightSetup.addPointLight(PointLight(glm::vec3( 10.0f,  10.0f, -10.0f), glm::vec4(300.0f)));
-	m_LightSetup.addPointLight(PointLight(glm::vec3(-10.0f,  10.0f, -10.0f), glm::vec4(300.0f)));
-	m_LightSetup.addPointLight(PointLight(glm::vec3( 10.0f, -10.0f, -10.0f), glm::vec4(300.0f)));
-	m_LightSetup.addPointLight(PointLight(glm::vec3(-10.0f, -10.0f, -10.0f), glm::vec4(300.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
+	m_LightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
 
 	//Setup camera
 	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
 	m_Camera.setPosition(glm::vec3(0.0f, 1.0f, -3.0f));
 	m_Camera.setProjection(90.0f, (float)m_pWindow->getWidth(), (float)m_pWindow->getHeight(), 0.0001f, 50.0f);
 	m_Camera.update();
+
+	//Create Scene
+	m_pScene = m_pContext->createScene();
+
+	TaskDispatcher::execute([this]
+		{
+			m_pScene->initFromFile("assets/sponza/", "sponza.obj");
+		});
 
 	TaskDispatcher::waitForTasks();
 
@@ -300,30 +308,28 @@ void Application::init()
 
 	SAFEDELETE(pPanorama);
 
-	//Create Scene
-	m_pScene = m_pContext->createScene();
 
 	//Add Game Objects to Scene
-	m_GraphicsIndex0 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
-	m_GraphicsIndex1 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
-	m_GraphicsIndex2 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
-	m_GraphicsIndex3 = m_pScene->submitGraphicsObject(m_pCube, &m_PlaneMaterial, glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.5f, 0.0f)), glm::vec3(10.0f, 0.1f, 10.0f)));
-		
-	constexpr float SPHERE_SCALE = HIGH_RESOLUTION_SPHERE ? 0.25f : 1.15f;
-	
-	for (uint32_t y = 0; y < SPHERE_COUNT_DIMENSION; y++)
-	{
-		float yCoord = ((float(SPHERE_COUNT_DIMENSION) * 0.5f) / -2.0f) + float(y * 0.5);
+	//m_GraphicsIndex0 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
+	//m_GraphicsIndex1 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
+	//m_GraphicsIndex2 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
+	//m_GraphicsIndex3 = m_pScene->submitGraphicsObject(m_pCube, &m_PlaneMaterial, glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.5f, 0.0f)), glm::vec3(10.0f, 0.1f, 10.0f)));
+	//	
+	//constexpr float SPHERE_SCALE = HIGH_RESOLUTION_SPHERE ? 0.25f : 1.15f;
+	//
+	//for (uint32_t y = 0; y < SPHERE_COUNT_DIMENSION; y++)
+	//{
+	//	float yCoord = ((float(SPHERE_COUNT_DIMENSION) * 0.5f) / -2.0f) + float(y * 0.5);
 
-		for (uint32_t x = 0; x < SPHERE_COUNT_DIMENSION; x++)
-		{
-			float xCoord = ((float(SPHERE_COUNT_DIMENSION) * 0.5f) / -2.0f) + float(x * 0.5);
+	//	for (uint32_t x = 0; x < SPHERE_COUNT_DIMENSION; x++)
+	//	{
+	//		float xCoord = ((float(SPHERE_COUNT_DIMENSION) * 0.5f) / -2.0f) + float(x * 0.5);
 
-			m_SphereIndexes[x + y * SPHERE_COUNT_DIMENSION] = m_pScene->submitGraphicsObject(
-				m_pSphere, &m_SphereMaterials[x + y * SPHERE_COUNT_DIMENSION], 
-				glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)), glm::vec3(SPHERE_SCALE)));
-		}
-	}
+	//		m_SphereIndexes[x + y * SPHERE_COUNT_DIMENSION] = m_pScene->submitGraphicsObject(
+	//			m_pSphere, &m_SphereMaterials[x + y * SPHERE_COUNT_DIMENSION], 
+	//			glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)), glm::vec3(SPHERE_SCALE)));
+	//	}
+	//}
 	
 	//Finalize after (more efficient)
 	m_pScene->finalize();
@@ -555,16 +561,16 @@ void Application::update(double dt)
 	//m_pParticleEmitterHandler->update((float)dt);
 
 	//Set sphere color
-	static glm::mat4 rotation = glm::mat4(1.0f);
-	rotation = glm::rotate(rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
-	m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex0, glm::mat4(1.0f) * rotation);
-	m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex1, glm::translate(glm::mat4(1.0f), glm::vec3(1.5f, 0.0f, 0.0f)));
-	m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex2, glm::translate(glm::mat4(1.0f), glm::vec3(-1.5f, 0.0f, 0.0f)));
+	//static glm::mat4 rotation = glm::mat4(1.0f);
+	//rotation = glm::rotate(rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
+	//m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex0, glm::mat4(1.0f) * rotation);
+	//m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex1, glm::translate(glm::mat4(1.0f), glm::vec3(1.5f, 0.0f, 0.0f)));
+	//m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex2, glm::translate(glm::mat4(1.0f), glm::vec3(-1.5f, 0.0f, 0.0f)));
 
-	for (uint32_t i = 0; i < SPHERE_COUNT_DIMENSION * SPHERE_COUNT_DIMENSION; i++)
-	{
-		m_SphereMaterials[i].setAlbedo(g_Color);
-	}
+	//for (uint32_t i = 0; i < SPHERE_COUNT_DIMENSION * SPHERE_COUNT_DIMENSION; i++)
+	//{
+	//	m_SphereMaterials[i].setAlbedo(g_Color);
+	//}
 
 	m_pScene->updateCamera(m_Camera);
 	m_pScene->updateLightSetup(m_LightSetup);
@@ -720,6 +726,14 @@ void Application::renderUI(double dt)
 		}
 		ImGui::End();
 	}
+
+	// Draw Scene UI
+	ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);
+	if (ImGui::Begin("Scene", NULL))
+	{
+		m_pScene->renderUI();
+	}
+	ImGui::End();
 
 	m_pImgui->end();
 }

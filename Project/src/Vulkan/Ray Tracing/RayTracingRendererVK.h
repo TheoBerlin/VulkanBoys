@@ -60,6 +60,8 @@ class RayTracingRendererVK : public IRenderer
 	{
 		float MaxTemporalFrames = 128.0f;
 		float MinTemporalWeight = 0.01f;
+		float ReflectionRayBias = 0.01f;
+		float ShadowRayBias = 0.01f;
 	};
 
 public:

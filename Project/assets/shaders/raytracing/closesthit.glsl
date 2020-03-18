@@ -12,7 +12,7 @@ struct RayPayload
 
 struct ShadowRayPayload
 {
-	float OccluderFactor;
+	float Occlusion;
 };
 
 struct Vertex
@@ -67,6 +67,15 @@ layout (binding = 16) uniform LightBuffer
 } u_Lights;
 layout(binding = 18, set = 0) uniform sampler2D u_BrdfLUT;
 layout(binding = 20, set = 0) uniform sampler2D u_BlueNoiseLUT;
+
+layout (push_constant) uniform PushConstants
+{
+	float Counter;
+	float MaxTemporalFrames;
+	float MinTemporalWeight;
+	float ReflectionRayBias;
+	float ShadowRayBias;
+} u_PushConstants;
 
 vec3 myRefract(vec3 I, vec3 N, float ior)
 {
@@ -149,7 +158,6 @@ void main()
 		vec3 hitPos = gl_WorldRayOriginNV + normalize(gl_WorldRayDirectionNV) * gl_HitTNV;
 
 		//Define new Rays Parameters
-		vec3 reflectedRaysOrigin = hitPos + normal * EPSILON;
 		uint rayFlags = gl_RayFlagsOpaqueNV;
 		uint cullMask = 0xff;
 		float tmin = 0.001f;
@@ -173,6 +181,8 @@ void main()
 		
 		float NdotV = max(dot(viewDir, normal), 0.0f);
 
+		vec3 shadowRaysOrigin = hitPos + normal * u_PushConstants.ShadowRayBias;
+
 		vec3 Lo = vec3(0.0f);
 		for (int i = 0; i < MAX_POINT_LIGHTS; i++)
 		{
@@ -182,9 +192,9 @@ void main()
 			vec3 lightVector 	= (lightPosition - hitPos);
 			vec3 lightDir 		= normalize(lightVector);
 
-			traceNV(u_TopLevelAS, rayFlags, cullMask, 1, 0, 1, reflectedRaysOrigin, tmin, lightDir, tmax, 1);
+			traceNV(u_TopLevelAS, rayFlags, cullMask, 1, 0, 1, shadowRaysOrigin, tmin, lightDir, tmax, 1);
 
-			if (shadowRayPayload.OccluderFactor < 0.1f)
+			if (shadowRayPayload.Occlusion < 0.1f)
 			{
 				float lightDistance	= length(lightVector);
 				float attenuation 	= 1.0f / (lightDistance * lightDistance);
@@ -215,12 +225,13 @@ void main()
 		vec3 f 			= FresnelRoughness(f0, NdotV, roughness);
 		vec3 kDiffuse 	= (vec3(1.0f) - f) * metallicFactor;
 
+		vec3 reflectionRaysOrigin = hitPos + normal * u_PushConstants.ReflectionRayBias;
 		vec3 reflDir = reflect(gl_WorldRayDirectionNV, normal);
 		//reflDir = ReflectanceDirection(hitPos + u_PushConstants.Counter, reflDir, roughness);
 
 		rayPayload.Radiance = vec3(0.0f);
 		rayPayload.Recursion = recursionNumber + 1;
-		traceNV(u_TopLevelAS, rayFlags, cullMask, 0, 0, 0, reflectedRaysOrigin, tmin, reflDir, tmax, 0);
+		traceNV(u_TopLevelAS, rayFlags, cullMask, 0, 0, 0, reflectionRaysOrigin, tmin, reflDir, tmax, 0);
 
 		vec2 envBRDF 	= texture(u_BrdfLUT, vec2(NdotV, roughness)).rg;
 		vec3 specular	= rayPayload.Radiance * (f * envBRDF.x + envBRDF.y);
@@ -234,6 +245,6 @@ void main()
 	}
 	else
 	{
-		rayPayload.Radiance = albedo;
+		rayPayload.Radiance = vec3(0.0f);
 	}
 }

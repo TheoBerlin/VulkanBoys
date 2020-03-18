@@ -35,6 +35,13 @@ struct GraphicsObjectVK
 
 class SceneVK : public IScene
 {
+	struct SceneParameters
+	{
+		float RoughnessScale = 1.0f;
+		float MetallicScale = 1.0f;
+		float AOScale = 1.0f;
+	};
+
 	struct GraphicsObjectTransforms
 	{
 		glm::mat4 Transform;
@@ -83,6 +90,8 @@ public:
 	SceneVK(IGraphicsContext* pContext);
 	~SceneVK();
 
+	virtual bool initFromFile(const std::string& dir, const std::string& fileName) override;
+
 	virtual bool finalize() override;
 	virtual void update() override;
 	virtual void updateMaterials() override;
@@ -118,6 +127,8 @@ public:
 	
 	void generateLightProbeGeometry(float probeStepX, float probeStepY, float probeStepZ, uint32_t samplesPerProbe, uint32_t numProbesPerDimension);
 
+	virtual void renderUI() override;
+
 private:
 	bool createDefaultTexturesAndSamplers();
 
@@ -147,6 +158,9 @@ private:
 	DeviceVK* m_pDevice;
 	ProfilerVK* m_pProfiler;
 	Timestamp m_TimestampBuildAccelStruct; //Todo: create more of these
+
+	std::vector<MeshVK*> m_SceneMeshes;
+	std::vector<Material*> m_SceneMaterials;
 
 	Camera m_Camera;
 	LightSetup m_LightSetup;
@@ -205,4 +219,6 @@ private:
 
 	MeshVK* m_pLightProbeMesh;
 	const Material* m_pVeryTempMaterial;
+
+	SceneParameters m_SceneParameters;
 };

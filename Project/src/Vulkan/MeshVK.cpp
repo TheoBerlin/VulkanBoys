@@ -97,9 +97,9 @@ bool MeshVK::initFromFile(const std::string& filepath)
 		Vertex& v1 = vertices[indices[index + 1]];
 		Vertex& v2 = vertices[indices[index + 2]];
 
-		v0.Tangent = calculateTangent(v0, v1, v2);
-		v1.Tangent = calculateTangent(v1, v2, v0);
-		v2.Tangent = calculateTangent(v2, v0, v1);
+		v0.calculateTangent(v1, v2);
+		v1.calculateTangent(v2, v0);
+		v2.calculateTangent(v0, v1);
 	}
 
 	//TODO: Calculate normals
@@ -284,24 +284,6 @@ uint32_t MeshVK::getVertexCount() const
 uint32_t MeshVK::getMeshID() const
 {
 	return m_ID;
-}
-
-glm::vec3 MeshVK::calculateTangent(const Vertex& v0, const Vertex& v1, const Vertex& v2)
-{
-	glm::vec3 edge1 = v1.Position - v0.Position;
-	glm::vec3 edge2 = v2.Position - v0.Position;
-	glm::vec2 deltaUV1 = v1.TexCoord - v0.TexCoord;
-	glm::vec2 deltaUV2 = v2.TexCoord - v0.TexCoord;
-
-	float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
-
-	glm::vec3 tangent;
-	tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
-	tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
-	tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
-	tangent = glm::normalize(tangent);
-
-	return tangent;
 }
 
 uint32_t MeshVK::vertexForEdge(std::map<std::pair<uint32_t, uint32_t>, uint32_t>& lookup, std::vector<glm::vec3>& vertices, uint32_t first, uint32_t second)

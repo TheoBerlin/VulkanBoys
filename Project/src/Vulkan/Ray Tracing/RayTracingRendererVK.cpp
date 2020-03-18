@@ -316,6 +316,8 @@ void RayTracingRendererVK::renderUI()
 {
 	ImGui::SliderFloat("Max Temporal Frames", &m_RayTracingParameters.MaxTemporalFrames, 1.0f, 1024.0f);
 	ImGui::SliderFloat("Min Temporal Weight", &m_RayTracingParameters.MinTemporalWeight, 0.0000001f, 1.0f, "%.3f", 2.0f);
+	ImGui::SliderFloat("Reflection Ray Bias", &m_RayTracingParameters.ReflectionRayBias, 0.0f, 0.5f);
+	ImGui::SliderFloat("Shadow Ray Bias", &m_RayTracingParameters.ShadowRayBias, 0.0f, 0.5f);
 }
 
 void RayTracingRendererVK::setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY)
