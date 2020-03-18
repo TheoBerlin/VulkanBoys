@@ -414,8 +414,9 @@ bool MeshRendererVK::generateBRDFLookUp()
 		return false;
 	}
 
-	DeviceVK* pDevice = m_pContext->getDevice();
-	CommandPoolVK* pCommandPool = DBG_NEW CommandPoolVK(pDevice, pDevice->getQueueFamilyIndices().computeFamily.value());
+	DeviceVK* pDevice		= m_pContext->getDevice();
+	InstanceVK* pInstance	= m_pContext->getInstance();
+	CommandPoolVK* pCommandPool = DBG_NEW CommandPoolVK(pDevice, pInstance, pDevice->getQueueFamilyIndices().computeFamily.value());
 	if (!pCommandPool->init())
 	{
 		return false;
@@ -457,12 +458,13 @@ bool MeshRendererVK::generateBRDFLookUp()
 
 bool MeshRendererVK::createCommandPoolAndBuffers()
 {
-	DeviceVK* pDevice = m_pContext->getDevice();
+	DeviceVK* pDevice		= m_pContext->getDevice();
+	InstanceVK* pInstance	= m_pContext->getInstance();
 
 	const uint32_t graphicsQueueIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		m_ppGeometryPassPools[i] = DBG_NEW CommandPoolVK(pDevice, graphicsQueueIndex);
+		m_ppGeometryPassPools[i] = DBG_NEW CommandPoolVK(pDevice, pInstance, graphicsQueueIndex);
 		if (!m_ppGeometryPassPools[i]->init())
 		{
 			return false;
@@ -473,8 +475,10 @@ bool MeshRendererVK::createCommandPoolAndBuffers()
 		{
 			return false;
 		}
+		std::string name = "GeometryPass CommandBuffer[" + std::to_string(i) + "]";
+		m_ppGeometryPassBuffers[i]->setName(name.c_str());
 
-		m_ppLightPassPools[i] = DBG_NEW CommandPoolVK(pDevice, graphicsQueueIndex);
+		m_ppLightPassPools[i] = DBG_NEW CommandPoolVK(pDevice, pInstance, graphicsQueueIndex);
 		if (!m_ppLightPassPools[i]->init())
 		{
 			return false;
@@ -485,6 +489,8 @@ bool MeshRendererVK::createCommandPoolAndBuffers()
 		{
 			return false;
 		}
+		name = "LightPass CommandBuffer[" + std::to_string(i) + "]";
+		m_ppLightPassBuffers[i]->setName(name.c_str());
 	}
 
 	return true;

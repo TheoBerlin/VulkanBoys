@@ -49,6 +49,7 @@ public:
 	bool isRayTracingEnabled() const override { return m_RayTracingEnabled; }
 
 	DeviceVK*		getDevice()				{ return &m_Device; } //Const function?
+	InstanceVK*		getInstance()			{ return &m_Instance; } //Const function?
 	SwapChainVK*	getSwapChain() const	{ return m_pSwapChain; }
 
 private:

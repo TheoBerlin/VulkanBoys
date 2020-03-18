@@ -12,6 +12,7 @@
 #include "DescriptorSetVK.h"
 
 class DeviceVK;
+class InstanceVK;
 class ShaderBindingTableVK;
 
 class CommandBufferVK
@@ -43,13 +44,27 @@ public:
 
 	void traceRays(ShaderBindingTableVK* pShaderBindingTable, uint32_t width, uint32_t height, uint32_t raygenOffset);
 
+	void setName(const char* pName);
+
+	FORCEINLINE void pipelineBarrier(VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage, VkDependencyFlags dependencyFlags, 
+		uint32_t memoryBarrierCount, const VkMemoryBarrier* pMemoryBarriers, uint32_t bufferMemoryBarrierCount, const VkBufferMemoryBarrier* pBufferMemoryBarriers, 
+		uint32_t imageMemoryBarrierCount, const VkImageMemoryBarrier* pImageMemoryBarriers)
+	{
+		vkCmdPipelineBarrier(m_CommandBuffer, srcStage, dstStage, dependencyFlags, memoryBarrierCount, pMemoryBarriers, bufferMemoryBarrierCount, pBufferMemoryBarriers, imageMemoryBarrierCount, pImageMemoryBarriers);
+	}
+
+	FORCEINLINE void imageMemoryBarrier(VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage, uint32_t imageMemoryBarrierCount, const VkImageMemoryBarrier* pImageMemoryBarriers)
+	{
+		vkCmdPipelineBarrier(m_CommandBuffer, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, imageMemoryBarrierCount, pImageMemoryBarriers);
+	}
+
 	FORCEINLINE void begin(VkCommandBufferInheritanceInfo* pInheritaneInfo, VkCommandBufferUsageFlags flags)
 	{
 		VkCommandBufferBeginInfo beginInfo = {};
-		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		beginInfo.pNext = nullptr;
-		beginInfo.flags = flags;
-		beginInfo.pInheritanceInfo = pInheritaneInfo;
+		beginInfo.sType				= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.pNext				= nullptr;
+		beginInfo.flags				= flags;
+		beginInfo.pInheritanceInfo	= pInheritaneInfo;
 
 		VK_CHECK_RESULT(vkBeginCommandBuffer(m_CommandBuffer, &beginInfo), "Begin CommandBuffer Failed");
 	}
@@ -142,9 +157,9 @@ public:
 		vkCmdExecuteCommands(m_CommandBuffer, 1, &secondaryBuffer);
 	}
 
-	FORCEINLINE void CommandBufferVK::dispatch(uint32_t x, uint32_t y, uint32_t z)
+	FORCEINLINE void CommandBufferVK::dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
 	{
-		vkCmdDispatch(m_CommandBuffer, x, y, z);
+		vkCmdDispatch(m_CommandBuffer, groupCountX, groupCountY, groupCountZ);
 	}
 
 	FORCEINLINE void CommandBufferVK::dispatch(const glm::u32vec3& groupSize)
@@ -156,7 +171,7 @@ public:
 	FORCEINLINE VkCommandBuffer getCommandBuffer() const	{ return m_CommandBuffer; }
 
 private:
-	CommandBufferVK(DeviceVK* pDevice, VkCommandBuffer commandBuffer);
+	CommandBufferVK(DeviceVK* pDevice, InstanceVK* pInstance, VkCommandBuffer commandBuffer);
 	~CommandBufferVK();
 
 	bool finalize();
@@ -165,6 +180,7 @@ private:
 	std::vector<VkBuffer> m_VertexBuffers;
 	std::vector<VkDescriptorSet> m_DescriptorSets;
 	DeviceVK* m_pDevice;
+	InstanceVK* m_pInstance;
 	StagingBufferVK* m_pStagingBuffer;
 	StagingBufferVK* m_pStagingTexture;
 	VkFence m_Fence;

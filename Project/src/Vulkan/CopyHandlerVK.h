@@ -6,6 +6,7 @@
 class ImageVK;
 class DeviceVK;
 class BufferVK;
+class InstanceVK;
 class CommandPoolVK;
 class CommandBufferVK;
 
@@ -14,7 +15,7 @@ class CommandBufferVK;
 class CopyHandlerVK
 {
 public:
-	CopyHandlerVK(DeviceVK* pDevice);
+	CopyHandlerVK(DeviceVK* pDevice, InstanceVK* pInstance);
 	~CopyHandlerVK();
 
 	bool init();
@@ -40,6 +41,7 @@ private:
 	Spinlock m_TransferQueueLock;
 	Spinlock m_GraphicsQueueLock;
 	DeviceVK* m_pDevice;
+	InstanceVK* m_pInstance;
 	CommandPoolVK* m_pTransferPool;
 	CommandPoolVK* m_pGraphicsPool;
 	CommandBufferVK* m_pTransferBuffers[MAX_COMMAND_BUFFERS];

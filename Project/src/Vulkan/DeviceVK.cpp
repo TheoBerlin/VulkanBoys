@@ -38,7 +38,7 @@ bool DeviceVK::finalize(InstanceVK* pInstance)
 
 	registerExtensionFunctions();
 
-	m_pCopyHandler = DBG_NEW CopyHandlerVK(this);
+	m_pCopyHandler = DBG_NEW CopyHandlerVK(this, pInstance);
 	m_pCopyHandler->init();
 
 	std::cout << "--- Device: Vulkan Device created successfully!" << std::endl;
@@ -268,7 +268,6 @@ void DeviceVK::checkExtensionsSupport(VkPhysicalDevice physicalDevice, bool& req
 void DeviceVK::setEnabledExtensions()
 {
 	m_EnabledExtensions = std::vector<const char*>(m_RequestedRequiredExtensions.begin(), m_RequestedRequiredExtensions.end());
-
 	for (auto& requiredExtensions : m_RequestedRequiredExtensions)
 	{
 		m_ExtensionsStatus[requiredExtensions] = true;
@@ -321,7 +320,7 @@ QueueFamilyIndices DeviceVK::findQueueFamilies(VkPhysicalDevice physicalDevice)
 
 void DeviceVK::registerExtensionFunctions()
 {
-	if (m_ExtensionsStatus["VK_NV_ray_tracing"])
+	if (m_ExtensionsStatus[VK_NV_RAY_TRACING_EXTENSION_NAME])
 	{
 		// Get VK_NV_ray_tracing related function pointers
 		GET_DEVICE_PROC_ADDR(m_Device, vkCreateAccelerationStructureNV);
@@ -339,8 +338,8 @@ void DeviceVK::registerExtensionFunctions()
 		//Query Ray Tracing properties
 		m_RayTracingProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_NV;
 		VkPhysicalDeviceProperties2 deviceProps2 = {};
-		deviceProps2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-		deviceProps2.pNext = &m_RayTracingProperties;
+		deviceProps2.sType	= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+		deviceProps2.pNext	= &m_RayTracingProperties;
 		vkGetPhysicalDeviceProperties2(m_PhysicalDevice, &deviceProps2);
 	}
 	else

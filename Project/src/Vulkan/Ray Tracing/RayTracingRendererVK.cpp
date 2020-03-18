@@ -431,12 +431,13 @@ CommandBufferVK* RayTracingRendererVK::getComputeCommandBuffer() const
 
 bool RayTracingRendererVK::createCommandPoolAndBuffers()
 {
-	DeviceVK* pDevice = m_pContext->getDevice();
+	DeviceVK* pDevice		= m_pContext->getDevice();
+	InstanceVK* pInstance	= m_pContext->getInstance();
 
 	const uint32_t computeQueueFamilyIndex = pDevice->getQueueFamilyIndices().computeFamily.value();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		m_ppComputeCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, computeQueueFamilyIndex);
+		m_ppComputeCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, pInstance, computeQueueFamilyIndex);
 
 		if (!m_ppComputeCommandPools[i]->init())
 		{
