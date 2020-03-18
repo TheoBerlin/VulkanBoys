@@ -181,6 +181,7 @@ bool DeviceVK::initLogicalDevice(InstanceVK* pInstance)
 	VkPhysicalDeviceFeatures deviceFeatures = {};
 	deviceFeatures.fillModeNonSolid = true;
 	deviceFeatures.vertexPipelineStoresAndAtomics = true;
+	deviceFeatures.fragmentStoresAndAtomics = true;
 
 	VkDeviceCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;

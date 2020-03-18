@@ -65,14 +65,20 @@ private:
 
 	IMesh* m_pMesh;
 	IMesh* m_pSphere;
-	ITexture2D* m_pAlbedo;
-	ITexture2D* m_pNormal;
-	ITexture2D* m_pMetallic;
-	ITexture2D* m_pRoughness;
+	IMesh* m_pCube;
+	ITexture2D* m_pGunAlbedo;
+	ITexture2D* m_pGunNormal;
+	ITexture2D* m_pGunMetallic;
+	ITexture2D* m_pGunRoughness;
+	ITexture2D* m_pCubeAlbedo;
+	ITexture2D* m_pCubeNormal;
+	ITexture2D* m_pCubeMetallic;
+	ITexture2D* m_pCubeRoughness;
 	ITextureCube* m_pSkybox;
 	Material m_GunMaterial;
 	Material m_SphereMaterials[SPHERE_COUNT_DIMENSION * SPHERE_COUNT_DIMENSION];
 	uint32_t m_SphereIndexes[SPHERE_COUNT_DIMENSION * SPHERE_COUNT_DIMENSION];
+	Material m_PlaneMaterial;
 
 	ParticleEmitterHandler* m_pParticleEmitterHandler;
 	ITexture2D* m_pParticleTexture;
@@ -88,7 +94,7 @@ private:
 	uint32_t m_GraphicsIndex0;
 	uint32_t m_GraphicsIndex1;
 	uint32_t m_GraphicsIndex2;
-
+	uint32_t m_GraphicsIndex3;
 
 
 	static Application* s_pInstance;

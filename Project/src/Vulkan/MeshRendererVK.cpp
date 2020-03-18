@@ -36,11 +36,14 @@ MeshRendererVK::MeshRendererVK(GraphicsContextVK* pContext, RenderingHandlerVK* 
 	m_pSkyboxPipeline(nullptr),
 	m_pLightDescriptorSet(nullptr),
 	m_pGBufferSampler(nullptr),
+	m_pRTSampler(nullptr),
 	m_pSkyboxPipelineLayout(nullptr),
 	m_pDescriptorPool(nullptr),
 	m_pLightDescriptorSetLayout(nullptr),
 	m_pCameraBuffer(nullptr),
 	m_pLightBuffer(nullptr),
+	m_pMaterialParametersBuffer(nullptr),
+	m_pTransformsBuffer(nullptr),
 	m_pEnvironmentMap(nullptr),
 	m_pIntegrationLUT(nullptr),
 	m_pGPassProfiler(nullptr),
@@ -77,6 +80,7 @@ MeshRendererVK::~MeshRendererVK()
 	SAFEDELETE(m_pSkyboxPipelineLayout);
 	SAFEDELETE(m_pSkyboxDescriptorSetLayout);
 	SAFEDELETE(m_pGBufferSampler);
+	SAFEDELETE(m_pRTSampler);
 	SAFEDELETE(m_pSkyboxPipelineLayout);
 	SAFEDELETE(m_pSkyboxPipeline);
 	SAFEDELETE(m_pGeometryPipeline);
@@ -189,6 +193,10 @@ void MeshRendererVK::endFrame(IScene* pScene)
 	m_ppGeometryPassBuffers[m_CurrentFrame]->end();
 }
 
+void MeshRendererVK::renderUI()
+{
+}
+
 void MeshRendererVK::setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY)
 {
 	m_Viewport.x		= topX;
@@ -261,20 +269,58 @@ void MeshRendererVK::setSkybox(TextureCubeVK* pSkybox, TextureCubeVK* pIrradianc
 	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pEnvironmentMapView, &m_pSkyboxSampler, 1, ENVIRONMENT_BINDING);
 }
 
-void MeshRendererVK::setRayTracingResult(ImageViewVK* pRayTracingResultImageView)
+void MeshRendererVK::setRayTracingResultImages(ImageViewVK* pRadianceImageView, ImageViewVK* pGlossyImageView)
 {
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pRayTracingResultImageView, &m_pGBufferSampler, 1, RAY_TRACING_RESULT_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pRadianceImageView, &m_pRTSampler, 1, RADIANCE_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pGlossyImageView, &m_pRTSampler, 1, GLOSSY_BINDING);
 }
 
-void MeshRendererVK::submitMesh(const MeshVK* pMesh, const Material* pMaterial, const glm::mat4& transform)
+void MeshRendererVK::setSceneBuffers(const BufferVK* pMaterialParametersBuffer, const BufferVK* pTransformsBuffer)
+{
+	if (m_pMaterialParametersBuffer != pMaterialParametersBuffer)
+	{
+		m_pMaterialParametersBuffer = pMaterialParametersBuffer;
+
+		if (m_pTransformsBuffer != pTransformsBuffer)
+		{
+			//Both Buffers Needs Update
+			m_pTransformsBuffer = pTransformsBuffer;
+
+			for (auto& instance : m_MeshTable)
+			{
+				instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pMaterialParametersBuffer, MATERIAL_PARAMETERS_BINDING);
+				instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pTransformsBuffer, INSTANCE_TRANSFORMS_BINDING);
+			}
+		}
+		else
+		{
+			//Just Materials Buffer Needs Update
+			for (auto& instance : m_MeshTable)
+			{
+				instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pMaterialParametersBuffer, MATERIAL_PARAMETERS_BINDING);
+			}
+		}
+	}
+	else if (m_pTransformsBuffer != pTransformsBuffer)
+	{
+		//Just Transforms Buffer Needs Update
+		m_pTransformsBuffer = pTransformsBuffer;
+
+		for (auto& instance : m_MeshTable)
+		{
+			instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pTransformsBuffer, INSTANCE_TRANSFORMS_BINDING);
+		}
+	}
+}
+
+void MeshRendererVK::submitMesh(const MeshVK* pMesh, const Material* pMaterial, uint32_t materialIndex, uint32_t transformsIndex)
 {
 	ASSERT(pMesh != nullptr);
 
 	m_ppGeometryPassBuffers[m_CurrentFrame]->bindPipeline(m_pGeometryPipeline);
 
-	m_ppGeometryPassBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(transform));
-	m_ppGeometryPassBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec4), (const void*)glm::value_ptr(pMaterial->getAlbedo()));
-	m_ppGeometryPassBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4) + sizeof(glm::vec4), sizeof(glm::vec3), (const void*)glm::value_ptr(pMaterial->getMaterialProperties()));
+	uint32_t pushConstants[2] = { materialIndex, transformsIndex };
+	m_ppGeometryPassBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t) * 2, &pushConstants);
 
 	BufferVK* pIndexBuffer = reinterpret_cast<BufferVK*>(pMesh->getIndexBuffer());
 	m_ppGeometryPassBuffers[m_CurrentFrame]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
@@ -610,6 +656,8 @@ bool MeshRendererVK::createPipelineLayouts()
 	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, AO_MAP_BINDING, 1);
 	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, METALLIC_MAP_BINDING, 1);
 	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ROUGHNESS_MAP_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, MATERIAL_PARAMETERS_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, INSTANCE_TRANSFORMS_BINDING, 1);
 
 	if (!m_pGeometryDescriptorSetLayout->finalize())
 	{
@@ -641,7 +689,8 @@ bool MeshRendererVK::createPipelineLayouts()
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, IRRADIANCE_BINDING, 1);
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ENVIRONMENT_BINDING, 1);
 	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, BRDF_LUT_BINDING, 1);
-	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, RAY_TRACING_RESULT_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, RADIANCE_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GLOSSY_BINDING, 1);
 	if (!m_pLightDescriptorSetLayout->finalize())
 	{
 		return false;
@@ -743,6 +792,19 @@ bool MeshRendererVK::createSamplers()
 		return false;
 	}
 
+	SamplerParams rtParams = {};
+	rtParams.MagFilter = VK_FILTER_LINEAR;
+	rtParams.MinFilter = VK_FILTER_LINEAR;
+	rtParams.WrapModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	rtParams.WrapModeV = params.WrapModeU;
+	rtParams.WrapModeW = params.WrapModeU;
+
+	m_pRTSampler = DBG_NEW SamplerVK(m_pContext->getDevice());
+	if (!m_pRTSampler->init(rtParams))
+	{
+		return false;
+	}
+
 	return true;
 }
 
@@ -825,6 +887,12 @@ DescriptorSetVK* MeshRendererVK::getDescriptorSetFromMeshAndMaterial(const MeshV
 
 		ImageViewVK* pRoughnessView = pRoughness->getImageView();
 		pDescriptorSet->writeCombinedImageDescriptors(&pRoughnessView, &pSampler, 1, ROUGHNESS_MAP_BINDING);
+
+		if (m_pMaterialParametersBuffer != nullptr)
+			pDescriptorSet->writeStorageBufferDescriptor(m_pMaterialParametersBuffer, MATERIAL_PARAMETERS_BINDING);
+
+		if (m_pTransformsBuffer!= nullptr)
+			pDescriptorSet->writeStorageBufferDescriptor(m_pTransformsBuffer, INSTANCE_TRANSFORMS_BINDING);
 
 		MeshPipeline meshPipeline = {};
 		meshPipeline.pDescriptorSets = pDescriptorSet;

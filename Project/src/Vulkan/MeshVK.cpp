@@ -187,8 +187,78 @@ bool MeshVK::initAsSphere(uint32_t subDivisions)
 		finalIndices.push_back(triangles[i].indices[0]);
 	}
 
-	initFromMemory(finalVertices.data(), sizeof(Vertex), (uint32_t)finalVertices.size(), finalIndices.data(), (uint32_t)finalIndices.size());
-	return true;
+	return initFromMemory(finalVertices.data(), sizeof(Vertex), (uint32_t)finalVertices.size(), finalIndices.data(), (uint32_t)finalIndices.size());
+}
+
+bool MeshVK::initAsCube()
+{
+	std::vector<Vertex> vertices
+	{
+		// front (Seen from front)
+		{ glm::vec3(-1.0f,  1.0f,  1.0f),	glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(0.0f, 1.0f) },
+		{ glm::vec3(1.0f,  1.0f,  1.0f),	glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(1.0f, 1.0f) },
+		{ glm::vec3(1.0f, -1.0f,  1.0f),	glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(1.0f, 0.0f) },
+		{ glm::vec3(-1.0f, -1.0f,  1.0f),	glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(0.0f, 0.0f) },
+
+		// Top (Seen from above)
+		{ glm::vec3(-1.0f,  1.0f, -1.0f),	glm::vec3(0.0f,  1.0f,  0.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(0.0f, 1.0f) },
+		{ glm::vec3(1.0f,  1.0f, -1.0f),	glm::vec3(0.0f,  1.0f,  0.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(1.0f, 1.0f) },
+		{ glm::vec3(1.0f,  1.0f,  1.0f),	glm::vec3(0.0f,  1.0f,  0.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(1.0f, 0.0f) },
+		{ glm::vec3(-1.0f,  1.0f,  1.0f),	glm::vec3(0.0f,  1.0f,  0.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(0.0f, 0.0f) },
+
+		// Back (Seen from front)
+		{ glm::vec3(-1.0f,  1.0f, -1.0f),	glm::vec3(0.0f,  0.0f, -1.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(0.0f, 1.0f) },
+		{ glm::vec3(1.0f,  1.0f, -1.0f),	glm::vec3(0.0f,  0.0f, -1.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(1.0f, 1.0f) },
+		{ glm::vec3(1.0f, -1.0f, -1.0f),	glm::vec3(0.0f,  0.0f, -1.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(1.0f, 0.0f) },
+		{ glm::vec3(-1.0f, -1.0f, -1.0f),	glm::vec3(0.0f,  0.0f, -1.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(0.0f, 0.0f) },
+
+		// Bottom (Seen from above)
+		{ glm::vec3(-1.0f, -1.0f, -1.0f),	glm::vec3(0.0f, -1.0f,  0.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(0.0f, 1.0f) },
+		{ glm::vec3(1.0f, -1.0f, -1.0f),	glm::vec3(0.0f, -1.0f,  0.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(1.0f, 1.0f) },
+		{ glm::vec3(1.0f, -1.0f,  1.0f),	glm::vec3(0.0f, -1.0f,  0.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(1.0f, 0.0f) },
+		{ glm::vec3(-1.0f, -1.0f,  1.0f),	glm::vec3(0.0f, -1.0f,  0.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(0.0f, 0.0f) },
+
+		// Left (Seen from left)
+		{ glm::vec3(-1.0f,  1.0f, -1.0f),	glm::vec3(-1.0f,  0.0f,  0.0f),	 glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec2(0.0f, 1.0f) },
+		{ glm::vec3(-1.0f,  1.0f,  1.0f),	glm::vec3(-1.0f,  0.0f,  0.0f),	 glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec2(1.0f, 1.0f) },
+		{ glm::vec3(-1.0f, -1.0f,  1.0f),	glm::vec3(-1.0f,  0.0f,  0.0f),	 glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec2(1.0f, 0.0f) },
+		{ glm::vec3(-1.0f, -1.0f, -1.0f),	glm::vec3(-1.0f,  0.0f,  0.0f),	 glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec2(0.0f, 0.0f) },
+
+		// Right (Seen from left)
+		{ glm::vec3(1.0f,  1.0f, -1.0f),	glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec2(0.0f, 1.0f) },
+		{ glm::vec3(1.0f,  1.0f,  1.0f),	glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec2(1.0f, 1.0f) },
+		{ glm::vec3(1.0f, -1.0f,  1.0f),	glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec2(1.0f, 0.0f) },
+		{ glm::vec3(1.0f, -1.0f, -1.0f),	glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec2(0.0f, 0.0f) }
+	};
+
+	std::vector<uint32_t> indices
+	{
+		// Front (Seen from front)
+		0, 2, 1,
+		2, 0, 3,
+
+		// Top (Seen from above)
+		4, 6, 5,
+		6, 4, 7,
+
+		// Back (Seen from front)
+		8, 9, 10,
+		10, 11, 8,
+
+		// Bottom (Seen from above)
+		12, 13, 14,
+		14, 15, 12,
+
+		// Left (Seen from left)
+		16, 18, 17,
+		18, 16, 19,
+
+		// Right (Seen from left)
+		20, 21, 22,
+		22, 23, 20
+	};
+
+	return initFromMemory(vertices.data(), sizeof(Vertex), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size());
 }
 
 IBuffer* MeshVK::getVertexBuffer() const

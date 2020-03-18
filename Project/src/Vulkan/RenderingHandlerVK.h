@@ -76,7 +76,7 @@ private:
     bool createRenderPasses();
     bool createSemaphores();
     bool createBuffers();
-	bool createRayTracingRenderImage(uint32_t width, uint32_t height);
+	bool createRayTracingRenderImages(uint32_t width, uint32_t height);
 	bool createGBuffer();
 
     void releaseBackBuffers();
@@ -128,8 +128,31 @@ private:
     BufferVK* m_pCameraBuffer;
 
 	//Render Results
-	ImageVK* m_pRayTracingStorageImage;
-	ImageViewVK* m_pRayTracingStorageImageView;
+
+	union
+	{
+		struct
+		{
+			ImageVK* m_pRadianceImage;
+			ImageVK* m_pGlossyImage;
+			
+		};
+
+		ImageVK* m_RayTracingImages[2];
+	};
+
+	union
+	{
+		struct
+		{
+			ImageViewVK* m_pRadianceImageView;
+			ImageViewVK* m_pGlossyImageView;
+			
+		};
+
+		ImageVK* m_RayTracingImageViews[2];
+	};
+
 	GBufferVK* m_pGBuffer;
 
     CameraBuffer m_CameraBuffer;

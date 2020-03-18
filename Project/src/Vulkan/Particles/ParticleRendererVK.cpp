@@ -114,6 +114,10 @@ void ParticleRendererVK::endFrame(IScene* pScene)
 	m_ppCommandBuffers[currentFrame]->end();
 }
 
+void ParticleRendererVK::renderUI()
+{
+}
+
 void ParticleRendererVK::submitParticles(ParticleEmitter* pEmitter)
 {
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
@@ -192,7 +196,7 @@ bool ParticleRendererVK::createPipelineLayout()
 	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, 4, 1);
 
 	// Particle Texture
-	m_pSampler = new SamplerVK(pDevice);
+	m_pSampler = DBG_NEW SamplerVK(pDevice);
 
 	SamplerParams samplerParams = {};
 	samplerParams.MinFilter = VkFilter::VK_FILTER_LINEAR;

@@ -33,24 +33,27 @@ class RenderPassVK;
 class ImageViewVK;
 
 //Geometry pass
-#define CAMERA_BUFFER_BINDING	0
-#define VERTEX_BUFFER_BINDING	1
-#define ALBEDO_MAP_BINDING		2
-#define NORMAL_MAP_BINDING		3
-#define AO_MAP_BINDING			4
-#define METALLIC_MAP_BINDING	5
-#define ROUGHNESS_MAP_BINDING	6
+#define CAMERA_BUFFER_BINDING		0
+#define VERTEX_BUFFER_BINDING		1
+#define ALBEDO_MAP_BINDING			2
+#define NORMAL_MAP_BINDING			3
+#define AO_MAP_BINDING				4
+#define METALLIC_MAP_BINDING		5
+#define ROUGHNESS_MAP_BINDING		6
+#define MATERIAL_PARAMETERS_BINDING	7
+#define INSTANCE_TRANSFORMS_BINDING	8
 
 //Light pass
-#define GBUFFER_ALBEDO_BINDING			1
-#define GBUFFER_NORMAL_BINDING			2
-#define GBUFFER_VELOCITY_BINDING		3
-#define GBUFFER_DEPTH_BINDING			4
-#define IRRADIANCE_BINDING				5
-#define ENVIRONMENT_BINDING				6
-#define BRDF_LUT_BINDING				7
-#define RAY_TRACING_RESULT_BINDING		8
-#define LIGHT_BUFFER_BINDING			9
+#define GBUFFER_ALBEDO_BINDING		1
+#define GBUFFER_NORMAL_BINDING		2
+#define GBUFFER_VELOCITY_BINDING	3
+#define GBUFFER_DEPTH_BINDING		4
+#define IRRADIANCE_BINDING			5
+#define ENVIRONMENT_BINDING			6
+#define BRDF_LUT_BINDING			7
+#define RADIANCE_BINDING			8
+#define GLOSSY_BINDING				9
+#define LIGHT_BUFFER_BINDING		10
 
 struct MeshFilter
 {
@@ -97,6 +100,8 @@ public:
 	virtual void beginFrame(IScene* pScene) override;
 	virtual void endFrame(IScene* pScene) override;
 
+	virtual void renderUI() override;
+
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
 	
 	void setupFrame(CommandBufferVK* pPrimaryBuffer, const Camera& camera, const LightSetup& lightsetup);
@@ -104,13 +109,16 @@ public:
 	void setClearColor(float r, float g, float b);
 	void setClearColor(const glm::vec3& color);
 	void setSkybox(TextureCubeVK* pSkybox, TextureCubeVK* pIrradiance, TextureCubeVK* pEnvironmentMap);
-	void setRayTracingResult(ImageViewVK* pRayTracingResultImageView);
+	void setRayTracingResultImages(ImageViewVK* pRadianceImageView, ImageViewVK* pGlossyImageView);
+	void setSceneBuffers(const BufferVK* pMaterialParametersBuffer, const BufferVK* pTransformsBuffer);
 
-	void submitMesh(const MeshVK* pMesh, const Material* pMaterial, const glm::mat4& transform);
+	void submitMesh(const MeshVK* pMesh, const Material* pMaterial, uint32_t materialIndex, uint32_t transformsIndex);
 	
 	void buildLightPass(RenderPassVK* pRenderPass, FrameBufferVK* pFramebuffer);
 
 	void onWindowResize(uint32_t width, uint32_t height);
+
+	Texture2DVK* getBRDFLookUp() { return m_pIntegrationLUT; }
 		
 	FORCEINLINE ProfilerVK*			getLightProfiler() const			{ return m_pLightPassProfiler; }
 	FORCEINLINE ProfilerVK*			getGeometryProfiler() const			{ return m_pGPassProfiler; }
@@ -150,10 +158,14 @@ private:
 	SamplerVK* m_pSkyboxSampler;
 	SamplerVK* m_pGBufferSampler;
 	SamplerVK* m_pBRDFSampler;
+	SamplerVK* m_pRTSampler;
 	Texture2DVK* m_pDefaultTexture;
 	Texture2DVK* m_pDefaultNormal;
 	BufferVK* m_pCameraBuffer;
 	BufferVK* m_pLightBuffer;
+
+	const BufferVK* m_pMaterialParametersBuffer;
+	const BufferVK* m_pTransformsBuffer;
 
 	PipelineVK* m_pLightPipeline;
 	PipelineLayoutVK* m_pLightPipelineLayout;

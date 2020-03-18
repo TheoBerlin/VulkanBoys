@@ -26,7 +26,7 @@ class SceneVK;
 class ImageVK;
 class MeshVK;
 
-constexpr uint32_t RT_RAW_RESULT_IMAGE_BINDING = 0;
+constexpr uint32_t RT_RADIANCE_IMAGE_BINDING = 0;
 constexpr uint32_t RT_CAMERA_BUFFER_BINDING = 1;
 constexpr uint32_t RT_TLAS_BINDING = 2;
 constexpr uint32_t RT_GBUFFER_ALBEDO_BINDING = 3;
@@ -43,15 +43,25 @@ constexpr uint32_t RT_COMBINED_ROUGHNESS_BINDING = 13;
 constexpr uint32_t RT_COMBINED_MATERIAL_PARAMETERS_BINDING = 14;
 constexpr uint32_t RT_SKYBOX_BINDING = 15;
 constexpr uint32_t RT_LIGHT_BUFFER_BINDING = 16;
+constexpr uint32_t RT_GBUFFER_VELOCITY_BINDING = 17;
+constexpr uint32_t RT_BRDF_LUT_BINDING = 18;
+constexpr uint32_t RT_RAW_REFLECTION_IMAGE_BINDING = 19;
+constexpr uint32_t RT_BLUE_NOISE_LOOKUP_BINDING = 20;
 
-constexpr uint32_t RT_BP_BLUR_RESULT_BINDING = 0;
-constexpr uint32_t RT_BP_RAW_RESULT_BINDING = 1;
+constexpr uint32_t RT_BP_INPUT_BINDING = 0;
+constexpr uint32_t RT_BP_OUTPUT_BINDING = 1;
 constexpr uint32_t RT_BP_GBUFFER_ALBEDO_BINDING = 2;
 constexpr uint32_t RT_BP_GBUFFER_NORMAL_BINDING = 3;
 constexpr uint32_t RT_BP_GBUFFER_DEPTH_BINDING = 4;
 
 class RayTracingRendererVK : public IRenderer
 {
+	struct RayTracingParameters
+	{
+		float MaxTemporalFrames = 128.0f;
+		float MinTemporalWeight = 0.01f;
+	};
+
 public:
 	RayTracingRendererVK(GraphicsContextVK* pContext, RenderingHandlerVK* pRenderingHandler);
 	~RayTracingRendererVK();
@@ -63,14 +73,18 @@ public:
 
 	virtual void render(IScene* pScene, GBufferVK* pGBuffer);
 
+	virtual void renderUI() override;
+
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
 
 	void setResolution(uint32_t width, uint32_t height);
 	
 	void onWindowResize(uint32_t width, uint32_t height);
 
-	void setRayTracingResult(ImageViewVK* pRayTracingResultImageView, uint32_t width, uint32_t height);
+	void setRayTracingResultTextures(ImageVK* pRadianceImage, ImageViewVK* pRadianceImageView, ImageVK* pGlossyImage, ImageViewVK* pGlossyImageView, uint32_t width, uint32_t height);
 	void setSkybox(TextureCubeVK* pSkybox);
+
+	void setBRDFLookUp(Texture2DVK* pTexture);
 
 
 	CommandBufferVK* getComputeCommandBuffer() const;
@@ -81,6 +95,8 @@ private:
 	bool createPipelineLayouts();
 	bool createPipelines();
 	bool createUniformBuffers();
+	bool createSamplers();
+	bool createTextures();
 
 	void createProfiler();
 
@@ -112,7 +128,11 @@ private:
 
 	PipelineLayoutVK* m_pBlurPassPipelineLayout;
 
-	DescriptorSetVK* m_pBlurPassDescriptorSet;
+	DescriptorSetVK* m_pHorizontalInitialBlurPassDescriptorSet;
+	DescriptorSetVK* m_pHorizontalExtraBlurPassDescriptorSet;
+
+	DescriptorSetVK* m_pVerticalBlurPassDescriptorSet;
+
 	DescriptorPoolVK* m_pBlurPassDescriptorPool;
 	DescriptorSetLayoutVK* m_pBlurPassDescriptorSetLayout;
 	uint32_t m_WorkGroupSize[3];
@@ -122,13 +142,24 @@ private:
 	//General
 	TextureCubeVK* m_pSkybox;
 
-	ImageVK* m_pRawResultImage;
-	ImageViewVK* m_pRawResultImageView;
+	Texture2DVK* m_pBRDFLookUp;
+	Texture2DVK* m_pBlueNoise;
+
+	ImageVK* m_pReflectionTemporalAccumulationImage;
+	ImageViewVK* m_pReflectionTemporalAccumulationImageView;
+
+	ImageVK* m_pReflectionIntermediateImage;
+	ImageViewVK* m_pReflectionIntermediateImageView;
+
+	ImageVK* m_pReflectionFinalImage;
+	ImageViewVK* m_pReflectionFinalImageView;
 
 	BufferVK* m_pCameraBuffer;
 	BufferVK* m_pLightsBuffer;
 
-	SamplerVK* m_pSampler;
+	SamplerVK* m_pNearestSampler;
+	SamplerVK* m_pLinearSampler;
 
-	bool m_TempSubmitLimit;
+	//Tuneable Parameters
+	RayTracingParameters m_RayTracingParameters;
 };

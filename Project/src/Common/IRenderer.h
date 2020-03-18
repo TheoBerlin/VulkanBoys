@@ -25,5 +25,7 @@ public:
 	virtual void beginFrame(IScene* pScene) = 0;
 	virtual void endFrame(IScene* pScene) = 0;
 
+	virtual void renderUI() = 0;
+
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) = 0;
 };
