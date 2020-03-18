@@ -165,32 +165,6 @@ ITextureCube* RenderingHandlerVK::generateTextureCube(ITexture2D* pPanorama, ETe
 	return pTextureCube;
 }
 
-void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
-{
-	m_pGraphicsContext->getDevice()->wait();
-	releaseBackBuffers();
-
-	m_pGraphicsContext->getSwapChain()->resize(width, height);
-
-	m_pGBuffer->resize(width, height);
-
-	if (m_pMeshRenderer)
-	{
-		m_pMeshRenderer->onWindowResize(width, height);
-	}
-
-	if (m_pRayTracer)
-	{
-		//m_pRayTracer->onWindowResize(width, height);
-		//Temp?
-		m_pRayTracer->setResolution(width / RAY_TRACING_RESOLUTION_DENOMINATOR, height / RAY_TRACING_RESOLUTION_DENOMINATOR);
-	}
-
-	createRayTracingRenderImages(width, height);
-    m_pMeshRenderer->setRayTracingResultImages(m_pRadianceImageView, m_pGlossyImageView);
-	createBackBuffers();
-}
-
 void RenderingHandlerVK::render(IScene* pScene)
 {
 	SceneVK* pVulkanScene	= reinterpret_cast<SceneVK*>(pScene);
@@ -253,17 +227,17 @@ void RenderingHandlerVK::render(IScene* pScene)
 	m_pMeshRenderer->setupFrame(m_ppGraphicsCommandBuffers[m_CurrentFrame], camera, lightsetup);
 #if MULTITHREADED
 	m_pMeshRenderer->beginFrame(pVulkanScene);
-	TaskDispatcher::execute([pScene, this]
+	TaskDispatcher::execute([pVulkanScene, this]
 		{
-			m_pMeshRenderer->setSceneBuffers(pScene->getMaterialParametersBuffer(), pScene->getTransformsBuffer());
+			m_pMeshRenderer->setSceneBuffers(pVulkanScene->getMaterialParametersBuffer(), pVulkanScene->getTransformsBuffer());
 
-			auto& graphicsObjects = pScene->getGraphicsObjects();
+			auto& graphicsObjects = pVulkanScene->getGraphicsObjects();
 			for (uint32_t i = 0; i < graphicsObjects.size(); i++)
 			{
 				const GraphicsObjectVK& graphicsObject = graphicsObjects[i];
 				m_pMeshRenderer->submitMesh(graphicsObject.pMesh, graphicsObject.pMaterial, graphicsObject.MaterialParametersIndex, i);
 			}
-			m_pMeshRenderer->endFrame(pScene);
+			m_pMeshRenderer->endFrame(pVulkanScene);
 		});
 	TaskDispatcher::execute([this]
 		{
@@ -343,14 +317,6 @@ void RenderingHandlerVK::render(IScene* pScene)
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->releaseImagesOwnership(
 			m_RayTracingImages,
 			2,
-			VK_ACCESS_MEMORY_WRITE_BIT,
-			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
-			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
-			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-			VK_SHADER_STAGE_RAYGEN_BIT_NV);
-
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->releaseImageOwnership(
-			m_pRayTracingStorageImage,
 			VK_ACCESS_MEMORY_WRITE_BIT,
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
 			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
@@ -476,11 +442,6 @@ void RenderingHandlerVK::render(IScene* pScene)
 	else
 	{
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pGBuffer->getDepthImage(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1, VK_IMAGE_ASPECT_DEPTH_BIT);
-		}
-		else
-		{
-			m_ppGraphicsCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pGBuffer->getDepthImage(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1, VK_IMAGE_ASPECT_DEPTH_BIT);
-		}
 	}
 
 	//TODO: Combine these into one renderpass
@@ -529,7 +490,6 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 	m_pGraphicsContext->getSwapChain()->resize(width, height);
 
 	m_pGBuffer->resize(width, height);
-	createBackBuffers();
 
 	if (m_pMeshRenderer)
 	{
@@ -543,8 +503,9 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 		m_pRayTracer->setResolution(width / RAY_TRACING_RESOLUTION_DENOMINATOR, height / RAY_TRACING_RESOLUTION_DENOMINATOR);
 	}
 
-	createRayTracingRenderImage(width, height);
-	m_pMeshRenderer->setRayTracingResult(m_pRayTracingStorageImageView);
+	createRayTracingRenderImages(width, height);
+	m_pMeshRenderer->setRayTracingResultImages(m_pRadianceImageView, m_pGlossyImageView);
+	createBackBuffers();
 }
 
 void RenderingHandlerVK::swapBuffers()
