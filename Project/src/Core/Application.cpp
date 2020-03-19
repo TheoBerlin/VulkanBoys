@@ -19,17 +19,17 @@
 #include "Common/IInputHandler.h"
 #include "Common/IGraphicsContext.h"
 
-#include "Vulkan/RenderPassVK.h"
-#include "Vulkan/CommandPoolVK.h"
-#include "Vulkan/GraphicsContextVK.h"
-#include "Vulkan/DescriptorSetLayoutVK.h"
-
 #include <thread>
 #include <chrono>
 
 #include <imgui/imgui.h>
 
 #include <glm/gtc/type_ptr.hpp>
+
+#include "Vulkan/RenderPassVK.h"
+#include "Vulkan/CommandPoolVK.h"
+#include "Vulkan/GraphicsContextVK.h"
+#include "Vulkan/DescriptorSetLayoutVK.h"
 
 #ifdef max
 	#undef max

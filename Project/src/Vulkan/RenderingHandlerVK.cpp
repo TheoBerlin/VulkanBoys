@@ -342,7 +342,10 @@ void RenderingHandlerVK::render(IScene* pScene)
 	}
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->end();
 
-	pDevice->executeGraphics(m_ppGraphicsCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
+	{
+		VkSemaphore signalSemaphores[] = { m_GeometryFinishedSemaphores[m_CurrentFrame] };
+		pDevice->executeGraphics(m_ppGraphicsCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, signalSemaphores, 1);
+	}
 
 	//Prepare seconds graphics commandbuffer
 	m_ppGraphicsCommandBuffers2[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -430,13 +433,19 @@ void RenderingHandlerVK::render(IScene* pScene)
 	m_ppComputeCommandBuffers[m_CurrentFrame]->end();
 
 	// Execute commandbuffer
-	VkSemaphore graphicsWaitSemaphores[]		= { m_ImageAvailableSemaphores[m_CurrentFrame], m_ComputeFinishedSemaphores[m_CurrentFrame] };
-	VkSemaphore graphicsSignalSemaphores[]		= { m_RenderFinishedSemaphores[m_CurrentFrame] };
-	VkSemaphore computeSignalSemaphores[]		= { m_ComputeFinishedSemaphores[m_CurrentFrame] };
-	VkPipelineStageFlags graphicswaitStages[]	= { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT , VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT };
+	{
+		VkSemaphore graphicsSignalSemaphores[]		= { m_RenderFinishedSemaphores[m_CurrentFrame] };
+		VkSemaphore graphicsWaitSemaphores[]		= { m_ImageAvailableSemaphores[m_CurrentFrame], m_ComputeFinishedSemaphores[m_CurrentFrame] };
+		VkPipelineStageFlags graphicswaitStages[]	= { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT , VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT };
+		
+		VkSemaphore computeSignalSemaphores[]		= { m_ComputeFinishedSemaphores[m_CurrentFrame] };
+		VkSemaphore computeWaitSemaphores[]			= { m_GeometryFinishedSemaphores[m_CurrentFrame] };
+		VkPipelineStageFlags computeWaitStages[]	= { VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV };
 
-	pDevice->executeCompute(m_ppComputeCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, computeSignalSemaphores, 1);
-	pDevice->executeGraphics(m_ppGraphicsCommandBuffers2[m_CurrentFrame], graphicsWaitSemaphores, graphicswaitStages, 2, graphicsSignalSemaphores, 1);
+		pDevice->executeCompute(m_ppComputeCommandBuffers[m_CurrentFrame], computeWaitSemaphores, computeWaitStages, 1, computeSignalSemaphores, 1);
+		pDevice->executeGraphics(m_ppGraphicsCommandBuffers2[m_CurrentFrame], graphicsWaitSemaphores, graphicswaitStages, 2, graphicsSignalSemaphores, 1);
+	}
+
 	swapBuffers();
 }
 
@@ -862,6 +871,7 @@ bool RenderingHandlerVK::createSemaphores()
 		VK_CHECK_RESULT_RETURN_FALSE(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_ImageAvailableSemaphores[i]), "Failed to create semaphores for Frame");
 		VK_CHECK_RESULT_RETURN_FALSE(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_RenderFinishedSemaphores[i]), "Failed to create semaphores for Frame");
 		VK_CHECK_RESULT_RETURN_FALSE(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_ComputeFinishedSemaphores[i]), "Failed to create semaphores for Frame");
+		VK_CHECK_RESULT_RETURN_FALSE(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_GeometryFinishedSemaphores[i]), "Failed to create semaphores for Frame");
 	}
 
 	return true;
