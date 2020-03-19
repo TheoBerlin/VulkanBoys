@@ -46,7 +46,7 @@
 #define ASSERT(condition) assert(condition)
 
 // Log defines
-#define LOG(...) logPrintf(__VA_ARGS__); logPrintf("\n")
+#define LOG(...) logPrintLine(__VA_ARGS__)
 
 #if _DEBUG
 	#define D_LOG(...) LOG(__VA_ARGS__)

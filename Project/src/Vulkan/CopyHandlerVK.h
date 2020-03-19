@@ -10,7 +10,7 @@ class InstanceVK;
 class CommandPoolVK;
 class CommandBufferVK;
 
-#define MAX_COMMAND_BUFFERS 8
+#define MAX_COMMAND_BUFFERS 16
 
 class CopyHandlerVK
 {
@@ -39,8 +39,8 @@ private:
 private:
 	DeviceVK* m_pDevice;
 	InstanceVK* m_pInstance;
-	CommandPoolVK* m_pTransferPool;
-	CommandPoolVK* m_pGraphicsPool;
+	CommandPoolVK* m_pTransferPool[MAX_COMMAND_BUFFERS];
+	CommandPoolVK* m_pGraphicsPool[MAX_COMMAND_BUFFERS];
 	CommandBufferVK* m_pTransferBuffers[MAX_COMMAND_BUFFERS];
 	CommandBufferVK* m_pGraphicsBuffers[MAX_COMMAND_BUFFERS];
 	Spinlock m_pTransferLocks[MAX_COMMAND_BUFFERS];

@@ -281,7 +281,6 @@ void Application::init()
 		}
 	}
 	
-
 	//Setup lights
 	m_LightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
 	m_LightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
@@ -296,7 +295,6 @@ void Application::init()
 
 	//Create Scene
 	m_pScene = m_pContext->createScene();
-
 	TaskDispatcher::execute([this]
 		{
 			m_pScene->initFromFile("assets/sponza/", "sponza.obj");
@@ -308,7 +306,6 @@ void Application::init()
 	m_pWindow->show();
 
 	SAFEDELETE(pPanorama);
-
 
 	//Add Game Objects to Scene
 	//m_GraphicsIndex0 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
