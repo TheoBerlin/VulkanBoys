@@ -215,8 +215,8 @@ void MeshRendererVK::setViewport(float width, float height, float minDepth, floa
 
 void MeshRendererVK::setupFrame(CommandBufferVK* pPrimaryBuffer, const Camera& camera, const LightSetup& lightsetup)
 {
-	m_pGPassProfiler->reset(m_CurrentFrame, pPrimaryBuffer);
-	m_pLightPassProfiler->reset(m_CurrentFrame, pPrimaryBuffer);
+	m_pGPassProfiler->reset(uint32_t(m_CurrentFrame), pPrimaryBuffer);
+	m_pLightPassProfiler->reset(uint32_t(m_CurrentFrame), pPrimaryBuffer);
 
 	updateBuffers(pPrimaryBuffer, camera, lightsetup);
 }
@@ -448,7 +448,7 @@ bool MeshRendererVK::generateBRDFLookUp()
 	pCommandBuffer->transitionImageLayout(m_pIntegrationLUT->getImage(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1);
 	pCommandBuffer->end();
 
-	pDevice->executeCommandBuffer(pDevice->getComputeQueue(), pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	pDevice->executeCompute(pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 	pDevice->wait();
 
 	SAFEDELETE(pCommandPool);

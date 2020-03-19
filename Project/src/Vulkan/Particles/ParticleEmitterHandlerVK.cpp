@@ -129,7 +129,7 @@ void ParticleEmitterHandlerVK::toggleComputationDevice()
 		}
 
 		pTempCommandBuffer->end();
-		pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+		pDevice->executeCompute(pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 
 		// Wait for command buffer to finish executing before deleting it
 		pTempCommandBuffer->reset(true);
@@ -165,7 +165,7 @@ void ParticleEmitterHandlerVK::toggleComputationDevice()
 
 		pTempCmdBufferCompute->end();
 
-		pDevice->executeCommandBuffer(pDevice->getComputeQueue(), pTempCmdBufferCompute, nullptr, nullptr, 0, nullptr, 0);
+		pDevice->executeCompute(pTempCmdBufferCompute, nullptr, nullptr, 0, nullptr, 0);
 
 		// Wait for command buffer to finish executing before deleting it
 		pTempCmdBufferCompute->reset(true);
@@ -291,10 +291,10 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 		acquireForCompute(pAgesBuffer, pTempCommandBufferCompute);
 
 		pTempCommandBufferGraphics->end();
-		pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), pTempCommandBufferGraphics, nullptr, nullptr, 0, nullptr, 0);
+		pDevice->executeGraphics(pTempCommandBufferGraphics, nullptr, nullptr, 0, nullptr, 0);
 
 		pTempCommandBufferCompute->end();
-		pDevice->executeCommandBuffer(pDevice->getComputeQueue(), pTempCommandBufferCompute, nullptr, nullptr, 0, nullptr, 0);
+		pDevice->executeCompute(pTempCommandBufferCompute, nullptr, nullptr, 0, nullptr, 0);
 
 		// Wait for command buffers to finish executing before deleting them
 		pTempCommandBufferGraphics->reset(true);
@@ -382,7 +382,7 @@ void ParticleEmitterHandlerVK::endUpdateFrame()
 	GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
     DeviceVK* pDevice = pGraphicsContext->getDevice();
 
-	pDevice->executeCommandBuffer(pDevice->getComputeQueue(), m_ppCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
+	pDevice->executeCompute(m_ppCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
 
 	m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }

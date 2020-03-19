@@ -81,8 +81,7 @@ SceneVK::~SceneVK()
 	for (auto& bottomLevelAccelerationStructurePerMesh : m_NewBottomLevelAccelerationStructures)
 	{
 		//All these BLASs are the same on GPU side, so we can just grab the first one and free it
-		auto& newBottomLevelAccelerationStructure = bottomLevelAccelerationStructurePerMesh.second.begin();
-
+		auto newBottomLevelAccelerationStructure = bottomLevelAccelerationStructurePerMesh.second.begin();
 		if (newBottomLevelAccelerationStructure->second.Memory != VK_NULL_HANDLE)
 		{
 			vkFreeMemory(m_pDevice->getDevice(), newBottomLevelAccelerationStructure->second.Memory, nullptr);
@@ -94,8 +93,7 @@ SceneVK::~SceneVK()
 	for (auto& bottomLevelAccelerationStructurePerMesh : m_FinalizedBottomLevelAccelerationStructures)
 	{
 		//All these BLASs are the same on GPU side, so we can just grab the first one and free it
-		auto& finalizedBottomLevelAccelerationStructure = bottomLevelAccelerationStructurePerMesh.second.begin();
-
+		auto finalizedBottomLevelAccelerationStructure = bottomLevelAccelerationStructurePerMesh.second.begin();
 		if (finalizedBottomLevelAccelerationStructure->second.Memory != VK_NULL_HANDLE)
 		{
 			vkFreeMemory(m_pDevice->getDevice(), finalizedBottomLevelAccelerationStructure->second.Memory, nullptr);
@@ -592,8 +590,7 @@ uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMate
 	}
 	else
 	{
-		auto& entry = m_MaterialIndices.find(pMaterial);
-
+		auto entry = m_MaterialIndices.find(pMaterial);
 		if (entry == m_MaterialIndices.end())
 		{
 			m_Materials.push_back(pMaterial);
@@ -606,7 +603,7 @@ uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMate
 	m_GraphicsObjects.push_back({ pVulkanMesh, pMaterial, materialIndex });
 	m_SceneTransforms.push_back({ transform, transform });
 	
-	return m_GraphicsObjects.size() - 1;
+	return uint32_t(m_GraphicsObjects.size()) - 1u;
 }
 
 void SceneVK::updateGraphicsObjectTransform(uint32_t index, const glm::mat4& transform)
@@ -767,7 +764,7 @@ SceneVK::BottomLevelAccelerationStructure* SceneVK::createBLAS(const MeshVK* pMe
 	bottomLevelAccelerationStructure.Index = m_NumBottomLevelAccelerationStructures;
 	m_NumBottomLevelAccelerationStructures++;
 
-	bottomLevelAccelerationStructure.MaterialIndex = m_Materials.size();
+	bottomLevelAccelerationStructure.MaterialIndex = uint32_t(m_Materials.size());
 	m_Materials.push_back(pMaterial);
 
 	std::map<const Material*, BottomLevelAccelerationStructure> newBLASPerMesh;
@@ -843,8 +840,7 @@ bool SceneVK::buildBLASs()
 	m_NewBottomLevelAccelerationStructures.clear();
 
 	m_pTempCommandBuffer->end();
-	m_pContext->getDevice()->executeCommandBuffer(m_pContext->getDevice()->getComputeQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
-	//m_pContext->getDevice()->wait();
+	m_pContext->getDevice()->executeCompute(m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 
 	return true;
 }
@@ -855,7 +851,7 @@ bool SceneVK::createTLAS()
 	accelerationStructureInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV;
 	accelerationStructureInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_NV;
 	accelerationStructureInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_NV;
-	accelerationStructureInfo.instanceCount = m_GeometryInstances.size();
+	accelerationStructureInfo.instanceCount = uint32_t(m_GeometryInstances.size());
 	accelerationStructureInfo.geometryCount = 0;
 
 	VkAccelerationStructureCreateInfoNV accelerationStructureCreateInfo = {};
@@ -925,8 +921,7 @@ bool SceneVK::buildTLAS()
 	vkCmdPipelineBarrier(m_pTempCommandBuffer->getCommandBuffer(), VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV, 0, 1, &memoryBarrier, 0, 0, 0, 0);
 
 	m_pTempCommandBuffer->end();
-	m_pContext->getDevice()->executeCommandBuffer(m_pContext->getDevice()->getComputeQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
-	//m_pContext->getDevice()->wait();
+	m_pContext->getDevice()->executeCompute(m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 
 	return true;
 }
@@ -960,7 +955,7 @@ bool SceneVK::updateTLAS()
 		buildInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_NV;
 		buildInfo.pGeometries = 0;
 		buildInfo.geometryCount = 0;
-		buildInfo.instanceCount = m_GeometryInstances.size();
+		buildInfo.instanceCount = uint32_t(m_GeometryInstances.size());
 
 		//Create Memory Barrier
 		VkMemoryBarrier memoryBarrier = {};
@@ -991,8 +986,7 @@ bool SceneVK::updateTLAS()
 
 		m_pProfiler->endFrame();
 		m_pTempCommandBuffer->end();
-		m_pContext->getDevice()->executeCommandBuffer(m_pContext->getDevice()->getComputeQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
-		//m_pContext->getDevice()->wait();
+		m_pContext->getDevice()->executeCompute(m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 	}
 	else
 	{
@@ -1008,7 +1002,7 @@ bool SceneVK::updateTLAS()
 		buildInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_NV;
 		buildInfo.pGeometries = 0;
 		buildInfo.geometryCount = 0;
-		buildInfo.instanceCount = m_GeometryInstances.size();
+		buildInfo.instanceCount = uint32_t(m_GeometryInstances.size());
 
 		//Create Memory Barrier
 		VkMemoryBarrier memoryBarrier = {};
@@ -1039,8 +1033,7 @@ bool SceneVK::updateTLAS()
 
 		m_pProfiler->endFrame();
 		m_pTempCommandBuffer->end();
-		m_pContext->getDevice()->executeCommandBuffer(m_pContext->getDevice()->getComputeQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
-		//m_pContext->getDevice()->wait();
+		m_pContext->getDevice()->executeCompute(m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 	}
 
 	return true;
@@ -1233,7 +1226,7 @@ bool SceneVK::createCombinedGraphicsObjectData()
 	m_pMeshIndexBuffer->unmap();
 
 	m_pTempCommandBuffer->end();
-	m_pDevice->executeCommandBuffer(m_pDevice->getComputeQueue(), m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_pDevice->executeCompute(m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 	m_pDevice->wait(); //Todo: Remove?
 
 	return true;

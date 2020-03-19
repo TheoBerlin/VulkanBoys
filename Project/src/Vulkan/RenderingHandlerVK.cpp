@@ -342,7 +342,7 @@ void RenderingHandlerVK::render(IScene* pScene)
 	}
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->end();
 
-	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppGraphicsCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
+	pDevice->executeGraphics(m_ppGraphicsCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
 
 	//Prepare seconds graphics commandbuffer
 	m_ppGraphicsCommandBuffers2[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -435,12 +435,9 @@ void RenderingHandlerVK::render(IScene* pScene)
 	VkSemaphore computeSignalSemaphores[]		= { m_ComputeFinishedSemaphores[m_CurrentFrame] };
 	VkPipelineStageFlags graphicswaitStages[]	= { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT , VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT };
 
-	pDevice->executeCommandBuffer(pDevice->getComputeQueue(), m_ppComputeCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, computeSignalSemaphores, 1);
-	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppGraphicsCommandBuffers2[m_CurrentFrame], graphicsWaitSemaphores, graphicswaitStages, 2, graphicsSignalSemaphores, 1);
+	pDevice->executeCompute(m_ppComputeCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, computeSignalSemaphores, 1);
+	pDevice->executeGraphics(m_ppGraphicsCommandBuffers2[m_CurrentFrame], graphicsWaitSemaphores, graphicswaitStages, 2, graphicsSignalSemaphores, 1);
 	
-	//TODO: Remove this
-	//m_pGraphicsContext->getDevice()->wait();
-
 	swapBuffers();
 }
 
@@ -1009,7 +1006,7 @@ bool RenderingHandlerVK::createRayTracingRenderImages(uint32_t width, uint32_t h
 	pTempCommandBuffer->transitionImageLayout(m_pGlossyImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1);
 	pTempCommandBuffer->end();
 
-	m_pGraphicsContext->getDevice()->executeCommandBuffer(m_pGraphicsContext->getDevice()->getComputeQueue(), pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_pGraphicsContext->getDevice()->executeCompute(pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 	m_pGraphicsContext->getDevice()->wait();
 
 	m_ppComputeCommandPools[0]->freeCommandBuffer(&pTempCommandBuffer);

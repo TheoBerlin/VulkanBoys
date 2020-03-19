@@ -27,7 +27,7 @@ public:
     void setParentProfiler(ProfilerVK* pParentProfiler);
 
     // The query pool is reset using pResetCmdBuffer
-    void reset(size_t currentFrame, CommandBufferVK* pResetCmdBuffer);
+    void reset(uint32_t currentFrame, CommandBufferVK* pResetCmdBuffer);
     void beginFrame(CommandBufferVK* pProfiledCmdBuffer);
     void endFrame();
     void drawResults();
