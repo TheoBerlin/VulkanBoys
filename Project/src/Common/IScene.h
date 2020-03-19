@@ -25,6 +25,7 @@ public:
 	virtual uint32_t submitGraphicsObject(const IMesh* pMesh, const Material* pMaterial, const glm::mat4& transform = glm::mat4(1.0f), uint8_t customMask = 0x80) = 0;
 	virtual void updateGraphicsObjectTransform(uint32_t index, const glm::mat4& transform) = 0;
 
+	//Debug
 	virtual void renderUI() = 0;
-
+	virtual void updateDebugParameters() = 0;
 };

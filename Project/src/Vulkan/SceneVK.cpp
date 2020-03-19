@@ -38,14 +38,13 @@ SceneVK::SceneVK(IGraphicsContext* pContext) :
 	m_pTempCommandBuffer(nullptr),
 	m_TopLevelIsDirty(false),
 	m_BottomLevelIsDirty(false),
-	m_pVeryTempMaterial(nullptr),
-	m_pLightProbeMesh(nullptr),
 	m_pDefaultTexture(nullptr),
 	m_pDefaultNormal(nullptr),
 	m_pDefaultSampler(nullptr),
 	m_pMaterialParametersBuffer(nullptr),
 	m_pTransformsBuffer(nullptr),
 	m_pGarbageTransformsBuffer(nullptr),
+	m_DebugParametersDirty(false),
 	m_RayTracingEnabled(pContext->isRayTracingEnabled())
 {
 	m_pDevice = reinterpret_cast<DeviceVK*>(m_pContext->getDevice());
@@ -69,7 +68,6 @@ SceneVK::~SceneVK()
 	SAFEDELETE(m_pCombinedVertexBuffer);
 	SAFEDELETE(m_pCombinedIndexBuffer);
 	SAFEDELETE(m_pMeshIndexBuffer);
-	SAFEDELETE(m_pLightProbeMesh);
 	SAFEDELETE(m_pDefaultTexture);
 	SAFEDELETE(m_pDefaultNormal);
 	SAFEDELETE(m_pDefaultSampler);
@@ -513,11 +511,6 @@ void SceneVK::updateLightSetup(const LightSetup& lightsetup)
 
 uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMaterial, const glm::mat4& transform, uint8_t customMask)
 {
-	if (m_pVeryTempMaterial == nullptr)
-	{
-		m_pVeryTempMaterial = pMaterial;
-	}
-
 	const MeshVK* pVulkanMesh = reinterpret_cast<const MeshVK*>(pMesh);
 
 	uint32_t materialIndex = 0; 
@@ -1295,39 +1288,18 @@ uint32_t SceneVK::registerMaterial(const Material* pMaterial)
 	return m_MaterialIndices[pMaterial];
 }
 
-void SceneVK::generateLightProbeGeometry(float probeStepX, float probeStepY, float probeStepZ, uint32_t samplesPerProbe, uint32_t numProbesPerDimension)
-{
-	glm::vec3 worldSize = glm::vec3(probeStepX, probeStepY, probeStepZ) * (float)(numProbesPerDimension - 1);
-
-	m_pLightProbeMesh = DBG_NEW MeshVK(m_pDevice);
-	m_pLightProbeMesh->initAsSphere(3);
-
-	for (uint32_t x = 0; x < numProbesPerDimension; x++)
-	{
-		for (uint32_t y = 0; y < numProbesPerDimension; y++)
-		{
-			for (uint32_t z = 0; z < numProbesPerDimension; z++)
-			{
-				float xPosition = (float(x) / float(numProbesPerDimension - 1)) * worldSize.x - worldSize.x / 2.0f;
-				float yPosition = (float(y) / float(numProbesPerDimension - 1)) * worldSize.y - worldSize.y / 2.0f;
-				float zPosition = (float(z) / float(numProbesPerDimension - 1)) * worldSize.z - worldSize.z / 2.0f;
-
-				glm::mat4 transform(1.0f);
-				float diameter = 0.2f;
-				glm::vec3 finalPosition = glm::vec3(xPosition, yPosition, zPosition);
-				transform = glm::translate(transform, finalPosition);
-				transform = glm::scale(transform, glm::vec3(diameter));
-				transform = glm::transpose(transform);
-
-				submitGraphicsObject(m_pLightProbeMesh, m_pVeryTempMaterial, transform, 0x40);
-			}
-		}
-	}
-}
-
 void SceneVK::renderUI()
 {
-	ImGui::SliderFloat("Roughness Scale", &m_SceneParameters.RoughnessScale, 0.01f, 10.0f);
-	ImGui::SliderFloat("Metallic Scale", &m_SceneParameters.MetallicScale, 0.01f, 10.0f);
-	ImGui::SliderFloat("Ambient Occlusion Scale", &m_SceneParameters.AOScale, 0.01f, 1.0f);
+	m_DebugParametersDirty = m_DebugParametersDirty || ImGui::SliderFloat("Roughness Scale", &m_SceneParameters.RoughnessScale, 0.01f, 10.0f);
+	m_DebugParametersDirty = m_DebugParametersDirty || ImGui::SliderFloat("Metallic Scale", &m_SceneParameters.MetallicScale, 0.01f, 10.0f);
+	m_DebugParametersDirty = m_DebugParametersDirty || ImGui::SliderFloat("Ambient Occlusion Scale", &m_SceneParameters.AOScale, 0.01f, 1.0f);
+}
+
+void SceneVK::updateDebugParameters()
+{
+	if (m_DebugParametersDirty)
+	{
+		updateMaterials();
+		m_DebugParametersDirty = false;
+	}
 }

@@ -30,7 +30,7 @@
 #include "Ray Tracing/RayTracingRendererVK.h"
 
 
-constexpr uint32_t RAY_TRACING_RESOLUTION_DENOMINATOR = 4;
+constexpr uint32_t RAY_TRACING_RESOLUTION_DENOMINATOR = 2;
 
 #define MULTITHREADED 1
 
