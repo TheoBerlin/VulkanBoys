@@ -248,8 +248,6 @@ void RenderingHandlerVK::render(IScene* pScene)
 
 	TaskDispatcher::execute([pVulkanScene, this]
 		{
-			m_pMeshRenderer->setSceneBuffers(pVulkanScene->getMaterialParametersBuffer(), pVulkanScene->getTransformsBuffer());
-
 			auto& graphicsObjects = pVulkanScene->getGraphicsObjects();
 			for (uint32_t i = 0; i < graphicsObjects.size(); i++)
 			{
@@ -370,8 +368,7 @@ void RenderingHandlerVK::render(IScene* pScene)
 		};
 		m_ppComputeCommandBuffers[m_CurrentFrame]->imageMemoryBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV, IMAGE_BARRIER_COUNT, imageBarriers);
 	
-		m_pRayTracer->setRayTracingResultTextures(m_pRadianceImage, m_pRadianceImageView, m_pGlossyImage, m_pGlossyImageView, m_pGraphicsContext->getSwapChain()->getExtent().width, m_pGraphicsContext->getSwapChain()->getExtent().height);
-		m_pRayTracer->render(pScene, m_pGBuffer);
+		m_pRayTracer->render(pScene);
 
 		m_ppComputeCommandBuffers[m_CurrentFrame]->executeSecondary(m_pRayTracer->getComputeCommandBuffer());
 
@@ -456,21 +453,37 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 
 	m_pGBuffer->resize(width, height);
 
+	createRayTracingRenderImages(width, height);
+
 	if (m_pMeshRenderer)
 	{
 		m_pMeshRenderer->onWindowResize(width, height);
+		m_pMeshRenderer->setRayTracingResultImages(m_pRadianceImageView, m_pGlossyImageView);
 	}
 
 	if (m_pRayTracer)
 	{
-		//m_pRayTracer->onWindowResize(width, height);
-		//Temp?
 		m_pRayTracer->setResolution(width / RAY_TRACING_RESOLUTION_DENOMINATOR, height / RAY_TRACING_RESOLUTION_DENOMINATOR);
+		m_pRayTracer->setGBufferTextures(m_pGBuffer);
+		m_pRayTracer->setRayTracingResultTextures(m_pRadianceImage, m_pRadianceImageView, m_pGlossyImage, m_pGlossyImageView, m_pGraphicsContext->getSwapChain()->getExtent().width, m_pGraphicsContext->getSwapChain()->getExtent().height);
 	}
 
-	createRayTracingRenderImages(width, height);
-	m_pMeshRenderer->setRayTracingResultImages(m_pRadianceImageView, m_pGlossyImageView);
 	createBackBuffers();
+}
+
+void RenderingHandlerVK::onSceneUpdated(IScene* pScene)
+{
+	m_pGraphicsContext->getDevice()->wait();
+
+	if (m_pMeshRenderer)
+	{
+		m_pMeshRenderer->setSceneData(pScene);
+	}
+
+	if (m_pRayTracer)
+	{
+		m_pRayTracer->setSceneData(pScene);
+	}
 }
 
 void RenderingHandlerVK::swapBuffers()

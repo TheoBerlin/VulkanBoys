@@ -46,6 +46,7 @@ public:
     virtual void setImguiRenderer(IImgui* pImGui) = 0;
 
     virtual void onWindowResize(uint32_t width, uint32_t height) = 0;
+	virtual void onSceneUpdated(IScene* pScene) = 0;
     
     void setParticleEmitterHandler(ParticleEmitterHandler* pParticleEmitterHandler) { m_pParticleEmitterHandler = pParticleEmitterHandler; }
 

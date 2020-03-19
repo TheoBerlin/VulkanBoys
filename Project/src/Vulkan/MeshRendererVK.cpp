@@ -25,6 +25,7 @@
 #include "SkyboxRendererVK.h"
 #include "GraphicsContextVK.h"
 #include "RenderingHandlerVK.h"
+#include "SceneVK.h"
 
 #include <glm/gtc/type_ptr.hpp>
 
@@ -275,8 +276,13 @@ void MeshRendererVK::setRayTracingResultImages(ImageViewVK* pRadianceImageView, 
 	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pGlossyImageView, &m_pRTSampler, 1, GLOSSY_BINDING);
 }
 
-void MeshRendererVK::setSceneBuffers(const BufferVK* pMaterialParametersBuffer, const BufferVK* pTransformsBuffer)
+void MeshRendererVK::setSceneData(IScene* pScene)
 {
+	SceneVK* pVulkanScene = reinterpret_cast<SceneVK*>(pScene);
+
+	const BufferVK* pMaterialParametersBuffer = pVulkanScene->getMaterialParametersBuffer();
+	const BufferVK* pTransformsBuffer = pVulkanScene->getTransformsBuffer();
+
 	if (m_pMaterialParametersBuffer != pMaterialParametersBuffer)
 	{
 		m_pMaterialParametersBuffer = pMaterialParametersBuffer;

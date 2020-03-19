@@ -332,9 +332,9 @@ void Application::init()
 	//	}
 	//}
 	
-	//Finalize after (more efficient)
 	m_pScene->finalize();
 
+	m_pRenderingHandler->onSceneUpdated(m_pScene);
 
 	std::vector<glm::vec3> positionControlPoints
 	{
@@ -356,7 +356,7 @@ void Application::init()
 
 		glm::vec3( 3.0f,  5.0f, -0.85f),
 
-		glm::vec3(-4.0f,  1.0f, -0.85f),
+		glm::vec3(-4.0f,  1.0f, -0.85f)
 	};
 
 
@@ -375,7 +375,7 @@ void Application::init()
 		glm::vec3(0.0f, -2.0f,  0.0f),
 		glm::vec3(0.0f, -2.0f,  0.0f),
 		glm::vec3(0.0f, -1.0f,  0.0f),
-		glm::vec3(0.0f),
+		glm::vec3(0.0f)
 	};
 
 	m_CameraDirectionSpline = new LoopingUniformCRSpline<glm::vec3, float>(directionControlPoints);
@@ -651,9 +651,6 @@ void Application::update(double dt)
 
 	m_pScene->updateCamera(m_Camera);
 	m_pScene->updateLightSetup(m_LightSetup);
-
-	m_pScene->update();
-	m_pScene->updateMaterials();
 }
 
 void Application::renderUI(double dt)

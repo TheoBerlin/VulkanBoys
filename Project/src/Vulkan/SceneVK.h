@@ -93,7 +93,7 @@ public:
 	virtual bool initFromFile(const std::string& dir, const std::string& fileName) override;
 
 	virtual bool finalize() override;
-	virtual void update() override;
+	virtual void updateMeshesAndGraphicsObjects() override;
 	virtual void updateMaterials() override;
 
 	virtual void updateCamera(const Camera& camera) override;

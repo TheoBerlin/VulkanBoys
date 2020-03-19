@@ -110,7 +110,7 @@ public:
 	void setClearColor(const glm::vec3& color);
 	void setSkybox(TextureCubeVK* pSkybox, TextureCubeVK* pIrradiance, TextureCubeVK* pEnvironmentMap);
 	void setRayTracingResultImages(ImageViewVK* pRadianceImageView, ImageViewVK* pGlossyImageView);
-	void setSceneBuffers(const BufferVK* pMaterialParametersBuffer, const BufferVK* pTransformsBuffer);
+	void setSceneData(IScene* pScene);
 
 	void submitMesh(const MeshVK* pMesh, const Material* pMaterial, uint32_t materialIndex, uint32_t transformsIndex);
 	

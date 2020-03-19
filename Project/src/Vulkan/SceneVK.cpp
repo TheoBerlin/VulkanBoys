@@ -317,6 +317,8 @@ bool SceneVK::finalize()
 	m_pTempCommandPool->init();
 
 	m_pTempCommandBuffer = m_pTempCommandPool->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+	createProfiler();
 	
 	if (!createDefaultTexturesAndSamplers())
 	{
@@ -355,17 +357,16 @@ bool SceneVK::finalize()
 			LOG("--- SceneVK: Failed to create Combined Graphics Object Data!");
 			return false;
 		}
-
-		updateMaterials();
 	}
-	
-	createProfiler();
+
+	updateMaterials(); 
+	updateTransformBuffer();
 
 	LOG("--- SceneVK: Successfully initialized Acceleration Table!");
 	return true;
 }
 
-void SceneVK::update()
+void SceneVK::updateMeshesAndGraphicsObjects()
 {
 	if (m_RayTracingEnabled)
 	{

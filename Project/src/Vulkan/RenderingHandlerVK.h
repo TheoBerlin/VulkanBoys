@@ -52,6 +52,7 @@ public:
     virtual void setSkybox(ITextureCube* pSkybox) override;
 
     virtual void onWindowResize(uint32_t width, uint32_t height) override;
+	virtual void onSceneUpdated(IScene* pScene) override;
 
     uint32_t                getCurrentFrameIndex() const                { return m_CurrentFrame; }
     FrameBufferVK* const*   getBackBuffers() const                      { return m_ppBackbuffers; }

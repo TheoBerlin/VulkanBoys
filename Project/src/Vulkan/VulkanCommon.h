@@ -377,4 +377,4 @@ inline const char* formatAsString(VkFormat format)
 #define VK_CHECK_RESULT_RETURN_FALSE(_func_call_, _err_msg_)    if (_func_call_ != VK_SUCCESS) { LOG(_err_msg_); return false; }
 
 constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 3;
-constexpr uint32_t MAX_NUM_UNIQUE_MATERIALS = 512;
+constexpr uint32_t MAX_NUM_UNIQUE_MATERIALS = 64;

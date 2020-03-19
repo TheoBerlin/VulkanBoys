@@ -73,7 +73,7 @@ public:
 	virtual void beginFrame(IScene* pScene) override;
 	virtual void endFrame(IScene* pScene) override;
 
-	virtual void render(IScene* pScene, GBufferVK* pGBuffer);
+	virtual void render(IScene* pScene);
 
 	virtual void renderUI() override;
 
@@ -85,6 +85,8 @@ public:
 
 	void setRayTracingResultTextures(ImageVK* pRadianceImage, ImageViewVK* pRadianceImageView, ImageVK* pGlossyImage, ImageViewVK* pGlossyImageView, uint32_t width, uint32_t height);
 	void setSkybox(TextureCubeVK* pSkybox);
+	void setGBufferTextures(GBufferVK* pGBuffer);
+	void setSceneData(IScene* pScene);
 
 	void setBRDFLookUp(Texture2DVK* pTexture);
 

@@ -31,7 +31,7 @@
 
 #include "Core/Application.h"
 
-constexpr uint32_t MAX_RECURSIONS = 2;
+constexpr uint32_t MAX_RECURSIONS = 1;
 
 RayTracingRendererVK::RayTracingRendererVK(GraphicsContextVK* pContext, RenderingHandlerVK* pRenderingHandler) :
 	m_pContext(pContext),
@@ -145,10 +145,9 @@ void RayTracingRendererVK::endFrame(IScene* pScene)
 {
 }
 
-void RayTracingRendererVK::render(IScene* pScene, GBufferVK* pGBuffer)
+void RayTracingRendererVK::render(IScene* pScene)
 {
 	SceneVK* pVulkanScene = reinterpret_cast<SceneVK*>(pScene);
-
 	uint32_t currentFrame = m_pRenderingHandler->getCurrentFrameIndex();
 
 	m_ppComputeCommandBuffers[currentFrame]->reset(false);
@@ -164,40 +163,12 @@ void RayTracingRendererVK::render(IScene* pScene, GBufferVK* pGBuffer)
 
 	m_ppComputeCommandBuffers[currentFrame]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-	ImageViewVK* pDepthImageView[1] = { pGBuffer->getDepthImageView() };
-	ImageViewVK* pAlbedoImageView[1] = { pGBuffer->getColorAttachment(0) };
-	ImageViewVK* pNormalImageView[1] = { pGBuffer->getColorAttachment(1) };
-	ImageViewVK* pVelocityImageView[1] = { pGBuffer->getColorAttachment(2) };
-
 	//Ray Trace
 	{
 		m_pProfiler->reset(currentFrame, m_ppComputeCommandBuffers[currentFrame]);
 		m_pProfiler->beginFrame(m_ppComputeCommandBuffers[currentFrame]);
 
 		updateBuffers(pVulkanScene, m_ppComputeCommandBuffers[currentFrame]);
-
-		const std::vector<const ImageViewVK*>& albedoMaps = pVulkanScene->getAlbedoMaps();
-		const std::vector<const ImageViewVK*>& normalMaps = pVulkanScene->getNormalMaps();
-		const std::vector<const ImageViewVK*>& aoMaps = pVulkanScene->getAOMaps();
-		const std::vector<const ImageViewVK*>& metallicMaps = pVulkanScene->getMetallicMaps();
-		const std::vector<const ImageViewVK*>& roughnessMaps = pVulkanScene->getRoughnessMaps();
-		const std::vector<const SamplerVK*>& samplers = pVulkanScene->getSamplers();
-		const BufferVK* pMaterialParametersBuffer = pVulkanScene->getMaterialParametersBuffer();
-
-		m_pRayTracingDescriptorSet->writeAccelerationStructureDescriptor(pVulkanScene->getTLAS().AccelerationStructure,									RT_TLAS_BINDING);
-		m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(pAlbedoImageView, &m_pNearestSampler,		1,											RT_GBUFFER_ALBEDO_BINDING);
-		m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(pNormalImageView, &m_pNearestSampler,		1,											RT_GBUFFER_NORMAL_BINDING);
-		m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(pDepthImageView, &m_pNearestSampler,		1,											RT_GBUFFER_DEPTH_BINDING);
-		m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(pVelocityImageView, &m_pNearestSampler,		1,										RT_GBUFFER_VELOCITY_BINDING);
-		m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pVulkanScene->getCombinedVertexBuffer(),												RT_COMBINED_VERTEX_BINDING);
-		m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pVulkanScene->getCombinedIndexBuffer(),												RT_COMBINED_INDEX_BINDING);
-		m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pVulkanScene->getMeshIndexBuffer(),													RT_MESH_INDEX_BINDING);
-		m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(albedoMaps.data(), samplers.data(),		MAX_NUM_UNIQUE_MATERIALS,					RT_COMBINED_ALBEDO_BINDING);
-		m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(normalMaps.data(), samplers.data(),		MAX_NUM_UNIQUE_MATERIALS,					RT_COMBINED_NORMAL_BINDING);
-		m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(aoMaps.data(), samplers.data(),			MAX_NUM_UNIQUE_MATERIALS,					RT_COMBINED_AO_BINDING);
-		m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(metallicMaps.data(), samplers.data(),		MAX_NUM_UNIQUE_MATERIALS,					RT_COMBINED_METALLIC_BINDING);
-		m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(roughnessMaps.data(), samplers.data(),	MAX_NUM_UNIQUE_MATERIALS,					RT_COMBINED_ROUGHNESS_BINDING);
-		m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pMaterialParametersBuffer,																RT_COMBINED_MATERIAL_PARAMETERS_BINDING);
 
 		static float counter = 0.0f;
 		counter += 0.01f;
@@ -222,14 +193,6 @@ void RayTracingRendererVK::render(IScene* pScene, GBufferVK* pGBuffer)
 	if (NUM_BLUR_PASSES > 0)
 	{
 		glm::u32vec3 workGroupSize(1 + m_NumBlurImagePixels / m_WorkGroupSize[0], 1, 1);
-
-		m_pHorizontalInitialBlurPassDescriptorSet->writeCombinedImageDescriptors(pAlbedoImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_ALBEDO_BINDING);
-		m_pHorizontalInitialBlurPassDescriptorSet->writeCombinedImageDescriptors(pNormalImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_NORMAL_BINDING);
-		m_pHorizontalInitialBlurPassDescriptorSet->writeCombinedImageDescriptors(pDepthImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_DEPTH_BINDING);
-
-		m_pVerticalBlurPassDescriptorSet->writeCombinedImageDescriptors(pAlbedoImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_ALBEDO_BINDING);
-		m_pVerticalBlurPassDescriptorSet->writeCombinedImageDescriptors(pNormalImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_NORMAL_BINDING);
-		m_pVerticalBlurPassDescriptorSet->writeCombinedImageDescriptors(pDepthImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_DEPTH_BINDING);
 
 		m_ppComputeCommandBuffers[currentFrame]->bindPipeline(m_pBlurPassPipeline);
 
@@ -270,9 +233,6 @@ void RayTracingRendererVK::render(IScene* pScene, GBufferVK* pGBuffer)
 		//Extra Blur Passes
 		if (NUM_BLUR_PASSES > 1)
 		{
-			m_pHorizontalExtraBlurPassDescriptorSet->writeCombinedImageDescriptors(pAlbedoImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_ALBEDO_BINDING);
-			m_pHorizontalExtraBlurPassDescriptorSet->writeCombinedImageDescriptors(pNormalImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_NORMAL_BINDING);
-			m_pHorizontalExtraBlurPassDescriptorSet->writeCombinedImageDescriptors(pDepthImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_DEPTH_BINDING);
 
 			for (uint32_t blurPass = 1; blurPass < NUM_BLUR_PASSES; blurPass++)
 			{
@@ -416,6 +376,55 @@ void RayTracingRendererVK::setSkybox(TextureCubeVK* pSkybox)
 
 	ImageViewVK* pSkyboxView = m_pSkybox->getImageView();
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(&pSkyboxView, &m_pNearestSampler, 1, RT_SKYBOX_BINDING);	
+}
+
+void RayTracingRendererVK::setGBufferTextures(GBufferVK* pGBuffer)
+{
+	ImageViewVK* pDepthImageView[1] = { pGBuffer->getDepthImageView() };
+	ImageViewVK* pAlbedoImageView[1] = { pGBuffer->getColorAttachment(0) };
+	ImageViewVK* pNormalImageView[1] = { pGBuffer->getColorAttachment(1) };
+	ImageViewVK* pVelocityImageView[1] = { pGBuffer->getColorAttachment(2) };
+
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(pAlbedoImageView, &m_pNearestSampler, 1, RT_GBUFFER_ALBEDO_BINDING);
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(pNormalImageView, &m_pNearestSampler, 1, RT_GBUFFER_NORMAL_BINDING);
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(pDepthImageView, &m_pNearestSampler, 1, RT_GBUFFER_DEPTH_BINDING);
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(pVelocityImageView, &m_pNearestSampler, 1, RT_GBUFFER_VELOCITY_BINDING);
+
+	m_pHorizontalInitialBlurPassDescriptorSet->writeCombinedImageDescriptors(pAlbedoImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_ALBEDO_BINDING);
+	m_pHorizontalInitialBlurPassDescriptorSet->writeCombinedImageDescriptors(pNormalImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_NORMAL_BINDING);
+	m_pHorizontalInitialBlurPassDescriptorSet->writeCombinedImageDescriptors(pDepthImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_DEPTH_BINDING);
+
+	m_pVerticalBlurPassDescriptorSet->writeCombinedImageDescriptors(pAlbedoImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_ALBEDO_BINDING);
+	m_pVerticalBlurPassDescriptorSet->writeCombinedImageDescriptors(pNormalImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_NORMAL_BINDING);
+	m_pVerticalBlurPassDescriptorSet->writeCombinedImageDescriptors(pDepthImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_DEPTH_BINDING);
+
+	m_pHorizontalExtraBlurPassDescriptorSet->writeCombinedImageDescriptors(pAlbedoImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_ALBEDO_BINDING);
+	m_pHorizontalExtraBlurPassDescriptorSet->writeCombinedImageDescriptors(pNormalImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_NORMAL_BINDING);
+	m_pHorizontalExtraBlurPassDescriptorSet->writeCombinedImageDescriptors(pDepthImageView, &m_pNearestSampler, 1, RT_BP_GBUFFER_DEPTH_BINDING);
+}
+
+void RayTracingRendererVK::setSceneData(IScene* pScene)
+{
+	SceneVK* pVulkanScene = reinterpret_cast<SceneVK*>(pScene);
+
+	const std::vector<const ImageViewVK*>& albedoMaps = pVulkanScene->getAlbedoMaps();
+	const std::vector<const ImageViewVK*>& normalMaps = pVulkanScene->getNormalMaps();
+	const std::vector<const ImageViewVK*>& aoMaps = pVulkanScene->getAOMaps();
+	const std::vector<const ImageViewVK*>& metallicMaps = pVulkanScene->getMetallicMaps();
+	const std::vector<const ImageViewVK*>& roughnessMaps = pVulkanScene->getRoughnessMaps();
+	const std::vector<const SamplerVK*>& samplers = pVulkanScene->getSamplers();
+	const BufferVK* pMaterialParametersBuffer = pVulkanScene->getMaterialParametersBuffer();
+
+	m_pRayTracingDescriptorSet->writeAccelerationStructureDescriptor(pVulkanScene->getTLAS().AccelerationStructure, RT_TLAS_BINDING);
+	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pVulkanScene->getCombinedVertexBuffer(), RT_COMBINED_VERTEX_BINDING);
+	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pVulkanScene->getCombinedIndexBuffer(), RT_COMBINED_INDEX_BINDING);
+	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pVulkanScene->getMeshIndexBuffer(), RT_MESH_INDEX_BINDING);
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(albedoMaps.data(), samplers.data(), MAX_NUM_UNIQUE_MATERIALS, RT_COMBINED_ALBEDO_BINDING);
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(normalMaps.data(), samplers.data(), MAX_NUM_UNIQUE_MATERIALS, RT_COMBINED_NORMAL_BINDING);
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(aoMaps.data(), samplers.data(), MAX_NUM_UNIQUE_MATERIALS, RT_COMBINED_AO_BINDING);
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(metallicMaps.data(), samplers.data(), MAX_NUM_UNIQUE_MATERIALS, RT_COMBINED_METALLIC_BINDING);
+	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(roughnessMaps.data(), samplers.data(), MAX_NUM_UNIQUE_MATERIALS, RT_COMBINED_ROUGHNESS_BINDING);
+	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pMaterialParametersBuffer, RT_COMBINED_MATERIAL_PARAMETERS_BINDING);
 }
 
 void RayTracingRendererVK::setBRDFLookUp(Texture2DVK* pTexture)
