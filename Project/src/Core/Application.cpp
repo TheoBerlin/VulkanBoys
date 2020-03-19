@@ -41,8 +41,9 @@
 
 Application* Application::s_pInstance = nullptr;
 
-constexpr bool FORCE_RAY_TRACING_OFF	= false;
+constexpr bool FORCE_RAY_TRACING_OFF	= true;
 constexpr bool HIGH_RESOLUTION_SPHERE	= false;
+constexpr float CAMERA_PAN_LENGTH = 10.0f;
 
 Application::Application()
 	: m_pWindow(nullptr),
@@ -333,6 +334,53 @@ void Application::init()
 	
 	//Finalize after (more efficient)
 	m_pScene->finalize();
+
+
+	std::vector<glm::vec3> positionControlPoints
+	{
+		glm::vec3(-4.0f,  1.0f,  0.45f),
+		glm::vec3( 5.0f,  1.0f,  0.0f),
+
+		glm::vec3( 5.0f,  1.0f,  2.0f),
+		glm::vec3(-5.0f,  1.0f,  2.0f),
+
+		glm::vec3(-5.0f,  1.5f, -0.75f),
+
+		glm::vec3( 5.0f,  3.0f,  0.55f),
+
+		glm::vec3( 5.0f,  3.0f,  -2.5f),
+		glm::vec3(-5.0f,  3.0f,  -2.5f),
+
+		glm::vec3(-5.0f,  3.0f,  0.35f),
+		glm::vec3( 3.0f,  5.0f,  0.35f),
+
+		glm::vec3( 3.0f,  5.0f, -0.85f),
+
+		glm::vec3(-4.0f,  1.0f, -0.85f),
+	};
+
+
+	m_CameraPositionSpline = new LoopingUniformCRSpline<glm::vec3, float>(positionControlPoints);
+
+	std::vector<glm::vec3> directionControlPoints
+	{
+		glm::vec3(0.0f),
+		glm::vec3(0.0f),
+		glm::vec3(0.0f),
+		glm::vec3(0.0f),
+		glm::vec3(0.0f),
+		glm::vec3(0.0f),
+		glm::vec3(0.0f),
+		glm::vec3(0.0f),
+		glm::vec3(0.0f, -2.0f,  0.0f),
+		glm::vec3(0.0f, -2.0f,  0.0f),
+		glm::vec3(0.0f, -1.0f,  0.0f),
+		glm::vec3(0.0f),
+	};
+
+	m_CameraDirectionSpline = new LoopingUniformCRSpline<glm::vec3, float>(directionControlPoints);
+	m_CameraSplineTimer = 0.0f;
+	m_CameraSplineEnabled = false;
 }
 
 void Application::run()
@@ -427,7 +475,7 @@ void Application::onWindowResize(uint32_t width, uint32_t height)
 			m_pRenderingHandler->onWindowResize(width, height);
 		}
 
-		m_Camera.setProjection(90.0f, float(width), float(height), 0.1f, 100.0f);
+		m_Camera.setProjection(90.0f, float(width), float(height), 0.01f, 100.0f);
 	}
 }
 
@@ -548,6 +596,35 @@ void Application::update(double dt)
 	else if (Input::isKeyPressed(EKey::KEY_DOWN))
 	{
 		m_Camera.rotate(glm::vec3(rotationSpeed * dt, 0.0f, 0.0f));
+	}
+
+	//if (m_CameraTimer > 0.9f)
+	//{
+	//	constexpr float LOOP_BACK_POINT = 0.03f;
+	//	glm::bvec3 backAtStart = glm::epsilonEqual(m_Camera.getPosition(), m_CameraSpline.eval_f(LOOP_BACK_POINT), glm::vec3(0.1f));
+
+	//	if (backAtStart.x && backAtStart.y && backAtStart.z)
+	//	{
+	//		m_CameraTimer = LOOP_BACK_POINT;
+	//	}
+	//}
+
+	if (m_CameraSplineEnabled)
+	{
+		auto& interpolatedPositionPT = m_CameraPositionSpline->getTangent(m_CameraSplineTimer);
+		glm::vec3 position = interpolatedPositionPT.position;
+		glm::vec3 heading = interpolatedPositionPT.tangent;
+		glm::vec3 direction = m_CameraDirectionSpline->getPosition(m_CameraSplineTimer);
+
+		m_CameraSplineTimer += dt / (glm::max(glm::length(heading), 0.0001f));
+
+		m_Camera.setPosition(position);
+		m_Camera.setDirection(normalize(glm::normalize(heading) + direction));
+
+		if (m_CameraSplineTimer >= m_CameraPositionSpline->getMaxT())
+		{
+			m_CameraSplineTimer = 0.0f;
+		}
 	}
 
 	m_Camera.update();
@@ -732,6 +809,15 @@ void Application::renderUI(double dt)
 	if (ImGui::Begin("Scene", NULL))
 	{
 		m_pScene->renderUI();
+	}
+	ImGui::End();
+
+	// Draw Application UI
+	ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);
+	if (ImGui::Begin("Application", NULL))
+	{
+		ImGui::Checkbox("Camera Spline Enabled", &m_CameraSplineEnabled);
+		ImGui::SliderFloat("Camera Timer", &m_CameraSplineTimer, 0.0f, m_CameraPositionSpline->getMaxT());
 	}
 	ImGui::End();
 

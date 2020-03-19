@@ -6,6 +6,8 @@
 #include "Common/CommonEventHandler.h"
 #include "Common/ParticleEmitterHandler.h"
 
+#include <spline_library/splines/uniform_cr_spline.h>
+
 class IMesh;
 class IImgui;
 class IWindow;
@@ -96,6 +98,10 @@ private:
 	uint32_t m_GraphicsIndex2;
 	uint32_t m_GraphicsIndex3;
 
+	LoopingUniformCRSpline<glm::vec3, float>* m_CameraPositionSpline;
+	LoopingUniformCRSpline<glm::vec3, float>* m_CameraDirectionSpline;
+	float m_CameraSplineTimer;
+	bool m_CameraSplineEnabled;
 
 	static Application* s_pInstance;
 };
