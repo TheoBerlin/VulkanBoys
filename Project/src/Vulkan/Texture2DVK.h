@@ -21,8 +21,8 @@ public:
 	virtual bool initFromFile(const std::string& filename, ETextureFormat format, bool generateMips) override;
 	virtual bool initFromMemory(const void* pData, uint32_t width, uint32_t height, ETextureFormat format, uint32_t usageFlags, bool generateMips) override;
 
-	ImageVK* getImage() const { return m_pTextureImage; }
-	ImageViewVK* getImageView() const { return m_pTextureImageView; }
+	FORCEINLINE ImageVK*		getImage() const		{ return m_pTextureImage; }
+	FORCEINLINE ImageViewVK*	getImageView() const	{ return m_pTextureImageView; }
 
 private:
 	DeviceVK* m_pDevice;

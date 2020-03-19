@@ -170,61 +170,82 @@ bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
 	pDefaultMaterial->createSampler(m_pContext, samplerParams);
 	m_SceneMaterials[0] = pDefaultMaterial;
 
+	std::unordered_map<std::string, ITexture2D*> textures = {};
 	for (uint32_t m = 1; m < materials.size() + 1; m++)
 	{
 		tinyobj::material_t& material = materials[m - 1];
 
-		/*ITexture2D* pAlbedoMap = m_pContext->createTexture2D();
-		TaskDispatcher::execute([&, this]
-			{
-				pAlbedoMap->initFromFile(dir + material.diffuse_texname, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
-			});
-
-		ITexture2D* pNormalMap = m_pContext->createTexture2D();
-		TaskDispatcher::execute([&, this]
-			{
-				pNormalMap->initFromFile(dir + material.bump_texname, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
-			});
-
-		ITexture2D* pMetallicMap = m_pContext->createTexture2D();
-		TaskDispatcher::execute([&, this]
-			{
-				pMetallicMap->initFromFile(dir + material.ambient_texname, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
-			});
-
-		ITexture2D* pRoughnessMap = m_pContext->createTexture2D();
-		TaskDispatcher::execute([&, this]
-			{
-				pRoughnessMap->initFromFile(dir + material.specular_highlight_texname, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
-			});*/
 		Material* pMaterial = new Material();
-
 		if (material.diffuse_texname.length() > 0)
 		{
-			ITexture2D* pAlbedoMap = m_pContext->createTexture2D();
-			pAlbedoMap->initFromFile(dir + material.diffuse_texname, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
-			pMaterial->setAlbedoMap(pAlbedoMap);
+			std::string filename = dir + material.diffuse_texname;
+			if (textures.count(filename) == 0)
+			{
+				ITexture2D* pAlbedoMap = m_pContext->createTexture2D();
+				TaskDispatcher::execute([=]
+					{
+						pAlbedoMap->initFromFile(filename, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+					});
+				pMaterial->setAlbedoMap(pAlbedoMap);
+			}
+			else
+			{
+				pMaterial->setAlbedoMap(textures[filename]);
+			}
 		}
 
 		if (material.bump_texname.length() > 0)
 		{
-			ITexture2D* pNormalMap = m_pContext->createTexture2D();
-			pNormalMap->initFromFile(dir + material.bump_texname, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
-			pMaterial->setNormalMap(pNormalMap);
+			std::string filename = dir + material.bump_texname;
+			if (textures.count(filename) == 0)
+			{
+				ITexture2D* pNormalMap = m_pContext->createTexture2D();
+				TaskDispatcher::execute([=]
+					{
+						pNormalMap->initFromFile(filename, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+					});
+				pMaterial->setNormalMap(pNormalMap);
+			}
+			else
+			{
+				pMaterial->setNormalMap(textures[filename]);
+			}
 		}
 
 		if (material.ambient_texname.length() > 0)
 		{
-			ITexture2D* pMetallicMap = m_pContext->createTexture2D();
-			pMetallicMap->initFromFile(dir + material.ambient_texname, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
-			pMaterial->setMetallicMap(pMetallicMap);
+			std::string filename = dir + material.ambient_texname;
+			if (textures.count(filename) == 0)
+			{
+				ITexture2D* pMetallicMap = m_pContext->createTexture2D();
+				TaskDispatcher::execute([=]
+					{
+						pMetallicMap->initFromFile(filename, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+					});
+				pMaterial->setMetallicMap(pMetallicMap);
+			}
+			else
+			{
+				pMaterial->setMetallicMap(textures[filename]);
+			}
 		}
 
 		if (material.specular_highlight_texname.length() > 0)
 		{
-			ITexture2D* pRoughnessMap = m_pContext->createTexture2D();
-			pRoughnessMap->initFromFile(dir + material.specular_highlight_texname, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
-			pMaterial->setRoughnessMap(pRoughnessMap);
+			std::string filename = dir + material.specular_highlight_texname;
+			if (textures.count(filename) == 0)
+			{
+				ITexture2D* pRoughnessMap = m_pContext->createTexture2D();
+				TaskDispatcher::execute([=]
+					{
+						pRoughnessMap->initFromFile(filename, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
+					});
+				pMaterial->setRoughnessMap(pRoughnessMap);
+			}
+			else
+			{
+				pMaterial->setRoughnessMap(textures[filename]);
+			}
 		}
 
 		pMaterial->setAlbedo(glm::vec4(1.0f));

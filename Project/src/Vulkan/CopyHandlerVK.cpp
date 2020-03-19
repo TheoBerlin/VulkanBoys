@@ -15,8 +15,8 @@
 CopyHandlerVK::CopyHandlerVK(DeviceVK* pDevice, InstanceVK* pInstance)
 	: m_pDevice(pDevice),
 	m_pInstance(pInstance),
-	m_pTransferPool(nullptr),
-	m_pGraphicsPool(nullptr),
+	m_pTransferPool(),
+	m_pGraphicsPool(),
 	m_pTransferBuffers(),
 	m_pGraphicsBuffers(),
 	m_CurrentTransferBuffer(0),
@@ -26,34 +26,38 @@ CopyHandlerVK::CopyHandlerVK(DeviceVK* pDevice, InstanceVK* pInstance)
 
 CopyHandlerVK::~CopyHandlerVK()
 {
-	SAFEDELETE(m_pGraphicsPool);
-	SAFEDELETE(m_pTransferPool);
+	for (uint32_t i = 0; i < MAX_COMMAND_BUFFERS; i++)
+	{
+		SAFEDELETE(m_pGraphicsPool[i]);
+		SAFEDELETE(m_pTransferPool[i]);
+	}
+
 	m_pDevice = nullptr;
 }
 
 bool CopyHandlerVK::init()
 {
-	m_pTransferPool = DBG_NEW CommandPoolVK(m_pDevice, m_pInstance, m_pDevice->getQueueFamilyIndices().transferFamily.value());
-	if (!m_pTransferPool->init())
-	{
-		return false;
-	}
-
-	m_pGraphicsPool = DBG_NEW CommandPoolVK(m_pDevice, m_pInstance, m_pDevice->getQueueFamilyIndices().graphicsFamily.value());
-	if (!m_pGraphicsPool->init())
-	{
-		return false;
-	}
-
 	for (uint32_t i = 0; i < MAX_COMMAND_BUFFERS; i++)
 	{
-		m_pTransferBuffers[i] = m_pTransferPool->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+		m_pGraphicsPool[i] = DBG_NEW CommandPoolVK(m_pDevice, m_pInstance, m_pDevice->getQueueFamilyIndices().graphicsFamily.value());
+		if (!m_pGraphicsPool[i]->init())
+		{
+			return false;
+		}
+
+		m_pTransferPool[i] = DBG_NEW CommandPoolVK(m_pDevice, m_pInstance, m_pDevice->getQueueFamilyIndices().transferFamily.value());
+		if (!m_pTransferPool[i]->init())
+		{
+			return false;
+		}
+
+		m_pTransferBuffers[i] = m_pTransferPool[i]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 		if (!m_pTransferBuffers[i])
 		{
 			return false;
 		}
 
-		m_pGraphicsBuffers[i] = m_pGraphicsPool->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+		m_pGraphicsBuffers[i] = m_pGraphicsPool[i]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 		if (!m_pGraphicsBuffers[i])
 		{
 			return false;
@@ -139,6 +143,8 @@ void CopyHandlerVK::copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffs
 
 void CopyHandlerVK::generateMips(ImageVK* pImage)
 {
+	D_LOG("CopyHandlerVK::generateMips");
+
 	CommandBufferVK* pCommandBuffer = getNextGraphicsBuffer();
 	{
 		std::scoped_lock<Spinlock> lock(m_pGraphicsLocks[m_CurrentGraphicsBuffer]);
