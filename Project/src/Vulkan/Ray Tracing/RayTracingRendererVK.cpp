@@ -173,7 +173,7 @@ void RayTracingRendererVK::render(IScene* pScene)
 		static float counter = 0.0f;
 		counter += 0.01f;
 		m_ppComputeCommandBuffers[currentFrame]->pushConstants(m_pRayTracingPipelineLayout, VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, 0, sizeof(float), &counter);
-		m_ppComputeCommandBuffers[currentFrame]->pushConstants(m_pRayTracingPipelineLayout, VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, sizeof(float), sizeof(RayTracingParameters), &m_RayTracingParameters);
+		m_ppComputeCommandBuffers[currentFrame]->pushConstants(m_pRayTracingPipelineLayout, VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV, sizeof(float), sizeof(GPURayTracingParameters), &m_GPURayTracingParameters);
 
 		vkCmdBindPipeline(m_ppComputeCommandBuffers[currentFrame]->getCommandBuffer(), VK_PIPELINE_BIND_POINT_RAY_TRACING_NV, m_pRayTracingPipeline->getPipeline());
 
@@ -188,15 +188,15 @@ void RayTracingRendererVK::render(IScene* pScene)
 		m_pProfiler->endFrame();
 	}
 
-	constexpr uint32_t NUM_BLUR_PASSES = 8;
+	//constexpr uint32_t NUM_BLUR_PASSES = 8;
 
-	if (NUM_BLUR_PASSES > 0)
+	if (m_CPURayTracingParameters.NumBlurPasses > 0)
 	{
 		glm::u32vec3 workGroupSize(1 + m_NumBlurImagePixels / m_WorkGroupSize[0], 1, 1);
 
 		m_ppComputeCommandBuffers[currentFrame]->bindPipeline(m_pBlurPassPipeline);
 
- 		m_ppComputeCommandBuffers[currentFrame]->pushConstants(m_pBlurPassPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 2 * sizeof(float), sizeof(RayTracingParameters), &m_RayTracingParameters);
+ 		m_ppComputeCommandBuffers[currentFrame]->pushConstants(m_pBlurPassPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 2 * sizeof(float), sizeof(GPURayTracingParameters), &m_GPURayTracingParameters);
 
 		//Initial Blur Pass
 		{
@@ -231,10 +231,10 @@ void RayTracingRendererVK::render(IScene* pScene)
 		}
 
 		//Extra Blur Passes
-		if (NUM_BLUR_PASSES > 1)
+		if (m_CPURayTracingParameters.NumBlurPasses > 1)
 		{
 
-			for (uint32_t blurPass = 1; blurPass < NUM_BLUR_PASSES; blurPass++)
+			for (uint32_t blurPass = 1; blurPass < m_CPURayTracingParameters.NumBlurPasses; blurPass++)
 			{
 				//Horizontal Blur
 				{
@@ -274,10 +274,12 @@ void RayTracingRendererVK::render(IScene* pScene)
 
 void RayTracingRendererVK::renderUI()
 {
-	ImGui::SliderFloat("Max Temporal Frames", &m_RayTracingParameters.MaxTemporalFrames, 1.0f, 1024.0f);
-	ImGui::SliderFloat("Min Temporal Weight", &m_RayTracingParameters.MinTemporalWeight, 0.0000001f, 1.0f, "%.3f", 2.0f);
-	ImGui::SliderFloat("Reflection Ray Bias", &m_RayTracingParameters.ReflectionRayBias, 0.0f, 0.5f);
-	ImGui::SliderFloat("Shadow Ray Bias", &m_RayTracingParameters.ShadowRayBias, 0.0f, 0.5f);
+	ImGui::SliderFloat("Max Temporal Frames", &m_GPURayTracingParameters.MaxTemporalFrames, 1.0f, 1024.0f);
+	ImGui::SliderFloat("Min Temporal Weight", &m_GPURayTracingParameters.MinTemporalWeight, 0.0000001f, 1.0f, "%.3f", 2.0f);
+	ImGui::SliderFloat("Reflection Ray Bias", &m_GPURayTracingParameters.ReflectionRayBias, 0.0f, 0.5f);
+	ImGui::SliderFloat("Shadow Ray Bias", &m_GPURayTracingParameters.ShadowRayBias, 0.0f, 0.5f);
+
+	ImGui::SliderInt("Num Spatial Filter Passes", &m_CPURayTracingParameters.NumBlurPasses, 1, 16);
 }
 
 void RayTracingRendererVK::setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY)
@@ -514,7 +516,7 @@ bool RayTracingRendererVK::createPipelineLayouts()
 
 		VkPushConstantRange pushConstantRange = {};
 		pushConstantRange.offset = 0;
-		pushConstantRange.size = sizeof(float) + sizeof(RayTracingParameters);
+		pushConstantRange.size = sizeof(float) + sizeof(GPURayTracingParameters);
 		pushConstantRange.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_NV | VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV;
 
 		std::vector<const DescriptorSetLayoutVK*> rayTracingDescriptorSetLayouts = { m_pRayTracingDescriptorSetLayout };
@@ -557,7 +559,7 @@ bool RayTracingRendererVK::createPipelineLayouts()
 
 		VkPushConstantRange pushConstantRange = {};
 		pushConstantRange.offset = 0;
-		pushConstantRange.size = 2 * sizeof(float) + sizeof(RayTracingParameters);
+		pushConstantRange.size = 2 * sizeof(float) + sizeof(GPURayTracingParameters);
 		pushConstantRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
 		std::vector<const DescriptorSetLayoutVK*> blurPassDescriptorSetLayouts = { m_pBlurPassDescriptorSetLayout };

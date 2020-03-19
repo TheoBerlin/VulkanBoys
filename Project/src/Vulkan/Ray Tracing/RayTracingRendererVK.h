@@ -56,12 +56,17 @@ constexpr uint32_t RT_BP_GBUFFER_DEPTH_BINDING = 4;
 
 class RayTracingRendererVK : public IRenderer
 {
-	struct RayTracingParameters
+	struct GPURayTracingParameters
 	{
 		float MaxTemporalFrames = 128.0f;
 		float MinTemporalWeight = 0.01f;
 		float ReflectionRayBias = 0.01f;
 		float ShadowRayBias = 0.01f;
+	};
+
+	struct CPURayTracingParameters
+	{
+		int NumBlurPasses = 8;
 	};
 
 public:
@@ -165,5 +170,6 @@ private:
 	SamplerVK* m_pLinearSampler;
 
 	//Tuneable Parameters
-	RayTracingParameters m_RayTracingParameters;
+	GPURayTracingParameters m_GPURayTracingParameters;
+	CPURayTracingParameters m_CPURayTracingParameters;
 };
