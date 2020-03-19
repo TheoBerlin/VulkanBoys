@@ -10,7 +10,7 @@ class InstanceVK;
 class CommandPoolVK;
 class CommandBufferVK;
 
-#define MAX_COMMAND_BUFFERS 6
+#define MAX_COMMAND_BUFFERS 8
 
 class CopyHandlerVK
 {
@@ -28,7 +28,7 @@ public:
 
 	void generateMips(ImageVK* pImage);
 
-	void waitForResources();
+	//void waitForResources();
 
 private:
 	CommandBufferVK* getNextTransferBuffer();
@@ -43,6 +43,8 @@ private:
 	CommandPoolVK* m_pGraphicsPool;
 	CommandBufferVK* m_pTransferBuffers[MAX_COMMAND_BUFFERS];
 	CommandBufferVK* m_pGraphicsBuffers[MAX_COMMAND_BUFFERS];
+	Spinlock m_pTransferLocks[MAX_COMMAND_BUFFERS];
+	Spinlock m_pGraphicsLocks[MAX_COMMAND_BUFFERS];
 	uint32_t m_CurrentTransferBuffer;
 	uint32_t m_CurrentGraphicsBuffer;
 };

@@ -64,6 +64,8 @@ void CommandBufferVK::reset(bool waitForFence)
 		vkResetFences(m_pDevice->getDevice(), 1, &m_Fence);
 	}
 
+	vkResetCommandBuffer(m_CommandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+
 	m_pStagingBuffer->reset();
 	m_pStagingTexture->reset();
 }

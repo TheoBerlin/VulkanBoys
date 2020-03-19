@@ -66,90 +66,106 @@ bool CopyHandlerVK::init()
 void CopyHandlerVK::updateBuffer(BufferVK* pDestination, uint64_t destinationOffset, const void* pSource, uint64_t sizeInBytes)
 {
 	CommandBufferVK* pCommandBuffer = getNextTransferBuffer();
-	pCommandBuffer->reset(true);
-	pCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	pCommandBuffer->updateBuffer(pDestination, destinationOffset, pSource, sizeInBytes);
-	pCommandBuffer->end();
+	{
+		std::scoped_lock<Spinlock> lock(m_pTransferLocks[m_CurrentTransferBuffer]);
 
-	submitTransferBuffer(pCommandBuffer);
+		pCommandBuffer->reset(true);
+		pCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+		pCommandBuffer->updateBuffer(pDestination, destinationOffset, pSource, sizeInBytes);
+		pCommandBuffer->end();
+
+		submitTransferBuffer(pCommandBuffer);
+	}
 }
 
 void CopyHandlerVK::copyBuffer(BufferVK* pSource, uint64_t sourceOffset, BufferVK* pDestination, uint64_t destinationOffset, uint64_t sizeInBytes)
 {
 	CommandBufferVK* pCommandBuffer = getNextTransferBuffer();
-	pCommandBuffer->reset(true);
-	pCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	pCommandBuffer->copyBuffer(pSource, sourceOffset, pDestination, destinationOffset, sizeInBytes);
-	pCommandBuffer->end();
+	{
+		std::scoped_lock<Spinlock> lock(m_pTransferLocks[m_CurrentTransferBuffer]);
 
-	submitTransferBuffer(pCommandBuffer);
+		pCommandBuffer->reset(true);
+		pCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+		pCommandBuffer->copyBuffer(pSource, sourceOffset, pDestination, destinationOffset, sizeInBytes);
+		pCommandBuffer->end();
+
+		submitTransferBuffer(pCommandBuffer);
+	}
 }
 
 void CopyHandlerVK::updateImage(const void* pPixelData, ImageVK* pImage, uint32_t width, uint32_t height, uint32_t pixelStride, VkImageLayout initalLayout, VkImageLayout finalLayout, uint32_t miplevel, uint32_t layer)
 {
 	CommandBufferVK* pCommandBuffer = getNextGraphicsBuffer();
-	pCommandBuffer->reset(true);
-	pCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-	//Insert barrier if we need to
-	if (initalLayout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
 	{
-		pCommandBuffer->transitionImageLayout(pImage, initalLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, pImage->getMiplevelCount(), layer, 1);
+		std::scoped_lock<Spinlock> lock(m_pGraphicsLocks[m_CurrentGraphicsBuffer]);
+
+		pCommandBuffer->reset(true);
+		pCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+		//Insert barrier if we need to
+		if (initalLayout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+		{
+			pCommandBuffer->transitionImageLayout(pImage, initalLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, pImage->getMiplevelCount(), layer, 1);
+		}
+
+		pCommandBuffer->updateImage(pPixelData, pImage, width, height, pixelStride, miplevel, layer);
+
+		//Insert barrier if we need to
+		if (finalLayout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+		{
+			pCommandBuffer->transitionImageLayout(pImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, finalLayout, 0, pImage->getMiplevelCount(), layer, 1);
+		}
+
+		pCommandBuffer->end();
+
+		submitGraphicsBuffer(pCommandBuffer);
 	}
-
-	pCommandBuffer->updateImage(pPixelData, pImage, width, height, pixelStride, miplevel, layer);
-
-	//Insert barrier if we need to
-	if (finalLayout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-	{
-		pCommandBuffer->transitionImageLayout(pImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, finalLayout, 0, pImage->getMiplevelCount(), layer, 1);
-	}
-
-	pCommandBuffer->end();
-
-	submitGraphicsBuffer(pCommandBuffer);
 }
 
 void CopyHandlerVK::copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffset, ImageVK* pImage, uint32_t width, uint32_t height, uint32_t miplevel, uint32_t layer)
 {
 	CommandBufferVK* pCommandBuffer = getNextGraphicsBuffer();
-	pCommandBuffer->reset(true);
-	pCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	pCommandBuffer->copyBufferToImage(pSource, sourceOffset, pImage, width, height, miplevel, layer);
-	pCommandBuffer->end();
+	{
+		std::scoped_lock<Spinlock> lock(m_pGraphicsLocks[m_CurrentGraphicsBuffer]);
 
-	submitGraphicsBuffer(pCommandBuffer);
+		pCommandBuffer->reset(true);
+		pCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+		pCommandBuffer->copyBufferToImage(pSource, sourceOffset, pImage, width, height, miplevel, layer);
+		pCommandBuffer->end();
+
+		submitGraphicsBuffer(pCommandBuffer);
+	}
 }
 
 void CopyHandlerVK::generateMips(ImageVK* pImage)
 {
 	CommandBufferVK* pCommandBuffer = getNextGraphicsBuffer();
-	pCommandBuffer->reset(true);
-	pCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-	const uint32_t miplevelCount = pImage->getMiplevelCount();
-	pCommandBuffer->transitionImageLayout(pImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, miplevelCount, 0, 1);
-
-	VkExtent2D destinationExtent = {};
-	VkExtent2D sourceExtent = { pImage->getExtent().width, pImage->getExtent().height };
-	for (uint32_t i = 1; i < miplevelCount; i++)
 	{
-		destinationExtent = { std::max(sourceExtent.width / 2U, 1u), std::max(sourceExtent.height / 2U, 1U) };
+		std::scoped_lock<Spinlock> lock(m_pGraphicsLocks[m_CurrentGraphicsBuffer]);
 
-		pCommandBuffer->transitionImageLayout(pImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, i - 1, 1, 0, 1);
-		pCommandBuffer->blitImage2D(pImage, i - 1, sourceExtent, pImage, i, destinationExtent);
-		sourceExtent = destinationExtent;
+		pCommandBuffer->reset(true);
+		pCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+		const uint32_t miplevelCount = pImage->getMiplevelCount();
+		pCommandBuffer->transitionImageLayout(pImage, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, miplevelCount, 0, 1);
+
+		VkExtent2D destinationExtent = {};
+		VkExtent2D sourceExtent = { pImage->getExtent().width, pImage->getExtent().height };
+		for (uint32_t i = 1; i < miplevelCount; i++)
+		{
+			destinationExtent = { std::max(sourceExtent.width / 2U, 1u), std::max(sourceExtent.height / 2U, 1U) };
+
+			pCommandBuffer->transitionImageLayout(pImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, i - 1, 1, 0, 1);
+			pCommandBuffer->blitImage2D(pImage, i - 1, sourceExtent, pImage, i, destinationExtent);
+			sourceExtent = destinationExtent;
+		}
+
+		pCommandBuffer->transitionImageLayout(pImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, miplevelCount - 1, 1, 0, 1);
+		pCommandBuffer->transitionImageLayout(pImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, miplevelCount, 0, 1);
+		pCommandBuffer->end();
+
+		submitGraphicsBuffer(pCommandBuffer);
 	}
-
-	pCommandBuffer->transitionImageLayout(pImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, miplevelCount - 1, 1, 0, 1);
-	pCommandBuffer->transitionImageLayout(pImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, miplevelCount, 0, 1);
-	pCommandBuffer->end();
-
-	submitGraphicsBuffer(pCommandBuffer);
-}
-
-void CopyHandlerVK::waitForResources()
-{
 }
 
 CommandBufferVK* CopyHandlerVK::getNextTransferBuffer()
