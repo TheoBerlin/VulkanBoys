@@ -125,9 +125,9 @@ public:
 
 	ProfilerVK* getProfiler() { return m_pProfiler; }
 	
-	void generateLightProbeGeometry(float probeStepX, float probeStepY, float probeStepZ, uint32_t samplesPerProbe, uint32_t numProbesPerDimension);
-
+	//Debug
 	virtual void renderUI() override;
+	virtual void updateDebugParameters() override;
 
 private:
 	bool createDefaultTexturesAndSamplers();
@@ -219,8 +219,7 @@ private:
 	CommandPoolVK* m_pTempCommandPool;
 	CommandBufferVK* m_pTempCommandBuffer;
 
-	MeshVK* m_pLightProbeMesh;
-	const Material* m_pVeryTempMaterial;
-
 	SceneParameters m_SceneParameters;
+
+	bool m_DebugParametersDirty;
 };

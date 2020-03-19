@@ -648,6 +648,7 @@ void Application::update(double dt)
 
 	m_pScene->updateCamera(m_Camera);
 	m_pScene->updateLightSetup(m_LightSetup);
+	m_pScene->updateDebugParameters();
 }
 
 void Application::renderUI(double dt)

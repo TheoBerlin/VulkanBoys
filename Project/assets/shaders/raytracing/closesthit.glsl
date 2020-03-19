@@ -183,42 +183,42 @@ void main()
 
 		vec3 shadowRaysOrigin = hitPos + normal * u_PushConstants.ShadowRayBias;
 
-		vec3 Lo = vec3(0.0f);
-		for (int i = 0; i < MAX_POINT_LIGHTS; i++)
-		{
-			vec3 lightPosition 	= u_Lights.lights[i].Position.xyz;
-			vec3 lightColor 	= u_Lights.lights[i].Color.rgb;
+		// vec3 Lo = vec3(0.0f);
+		// for (int i = 0; i < MAX_POINT_LIGHTS; i++)
+		// {
+		// 	vec3 lightPosition 	= u_Lights.lights[i].Position.xyz;
+		// 	vec3 lightColor 	= u_Lights.lights[i].Color.rgb;
 
-			vec3 lightVector 	= (lightPosition - hitPos);
-			vec3 lightDir 		= normalize(lightVector);
+		// 	vec3 lightVector 	= (lightPosition - hitPos);
+		// 	vec3 lightDir 		= normalize(lightVector);
 
-			traceNV(u_TopLevelAS, rayFlags, cullMask, 1, 0, 1, shadowRaysOrigin, tmin, lightDir, tmax, 1);
+		// 	traceNV(u_TopLevelAS, rayFlags, cullMask, 1, 0, 1, shadowRaysOrigin, tmin, lightDir, tmax, 1);
 
-			if (shadowRayPayload.Occlusion < 0.1f)
-			{
-				float lightDistance	= length(lightVector);
-				float attenuation 	= 1.0f / (lightDistance * lightDistance);
+		// 	if (shadowRayPayload.Occlusion < 0.1f)
+		// 	{
+		// 		float lightDistance	= length(lightVector);
+		// 		float attenuation 	= 1.0f / (lightDistance * lightDistance);
 
-				vec3 halfVector = normalize(viewDir + lightDir);
+		// 		vec3 halfVector = normalize(viewDir + lightDir);
 
-				vec3 radiance = lightColor * attenuation;
+		// 		vec3 radiance = lightColor * attenuation;
 
-				float HdotV = max(dot(halfVector, viewDir), 0.0f);
-				float NdotL = max(dot(normal, lightDir), 0.0f);
+		// 		float HdotV = max(dot(halfVector, viewDir), 0.0f);
+		// 		float NdotL = max(dot(normal, lightDir), 0.0f);
 
-				vec3 f 		= Fresnel(f0, HdotV);
-				float ndf 	= Distribution(normal, halfVector, roughness);
-				float g 	= GeometryOpt(NdotV, NdotL, roughness);
+		// 		vec3 f 		= Fresnel(f0, HdotV);
+		// 		float ndf 	= Distribution(normal, halfVector, roughness);
+		// 		float g 	= GeometryOpt(NdotV, NdotL, roughness);
 
-				float denom 	= 4.0f * NdotV * NdotL + 0.0001f;
-				vec3 specular   = (ndf * g * f) / denom;
+		// 		float denom 	= 4.0f * NdotV * NdotL + 0.0001f;
+		// 		vec3 specular   = (ndf * g * f) / denom;
 
-				//Take 1.0f minus the incoming radiance to get the diffuse (Energy conservation)
-				vec3 diffuse = (vec3(1.0f) - f) * metallicFactor;
+		// 		//Take 1.0f minus the incoming radiance to get the diffuse (Energy conservation)
+		// 		vec3 diffuse = (vec3(1.0f) - f) * metallicFactor;
 
-				Lo += ((diffuse * (albedo / PI)) + specular) * radiance * NdotL;
-			}
-		}
+		// 		Lo += ((diffuse * (albedo / PI)) + specular) * radiance * NdotL;
+		// 	}
+		// }
 
 		//Irradiance from surroundings
 		vec3 diffuse 	= albedo;
@@ -238,9 +238,9 @@ void main()
 
 		vec3 ambient 	= ((kDiffuse * diffuse) + specular) * ao; //Approximate diffuse with albedo * vec3(0.03f)
 
-		vec3 finalColor = ambient + Lo;
+		//vec3 finalColor = ambient + Lo;
 
-		rayPayload.Radiance = finalColor;
+		rayPayload.Radiance = ambient;
 		//rayPayload.Radiance = vec3(1.0f, 0.0f, 0.0f);
 	}
 	else
