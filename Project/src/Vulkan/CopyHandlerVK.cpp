@@ -15,14 +15,10 @@
 CopyHandlerVK::CopyHandlerVK(DeviceVK* pDevice, InstanceVK* pInstance)
 	: m_pDevice(pDevice),
 	m_pInstance(pInstance),
-	m_TransferQueueLock(),
-	m_GraphicsQueueLock(),
 	m_pTransferPool(nullptr),
 	m_pGraphicsPool(nullptr),
 	m_pTransferBuffers(),
 	m_pGraphicsBuffers(),
-	m_TransferQueue(VK_NULL_HANDLE),
-	m_GraphicsQueue(VK_NULL_HANDLE),
 	m_CurrentTransferBuffer(0),
 	m_CurrentGraphicsBuffer(0)
 {
@@ -32,9 +28,6 @@ CopyHandlerVK::~CopyHandlerVK()
 {
 	SAFEDELETE(m_pGraphicsPool);
 	SAFEDELETE(m_pTransferPool);
-
-	m_TransferQueue = VK_NULL_HANDLE;
-	m_GraphicsQueue = VK_NULL_HANDLE;
 	m_pDevice = nullptr;
 }
 
@@ -67,8 +60,6 @@ bool CopyHandlerVK::init()
 		}
 	}
 
-	m_TransferQueue = m_pDevice->getTransferQueue();
-	m_GraphicsQueue = m_pDevice->getGraphicsQueue();
 	return true;
 }
 
@@ -159,9 +150,6 @@ void CopyHandlerVK::generateMips(ImageVK* pImage)
 
 void CopyHandlerVK::waitForResources()
 {
-	//TODO: Probably should use a fence here? Do we need a lock?
-	vkQueueWaitIdle(m_TransferQueue);
-	vkQueueWaitIdle(m_GraphicsQueue);
 }
 
 CommandBufferVK* CopyHandlerVK::getNextTransferBuffer()
@@ -181,14 +169,10 @@ CommandBufferVK* CopyHandlerVK::getNextGraphicsBuffer()
 
 void CopyHandlerVK::submitTransferBuffer(CommandBufferVK* pCommandBuffer)
 {
-	//Need to lock this since commandbuffer submition is not meant to be done from multiple threads? Different sources say different things
-	std::scoped_lock<Spinlock> lock(m_TransferQueueLock);
-	m_pDevice->executeCommandBuffer(m_TransferQueue, pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_pDevice->executeTransfer(pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 }
 
 void CopyHandlerVK::submitGraphicsBuffer(CommandBufferVK* pCommandBuffer)
 {
-	//Need to lock this since commandbuffer submition is not meant to be done from multiple threads? Different sources say different things
-	std::scoped_lock<Spinlock> lock(m_GraphicsQueueLock);
-	m_pDevice->executeCommandBuffer(m_GraphicsQueue, pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_pDevice->executeGraphics(pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 }

@@ -376,7 +376,7 @@ void RayTracingRendererVK::setResolution(uint32_t width, uint32_t height)
 		pTempCommandBuffer->transitionImageLayout(m_pReflectionIntermediateImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1);
 		pTempCommandBuffer->end();
 
-		m_pContext->getDevice()->executeCommandBuffer(m_pContext->getDevice()->getComputeQueue(), pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+		m_pContext->getDevice()->executeCompute(pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 		m_pContext->getDevice()->wait(); //Todo: Remove This
 
 		m_ppComputeCommandPools[0]->freeCommandBuffer(&pTempCommandBuffer);

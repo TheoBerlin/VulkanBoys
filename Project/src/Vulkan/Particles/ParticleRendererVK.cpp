@@ -80,6 +80,8 @@ bool ParticleRendererVK::init()
 
 void ParticleRendererVK::beginFrame(IScene* pScene)
 {
+	UNREFERENCED_PARAMETER(pScene);
+
 	// Prepare for frame
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
 
@@ -121,10 +123,6 @@ void ParticleRendererVK::renderUI()
 void ParticleRendererVK::submitParticles(ParticleEmitter* pEmitter)
 {
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
-
-	BufferVK* pEmitterBuffer = reinterpret_cast<BufferVK*>(pEmitter->getEmitterBuffer());
-	BufferVK* pPositionBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
-	Texture2DVK* pParticleTexture = reinterpret_cast<Texture2DVK*>(pEmitter->getParticleTexture());
 
 	if (!bindDescriptorSet(pEmitter)) {
 		return;
@@ -306,7 +304,7 @@ bool ParticleRendererVK::createQuadMesh()
 	const std::array<uint32_t, 6> pQuadIndices = {0, 1, 2, 2, 3, 0};
 
 	m_pQuadMesh = DBG_NEW MeshVK(m_pGraphicsContext->getDevice());
-	return m_pQuadMesh->initFromMemory(pQuadVertices.data(), sizeof(QuadVertex), pQuadVertices.size(), pQuadIndices.data(), pQuadIndices.size());
+	return m_pQuadMesh->initFromMemory(pQuadVertices.data(), sizeof(QuadVertex), uint32_t(pQuadVertices.size()), pQuadIndices.data(), uint32_t(pQuadIndices.size()));
 }
 
 void ParticleRendererVK::createProfiler()

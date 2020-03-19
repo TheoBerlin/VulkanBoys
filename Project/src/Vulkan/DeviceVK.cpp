@@ -1,12 +1,13 @@
-#include "DeviceVK.h"
-#include "InstanceVK.h"
-#include "CopyHandlerVK.h"
-#include "CommandBufferVK.h"
-
 #include <cstring>
 #include <iostream>
 #include <map>
 #include <set>
+#include <mutex>
+
+#include "DeviceVK.h"
+#include "InstanceVK.h"
+#include "CopyHandlerVK.h"
+#include "CommandBufferVK.h"
 
 #define GET_DEVICE_PROC_ADDR(device, function_name) if ((function_name = reinterpret_cast<PFN_##function_name>(vkGetDeviceProcAddr(device, #function_name))) == nullptr) { LOG("--- Vulkan: Failed to load DeviceFunction '%s'", #function_name); }
 
@@ -66,6 +67,39 @@ void DeviceVK::addRequiredExtension(const char* extensionName)
 void DeviceVK::addOptionalExtension(const char* extensionName)
 {
 	m_RequestedOptionalExtensions.push_back(extensionName);
+}
+
+void DeviceVK::executeGraphics(CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages, uint32_t waitSemaphoreCount, const VkSemaphore* pSignalSemaphores, uint32_t signalSemaphoreCount)
+{
+	std::scoped_lock<Spinlock> lock(m_GraphicsLock);
+	executeCommandBuffer(m_GraphicsQueue, pCommandBuffer, pWaitSemaphore, pWaitStages, waitSemaphoreCount, pSignalSemaphores, signalSemaphoreCount);
+}
+
+void DeviceVK::executeCompute(CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages, uint32_t waitSemaphoreCount, const VkSemaphore* pSignalSemaphores, uint32_t signalSemaphoreCount)
+{
+	std::scoped_lock<Spinlock> lock(m_ComputeLock);
+	executeCommandBuffer(m_ComputeQueue, pCommandBuffer, pWaitSemaphore, pWaitStages, waitSemaphoreCount, pSignalSemaphores, signalSemaphoreCount);
+}
+
+void DeviceVK::executeTransfer(CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages, uint32_t waitSemaphoreCount, const VkSemaphore* pSignalSemaphores, uint32_t signalSemaphoreCount)
+{
+	std::scoped_lock<Spinlock> lock(m_TransferLock);
+	executeCommandBuffer(m_TransferQueue, pCommandBuffer, pWaitSemaphore, pWaitStages, waitSemaphoreCount, pSignalSemaphores, signalSemaphoreCount);
+}
+
+void DeviceVK::waitCompute()
+{
+	vkQueueWaitIdle(m_ComputeQueue);
+}
+
+void DeviceVK::waitGraphics()
+{
+	vkQueueWaitIdle(m_GraphicsQueue);
+}
+
+void DeviceVK::waitTransfer()
+{
+	vkQueueWaitIdle(m_TransferQueue);
 }
 
 void DeviceVK::executeCommandBuffer(VkQueue queue, CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages,

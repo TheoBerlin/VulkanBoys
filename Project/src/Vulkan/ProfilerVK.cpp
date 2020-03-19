@@ -53,7 +53,7 @@ void ProfilerVK::setParentProfiler(ProfilerVK* pParentProfiler)
     findWidestText();
 }
 
-void ProfilerVK::reset(size_t currentFrame, CommandBufferVK* pResetCmdBuffer)
+void ProfilerVK::reset(uint32_t currentFrame, CommandBufferVK* pResetCmdBuffer)
 {
     if (!m_ProfileFrame) {
         return;
@@ -122,7 +122,6 @@ void ProfilerVK::writeResults()
         m_Time = m_TimeResults[1] - m_TimeResults[0];
 
         for (Timestamp* pTimestamp : m_Timestamps) {
-            const std::vector<uint32_t>& timestampQueries = pTimestamp->queries;
             pTimestamp->time = 0;
 
             for (uint32_t query : pTimestamp->queries) {
@@ -155,7 +154,7 @@ void ProfilerVK::endFrame()
 
 void ProfilerVK::drawResults()
 {
-    std::string indent('-', m_RecurseDepth);
+    std::string indent('-', size_t(m_RecurseDepth));
 
     // Align the number across all timestamps and profilers by filling with whitespaces
     uint32_t fillLength = m_MaxTextWidth - (m_RecurseDepth * m_DashesPerRecurse + (uint32_t)m_Name.size());
@@ -227,10 +226,7 @@ void ProfilerVK::endTimestamp(Timestamp* pTimestamp)
 void ProfilerVK::findWidestText()
 {
     // Widest string among the profiler and its timestamps, includes the width of the dash-prefix and the name of the profiler/timestamp
-    uint32_t maxTextWidthLocal;
-    // Width of profiler's text
-    maxTextWidthLocal = m_RecurseDepth * m_DashesPerRecurse + m_Name.size();
-
+    uint32_t maxTextWidthLocal = m_RecurseDepth * m_DashesPerRecurse + m_Name.size();
     uint32_t timestampPrefixWidth = (m_RecurseDepth + 1) * m_DashesPerRecurse;
 
     for (Timestamp* pTimestamp : m_Timestamps) {
@@ -242,6 +238,8 @@ void ProfilerVK::findWidestText()
 
 void ProfilerVK::expandQueryPools(CommandBufferVK* pCommandBuffer)
 {
+    UNREFERENCED_PARAMETER(pCommandBuffer);
+
     uint32_t newQueryCount = m_ppQueryPools[m_CurrentFrame]->getQueryCount() * 2;
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
