@@ -635,7 +635,7 @@ void Application::update(double dt)
 	}
 
 	//TODO: Is float enough precision on fast systems?
-	m_pParticleEmitterHandler->update((float)dt);
+	//m_pParticleEmitterHandler->update((float)dt);
 
 	//Set sphere color
 	//static glm::mat4 rotation = glm::mat4(1.0f);

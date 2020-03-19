@@ -6,34 +6,14 @@
 
 #define GET_INSTANCE_PROC_ADDR(instance, function_name) if ((function_name = reinterpret_cast<PFN_##function_name>(vkGetInstanceProcAddr(instance, #function_name))) == nullptr) { LOG("--- Vulkan: Failed to load InstanceFunction '%s'", #function_name); }
 
-static VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger)
-{
-	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
-	if (func != nullptr)
-	{
-		return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-	}
-	else
-	{
-		return VK_ERROR_EXTENSION_NOT_PRESENT;
-	}
-}
-
-static void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator)
-{
-	auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
-	if (func != nullptr)
-	{
-		func(instance, debugMessenger, pAllocator);
-	}
-}
-
-
 InstanceVK::InstanceVK() :
 	m_Instance(VK_NULL_HANDLE),
 	m_ValidationLayersEnabled(false),
 	m_HasRetrivedExtensions(false),
 	m_HasRetrivedLayers(false),
+	vkSetDebugUtilsObjectNameEXT(nullptr),
+	vkDestroyDebugUtilsMessengerEXT(nullptr),
+	vkCreateDebugUtilsMessengerEXT(nullptr),
 	m_DebugMessenger(VK_NULL_HANDLE)
 {
 }
@@ -44,7 +24,7 @@ InstanceVK::~InstanceVK()
 	{
 		if (m_DebugMessenger != VK_NULL_HANDLE)
 		{
-			DestroyDebugUtilsMessengerEXT(m_Instance, m_DebugMessenger, nullptr);
+			vkDestroyDebugUtilsMessengerEXT(m_Instance, m_DebugMessenger, nullptr);
 			m_DebugMessenger = VK_NULL_HANDLE;
 		}
 	}
@@ -64,8 +44,11 @@ bool InstanceVK::finalize(bool validationLayersEnabled)
 	if (!initInstance())
 		return false;
 
+	registerExtensionFunctions();
+
 	if (!initializeDebugMessenger())
 		return false;
+
 
 	D_LOG("--- Instance: Vulkan Instance created successfully");
 	return true;
@@ -169,7 +152,7 @@ bool InstanceVK::initializeDebugMessenger()
 	VkDebugUtilsMessengerCreateInfoEXT createInfo = {};
 	populateDebugMessengerCreateInfo(createInfo);
 
-	VK_CHECK_RESULT_RETURN_FALSE(CreateDebugUtilsMessengerEXT(m_Instance, &createInfo, nullptr, &m_DebugMessenger), "--- Instance: Failed to set up Debug Messenger!");
+	VK_CHECK_RESULT_RETURN_FALSE(vkCreateDebugUtilsMessengerEXT(m_Instance, &createInfo, nullptr, &m_DebugMessenger), "--- Instance: Failed to set up Debug Messenger!");
 	return true;
 }
 
@@ -211,18 +194,23 @@ bool InstanceVK::setEnabledExtensions()
 		if (requiredExtensions.erase(extension.extensionName) > 0)
 		{
 			m_EnabledExtensions.push_back(extension.extensionName);
+			m_ExtensionsStatus[extension.extensionName] = true;
 		}
 		
 		if (optionalExtensions.erase(extension.extensionName) > 0)
 		{
 			m_EnabledExtensions.push_back(extension.extensionName);
+			m_ExtensionsStatus[extension.extensionName] = true;
 		}
 	}
 
 	if (requiredExtensions.size() > 0)
 	{
 		for (const auto& extension : requiredExtensions)
+		{
 			D_LOG("--- Instance: Required Extension  [%s] not supported", extension.c_str());
+			m_ExtensionsStatus[extension] = false;
+		}
 		
 		return false;
 	}
@@ -230,7 +218,10 @@ bool InstanceVK::setEnabledExtensions()
 	if (optionalExtensions.size() > 0)
 	{
 		for (const auto& extension : optionalExtensions)
+		{
 			D_LOG("--- Instance: Optional Extension [%s] not supported", extension.c_str());
+			m_ExtensionsStatus[extension] = false;
+		}
 	}
 
 	return true;
@@ -270,6 +261,22 @@ void InstanceVK::retriveAvailableLayers()
 		vkEnumerateInstanceLayerProperties(&layerCount, m_AvailableLayers.data());
 
 		m_HasRetrivedLayers = true;
+	}
+}
+
+void InstanceVK::registerExtensionFunctions()
+{
+	if (m_ExtensionsStatus[VK_EXT_DEBUG_UTILS_EXTENSION_NAME])
+	{
+		GET_INSTANCE_PROC_ADDR(m_Instance, vkCreateDebugUtilsMessengerEXT);
+		GET_INSTANCE_PROC_ADDR(m_Instance, vkDestroyDebugUtilsMessengerEXT);
+		GET_INSTANCE_PROC_ADDR(m_Instance, vkSetDebugUtilsObjectNameEXT);
+
+		std::cout << "--- Device: Successfully intialized [ VK_NV_ray_tracing ] function pointers!" << std::endl;
+	}
+	else
+	{
+		LOG("--- Instance: Failed to intialize [ %s ] function pointers", VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 	}
 }
 

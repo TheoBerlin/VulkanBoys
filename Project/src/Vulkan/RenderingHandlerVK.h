@@ -64,13 +64,9 @@ public:
     FrameBufferVK*          getCurrentBackBuffer() const                { return m_ppBackbuffers[m_BackBufferIndex]; }
     FrameBufferVK*          getCurrentBackBufferWithDepth() const       { return m_ppBackBuffersWithDepth[m_BackBufferIndex]; }
     CommandBufferVK*        getCurrentGraphicsCommandBuffer() const     { return m_ppGraphicsCommandBuffers[m_CurrentFrame]; }
-	CommandBufferVK*        getCurrentComputeCommandBuffer() const      { return m_ppComputeCommandBuffers[m_CurrentFrame]; }
 	GBufferVK*				getGBuffer() const							{ return m_pGBuffer; }
 
 private:
-	void beginFrame(SceneVK* pScene);
-	void endFrame(SceneVK* pScene);
-
     bool createBackBuffers();
     bool createCommandPoolAndBuffers();
     bool createRenderPasses();
@@ -98,9 +94,11 @@ private:
     FrameBufferVK* m_ppBackBuffersWithDepth[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_RenderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
+    VkSemaphore m_ComputeFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
 
     CommandPoolVK* m_ppGraphicsCommandPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppGraphicsCommandBuffers[MAX_FRAMES_IN_FLIGHT];
+    CommandBufferVK* m_ppGraphicsCommandBuffers2[MAX_FRAMES_IN_FLIGHT];
 
 	CommandPoolVK* m_ppComputeCommandPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppComputeCommandBuffers[MAX_FRAMES_IN_FLIGHT];

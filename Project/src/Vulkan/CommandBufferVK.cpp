@@ -1,10 +1,12 @@
 #include "CommandBufferVK.h"
 #include "DeviceVK.h"
+#include "InstanceVK.h"
 
 #include "Ray Tracing/ShaderBindingTableVK.h"
 
-CommandBufferVK::CommandBufferVK(DeviceVK* pDevice, VkCommandBuffer commandBuffer)
+CommandBufferVK::CommandBufferVK(DeviceVK* pDevice, InstanceVK* pInstance, VkCommandBuffer commandBuffer)
 	: m_pDevice(pDevice),
+	m_pInstance(pInstance),
 	m_pStagingBuffer(nullptr),
 	m_pStagingTexture(nullptr),
 	m_CommandBuffer(commandBuffer),
@@ -462,4 +464,21 @@ void CommandBufferVK::traceRays(ShaderBindingTableVK* pShaderBindingTable, uint3
 		bufferSBT, intersectOffset, pShaderBindingTable->getBindingStride(),
 		VK_NULL_HANDLE, 0, 0,
 		width, height, 1);
+}
+
+void CommandBufferVK::setName(const char* pName)
+{
+	if (pName)
+	{
+		if (m_pInstance->vkSetDebugUtilsObjectNameEXT)
+		{
+			VkDebugUtilsObjectNameInfoEXT info = {};
+			info.sType			= VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+			info.pNext			= nullptr;
+			info.objectType		= VK_OBJECT_TYPE_COMMAND_BUFFER;
+			info.objectHandle	= (uint64_t)m_CommandBuffer;
+			info.pObjectName	= pName;
+			m_pInstance->vkSetDebugUtilsObjectNameEXT(m_pDevice->getDevice(), &info);
+		}
+	}
 }

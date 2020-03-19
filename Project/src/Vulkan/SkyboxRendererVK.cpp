@@ -24,8 +24,9 @@
 	#undef max
 #endif
 
-SkyboxRendererVK::SkyboxRendererVK(DeviceVK* pDevice)
+SkyboxRendererVK::SkyboxRendererVK(DeviceVK* pDevice, InstanceVK* pInstance)
 	: m_pDevice(pDevice),
+	m_pInstance(pInstance),
 	m_pDescriptorPool(nullptr),
 	m_pPanoramaPipeline(nullptr),
 	m_pFilterCubePipelineLayout(nullptr),
@@ -361,7 +362,7 @@ bool SkyboxRendererVK::createCommandpoolsAndBuffers()
 	const uint32_t queueFamilyIndex = m_pDevice->getQueueFamilyIndices().graphicsFamily.value();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(m_pDevice, queueFamilyIndex);
+		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(m_pDevice, m_pInstance, queueFamilyIndex);
 
 		if (!m_ppCommandPools[i]->init())
 		{

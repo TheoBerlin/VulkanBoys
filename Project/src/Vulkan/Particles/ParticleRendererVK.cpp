@@ -154,11 +154,12 @@ void ParticleRendererVK::setViewport(float width, float height, float minDepth, 
 
 bool ParticleRendererVK::createCommandPoolAndBuffers()
 {
-	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
+	DeviceVK* pDevice		= m_pGraphicsContext->getDevice();
+	InstanceVK* pInstance	= m_pGraphicsContext->getInstance();
 
 	const uint32_t graphicsQueueIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, graphicsQueueIndex);
+		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, pInstance, graphicsQueueIndex);
 
 		if (!m_ppCommandPools[i]->init()) {
 			return false;
