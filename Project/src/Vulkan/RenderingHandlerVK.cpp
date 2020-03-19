@@ -180,6 +180,7 @@ void RenderingHandlerVK::render(IScene* pScene)
 
 	// Prepare for frame
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->reset(true);
+	m_ppGraphicsCommandBuffers2[m_CurrentFrame]->reset(true);
 	m_ppGraphicsCommandPools[m_CurrentFrame]->reset();
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
@@ -346,7 +347,6 @@ void RenderingHandlerVK::render(IScene* pScene)
 	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppGraphicsCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
 
 	//Prepare seconds graphics commandbuffer
-	m_ppGraphicsCommandBuffers2[m_CurrentFrame]->reset(true);
 	m_ppGraphicsCommandBuffers2[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 	//Ray Tracing
@@ -442,7 +442,7 @@ void RenderingHandlerVK::render(IScene* pScene)
 	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppGraphicsCommandBuffers2[m_CurrentFrame], graphicsWaitSemaphores, graphicswaitStages, 2, graphicsSignalSemaphores, 1);
 	
 	//TODO: Remove this
-	m_pGraphicsContext->getDevice()->wait();
+	//m_pGraphicsContext->getDevice()->wait();
 
 	swapBuffers();
 }
@@ -624,7 +624,7 @@ bool RenderingHandlerVK::createCommandPoolAndBuffers()
 		{
 			return false;
 		}
-		name = "ComputeCommandBuffer2[" + std::to_string(i) + "]";
+		name = "GraphicsCommandBuffer2[" + std::to_string(i) + "]";
 		m_ppGraphicsCommandBuffers2[i]->setName(name.c_str());
 
 		//Compute

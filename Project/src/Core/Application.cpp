@@ -41,7 +41,7 @@
 
 Application* Application::s_pInstance = nullptr;
 
-constexpr bool FORCE_RAY_TRACING_OFF	= true;
+constexpr bool FORCE_RAY_TRACING_OFF	= false;
 constexpr bool HIGH_RESOLUTION_SPHERE	= false;
 
 Application::Application()
@@ -126,8 +126,8 @@ void Application::init()
 
 	//Set renderers to renderhandler
 	m_pRenderingHandler->setMeshRenderer(m_pMeshRenderer);
-	m_pRenderingHandler->setParticleEmitterHandler(nullptr);
-	m_pRenderingHandler->setParticleRenderer(nullptr);
+	m_pRenderingHandler->setParticleEmitterHandler(m_pParticleEmitterHandler);
+	m_pRenderingHandler->setParticleRenderer(m_pParticleRenderer);
 	m_pRenderingHandler->setImguiRenderer(m_pImgui);
 
 	if (m_pContext->isRayTracingEnabled())
