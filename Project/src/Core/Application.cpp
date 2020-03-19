@@ -41,7 +41,7 @@
 
 Application* Application::s_pInstance = nullptr;
 
-constexpr bool FORCE_RAY_TRACING_OFF	= true;
+constexpr bool FORCE_RAY_TRACING_OFF	= false;
 constexpr bool HIGH_RESOLUTION_SPHERE	= false;
 constexpr float CAMERA_PAN_LENGTH = 10.0f;
 

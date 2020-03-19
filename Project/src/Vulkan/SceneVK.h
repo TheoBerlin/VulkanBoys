@@ -153,6 +153,8 @@ private:
 	VkDeviceSize findMaxMemReqBLAS();
 	VkDeviceSize findMaxMemReqTLAS();
 
+	uint32_t registerMaterial(const Material* pMaterial);
+
 private:
 	GraphicsContextVK* m_pContext;
 	DeviceVK* m_pDevice;

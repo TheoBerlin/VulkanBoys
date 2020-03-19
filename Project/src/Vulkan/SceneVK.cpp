@@ -303,7 +303,8 @@ bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
 		pMesh->initFromMemory(vertices.data(), sizeof(Vertex), uint32_t(vertices.size()), indices.data(), uint32_t(indices.size()));
 		m_SceneMeshes[s]  = pMesh;
 
-		Material* pMaterial = m_SceneMaterials[shape.mesh.material_ids[0] + 1];
+		uint32_t materialIndex = shape.mesh.material_ids[0] + 1;
+		Material* pMaterial = m_SceneMaterials[materialIndex];
 
 		submitGraphicsObject(pMesh, pMaterial, transform);
 	}
@@ -498,7 +499,7 @@ uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMate
 
 	const MeshVK* pVulkanMesh = reinterpret_cast<const MeshVK*>(pMesh);
 
-	uint32_t materialIndex = 0; //Kommer inte funka om raytracing avstängt
+	uint32_t materialIndex = 0; 
 
 	if (m_RayTracingEnabled)
 	{
@@ -590,14 +591,7 @@ uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMate
 	}
 	else
 	{
-		auto entry = m_MaterialIndices.find(pMaterial);
-		if (entry == m_MaterialIndices.end())
-		{
-			m_Materials.push_back(pMaterial);
-			m_MaterialIndices[pMaterial] = m_Materials.size() - 1;
-		}
-
-		materialIndex = m_MaterialIndices[pMaterial];
+		registerMaterial(pMaterial);
 	}
 
 	m_GraphicsObjects.push_back({ pVulkanMesh, pMaterial, materialIndex });
@@ -764,9 +758,7 @@ SceneVK::BottomLevelAccelerationStructure* SceneVK::createBLAS(const MeshVK* pMe
 	bottomLevelAccelerationStructure.Index = m_NumBottomLevelAccelerationStructures;
 	m_NumBottomLevelAccelerationStructures++;
 
-	bottomLevelAccelerationStructure.MaterialIndex = uint32_t(m_Materials.size());
-	m_Materials.push_back(pMaterial);
-
+	bottomLevelAccelerationStructure.MaterialIndex = registerMaterial(pMaterial);
 	std::map<const Material*, BottomLevelAccelerationStructure> newBLASPerMesh;
 	newBLASPerMesh[pMaterial] = bottomLevelAccelerationStructure;
 	m_NewBottomLevelAccelerationStructures[pMesh] = newBLASPerMesh;
@@ -1268,6 +1260,18 @@ VkDeviceSize SceneVK::findMaxMemReqTLAS()
 	m_pDevice->vkGetAccelerationStructureMemoryRequirementsNV(m_pDevice->getDevice(), &memoryRequirementsInfo, &memReqTLAS);
 
 	return memReqTLAS.memoryRequirements.size;
+}
+
+uint32_t SceneVK::registerMaterial(const Material* pMaterial)
+{
+	auto entry = m_MaterialIndices.find(pMaterial);
+	if (entry == m_MaterialIndices.end())
+	{
+		m_Materials.push_back(pMaterial);
+		m_MaterialIndices[pMaterial] = m_Materials.size() - 1;
+	}
+
+	return m_MaterialIndices[pMaterial];
 }
 
 void SceneVK::generateLightProbeGeometry(float probeStepX, float probeStepY, float probeStepZ, uint32_t samplesPerProbe, uint32_t numProbesPerDimension)

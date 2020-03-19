@@ -30,7 +30,7 @@
 #include "Ray Tracing/RayTracingRendererVK.h"
 
 
-constexpr uint32_t RAY_TRACING_RESOLUTION_DENOMINATOR = 1;
+constexpr uint32_t RAY_TRACING_RESOLUTION_DENOMINATOR = 4;
 
 #define MULTITHREADED 1
 
@@ -437,7 +437,7 @@ void RenderingHandlerVK::render(IScene* pScene)
 
 	pDevice->executeCompute(m_ppComputeCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, computeSignalSemaphores, 1);
 	pDevice->executeGraphics(m_ppGraphicsCommandBuffers2[m_CurrentFrame], graphicsWaitSemaphores, graphicswaitStages, 2, graphicsSignalSemaphores, 1);
-	
+	m_pGraphicsContext->getDevice()->wait();
 	swapBuffers();
 }
 
