@@ -14,7 +14,7 @@ public:
 	//Return a new vec3
 	glm::vec3 getPosition() const { return m_Position; }
 
-private:
+protected:
 	glm::vec4 m_Color;
 	glm::vec4 m_Position;
 };

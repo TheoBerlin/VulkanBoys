@@ -33,23 +33,23 @@ layout (binding = 0) uniform PerFrameBuffer
 } g_PerFrame;
 
 layout(binding = 1) buffer vertexBuffer
-{ 
+{
 	Vertex vertices[];
 };
 
-void main() 
+void main()
 {
 	vec3 position 		= vertices[gl_VertexIndex].Position.xyz;
     vec3 normal 		= vertices[gl_VertexIndex].Normal.xyz;
 	vec3 tangent 		= vertices[gl_VertexIndex].Tangent.xyz;
 	vec4 worldPosition 	= constants.Transform * vec4(position, 1.0);
-	
+
 	normal 	= normalize((constants.Transform * vec4(normal, 0.0)).xyz);
 	tangent = normalize((constants.Transform * vec4(tangent, 0.0)).xyz);
-	
+
 	vec3 bitangent 	= normalize(cross(normal, tangent));
 	vec2 texCoord 	= vertices[gl_VertexIndex].TexCoord.xy;
-	
+
 	out_Normal 		= normal;
 	out_Tangent 	= tangent;
 	out_Bitangent 	= bitangent;

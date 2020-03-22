@@ -2,6 +2,7 @@
 #include "Common/RenderingHandler.hpp"
 #include "Core/Camera.h"
 
+#include "Vulkan/ImguiVK.h"
 #include "Vulkan/VulkanCommon.h"
 
 class BufferVK;
@@ -13,7 +14,6 @@ class GraphicsContextVK;
 class IGraphicsContext;
 class ImageVK;
 class ImageViewVK;
-class ImguiVK;
 class IRenderer;
 class IScene;
 class MeshRendererVK;
@@ -40,6 +40,7 @@ public:
 
     virtual void swapBuffers() override;
 
+    virtual void drawRendererUI() override;
     virtual void drawProfilerUI() override;
 
 	virtual void setRayTracer(IRenderer* pRayTracer) override				                { m_pRayTracer = reinterpret_cast<RayTracingRendererVK*>(pRayTracer); }
@@ -47,6 +48,7 @@ public:
     virtual void setParticleRenderer(IRenderer* pParticleRenderer) override                 { m_pParticleRenderer = reinterpret_cast<ParticleRendererVK*>(pParticleRenderer); }
     virtual void setVolumetricLightRenderer(IRenderer* pVolumetricLightRenderer) override   { m_pVolumetricLightRenderer = reinterpret_cast<VolumetricLightRendererVK*>(pVolumetricLightRenderer); }
     virtual void setImguiRenderer(IImgui* pImGui) override                  { m_pImGuiRenderer = reinterpret_cast<ImguiVK*>(pImGui); }
+    virtual IImgui* getImguiRenderer() override                             { return m_pImGuiRenderer; }
 
     virtual void setClearColor(float r, float g, float b) override;
     virtual void setClearColor(const glm::vec3& color) override;

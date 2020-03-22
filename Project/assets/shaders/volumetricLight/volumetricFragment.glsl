@@ -3,24 +3,25 @@
 
 #define PI 3.1415926535897932384626433832795
 
-layout(location = 0) in vec3 in_WorldPosition;
-
-layout(location = 0) out vec4 outColor;
-
 layout (push_constant) uniform PushConstants
+{
+	vec2 viewportExtent;
+	uint raymarchSteps;
+} g_PushConstants;
+
+layout (binding = 1) uniform VolumetricPointLight
 {
 	mat4 worldMatrix;
 
 	// Light data
 	vec4 lightPosition, lightColor;
 	float lightRadius, lightScatterAmount;
+
 	// Determines the portion of forward scattered light
 	float particleG;
+} g_Light;
 
-	uint raymarchSteps;
-} g_PushConstants;
-
-layout (binding = 1) uniform CameraMatrices
+layout (binding = 2) uniform CameraMatrices
 {
 	mat4 Projection;
 	mat4 View;
@@ -29,40 +30,47 @@ layout (binding = 1) uniform CameraMatrices
 	vec4 Position;
 } g_Camera;
 
-layout(binding = 2) uniform sampler2D u_DepthBuffer;
-// sampler3D?
-//layout(binding = 5) uniform sampler3D u_LightTexture;
+layout(binding = 3) uniform sampler2D u_DepthBuffer;
 
-float sphereRearIntersect(vec3 rayOrigin, vec3 rayDir, vec3 sphereCenter, float radius)
+float sphereFrontIntersect(vec3 rayOrigin, vec3 rayDir, vec3 sphereCenter, float radius)
 {
-	// Assuming that the ray's origin is on the sphere's edge, facing inwards
+	// Assuming that the ray's origin is on the sphere's rear edge, facing outwards, away from the camera
 	vec3 toCenter = sphereCenter - rayOrigin;
 
 	// t: coefficient that brings ray to its closest point to the sphere center
 	float t = dot(rayDir, toCenter);
 
 	return t * 2.0;
-	// Based on algorithm presented in Real-Time Rendering, Third Edition
-	// if (s < 0.0) {
-	// 	return false;
-	// }
+}
 
-	// float lSquared = dot(l, l);
+// Either a point on the rear edge of the sphere or on geometry intersecting the sphere
+vec3 getRayDestination()
+{
+	vec2 texCoords = gl_FragCoord.xy / g_PushConstants.viewportExtent;
+	float depth = min(gl_FragCoord.z, texture(u_DepthBuffer, texCoords).r);
 
-	// // s < 0 means there is an intersection behind the camera
-	// // lSquared > r^2 means the camera is outside the sphere
-	// if (s < 0.0 && lSquared > radius * radius) {
-	// 	return false;
-	// }
+	vec4 clipPos = vec4(texCoords * 2.0 - vec2(1.0), depth, 1.0);
+	vec4 viewPos = g_Camera.InvProjection * clipPos;
+	viewPos /= viewPos.w;
 
-	// d: distance between sphere center and L
+	vec4 worldPos = g_Camera.InvView * viewPos;
+	return worldPos.xyz;
+}
 
-	// L: rayOrigin + tc * rayDir
+vec3 getRayOrigin(vec3 rayOrigin, vec3 rayDir, vec3 sphereCenter, float radius)
+{
+	vec3 camPos = g_Camera.Position.xyz;
+
+	if (length(camPos - sphereCenter) < radius) {
+		return camPos;
+	} else {
+		return rayOrigin + rayDir * sphereFrontIntersect(rayOrigin, rayDir, sphereCenter, radius);
+	}
 }
 
 float phaseFunction(vec3 rayDir, vec3 posToLightDir)
 {
-	float g = g_PushConstants.particleG;
+	float g = g_Light.particleG;
 	float viewAngle = dot(rayDir, posToLightDir);
 
 	// Henyey-Greenstein phase function - an approximation of Mie scattering
@@ -74,51 +82,38 @@ float phaseFunction(vec3 rayDir, vec3 posToLightDir)
 
 vec3 calculateLight(vec3 position, vec3 rayDir)
 {
-	vec3 posToLight = g_PushConstants.lightPosition.xyz - position;
+	vec3 posToLight = g_Light.lightPosition.xyz - position;
 	float lightDistance = length(posToLight);
 
 	// Diffuse light
 	float attenuation = 1.0 / (lightDistance * lightDistance);
 
 	// The normal is pointing right at the light
-	vec3 diffuse = g_PushConstants.lightColor.xyz * attenuation;
+	vec3 diffuse = g_Light.lightColor.xyz * attenuation;
 
-	return diffuse * phaseFunction(rayDir, posToLight / lightDistance) * g_PushConstants.lightScatterAmount;
-
-	//vec3 normal = posToLight / lightDistance;
+	return diffuse * phaseFunction(rayDir, posToLight / lightDistance) * g_Light.lightScatterAmount;
 }
+
+layout(location = 0) in vec3 in_WorldPosition;
+
+layout(location = 0) out vec4 outColor;
 
 void main()
 {
-    float depthVal = texture(u_DepthBuffer, gl_FragCoord.xy).r;
-
-	if (gl_FragCoord.z > depthVal) {
-		// The light is occluded
-		discard;
-		return;
-	}
-
-    vec3 worldPosition = in_WorldPosition;
-
-	vec3 rayOrigin = g_Camera.Position.xyz;
-    vec3 rayDir = normalize(worldPosition - rayOrigin);
-
-	// The world position is on the 'front' of the sphere, find the rear intersection point
-	float intersect = sphereRearIntersect(rayOrigin, rayDir, g_PushConstants.lightPosition.xyz, g_PushConstants.lightRadius);
-
-	// Which is intersected first, the rear of the sphere or geometry?
-	vec4 intersectPos = g_Camera.Projection * g_Camera.View * vec4(rayOrigin + rayDir * intersect, 0.0);
-	float maxIntersectDistance = min(intersectPos.z / intersectPos.w, depthVal);
+	vec3 rayDestination = getRayDestination();
+    vec3 rayDir = normalize(rayDestination - g_Camera.Position.xyz);
+	vec3 rayOrigin = getRayOrigin(rayDestination, rayDir, g_Light.lightPosition.xyz, g_Light.lightRadius);
 
 	// Ray-march section
-	float raymarchStepLength = maxIntersectDistance / g_PushConstants.raymarchSteps;
+	vec3 raymarchStep = rayDir * length(rayDestination - rayOrigin) / g_PushConstants.raymarchSteps;
 
 	vec3 light = vec3(0);
+	vec3 worldPos = rayOrigin;
 
-	for (uint raymarchStep = 0; raymarchStep < g_PushConstants.raymarchSteps; raymarchStep++) {
-		light += calculateLight(worldPosition, rayDir);
+	for (uint stepNr = 0; stepNr < g_PushConstants.raymarchSteps; stepNr++) {
+		light += calculateLight(worldPos, rayDir);
 
-		worldPosition += rayDir;
+		worldPos += raymarchStep;
 	}
 
 	light /= g_PushConstants.raymarchSteps;

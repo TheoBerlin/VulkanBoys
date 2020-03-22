@@ -93,9 +93,9 @@ IRenderer* GraphicsContextVK::createRayTracingRenderer(RenderingHandler* pRender
 	return DBG_NEW RayTracingRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler));
 }
 
-IRenderer* GraphicsContextVK::createVolumetricLightRenderer(RenderingHandler* pRenderingHandler, LightSetup* pLightSetup)
+IRenderer* GraphicsContextVK::createVolumetricLightRenderer(RenderingHandler* pRenderingHandler, LightSetup* pLightSetup, IImgui* pImguiRenderer)
 {
-	return DBG_NEW VolumetricLightRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler), pLightSetup);
+	return DBG_NEW VolumetricLightRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler), pLightSetup, reinterpret_cast<ImguiVK*>(pImguiRenderer));
 }
 
 ParticleEmitterHandler* GraphicsContextVK::createParticleEmitterHandler()

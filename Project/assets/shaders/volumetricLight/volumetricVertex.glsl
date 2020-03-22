@@ -9,27 +9,24 @@ struct Vertex
 	vec4 TexCoord;
 };
 
-layout(location = 0) out vec3 out_WorldPosition;
-
-layout (push_constant) uniform PushConstants
-{
-	mat4 worldMatrix;
-
-	// Light data
-	vec3 lightPosition, lightColor;
-	float lightRadius, lightScatterAmount;
-	// Determines the portion of forward scattered light
-	float particleG;
-
-	uint raymarchSteps;
-} g_PushConstants;
-
 layout(binding = 0) buffer vertexBuffer
 {
 	Vertex vertices[];
 };
 
-layout (binding = 1) uniform CameraMatrices
+layout (binding = 1) uniform VolumetricPointLight
+{
+	mat4 worldMatrix;
+
+	// Light data
+	vec4 lightPosition, lightColor;
+	float lightRadius, lightScatterAmount;
+
+	// Determines the portion of forward scattered light
+	float particleG;
+} g_Light;
+
+layout (binding = 2) uniform CameraMatrices
 {
 	mat4 Projection;
 	mat4 View;
@@ -38,9 +35,12 @@ layout (binding = 1) uniform CameraMatrices
 	vec4 Position;
 } g_CameraMatrices;
 
+layout(location = 0) out vec3 out_WorldPosition;
+
 void main()
 {
-	vec4 worldPosition = g_PushConstants.worldMatrix * vertices[gl_VertexIndex].Position;
+	vec4 vertPos = vec4(vertices[gl_VertexIndex].Position.xyz, 1.0);
+	vec4 worldPosition = g_Light.worldMatrix * vertPos;
 	out_WorldPosition = worldPosition.xyz;
 
 	gl_Position = g_CameraMatrices.Projection * g_CameraMatrices.View * worldPosition;

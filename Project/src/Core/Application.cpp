@@ -102,6 +102,11 @@ void Application::init()
 	m_pRenderingHandler->setViewport((float)m_pWindow->getWidth(), (float)m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
 
 	// Setup renderers
+	//Setup Imgui
+	m_pImgui = m_pContext->createImgui();
+	m_pImgui->init();
+	m_pWindow->addEventHandler(m_pImgui);
+
 	m_pMeshRenderer = m_pContext->createMeshRenderer(m_pRenderingHandler);
 	m_pMeshRenderer->init();
 
@@ -119,13 +124,8 @@ void Application::init()
 	m_pParticleEmitterHandler->initialize(m_pContext, &m_Camera);
 
 	// Create volumetric light renderer
-	m_pVolumetricLightRenderer = m_pContext->createVolumetricLightRenderer(m_pRenderingHandler, &m_LightSetup);
+	m_pVolumetricLightRenderer = m_pContext->createVolumetricLightRenderer(m_pRenderingHandler, &m_LightSetup, m_pImgui);
 	m_pVolumetricLightRenderer->init();
-
-	//Setup Imgui
-	m_pImgui = m_pContext->createImgui();
-	m_pImgui->init();
-	m_pWindow->addEventHandler(m_pImgui);
 
 	//Set renderers to renderhandler
 	m_pRenderingHandler->setMeshRenderer(m_pMeshRenderer);
@@ -218,7 +218,6 @@ void Application::init()
 	m_GunMaterial.setMetallicMap(m_pMetallic);
 	m_GunMaterial.setRoughnessMap(m_pRoughness);
 
-
 	SamplerParams samplerParams = {};
 	samplerParams.MinFilter = VK_FILTER_LINEAR;
 	samplerParams.MagFilter = VK_FILTER_LINEAR;
@@ -238,12 +237,18 @@ void Application::init()
 		}
 	}
 
-
 	//Setup lights
 	m_LightSetup.addPointLight(PointLight(glm::vec3( 10.0f,  10.0f, -10.0f), glm::vec4(300.0f)));
 	m_LightSetup.addPointLight(PointLight(glm::vec3(-10.0f,  10.0f, -10.0f), glm::vec4(300.0f)));
 	m_LightSetup.addPointLight(PointLight(glm::vec3( 10.0f, -10.0f, -10.0f), glm::vec4(300.0f)));
 	m_LightSetup.addPointLight(PointLight(glm::vec3(-10.0f, -10.0f, -10.0f), glm::vec4(300.0f)));
+
+	VolumetricLightSettings volumetricLightSettings = {
+		1.0f,	// Scatter amount
+		0.2f	// Particle G constant
+	};
+
+	m_LightSetup.addVolumetricPointLight(VolumetricPointLight(volumetricLightSettings, {0.5f, 0.5f, 0.5f}, {0.6f, 0.45f, 0.2f, 1.0f}, 2.0f));
 
 	//Setup camera
 	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
@@ -265,7 +270,6 @@ void Application::init()
 	m_GraphicsIndex0 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
 	m_GraphicsIndex1 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
 	m_GraphicsIndex2 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
-
 
 	for (uint32_t y = 0; y < SPHERE_COUNT_DIMENSION; y++)
 	{
@@ -526,6 +530,8 @@ void Application::update(double dt)
 void Application::renderUI(double dt)
 {
 	m_pImgui->begin(dt);
+
+	m_pRenderingHandler->drawRendererUI();
 
 	// Color picker for mesh
 	ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);

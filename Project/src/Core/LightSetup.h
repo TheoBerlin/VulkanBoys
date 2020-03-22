@@ -16,7 +16,7 @@ public:
 	uint32_t getPointLightCount() const { return uint32_t(m_PointLights.size()); }
 	const PointLight* getPointLights() const	{ return m_PointLights.data(); }
 
-	const std::vector<VolumetricPointLight>& getVolumetricPointLights() const	{ return m_VolumetricPointLights; }
+	std::vector<VolumetricPointLight>& getVolumetricPointLights()	{ return m_VolumetricPointLights; }
 
 private:
 	std::vector<PointLight> m_PointLights;

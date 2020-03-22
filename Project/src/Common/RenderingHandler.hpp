@@ -30,6 +30,7 @@ public:
 
 	virtual void render(IScene* pScene) = 0;
 
+    virtual void drawRendererUI() = 0;
     virtual void drawProfilerUI() = 0;
 
     virtual void swapBuffers() = 0;
@@ -45,6 +46,7 @@ public:
     virtual void setParticleRenderer(IRenderer* pParticleRenderer) = 0;
     virtual void setVolumetricLightRenderer(IRenderer* pVolumetricLightRenderer) = 0;
     virtual void setImguiRenderer(IImgui* pImGui) = 0;
+    virtual IImgui* getImguiRenderer() = 0;
 
     virtual void onWindowResize(uint32_t width, uint32_t height) = 0;
 

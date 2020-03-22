@@ -32,19 +32,19 @@ void main()
 	vec3 tangent 	= normalize(in_Tangent);
 	vec3 bitangent	= normalize(in_Bitangent);
 	vec2 texcoord 	= in_TexCoord;
-	
+
 	mat3 tbn = mat3(tangent, bitangent, normal);
-	
+
 	vec3 texColor 	= pow(texture(u_AlbedoMap, texcoord).rgb, vec3(GAMMA));
 	vec3 normalMap 	= texture(u_NormalMap, texcoord).rgb;
 	float ao 		= texture(u_AmbientOcclusionMap, texcoord).r;
 	float metallic 	= texture(u_MetallicMap, texcoord).r;
 	float roughness = texture(u_RoughnessMap, texcoord).r;
-	
+
 	vec3 sampledNormal 	= ((normalMap * 2.0f) - 1.0f);
 	sampledNormal 		= normalize(tbn * normalize(sampledNormal));
-	
-	//Store normal in 2 component x^2 + y^2 + z^2 = 1, store the sign with metallic 
+
+	//Store normal in 2 component x^2 + y^2 + z^2 = 1, store the sign with metallic
 	vec2 storedNormal 	= sampledNormal.xy;
 	metallic 			= max(constants.Metallic * metallic, 0.00001f);
 	if (sampledNormal.z < 0)

@@ -19,7 +19,6 @@
 #include "SwapChainVK.h"
 #include "TextureCubeVK.h"
 #include "SkyboxRendererVK.h"
-#include "ImguiVK.h"
 #include "GBufferVK.h"
 #include "SceneVK.h"
 
@@ -27,6 +26,9 @@
 #include "Particles/ParticleRendererVK.h"
 
 #include "Ray Tracing/RayTracingRendererVK.h"
+
+#include "VolumetricLight/VolumetricLightRendererVK.h"
+
 #include <Vulkan\ImageVK.h>
 #include <Vulkan\ImageViewVK.h>
 
@@ -189,6 +191,10 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 
 	createRayTracingRenderImage(width, height);
 	m_pMeshRenderer->setRayTracingResult(m_pRayTracingStorageImageView);
+
+	if (m_pVolumetricLightRenderer) {
+		m_pVolumetricLightRenderer->onWindowResize(width, height);
+	}
 }
 
 void RenderingHandlerVK::beginFrame(SceneVK* pScene)
@@ -331,7 +337,11 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->end();
 		pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), m_ppGraphicsCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
+
 		m_pGraphicsContext->getDevice()->wait();
+
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->reset(true);
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	}
 
 	//Ray Tracing
@@ -406,9 +416,6 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 
 	if (m_pMeshRenderer)
 	{
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->reset(true);
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
 		if (m_pRayTracer)
 		{
 			m_ppGraphicsCommandBuffers[m_CurrentFrame]->acquireImagesOwnership(
@@ -441,6 +448,25 @@ void RenderingHandlerVK::endFrame(SceneVK* pScene)
 		{
 			m_ppGraphicsCommandBuffers[m_CurrentFrame]->transitionImageLayout(m_pGBuffer->getDepthImage(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1, VK_IMAGE_ASPECT_DEPTH_BIT);
 		}
+	}
+
+	if (m_pVolumetricLightRenderer) {
+		m_pVolumetricLightRenderer->beginFrame(pScene);
+
+		m_pVolumetricLightRenderer->updateBuffers();
+
+		RenderPassVK* pLightBufferPass = m_pVolumetricLightRenderer->getLightBufferPass();
+		FrameBufferVK* pLightFrameBuffer = m_pVolumetricLightRenderer->getLightFrameBuffer();
+		const VkViewport& viewport = m_pVolumetricLightRenderer->getViewport();
+		VkClearValue clearValue = m_pVolumetricLightRenderer->getLightBufferClearColor();
+
+		m_pVolumetricLightRenderer->renderLightBuffer();
+		m_pVolumetricLightRenderer->endFrame(pScene);
+
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(pLightBufferPass, pLightFrameBuffer, (uint32_t)viewport.width, (uint32_t)viewport.height, &clearValue, 1, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pVolumetricLightRenderer->getCommandBuffer(m_CurrentFrame));
+
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
 	}
 
 	//Gather all renderer's data and finalize the frame
@@ -481,6 +507,13 @@ void RenderingHandlerVK::swapBuffers()
 	m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
+void RenderingHandlerVK::drawRendererUI()
+{
+	if (m_pVolumetricLightRenderer) {
+		m_pVolumetricLightRenderer->drawUI();
+	}
+}
+
 void RenderingHandlerVK::drawProfilerUI()
 {
 	if (m_pMeshRenderer)
@@ -496,6 +529,10 @@ void RenderingHandlerVK::drawProfilerUI()
 	if (m_pRayTracer)
 	{
 		m_pRayTracer->getProfiler()->drawResults();
+	}
+
+	if (m_pVolumetricLightRenderer) {
+		m_pVolumetricLightRenderer->getProfiler()->drawResults();
 	}
 }
 
@@ -534,6 +571,10 @@ void RenderingHandlerVK::setViewport(float width, float height, float minDepth, 
 	if (m_pParticleRenderer)
 	{
 		m_pParticleRenderer->setViewport(width, height, minDepth, maxDepth, topX, topY);
+	}
+
+	if (m_pVolumetricLightRenderer) {
+		m_pVolumetricLightRenderer->setViewport(width, height, minDepth, maxDepth, topX, topY);
 	}
 }
 
@@ -803,7 +844,9 @@ void RenderingHandlerVK::updateBuffers(const Camera& camera)
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->updateBuffer(m_pCameraBuffer, 0, (const void*)&cameraBuffer, sizeof(CameraBuffer));
 
 	// Update particle buffers
-	m_pParticleEmitterHandler->updateRenderingBuffers(this);
+	if (m_pParticleEmitterHandler) {
+		m_pParticleEmitterHandler->updateRenderingBuffers(this);
+	}
 }
 
 void RenderingHandlerVK::submitParticles()
