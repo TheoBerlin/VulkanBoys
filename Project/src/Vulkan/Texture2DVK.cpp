@@ -34,6 +34,15 @@ bool Texture2DVK::initFromFile(const std::string& filename, ETextureFormat forma
 	int texHeight = 0;
 	int bpp = 0;
 
+	if (stbi_is_hdr(filename.c_str()))
+	{
+		LOG("IS HDR: %s", filename.c_str());
+	}
+	else
+	{
+		LOG("IS NOT HDR: %s", filename.c_str());
+	}
+
 	void* pPixels = nullptr;
 	if (format == ETextureFormat::FORMAT_R8G8B8A8_UNORM)
 	{
@@ -41,6 +50,7 @@ bool Texture2DVK::initFromFile(const std::string& filename, ETextureFormat forma
 	}
 	else if (format == ETextureFormat::FORMAT_R32G32B32A32_FLOAT)
 	{
+
 		pPixels = (void*)stbi_loadf(filename.c_str(), &texWidth, &texHeight, &bpp, STBI_rgb_alpha);
 	}
 	else

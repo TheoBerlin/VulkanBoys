@@ -31,7 +31,7 @@
 
 #include "Core/Application.h"
 
-constexpr uint32_t MAX_RECURSIONS = 1;
+constexpr uint32_t MAX_RECURSIONS = 0;
 
 RayTracingRendererVK::RayTracingRendererVK(GraphicsContextVK* pContext, RenderingHandlerVK* pRenderingHandler) :
 	m_pContext(pContext),
@@ -731,7 +731,7 @@ bool RayTracingRendererVK::createTextures()
 {
 	bool result = true;
 	m_pBlueNoise = DBG_NEW Texture2DVK(m_pContext->getDevice());
-	result = m_pBlueNoise->initFromFile("assets/textures/blue_noise/512_512/LDR_RG01_0.png", ETextureFormat::FORMAT_R32G32B32A32_FLOAT, false);
+	result = m_pBlueNoise->initFromFile("assets/textures/blue_noise/512_512/LDR_RG01_0.png", ETextureFormat::FORMAT_R8G8B8A8_UNORM, false);
 
 	ImageViewVK* pBlueNoiseImageView = m_pBlueNoise->getImageView();
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(&pBlueNoiseImageView, &m_pLinearSampler, 1, RT_BLUE_NOISE_LOOKUP_BINDING);

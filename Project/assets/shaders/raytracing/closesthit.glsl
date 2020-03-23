@@ -144,86 +144,86 @@ void main()
 	vec3 normal = vec3(0.0f);
 	calculateTriangleData(materialIndex, texCoords, normal);
 
-	//Sample necessary Textures
+	//Define Constants
+	vec3 hitPos = gl_WorldRayOriginNV + normalize(gl_WorldRayDirectionNV) * gl_HitTNV;
+
+	//Define new Rays Parameters
+	uint rayFlags = gl_RayFlagsOpaqueNV;
+	uint cullMask = 0xff;
+	float tmin = 0.001f;
+	float tmax = 10000.0f;
+
+	//Sample rest of textures
 	vec3 sampledAlbedo = texture(u_SceneAlbedoMaps[materialIndex], texCoords).rgb;
-	
-	MaterialParameters mp = u_MaterialParameters.mp[materialIndex];
+	float sampledMetallic = texture(u_SceneMetallicMaps[materialIndex], texCoords).r;
+	float sampledRoughness = texture(u_SceneRougnessMaps[materialIndex], texCoords).r;
+	float sampledAO = texture(u_SceneAOMaps[materialIndex], texCoords).r;
 
 	//Combine Samples with Material Parameters
+	MaterialParameters mp = u_MaterialParameters.mp[materialIndex];
 	vec3 albedo = mp.Albedo.rgb * sampledAlbedo;
+	float metallic = mp.Metallic * sampledMetallic;
+	float roughness = max(mp.Roughness * sampledRoughness, 0.00001f);
+	float ao = mp.AO * sampledAO;
+	
+	//Init BRDF values
+	vec3 viewDir = -gl_WorldRayDirectionNV;
+
+	vec3 f0 = vec3(0.04f);
+	f0 = mix(f0, albedo, metallic);
+
+	float metallicFactor = 1.0f - metallic;
+	
+	float NdotV = max(dot(viewDir, normal), 0.0f);
+
+	//Irradiance from surroundings
+	vec3 diffuse 	= albedo;
+	vec3 f 			= FresnelRoughness(f0, NdotV, roughness);
+	vec3 kDiffuse 	= (vec3(1.0f) - f) * metallicFactor;
+
+	vec3 L0 = vec3(0.0f);
+	vec3 specular = vec3(0.0f);
 
 	if (recursionNumber < MAX_RECURSION)
 	{
-		//Define Constants
-		vec3 hitPos = gl_WorldRayOriginNV + normalize(gl_WorldRayDirectionNV) * gl_HitTNV;
-
-		//Define new Rays Parameters
-		uint rayFlags = gl_RayFlagsOpaqueNV;
-		uint cullMask = 0xff;
-		float tmin = 0.001f;
-		float tmax = 10000.0f;
-
-		//Sample rest of textures
-		float sampledMetallic = texture(u_SceneMetallicMaps[materialIndex], texCoords).r;
-		float sampledRoughness = texture(u_SceneRougnessMaps[materialIndex], texCoords).r;
-		float sampledAO = texture(u_SceneAOMaps[materialIndex], texCoords).r;
-		float metallic = mp.Metallic * sampledMetallic;
-		float roughness = max(mp.Roughness * sampledRoughness, 0.00001f);
-		float ao = mp.AO * sampledAO;
-		
-		//Init BRDF values
-		vec3 viewDir = -gl_WorldRayDirectionNV;
-
-		vec3 f0 = vec3(0.04f);
-		f0 = mix(f0, albedo, metallic);
-
-		float metallicFactor = 1.0f - metallic;
-		
-		float NdotV = max(dot(viewDir, normal), 0.0f);
-
 		vec3 shadowRaysOrigin = hitPos + normal * u_PushConstants.ShadowRayBias;
 
-		// vec3 Lo = vec3(0.0f);
-		// for (int i = 0; i < MAX_POINT_LIGHTS; i++)
-		// {
-		// 	vec3 lightPosition 	= u_Lights.lights[i].Position.xyz;
-		// 	vec3 lightColor 	= u_Lights.lights[i].Color.rgb;
+		vec3 L0 = vec3(0.0f);
+		for (int i = 0; i < MAX_POINT_LIGHTS; i++)
+		{
+			vec3 lightPosition 	= u_Lights.lights[i].Position.xyz;
+			vec3 lightColor 	= u_Lights.lights[i].Color.rgb;
 
-		// 	vec3 lightVector 	= (lightPosition - hitPos);
-		// 	vec3 lightDir 		= normalize(lightVector);
+			vec3 lightVector 	= (lightPosition - hitPos);
+			vec3 lightDir 		= normalize(lightVector);
 
-		// 	traceNV(u_TopLevelAS, rayFlags, cullMask, 1, 0, 1, shadowRaysOrigin, tmin, lightDir, tmax, 1);
+			traceNV(u_TopLevelAS, rayFlags, cullMask, 1, 0, 1, shadowRaysOrigin, tmin, lightDir, tmax, 1);
 
-		// 	if (shadowRayPayload.Occlusion < 0.1f)
-		// 	{
-		// 		float lightDistance	= length(lightVector);
-		// 		float attenuation 	= 1.0f / (lightDistance * lightDistance);
+			if (shadowRayPayload.Occlusion < 0.1f)
+			{
+				float lightDistance	= length(lightVector);
+				float attenuation 	= 1.0f / (lightDistance * lightDistance);
 
-		// 		vec3 halfVector = normalize(viewDir + lightDir);
+				vec3 halfVector = normalize(viewDir + lightDir);
 
-		// 		vec3 radiance = lightColor * attenuation;
+				vec3 radiance = lightColor * attenuation;
 
-		// 		float HdotV = max(dot(halfVector, viewDir), 0.0f);
-		// 		float NdotL = max(dot(normal, lightDir), 0.0f);
+				float HdotV = max(dot(halfVector, viewDir), 0.0f);
+				float NdotL = max(dot(normal, lightDir), 0.0f);
 
-		// 		vec3 f 		= Fresnel(f0, HdotV);
-		// 		float ndf 	= Distribution(normal, halfVector, roughness);
-		// 		float g 	= GeometryOpt(NdotV, NdotL, roughness);
+				vec3 f 		= Fresnel(f0, HdotV);
+				float ndf 	= Distribution(normal, halfVector, roughness);
+				float g 	= GeometryOpt(NdotV, NdotL, roughness);
 
-		// 		float denom 	= 4.0f * NdotV * NdotL + 0.0001f;
-		// 		vec3 specular   = (ndf * g * f) / denom;
+				float denom 	= 4.0f * NdotV * NdotL + 0.0001f;
+				vec3 specular   = (ndf * g * f) / denom;
 
-		// 		//Take 1.0f minus the incoming radiance to get the diffuse (Energy conservation)
-		// 		vec3 diffuse = (vec3(1.0f) - f) * metallicFactor;
+				//Take 1.0f minus the incoming radiance to get the diffuse (Energy conservation)
+				vec3 diffuse = (vec3(1.0f) - f) * metallicFactor;
 
-		// 		Lo += ((diffuse * (albedo / PI)) + specular) * radiance * NdotL;
-		// 	}
-		// }
-
-		//Irradiance from surroundings
-		vec3 diffuse 	= albedo;
-		vec3 f 			= FresnelRoughness(f0, NdotV, roughness);
-		vec3 kDiffuse 	= (vec3(1.0f) - f) * metallicFactor;
+				L0 += ((diffuse * (albedo / PI)) + specular) * radiance * NdotL;
+			}
+		}		
 
 		vec3 reflectionRaysOrigin = hitPos + normal * u_PushConstants.ReflectionRayBias;
 		vec3 reflDir = reflect(gl_WorldRayDirectionNV, normal);
@@ -234,17 +234,11 @@ void main()
 		traceNV(u_TopLevelAS, rayFlags, cullMask, 0, 0, 0, reflectionRaysOrigin, tmin, reflDir, tmax, 0);
 
 		vec2 envBRDF 	= texture(u_BrdfLUT, vec2(NdotV, roughness)).rg;
-		vec3 specular	= rayPayload.Radiance * (f * envBRDF.x + envBRDF.y);
-
-		vec3 ambient 	= ((kDiffuse * diffuse) + specular) * ao; //Approximate diffuse with albedo * vec3(0.03f)
-
-		//vec3 finalColor = ambient + Lo;
-
-		rayPayload.Radiance = ambient;
-		//rayPayload.Radiance = vec3(1.0f, 0.0f, 0.0f);
+		specular		= rayPayload.Radiance * (f * envBRDF.x + envBRDF.y);		
 	}
-	else
-	{
-		rayPayload.Radiance = vec3(0.0f);
-	}
+
+	vec3 ambient 	= ((kDiffuse * diffuse) + specular) * ao; //Approximate diffuse with albedo * vec3(0.03f)
+	vec3 finalColor = ambient + L0;
+
+	rayPayload.Radiance = finalColor;
 }
