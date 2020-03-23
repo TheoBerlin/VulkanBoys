@@ -822,7 +822,7 @@ void Application::testFinished()
 	sanitizeString(m_TestParameters.TestName, 256);
 
 	std::ofstream fileStream;
-	fileStream.open("test_" + std::string(m_TestParameters.TestName) + ".txt");
+	fileStream.open("Results/test_" + std::string(m_TestParameters.TestName) + ".txt");
 
 	if (fileStream.is_open())
 	{
