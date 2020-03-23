@@ -70,8 +70,8 @@ public:
 
     IDescriptorSet* getDescriptorSetCompute() { return m_pDescriptorSetCompute; }
     IDescriptorSet* getDescriptorSetRender() { return m_pDescriptorSetRender; }
-    void setDescriptorSetCompute(IDescriptorSet* pDescriptorSet) { m_pDescriptorSetCompute = pDescriptorSet; }
-    void setDescriptorSetRender(IDescriptorSet* pDescriptorSet) { m_pDescriptorSetRender = pDescriptorSet; }
+    void setDescriptorSetCompute(IDescriptorSet* pDescriptorSet)    { m_pDescriptorSetCompute = pDescriptorSet; }
+    void setDescriptorSetRender(IDescriptorSet* pDescriptorSet)     { m_pDescriptorSetRender = pDescriptorSet; }
 
     IBuffer* getPositionsBuffer() { return m_pPositionsBuffer; }
     IBuffer* getVelocitiesBuffer() { return m_pVelocitiesBuffer; }

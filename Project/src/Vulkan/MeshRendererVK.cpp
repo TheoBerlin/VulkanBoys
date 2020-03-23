@@ -750,7 +750,7 @@ bool MeshRendererVK::createPipelineLayouts()
 
 bool MeshRendererVK::createBuffersAndTextures()
 {
-	m_pCameraBuffer = m_pRenderingHandler->getCameraBuffer();
+	m_pCameraBuffer = m_pRenderingHandler->getCameraBufferGraphics();
 
 	BufferParams lightBufferParams = {};
 	lightBufferParams.Usage				= VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
@@ -761,6 +761,10 @@ bool MeshRendererVK::createBuffersAndTextures()
 	if (!m_pLightBuffer->init(lightBufferParams))
 	{
 		return false;
+	}
+	else
+	{
+		m_pLightBuffer->setName("Light Buffer MeshRenderer");
 	}
 
 	uint8_t whitePixels[] = { 255, 255, 255, 255 };

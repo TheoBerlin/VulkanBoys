@@ -10,18 +10,8 @@ struct CameraBuffer
 	glm::mat4 InvView			= glm::mat4(1.0f);
 	glm::mat4 InvProjection		= glm::mat4(1.0f);
 	glm::vec4 Position			= glm::vec4(0.0f);
-};
-
-struct CameraMatricesBuffer
-{
-	glm::mat4 ViewInv		= glm::mat4(1.0f);
-	glm::mat4 ProjectionInv	= glm::mat4(1.0f);
-};
-
-struct CameraDirectionsBuffer
-{
-	glm::vec4 Right = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
-	glm::vec4 Up	= glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
+	glm::vec4 Right				= glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
+	glm::vec4 Up				= glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
 };
 
 class Camera

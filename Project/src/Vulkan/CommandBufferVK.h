@@ -186,7 +186,6 @@ private:
 	std::vector<VkDescriptorSet> m_DescriptorSets;
 	DeviceVK* m_pDevice;
 	StagingBufferVK* m_pStagingBuffer;
-	StagingBufferVK* m_pStagingTexture;
 	VkFence m_Fence;
 	VkCommandBuffer m_CommandBuffer;
 };

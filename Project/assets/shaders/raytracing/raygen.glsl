@@ -7,8 +7,17 @@ layout(binding = 0, set = 0, rgba16f) uniform image2D u_RadianceImage;
 layout(binding = 19, set = 0, rgba16f) uniform image2D u_ReflectionImage;
 layout(binding = 1, set = 0) uniform CameraProperties 
 {
-	mat4 viewInverse;
-	mat4 projInverse;
+	//mat4 viewInverse;
+	//mat4 projInverse;
+	mat4 Projection;
+	mat4 View;
+	mat4 LastProjection;
+	mat4 LastView;
+	mat4 InvView;
+	mat4 InvProjection;
+	vec4 Position;
+	vec4 Right;
+	vec4 Up;
 } u_Cam;
 layout(binding = 2, set = 0) uniform accelerationStructureNV u_TopLevelAS;
 layout(binding = 3, set = 0) uniform sampler2D u_Albedo_AO;
@@ -59,9 +68,9 @@ void calculatePositions(in vec2 uvCoords, in float z, out vec3 worldPos, out vec
 	vec2 xy = uvCoords * 2.0f - 1.0f;
 
 	vec4 clipSpacePosition = vec4(xy, z, 1.0f);
-	vec4 viewSpacePosition = u_Cam.projInverse * clipSpacePosition;
+	vec4 viewSpacePosition = u_Cam.InvProjection * clipSpacePosition;
 	viewSpacePosition = viewSpacePosition / viewSpacePosition.w;
-	vec4 homogenousPosition = u_Cam.viewInverse * viewSpacePosition;
+	vec4 homogenousPosition = u_Cam.InvView * viewSpacePosition;
 
 	worldPos = homogenousPosition.xyz;
 	viewSpacePos = viewSpacePosition.xyz;
@@ -69,7 +78,7 @@ void calculatePositions(in vec2 uvCoords, in float z, out vec3 worldPos, out vec
 
 void calculateDirections(in vec2 uvCoords, in vec3 hitPosition, in vec3 normal, out vec3 reflDir, out vec3 viewDir)
 {
-	vec4 u_CameraOrigin = u_Cam.viewInverse * vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	vec4 u_CameraOrigin = u_Cam.InvView * vec4(0.0f, 0.0f, 0.0f, 1.0f);
 	vec3 origDirection = normalize(hitPosition - u_CameraOrigin.xyz);
 
 	reflDir = reflect(origDirection, normal);

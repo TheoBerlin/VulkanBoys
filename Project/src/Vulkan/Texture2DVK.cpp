@@ -30,9 +30,9 @@ Texture2DVK::~Texture2DVK()
 
 bool Texture2DVK::initFromFile(const std::string& filename, ETextureFormat format, bool generateMips)
 {
-	int texWidth = 0; 
-	int texHeight = 0;
-	int bpp = 0;
+	int texWidth	= 0; 
+	int texHeight	= 0;
+	int bpp			= 0;
 
 	void* pPixels = nullptr;
 	if (format == ETextureFormat::FORMAT_R8G8B8A8_UNORM)

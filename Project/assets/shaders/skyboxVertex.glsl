@@ -10,7 +10,9 @@ layout(binding = 0) uniform CameraBuffer
 	mat4 InvView;
 	mat4 InvProjection;
 	vec4 Position;
-} camera;
+	vec4 Right;
+	vec4 Up;
+} g_Camera;
 
 layout(location = 0) out vec3 out_TexCoord;
 
@@ -63,9 +65,9 @@ const vec3 positions[36] = vec3[]
 
 void main()
 {
-	mat4 view = mat4(mat3(camera.View));
+	mat4 view = mat4(mat3(g_Camera.View));
 
 	out_TexCoord 	= positions[gl_VertexIndex];
-	vec4 position 	= camera.Projection * view * vec4(out_TexCoord, 1.0f);
+	vec4 position 	= g_Camera.Projection * view * vec4(out_TexCoord, 1.0f);
 	gl_Position 	= position.xyww;
 }

@@ -36,6 +36,8 @@ layout (binding = 0) uniform PerFrameBuffer
 	mat4 InvView;
 	mat4 InvProjection;
 	vec4 Position;
+	vec4 Right;
+	vec4 Up;
 } g_PerFrame;
 
 layout (binding = 10) uniform LightBuffer

@@ -95,7 +95,7 @@ RayTracingRendererVK::~RayTracingRendererVK()
 	SAFEDELETE(m_pBlurPassDescriptorPool);
 	SAFEDELETE(m_pBlurPassDescriptorSetLayout);
 
-	SAFEDELETE(m_pCameraBuffer);
+	//SAFEDELETE(m_pCameraBuffer);
 	SAFEDELETE(m_pLightsBuffer);
 
 	SAFEDELETE(m_pNearestSampler);
@@ -681,12 +681,12 @@ bool RayTracingRendererVK::createPipelines()
 bool RayTracingRendererVK::createUniformBuffers()
 {
 	BufferParams cameraBufferParams = {};
-	cameraBufferParams.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	cameraBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	cameraBufferParams.SizeInBytes = sizeof(CameraMatricesBuffer);
+	//cameraBufferParams.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	//cameraBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	//cameraBufferParams.SizeInBytes = sizeof(CameraMatricesBuffer);
 
-	m_pCameraBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
-	m_pCameraBuffer->init(cameraBufferParams);
+	m_pCameraBuffer = m_pRenderingHandler->getCameraBufferCompute();//reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
+	//m_pCameraBuffer->init(cameraBufferParams);
 	m_pRayTracingDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer, RT_CAMERA_BUFFER_BINDING);
 
 	BufferParams lightsBufferParams = {};
@@ -749,10 +749,10 @@ void RayTracingRendererVK::createProfiler()
 void RayTracingRendererVK::updateBuffers(SceneVK* pScene, CommandBufferVK* pCommandBuffer)
 {
 	//Update Camera
-	CameraMatricesBuffer cameraMatricesBuffer = {};
-	cameraMatricesBuffer.ProjectionInv = pScene->getCamera().getProjectionInvMat();
-	cameraMatricesBuffer.ViewInv = pScene->getCamera().getViewInvMat();
-	pCommandBuffer->updateBuffer(m_pCameraBuffer, 0, (const void*)&cameraMatricesBuffer, sizeof(CameraMatricesBuffer));
+	//CameraMatricesBuffer cameraMatricesBuffer = {};
+	//cameraMatricesBuffer.ProjectionInv = pScene->getCamera().getProjectionInvMat();
+	//cameraMatricesBuffer.ViewInv = pScene->getCamera().getViewInvMat();
+	//pCommandBuffer->updateBuffer(m_pCameraBuffer, 0, (const void*)&cameraMatricesBuffer, sizeof(CameraMatricesBuffer));
 
 	//Update Lights
 	const uint32_t numPointLights = pScene->getLightSetup().getPointLightCount();

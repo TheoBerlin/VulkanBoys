@@ -182,11 +182,11 @@ bool ParticleRendererVK::createPipelineLayout()
 	// Vertex Buffer
 	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0, 1);
 
-	// Transform matrices Buffer
+	// Camera Buffer
 	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 1, 1);
 
 	// Camera vectors Buffer
-	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 2, 1);
+	//m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 2, 1);
 
 	// Per-emitter Buffer
 	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 3, 1);
@@ -331,13 +331,13 @@ bool ParticleRendererVK::bindDescriptorSet(ParticleEmitter* pEmitter)
 		BufferVK* pVertBuffer = reinterpret_cast<BufferVK*>(m_pQuadMesh->getVertexBuffer());
 
 		// Camera buffers
-		BufferVK* pCameraMatricesBuffer = m_pRenderingHandler->getCameraMatricesBuffer();
-		BufferVK* pCameraDirectionsBuffer = m_pRenderingHandler->getCameraDirectionsBuffer();
+		BufferVK* pCameraBuffer = m_pRenderingHandler->getCameraBufferGraphics();
+		//BufferVK* pCameraDirectionsBuffer	= m_pRenderingHandler->getCameraDirectionsBuffer();
 
 		// TODO: Use constant variables or define macros for binding indices
 		pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer, 0);
-		pDescriptorSet->writeUniformBufferDescriptor(pCameraMatricesBuffer, 1);
-		pDescriptorSet->writeUniformBufferDescriptor(pCameraDirectionsBuffer, 2);
+		pDescriptorSet->writeUniformBufferDescriptor(pCameraBuffer, 1);
+		//pDescriptorSet->writeUniformBufferDescriptor(pCameraDirectionsBuffer, 2);
 		pDescriptorSet->writeUniformBufferDescriptor(pEmitterBuffer, 3);
 		pDescriptorSet->writeStorageBufferDescriptor(pPositionsBuffer, 4);
 

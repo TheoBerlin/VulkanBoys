@@ -61,9 +61,8 @@ public:
 	RenderPassVK*			getGeometryRenderPass() const				{ return m_pGeometryRenderPass; }
     RenderPassVK*           getBackBufferRenderPass() const             { return m_pBackBufferRenderPass; }
     RenderPassVK*           getParticleRenderPass() const               { return m_pParticleRenderPass; }
-    BufferVK*               getCameraMatricesBuffer() const             { return m_pCameraMatricesBuffer; }
-    BufferVK*               getCameraDirectionsBuffer() const           { return m_pCameraDirectionsBuffer; }
-    BufferVK*               getCameraBuffer() const                     { return m_pCameraBuffer; }
+    BufferVK*               getCameraBufferCompute() const              { return m_pCameraBufferCompute; }
+    BufferVK*               getCameraBufferGraphics() const             { return m_pCameraBufferGraphics; }
     FrameBufferVK*          getCurrentBackBuffer() const                { return m_ppBackbuffers[m_BackBufferIndex]; }
     FrameBufferVK*          getCurrentBackBufferWithDepth() const       { return m_ppBackBuffersWithDepth[m_BackBufferIndex]; }
     CommandBufferVK*        getCurrentGraphicsCommandBuffer() const     { return m_ppGraphicsCommandBuffers[m_CurrentFrame]; }
@@ -99,10 +98,12 @@ private:
     FrameBufferVK*  m_ppBackBuffersWithDepth[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore     m_pImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
     VkSemaphore     m_pRenderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
-    VkSemaphore     m_ComputeFinishedSemaphore;
+    VkSemaphore     m_ComputeFinishedGraphicsSemaphore;
+    VkSemaphore     m_ComputeFinishedTransferSemaphore;
     VkSemaphore     m_GeometryFinishedSemaphore;
     VkSemaphore     m_TransferStartSemaphore;
-    VkSemaphore     m_TransferFinishedSemaphore;
+    VkSemaphore     m_TransferFinishedGraphicsSemaphore;
+    VkSemaphore     m_TransferFinishedComputeSemaphore;
 
     CommandPoolVK*      m_ppGraphicsCommandPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK*    m_ppGraphicsCommandBuffers[MAX_FRAMES_IN_FLIGHT];
@@ -126,13 +127,12 @@ private:
     VkClearValue m_ClearColor;
 	VkClearValue m_ClearDepth;
 
-    VkViewport m_Viewport;
-	VkRect2D m_ScissorRect;
+    VkViewport  m_Viewport;
+	VkRect2D    m_ScissorRect;
 
-    BufferVK* m_pCameraMatricesBuffer;
-    BufferVK* m_pCameraDirectionsBuffer;
-    BufferVK* m_pCameraBuffer;
-    GBufferVK* m_pGBuffer;
+    BufferVK*   m_pCameraBufferGraphics;
+    BufferVK*   m_pCameraBufferCompute;
+    GBufferVK*  m_pGBuffer;
 
 	//Render Results
 	uint32_t m_RayTracingResolutionDenominator;
