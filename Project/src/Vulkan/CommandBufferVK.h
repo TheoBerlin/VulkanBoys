@@ -58,6 +58,11 @@ public:
 		vkCmdPipelineBarrier(m_CommandBuffer, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, imageMemoryBarrierCount, pImageMemoryBarriers);
 	}
 
+	FORCEINLINE void bufferMemoryBarrier(VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage, uint32_t bufferMemoryBarrierCount, const VkBufferMemoryBarrier* pBufferMemoryBarriers)
+	{
+		vkCmdPipelineBarrier(m_CommandBuffer, srcStage, dstStage, 0, 0, nullptr, bufferMemoryBarrierCount, pBufferMemoryBarriers, 0, nullptr);
+	}
+
 	FORCEINLINE void begin(VkCommandBufferInheritanceInfo* pInheritaneInfo, VkCommandBufferUsageFlags flags)
 	{
 		VkCommandBufferBeginInfo beginInfo = {};

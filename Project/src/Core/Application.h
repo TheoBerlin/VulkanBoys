@@ -98,8 +98,8 @@ private:
 	uint32_t m_GraphicsIndex2;
 	uint32_t m_GraphicsIndex3;
 
-	LoopingUniformCRSpline<glm::vec3, float>* m_CameraPositionSpline;
-	LoopingUniformCRSpline<glm::vec3, float>* m_CameraDirectionSpline;
+	LoopingUniformCRSpline<glm::vec3, float>* m_pCameraPositionSpline;
+	LoopingUniformCRSpline<glm::vec3, float>* m_pCameraDirectionSpline;
 	float m_CameraSplineTimer;
 	bool m_CameraSplineEnabled;
 

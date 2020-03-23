@@ -160,7 +160,7 @@ bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
 	samplerParams.WrapModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerParams.WrapModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
-	Material* pDefaultMaterial = new Material();
+	Material* pDefaultMaterial = DBG_NEW Material();
 	pDefaultMaterial->setAlbedo(glm::vec4(1.0f));
 	pDefaultMaterial->setAmbientOcclusion(1.0f);
 	pDefaultMaterial->setMetallic(1.0f);
@@ -173,7 +173,7 @@ bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
 	{
 		tinyobj::material_t& material = materials[m - 1];
 
-		Material* pMaterial = new Material();
+		Material* pMaterial = DBG_NEW Material();
 		if (material.diffuse_texname.length() > 0)
 		{
 			std::string filename = dir + material.diffuse_texname;

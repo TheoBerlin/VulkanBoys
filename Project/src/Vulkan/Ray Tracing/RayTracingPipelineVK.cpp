@@ -136,7 +136,7 @@ bool RayTracingPipelineVK::finalize(PipelineLayoutVK* pPipelineLayout)
 
 	LOG("--- RayTracingPipeline: Successfully created RayTracingPipeline!");
 
-	m_pSBT = new ShaderBindingTableVK(m_pGraphicsContext);
+	m_pSBT = DBG_NEW ShaderBindingTableVK(m_pGraphicsContext);
 	m_pSBT->init(this);
 
 	return true;

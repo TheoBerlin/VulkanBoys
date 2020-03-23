@@ -41,8 +41,8 @@
 
 Application* Application::s_pInstance = nullptr;
 
-constexpr bool FORCE_RAY_TRACING_OFF	= true;
-constexpr bool HIGH_RESOLUTION_SPHERE	= false;
+constexpr bool	FORCE_RAY_TRACING_OFF	= false;
+constexpr bool	HIGH_RESOLUTION_SPHERE	= false;
 constexpr float CAMERA_PAN_LENGTH		= 10.0f;
 
 Application::Application()
@@ -357,7 +357,7 @@ void Application::init()
 	};
 
 
-	m_CameraPositionSpline = new LoopingUniformCRSpline<glm::vec3, float>(positionControlPoints);
+	m_pCameraPositionSpline = DBG_NEW LoopingUniformCRSpline<glm::vec3, float>(positionControlPoints);
 
 	std::vector<glm::vec3> directionControlPoints
 	{
@@ -375,7 +375,7 @@ void Application::init()
 		glm::vec3(0.0f)
 	};
 
-	m_CameraDirectionSpline = new LoopingUniformCRSpline<glm::vec3, float>(directionControlPoints);
+	m_pCameraDirectionSpline = DBG_NEW LoopingUniformCRSpline<glm::vec3, float>(directionControlPoints);
 	m_CameraSplineTimer = 0.0f;
 	m_CameraSplineEnabled = false;
 }
@@ -454,6 +454,9 @@ void Application::release()
 	Input::setInputHandler(nullptr);
 
 	SAFEDELETE(m_pWindow);
+
+	SAFEDELETE(m_pCameraDirectionSpline);
+	SAFEDELETE(m_pCameraPositionSpline);
 
 	TaskDispatcher::release();
 
@@ -608,17 +611,17 @@ void Application::update(double dt)
 
 	if (m_CameraSplineEnabled)
 	{
-		auto& interpolatedPositionPT = m_CameraPositionSpline->getTangent(m_CameraSplineTimer);
+		auto& interpolatedPositionPT = m_pCameraPositionSpline->getTangent(m_CameraSplineTimer);
 		glm::vec3 position = interpolatedPositionPT.position;
 		glm::vec3 heading = interpolatedPositionPT.tangent;
-		glm::vec3 direction = m_CameraDirectionSpline->getPosition(m_CameraSplineTimer);
+		glm::vec3 direction = m_pCameraDirectionSpline->getPosition(m_CameraSplineTimer);
 
 		m_CameraSplineTimer += dt / (glm::max(glm::length(heading), 0.0001f));
 
 		m_Camera.setPosition(position);
 		m_Camera.setDirection(normalize(glm::normalize(heading) + direction));
 
-		if (m_CameraSplineTimer >= m_CameraPositionSpline->getMaxT())
+		if (m_CameraSplineTimer >= m_pCameraPositionSpline->getMaxT())
 		{
 			m_CameraSplineTimer = 0.0f;
 		}
@@ -812,7 +815,7 @@ void Application::renderUI(double dt)
 	if (ImGui::Begin("Application", NULL))
 	{
 		ImGui::Checkbox("Camera Spline Enabled", &m_CameraSplineEnabled);
-		ImGui::SliderFloat("Camera Timer", &m_CameraSplineTimer, 0.0f, m_CameraPositionSpline->getMaxT());
+		ImGui::SliderFloat("Camera Timer", &m_CameraSplineTimer, 0.0f, m_pCameraPositionSpline->getMaxT());
 	}
 	ImGui::End();
 

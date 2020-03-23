@@ -43,16 +43,16 @@ bool BufferVK::init(const BufferParams& params)
 
 	if (params.IsExclusive || !m_pDevice->hasUniqueQueueFamilyIndices())
 	{
-		bufferInfo.queueFamilyIndexCount = 0;
-		bufferInfo.pQueueFamilyIndices = nullptr;
-		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		bufferInfo.queueFamilyIndexCount	= 0;
+		bufferInfo.pQueueFamilyIndices		= nullptr;
+		bufferInfo.sharingMode				= VK_SHARING_MODE_EXCLUSIVE;
 	}
 	else
 	{
 		uint32_t queueFamilies[3] = { m_pDevice->getQueueFamilyIndices().graphicsFamily.value(), m_pDevice->getQueueFamilyIndices().computeFamily.value(), m_pDevice->getQueueFamilyIndices().transferFamily.value() };
-		bufferInfo.queueFamilyIndexCount = 3;
-		bufferInfo.pQueueFamilyIndices = queueFamilies;
-		bufferInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+		bufferInfo.queueFamilyIndexCount	= 3;
+		bufferInfo.pQueueFamilyIndices		= queueFamilies;
+		bufferInfo.sharingMode				= VK_SHARING_MODE_CONCURRENT;
 	}
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateBuffer(m_pDevice->getDevice(), &bufferInfo, nullptr, &m_Buffer), "Failed to create buffer");
@@ -64,8 +64,8 @@ bool BufferVK::init(const BufferParams& params)
 	vkGetBufferMemoryRequirements(m_pDevice->getDevice(), m_Buffer, &memRequirements);
 
 	VkMemoryAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.pNext = nullptr;
+	allocInfo.sType				= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.pNext				= nullptr;
 	allocInfo.allocationSize	= memRequirements.size;
 	allocInfo.memoryTypeIndex	= findMemoryType(m_pDevice->getPhysicalDevice(), memRequirements.memoryTypeBits, params.MemoryProperty);
 

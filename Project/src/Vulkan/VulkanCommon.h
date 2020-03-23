@@ -45,6 +45,22 @@ inline VkImageMemoryBarrier createVkImageMemoryBarrier(VkImage image, VkAccessFl
     return barrier;
 }
 
+inline VkBufferMemoryBarrier createVkBufferMemoryBarrier(VkBuffer buffer, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, uint32_t srcQueueFamilyIndex,
+    uint32_t dstQueueFamilyIndex, VkDeviceSize offset, VkDeviceSize size)
+{
+    VkBufferMemoryBarrier barrier = {};
+    barrier.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    barrier.pNext               = nullptr;
+    barrier.buffer              = buffer;
+    barrier.size                = size;
+    barrier.offset              = offset;
+    barrier.srcAccessMask       = srcAccessMask;
+    barrier.dstAccessMask       = dstAccessMask;
+    barrier.srcQueueFamilyIndex = srcQueueFamilyIndex;
+    barrier.dstQueueFamilyIndex = dstQueueFamilyIndex;
+    return barrier;
+}
+
 inline VkShaderStageFlagBits convertShaderType(EShader shader)
 {
     switch (shader)

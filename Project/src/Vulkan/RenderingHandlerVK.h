@@ -83,36 +83,40 @@ private:
     void submitParticles();
 
 private:
+    CameraBuffer m_CameraBuffer;
+    
     GraphicsContextVK* m_pGraphicsContext;
 
-    SkyboxRendererVK* m_pSkyboxRenderer;
-    MeshRendererVK* m_pMeshRenderer;
-    ParticleRendererVK* m_pParticleRenderer;
-    RayTracingRendererVK* m_pRayTracer;
-    ImguiVK* m_pImGuiRenderer;
+    SkyboxRendererVK*       m_pSkyboxRenderer;
+    MeshRendererVK*         m_pMeshRenderer;
+    ParticleRendererVK*     m_pParticleRenderer;
+    RayTracingRendererVK*   m_pRayTracer;
+    ImguiVK*                m_pImGuiRenderer;
 
-    FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
-    FrameBufferVK* m_ppBackBuffersWithDepth[MAX_FRAMES_IN_FLIGHT];
-	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
-    VkSemaphore m_GeometryFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
-    VkSemaphore m_RenderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
-    VkSemaphore m_ComputeFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
+    FrameBufferVK*  m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
+    FrameBufferVK*  m_ppBackBuffersWithDepth[MAX_FRAMES_IN_FLIGHT];
+	VkSemaphore     m_pImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
+    VkSemaphore     m_pGeometryFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
+    VkSemaphore     m_pRenderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
+    VkSemaphore     m_pComputeFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
+    VkSemaphore     m_pTransferStartSemaphores[MAX_FRAMES_IN_FLIGHT];
+    VkSemaphore     m_pTransferFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
 
-    CommandPoolVK* m_ppGraphicsCommandPools[MAX_FRAMES_IN_FLIGHT];
-	CommandBufferVK* m_ppGraphicsCommandBuffers[MAX_FRAMES_IN_FLIGHT];
-    CommandBufferVK* m_ppGraphicsCommandBuffers2[MAX_FRAMES_IN_FLIGHT];
+    CommandPoolVK*      m_ppGraphicsCommandPools[MAX_FRAMES_IN_FLIGHT];
+	CommandBufferVK*    m_ppGraphicsCommandBuffers[MAX_FRAMES_IN_FLIGHT];
+    CommandBufferVK*    m_ppGraphicsCommandBuffers2[MAX_FRAMES_IN_FLIGHT];
+	CommandPoolVK*      m_ppTransferCommandPools[MAX_FRAMES_IN_FLIGHT];
+	CommandBufferVK*    m_ppTransferCommandBuffers[MAX_FRAMES_IN_FLIGHT];
+    CommandPoolVK*      m_ppComputeCommandPools[MAX_FRAMES_IN_FLIGHT];
+    CommandBufferVK*    m_ppComputeCommandBuffers[MAX_FRAMES_IN_FLIGHT];
+    CommandPoolVK*      m_ppCommandPoolsSecondary[MAX_FRAMES_IN_FLIGHT];
+	CommandBufferVK*    m_ppCommandBuffersSecondary[MAX_FRAMES_IN_FLIGHT];
 
-	CommandPoolVK* m_ppComputeCommandPools[MAX_FRAMES_IN_FLIGHT];
-	CommandBufferVK* m_ppComputeCommandBuffers[MAX_FRAMES_IN_FLIGHT];
-
-    CommandPoolVK* m_ppCommandPoolsSecondary[MAX_FRAMES_IN_FLIGHT];
-	CommandBufferVK* m_ppCommandBuffersSecondary[MAX_FRAMES_IN_FLIGHT];
-
-	RenderPassVK* m_pGeometryRenderPass;
-    RenderPassVK* m_pBackBufferRenderPass;
-    RenderPassVK* m_pParticleRenderPass;
-    RenderPassVK* m_pUIRenderPass;
-    PipelineVK* m_pPipeline;
+	RenderPassVK*   m_pGeometryRenderPass;
+    RenderPassVK*   m_pBackBufferRenderPass;
+    RenderPassVK*   m_pParticleRenderPass;
+    RenderPassVK*   m_pUIRenderPass;
+    PipelineVK*     m_pPipeline;
 
     uint32_t m_CurrentFrame;
     uint32_t m_BackBufferIndex;
@@ -126,16 +130,15 @@ private:
     BufferVK* m_pCameraMatricesBuffer;
     BufferVK* m_pCameraDirectionsBuffer;
     BufferVK* m_pCameraBuffer;
+    GBufferVK* m_pGBuffer;
 
 	//Render Results
-
 	union
 	{
 		struct
 		{
 			ImageVK* m_pRadianceImage;
 			ImageVK* m_pGlossyImage;
-			
 		};
 
 		ImageVK* m_RayTracingImages[2];
@@ -147,13 +150,8 @@ private:
 		{
 			ImageViewVK* m_pRadianceImageView;
 			ImageViewVK* m_pGlossyImageView;
-			
 		};
 
 		ImageVK* m_RayTracingImageViews[2];
 	};
-
-	GBufferVK* m_pGBuffer;
-
-    CameraBuffer m_CameraBuffer;
 };
