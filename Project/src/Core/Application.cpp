@@ -65,8 +65,8 @@ Application::Application()
 	m_NewEmitterInfo(),
 	m_CurrentEmitterIdx(0),
 	m_CreatingEmitter(false),
-	m_CameraPositionSpline(),
-	m_CameraDirectionSpline(),
+	m_pCameraPositionSpline(nullptr),
+	m_pCameraDirectionSpline(nullptr),
 	m_CameraSplineTimer(0.0f),
 	m_CameraSplineEnabled(false),
 	m_KeyInputEnabled(false)
@@ -526,7 +526,7 @@ void Application::update(double dt)
 		m_TestParameters.WorstFrametime = deltaTimeMS > m_TestParameters.WorstFrametime ? deltaTimeMS : m_TestParameters.WorstFrametime;
 		m_TestParameters.BestFrametime = deltaTimeMS < m_TestParameters.BestFrametime ? deltaTimeMS : m_TestParameters.BestFrametime;
 
-		auto& interpolatedPositionPT = m_CameraPositionSpline->getTangent(m_CameraSplineTimer);
+		auto& interpolatedPositionPT = m_pCameraPositionSpline->getTangent(m_CameraSplineTimer);
 		glm::vec3 position = interpolatedPositionPT.position;
 		glm::vec3 heading = interpolatedPositionPT.tangent;
 		glm::vec3 direction = m_pCameraDirectionSpline->getPosition(m_CameraSplineTimer);
