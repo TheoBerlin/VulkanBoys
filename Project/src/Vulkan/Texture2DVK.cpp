@@ -41,6 +41,7 @@ bool Texture2DVK::initFromFile(const std::string& filename, ETextureFormat forma
 	}
 	else if (format == ETextureFormat::FORMAT_R32G32B32A32_FLOAT)
 	{
+
 		pPixels = (void*)stbi_loadf(filename.c_str(), &texWidth, &texHeight, &bpp, STBI_rgb_alpha);
 	}
 	else

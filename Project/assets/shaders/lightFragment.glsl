@@ -173,6 +173,6 @@ void main()
 
     out_Color = ColorWrite(finalColor);
 	//out_Color = vec4(prefilteredColor, 1.0f);
-	//out_Color.rgb = vec3(velocity.z * 100.0f);
+	//out_Color.rgb = vec3(abs(sampledNormal.a));
 	//out_Color.rgb = texture(u_Velocity, texCoord).rgb * 10.0f;
 }

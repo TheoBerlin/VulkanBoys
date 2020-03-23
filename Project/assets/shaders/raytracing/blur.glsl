@@ -40,7 +40,7 @@ void main()
         vec2 imageResolution = textureSize(u_InputImage, 0);
         vec2 normalizedDirection = u_PushConstants.Direction / imageResolution;
 
-        vec3 blurColor = blur5(u_InputImage, centerColor, texCoords, normalizedDirection);
+        vec3 blurColor = bilateralBlur(u_InputImage, centerColor, texCoords, normalizedDirection).rgb;
         imageStore(u_OutputImage, dstPixelCoords, vec4(blurColor, (2.0f / (u_PushConstants.Direction.x + 1.0f)) * centerColor.a));
     }
     else

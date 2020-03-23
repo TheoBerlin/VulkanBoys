@@ -196,10 +196,10 @@ void main()
 
 	vec3 Rt = vec3(0.0f);
 	vec3 Rb = vec3(0.0f);
-	createCoordinateSystem(reflDir, Rt, Rb);
+	CreateCoordinateSystem(reflDir, Rt, Rb);
 
 	vec3 reflectionRaysOrigin = hitPos + normal * u_PushConstants.ReflectionRayBias;
-	reflDir = ReflectanceDirection2(reflDir, Rt, Rb, roughness, uniformRandom);
+	reflDir = ReflectanceDirection(reflDir, Rt, Rb, roughness, uniformRandom);
 	rayPayload.Radiance = vec3(0.0f);
 	rayPayload.Recursion = 0;
 	traceNV(u_TopLevelAS, rayFlags, cullMask, 0, 0, 0, reflectionRaysOrigin, tmin, reflDir, tmax, 0);
@@ -220,7 +220,6 @@ void main()
 
 		vec2 currentScreenCoords = pixelCoords;
 		vec2 prevScreenCoords = (uvCoords + motion.xy) * prevReflectionDimensions;
-
 
 		vec2 prevFlooredScreenCoords = floor(prevScreenCoords - vec2(0.5f));
 		vec2 prevSubpixel = fract(prevScreenCoords - vec2(0.5f) - prevFlooredScreenCoords);
