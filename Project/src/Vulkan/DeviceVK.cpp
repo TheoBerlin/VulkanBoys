@@ -1,12 +1,13 @@
-#include "DeviceVK.h"
-#include "InstanceVK.h"
-#include "CopyHandlerVK.h"
-#include "CommandBufferVK.h"
-
 #include <cstring>
 #include <iostream>
 #include <map>
 #include <set>
+#include <mutex>
+
+#include "DeviceVK.h"
+#include "InstanceVK.h"
+#include "CopyHandlerVK.h"
+#include "CommandBufferVK.h"
 
 #define GET_DEVICE_PROC_ADDR(device, function_name) if ((function_name = reinterpret_cast<PFN_##function_name>(vkGetDeviceProcAddr(device, #function_name))) == nullptr) { LOG("--- Vulkan: Failed to load DeviceFunction '%s'", #function_name); }
 
@@ -38,7 +39,7 @@ bool DeviceVK::finalize(InstanceVK* pInstance)
 
 	registerExtensionFunctions();
 
-	m_pCopyHandler = DBG_NEW CopyHandlerVK(this);
+	m_pCopyHandler = DBG_NEW CopyHandlerVK(this, pInstance);
 	m_pCopyHandler->init();
 
 	std::cout << "--- Device: Vulkan Device created successfully!" << std::endl;
@@ -66,6 +67,39 @@ void DeviceVK::addRequiredExtension(const char* extensionName)
 void DeviceVK::addOptionalExtension(const char* extensionName)
 {
 	m_RequestedOptionalExtensions.push_back(extensionName);
+}
+
+void DeviceVK::executeGraphics(CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages, uint32_t waitSemaphoreCount, const VkSemaphore* pSignalSemaphores, uint32_t signalSemaphoreCount)
+{
+	std::scoped_lock<Spinlock> lock(m_GraphicsLock);
+	executeCommandBuffer(m_GraphicsQueue, pCommandBuffer, pWaitSemaphore, pWaitStages, waitSemaphoreCount, pSignalSemaphores, signalSemaphoreCount);
+}
+
+void DeviceVK::executeCompute(CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages, uint32_t waitSemaphoreCount, const VkSemaphore* pSignalSemaphores, uint32_t signalSemaphoreCount)
+{
+	std::scoped_lock<Spinlock> lock(m_ComputeLock);
+	executeCommandBuffer(m_ComputeQueue, pCommandBuffer, pWaitSemaphore, pWaitStages, waitSemaphoreCount, pSignalSemaphores, signalSemaphoreCount);
+}
+
+void DeviceVK::executeTransfer(CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages, uint32_t waitSemaphoreCount, const VkSemaphore* pSignalSemaphores, uint32_t signalSemaphoreCount)
+{
+	std::scoped_lock<Spinlock> lock(m_TransferLock);
+	executeCommandBuffer(m_TransferQueue, pCommandBuffer, pWaitSemaphore, pWaitStages, waitSemaphoreCount, pSignalSemaphores, signalSemaphoreCount);
+}
+
+void DeviceVK::waitCompute()
+{
+	vkQueueWaitIdle(m_ComputeQueue);
+}
+
+void DeviceVK::waitGraphics()
+{
+	vkQueueWaitIdle(m_GraphicsQueue);
+}
+
+void DeviceVK::waitTransfer()
+{
+	vkQueueWaitIdle(m_TransferQueue);
 }
 
 void DeviceVK::executeCommandBuffer(VkQueue queue, CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages,
@@ -181,6 +215,7 @@ bool DeviceVK::initLogicalDevice(InstanceVK* pInstance)
 	VkPhysicalDeviceFeatures deviceFeatures = {};
 	deviceFeatures.fillModeNonSolid = true;
 	deviceFeatures.vertexPipelineStoresAndAtomics = true;
+	deviceFeatures.fragmentStoresAndAtomics = true;
 
 	VkDeviceCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -267,7 +302,6 @@ void DeviceVK::checkExtensionsSupport(VkPhysicalDevice physicalDevice, bool& req
 void DeviceVK::setEnabledExtensions()
 {
 	m_EnabledExtensions = std::vector<const char*>(m_RequestedRequiredExtensions.begin(), m_RequestedRequiredExtensions.end());
-
 	for (auto& requiredExtensions : m_RequestedRequiredExtensions)
 	{
 		m_ExtensionsStatus[requiredExtensions] = true;
@@ -320,7 +354,7 @@ QueueFamilyIndices DeviceVK::findQueueFamilies(VkPhysicalDevice physicalDevice)
 
 void DeviceVK::registerExtensionFunctions()
 {
-	if (m_ExtensionsStatus["VK_NV_ray_tracing"])
+	if (m_ExtensionsStatus[VK_NV_RAY_TRACING_EXTENSION_NAME])
 	{
 		// Get VK_NV_ray_tracing related function pointers
 		GET_DEVICE_PROC_ADDR(m_Device, vkCreateAccelerationStructureNV);
@@ -338,8 +372,8 @@ void DeviceVK::registerExtensionFunctions()
 		//Query Ray Tracing properties
 		m_RayTracingProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_NV;
 		VkPhysicalDeviceProperties2 deviceProps2 = {};
-		deviceProps2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-		deviceProps2.pNext = &m_RayTracingProperties;
+		deviceProps2.sType	= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+		deviceProps2.pNext	= &m_RayTracingProperties;
 		vkGetPhysicalDeviceProperties2(m_PhysicalDevice, &deviceProps2);
 	}
 	else

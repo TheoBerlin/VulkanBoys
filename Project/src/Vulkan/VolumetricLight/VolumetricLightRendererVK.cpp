@@ -245,7 +245,7 @@ void VolumetricLightRendererVK::onWindowResize(uint32_t width, uint32_t height)
 	m_Viewport.height = (float)height;
 }
 
-void VolumetricLightRendererVK::drawUI()
+void VolumetricLightRendererVK::renderUI()
 {
 	ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);
 
@@ -283,10 +283,11 @@ void VolumetricLightRendererVK::drawUI()
 bool VolumetricLightRendererVK::createCommandPoolAndBuffers()
 {
 	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
+	InstanceVK* pInstance = m_pGraphicsContext->getInstance();
 
 	const uint32_t graphicsQueueIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, graphicsQueueIndex);
+		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, pInstance, graphicsQueueIndex);
 
 		if (!m_ppCommandPools[i]->init()) {
 			return false;

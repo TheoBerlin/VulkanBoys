@@ -65,6 +65,8 @@ bool DescriptorPoolVK::init(const DescriptorCounts& descriptorCounts, uint32_t d
 	poolInfo.poolSizeCount	= uint32_t(descriptorCounts.getDescriptorTypesCount());
 	poolInfo.pPoolSizes		= poolSizes.data();
 	poolInfo.maxSets		= descriptorSetCount;
+	poolInfo.pNext			= nullptr;
+	poolInfo.flags			= VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateDescriptorPool(m_pDevice->getDevice(), &poolInfo, nullptr, &m_DescriptorPool), "Failed to create Descriptor Pool");
 	

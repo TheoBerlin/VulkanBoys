@@ -159,7 +159,7 @@ ITexture2D* GraphicsContextVK::createTexture2D()
 
 ISampler* GraphicsContextVK::createSampler()
 {
-	return new SamplerVK(&m_Device);
+	return DBG_NEW SamplerVK(&m_Device);
 }
 
 void GraphicsContextVK::sync()

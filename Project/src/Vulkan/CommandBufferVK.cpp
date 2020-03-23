@@ -1,18 +1,12 @@
 #include "CommandBufferVK.h"
-#include "ImageVK.h"
 #include "DeviceVK.h"
-#include "BufferVK.h"
-#include "PipelineVK.h"
-#include "RenderPassVK.h"
-#include "FrameBufferVK.h"
-#include "StagingBufferVK.h"
-#include "DescriptorSetVK.h"
-#include "PipelineLayoutVK.h"
+#include "InstanceVK.h"
 
 #include "Ray Tracing/ShaderBindingTableVK.h"
 
-CommandBufferVK::CommandBufferVK(DeviceVK* pDevice, VkCommandBuffer commandBuffer)
+CommandBufferVK::CommandBufferVK(DeviceVK* pDevice, InstanceVK* pInstance, VkCommandBuffer commandBuffer)
 	: m_pDevice(pDevice),
+	m_pInstance(pInstance),
 	m_pStagingBuffer(nullptr),
 	m_pStagingTexture(nullptr),
 	m_CommandBuffer(commandBuffer),
@@ -70,91 +64,10 @@ void CommandBufferVK::reset(bool waitForFence)
 		vkResetFences(m_pDevice->getDevice(), 1, &m_Fence);
 	}
 
+	vkResetCommandBuffer(m_CommandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+
 	m_pStagingBuffer->reset();
 	m_pStagingTexture->reset();
-}
-
-void CommandBufferVK::begin(VkCommandBufferInheritanceInfo* pInheritaneInfo, VkCommandBufferUsageFlags flags)
-{
-	VkCommandBufferBeginInfo beginInfo = {};
-	beginInfo.sType				= VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.pNext				= nullptr;
-	beginInfo.flags				= flags;
-	beginInfo.pInheritanceInfo	= pInheritaneInfo;
-
-	VK_CHECK_RESULT(vkBeginCommandBuffer(m_CommandBuffer, &beginInfo), "Begin CommandBuffer Failed");
-}
-
-void CommandBufferVK::end()
-{
-	VK_CHECK_RESULT(vkEndCommandBuffer(m_CommandBuffer), "End CommandBuffer Failed");
-}
-
-void CommandBufferVK::beginRenderPass(RenderPassVK* pRenderPass, FrameBufferVK* pFrameBuffer, uint32_t width, uint32_t height, VkClearValue* pClearVales, uint32_t clearValueCount, VkSubpassContents subpassContent)
-{
-	VkRenderPassBeginInfo renderPassInfo = {};
-	renderPassInfo.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.pNext				= nullptr;
-	renderPassInfo.renderPass			= pRenderPass->getRenderPass();
-	renderPassInfo.framebuffer			= pFrameBuffer->getFrameBuffer();
-	renderPassInfo.renderArea.offset	= { 0, 0 };
-	renderPassInfo.renderArea.extent	= { width, height };
-	renderPassInfo.pClearValues			= pClearVales;
-	renderPassInfo.clearValueCount		= clearValueCount;
-
-	vkCmdBeginRenderPass(m_CommandBuffer, &renderPassInfo, subpassContent);
-}
-
-void CommandBufferVK::endRenderPass()
-{
-	vkCmdEndRenderPass(m_CommandBuffer);
-}
-
-void CommandBufferVK::bindVertexBuffers(const BufferVK* const* ppVertexBuffers, uint32_t vertexBufferCount, const VkDeviceSize* pOffsets)
-{
-	for (uint32_t i = 0; i < vertexBufferCount; i++)
-	{
-		m_VertexBuffers.emplace_back(ppVertexBuffers[i]->getBuffer());
-	}
-
-	vkCmdBindVertexBuffers(m_CommandBuffer, 0, vertexBufferCount, m_VertexBuffers.data(), pOffsets);
-	m_VertexBuffers.clear();
-}
-
-void CommandBufferVK::bindIndexBuffer(const BufferVK* pIndexBuffer, VkDeviceSize offset, VkIndexType indexType)
-{
-	vkCmdBindIndexBuffer(m_CommandBuffer, pIndexBuffer->getBuffer(), offset, indexType);
-}
-
-void CommandBufferVK::bindPipeline(PipelineVK* pPipeline)
-{
-	vkCmdBindPipeline(m_CommandBuffer, pPipeline->getBindPoint(), pPipeline->getPipeline());
-}
-
-void CommandBufferVK::bindDescriptorSet(VkPipelineBindPoint bindPoint, PipelineLayoutVK* pPipelineLayout, uint32_t firstSet, uint32_t count, const DescriptorSetVK* const* ppDescriptorSets, uint32_t dynamicOffsetCount, const uint32_t* pDynamicOffsets)
-{
-	for (uint32_t i = 0; i < count; i++)
-	{
-		m_DescriptorSets.emplace_back(ppDescriptorSets[i]->getDescriptorSet());
-	}
-
-	vkCmdBindDescriptorSets(m_CommandBuffer, bindPoint, pPipelineLayout->getPipelineLayout(), firstSet, count, m_DescriptorSets.data(), dynamicOffsetCount, pDynamicOffsets);
-	m_DescriptorSets.clear();
-}
-
-void CommandBufferVK::pushConstants(PipelineLayoutVK* pPipelineLayout, VkShaderStageFlags stageFlags, uint32_t offset, uint32_t size, const void* pValues)
-{
-	vkCmdPushConstants(m_CommandBuffer, pPipelineLayout->getPipelineLayout(), stageFlags, offset, size, pValues);
-}
-
-void CommandBufferVK::setScissorRects(VkRect2D* pScissorRects, uint32_t scissorRectCount)
-{
-	vkCmdSetScissor(m_CommandBuffer, 0, scissorRectCount, pScissorRects);
-}
-
-void CommandBufferVK::setViewports(VkViewport* pViewports, uint32_t viewportCount)
-{
-	vkCmdSetViewport(m_CommandBuffer, 0, viewportCount, pViewports);
 }
 
 void CommandBufferVK::updateBuffer(BufferVK* pDestination, uint64_t destinationOffset, const void* pSource, uint64_t sizeInBytes)
@@ -482,9 +395,12 @@ void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLa
 		// Make sure any shader reads from the image have been finished
 		barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
 		break;
+	case VK_IMAGE_LAYOUT_GENERAL:
+		barrier.srcAccessMask = 0;
+		break;
 	default:
 		// Other source layouts aren't handled (yet)
-		LOG("Unsupported layout transition");
+		D_LOG("Unsupported layout transition");
 		break;
 	}
 
@@ -525,29 +441,16 @@ void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLa
 		}
 		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 		break;
+	case VK_IMAGE_LAYOUT_GENERAL:
+		barrier.dstAccessMask = 0;		
+		break;
 	default:
 		// Other source layouts aren't handled (yet)
-		LOG("Unsupported layout transition");
+		D_LOG("Unsupported layout transition");
 		break;
 	}
 
 	vkCmdPipelineBarrier(m_CommandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-}
-
-void CommandBufferVK::drawInstanced(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance)
-{
-	vkCmdDraw(m_CommandBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
-}
-
-void CommandBufferVK::drawIndexInstanced(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex, uint32_t vertexOffset, uint32_t firstInstance)
-{
-	vkCmdDrawIndexed(m_CommandBuffer, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
-}
-
-void CommandBufferVK::executeSecondary(CommandBufferVK* pSecondary)
-{
-	VkCommandBuffer secondaryBuffer = pSecondary->getCommandBuffer();
-	vkCmdExecuteCommands(m_CommandBuffer, 1, &secondaryBuffer);
 }
 
 void CommandBufferVK::traceRays(ShaderBindingTableVK* pShaderBindingTable, uint32_t width, uint32_t height, uint32_t raygenOffset)
@@ -565,7 +468,19 @@ void CommandBufferVK::traceRays(ShaderBindingTableVK* pShaderBindingTable, uint3
 		width, height, 1);
 }
 
-void CommandBufferVK::dispatch(const glm::u32vec3& groupSize)
+void CommandBufferVK::setName(const char* pName)
 {
-	vkCmdDispatch(m_CommandBuffer, groupSize.x, groupSize.y, groupSize.z);
+	if (pName)
+	{
+		if (m_pInstance->vkSetDebugUtilsObjectNameEXT)
+		{
+			VkDebugUtilsObjectNameInfoEXT info = {};
+			info.sType			= VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+			info.pNext			= nullptr;
+			info.objectType		= VK_OBJECT_TYPE_COMMAND_BUFFER;
+			info.objectHandle	= (uint64_t)m_CommandBuffer;
+			info.pObjectName	= pName;
+			m_pInstance->vkSetDebugUtilsObjectNameEXT(m_pDevice->getDevice(), &info);
+		}
+	}
 }

@@ -23,6 +23,7 @@ public:
 
 	FORCEINLINE ImageVK*				getDepthImage() const						{ return m_pDepthImage; }
 	FORCEINLINE ImageViewVK*			getDepthImageView() const					{ return m_pDepthImageView; }
+	FORCEINLINE ImageVK* 				getColorImage(uint32_t index) const			{ return m_ColorImages[index]; }
 	FORCEINLINE ImageVK* const *		getColorImages() const						{ return m_ColorImages.data(); }
 	FORCEINLINE ImageViewVK* const *	getColorImageViews() const					{ return m_ColorImageViews.data(); }
 	FORCEINLINE uint32_t				getColorImageCount() const					{ return uint32_t(m_ColorImages.size()); }

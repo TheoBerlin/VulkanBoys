@@ -6,7 +6,7 @@
 #include "Vulkan/Texture2DVK.h"
 
 #include <vector>
-#include <unordered_map>
+#include <map>
 
 class IGraphicsContext;
 class GraphicsContextVK;
@@ -24,13 +24,28 @@ class SamplerVK;
 class CommandPoolVK;
 class CommandBufferVK;
 
+constexpr uint32_t NUM_INITIAL_GRAPHICS_OBJECTS = 10;
+
+struct GraphicsObjectVK
+{
+	const MeshVK* pMesh = nullptr;
+	const Material* pMaterial = nullptr;
+	uint32_t MaterialParametersIndex = 0;
+};
+
 class SceneVK : public IScene
 {
-	struct GraphicsObjectVK
+	struct SceneParameters
 	{
-		const MeshVK* pMesh = nullptr;
-		const Material* pMaterial = nullptr;
+		float RoughnessScale = 1.0f;
+		float MetallicScale = 1.0f;
+		float AOScale = 1.0f;
+	};
+
+	struct GraphicsObjectTransforms
+	{
 		glm::mat4 Transform;
+		glm::mat4 PrevTransform;
 	};
 
 	struct GeometryInstance
@@ -75,8 +90,10 @@ public:
 	SceneVK(IGraphicsContext* pContext);
 	~SceneVK();
 
+	virtual bool initFromFile(const std::string& dir, const std::string& fileName) override;
+
 	virtual bool finalize() override;
-	virtual void update() override;
+	virtual void updateMeshesAndGraphicsObjects() override;
 	virtual void updateMaterials() override;
 
 	virtual void updateCamera(const Camera& camera) override;
@@ -84,7 +101,6 @@ public:
 
 	virtual uint32_t submitGraphicsObject(const IMesh* pMesh, const Material* pMaterial, const glm::mat4& transform = glm::mat4(1.0f), uint8_t customMask = 0x80) override;
 	virtual void updateGraphicsObjectTransform(uint32_t index, const glm::mat4& transform) override;
-
 
 	const Camera& getCamera() { return m_Camera; }
 
@@ -103,17 +119,21 @@ public:
 	const std::vector<const ImageViewVK*>& getRoughnessMaps()		{ return m_RoughnessMaps; }
 	const std::vector<const SamplerVK*>& getSamplers()				{ return m_Samplers; }
 	const BufferVK* getMaterialParametersBuffer()					{ return m_pMaterialParametersBuffer; }
+	const BufferVK* getTransformsBuffer()							{ return m_pTransformsBuffer; }
 
 	const TopLevelAccelerationStructure& getTLAS() { return m_TopLevelAccelerationStructure; }
 
 	ProfilerVK* getProfiler() { return m_pProfiler; }
 
-	void generateLightProbeGeometry(float probeStepX, float probeStepY, float probeStepZ, uint32_t samplesPerProbe, uint32_t numProbesPerDimension);
+	//Debug
+	virtual void renderUI() override;
+	virtual void updateDebugParameters() override;
 
 private:
 	bool createDefaultTexturesAndSamplers();
 
-	void initBuildBuffers();
+	void initBuffers();
+	void initAccelerationStructureBuffers();
 
 	BottomLevelAccelerationStructure* createBLAS(const MeshVK* pMesh, const Material* pMaterial);
 	bool buildBLASs();
@@ -128,15 +148,21 @@ private:
 	void updateScratchBufferForBLAS();
 	void updateScratchBufferForTLAS();
 	void updateInstanceBuffer();
+	void updateTransformBuffer();
 	bool createCombinedGraphicsObjectData();
 	VkDeviceSize findMaxMemReqBLAS();
 	VkDeviceSize findMaxMemReqTLAS();
+
+	uint32_t registerMaterial(const Material* pMaterial);
 
 private:
 	GraphicsContextVK* m_pContext;
 	DeviceVK* m_pDevice;
 	ProfilerVK* m_pProfiler;
 	Timestamp m_TimestampBuildAccelStruct; //Todo: create more of these
+
+	std::vector<MeshVK*> m_SceneMeshes;
+	std::vector<Material*> m_SceneMaterials;
 
 	Camera m_Camera;
 	LightSetup m_LightSetup;
@@ -154,6 +180,7 @@ private:
 	BufferVK* m_pMeshIndexBuffer;
 
 	std::vector<const Material*> m_Materials;
+	std::map<const Material*, uint32_t> m_MaterialIndices; //This is only used when Ray Tracing is Disabled
 
 	std::vector<const ImageViewVK*> m_AlbedoMaps;
 	std::vector<const ImageViewVK*> m_NormalMaps;
@@ -161,19 +188,23 @@ private:
 	std::vector<const ImageViewVK*> m_MetallicMaps;
 	std::vector<const ImageViewVK*> m_RoughnessMaps;
 	std::vector<const SamplerVK*> m_Samplers;
-	std::vector< MaterialParameters> m_MaterialParameters;
+	std::vector<MaterialParameters> m_MaterialParameters;
 	BufferVK* m_pMaterialParametersBuffer;
+
+	std::vector<GraphicsObjectTransforms> m_SceneTransforms;
+	BufferVK* m_pTransformsBuffer;
 
 	TopLevelAccelerationStructure m_OldTopLevelAccelerationStructure;
 	TopLevelAccelerationStructure m_TopLevelAccelerationStructure;
-	std::unordered_map<const MeshVK*, std::unordered_map<const Material*, BottomLevelAccelerationStructure>> m_NewBottomLevelAccelerationStructures;
-	std::unordered_map<const MeshVK*, std::unordered_map<const Material*, BottomLevelAccelerationStructure>> m_FinalizedBottomLevelAccelerationStructures;
+	std::map<const MeshVK*, std::map<const Material*, BottomLevelAccelerationStructure>> m_NewBottomLevelAccelerationStructures;
+	std::map<const MeshVK*, std::map<const Material*, BottomLevelAccelerationStructure>> m_FinalizedBottomLevelAccelerationStructures;
 	uint32_t m_NumBottomLevelAccelerationStructures;
 
 	BufferVK* m_pScratchBuffer;
 	BufferVK* m_pInstanceBuffer;
 	BufferVK* m_pGarbageScratchBuffer;
 	BufferVK* m_pGarbageInstanceBuffer;
+	BufferVK* m_pGarbageTransformsBuffer;
 
 	bool m_BottomLevelIsDirty;
 	bool m_TopLevelIsDirty;
@@ -188,6 +219,7 @@ private:
 	CommandPoolVK* m_pTempCommandPool;
 	CommandBufferVK* m_pTempCommandBuffer;
 
-	MeshVK* m_pLightProbeMesh;
-	const Material* m_pVeryTempMaterial;
+	SceneParameters m_SceneParameters;
+
+	bool m_DebugParametersDirty;
 };

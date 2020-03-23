@@ -80,7 +80,7 @@ const std::string& ShaderVK::getEntryPoint() const
 
 void ShaderVK::setSpecializationConstant(uint32_t index, void* pData, uint32_t sizeInBytes)
 {
-	uint32_t specializationDataOffset = m_SpecializationData.size();
+	uint32_t specializationDataOffset = uint32_t(m_SpecializationData.size());
 	m_SpecializationData.resize(size_t(specializationDataOffset) + sizeInBytes);
 	memcpy(m_SpecializationData.data() + specializationDataOffset, pData, sizeInBytes);
 

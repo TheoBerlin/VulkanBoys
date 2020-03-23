@@ -40,7 +40,6 @@ public:
 
     virtual void swapBuffers() override;
 
-    virtual void drawRendererUI() override;
     virtual void drawProfilerUI() override;
 
 	virtual void setRayTracer(IRenderer* pRayTracer) override				                { m_pRayTracer = reinterpret_cast<RayTracingRendererVK*>(pRayTracer); }
@@ -56,29 +55,28 @@ public:
     virtual void setSkybox(ITextureCube* pSkybox) override;
 
     virtual void onWindowResize(uint32_t width, uint32_t height) override;
+	virtual void onSceneUpdated(IScene* pScene) override;
 
     uint32_t                getCurrentFrameIndex() const                { return m_CurrentFrame; }
     FrameBufferVK* const*   getBackBuffers() const                      { return m_ppBackbuffers; }
 	RenderPassVK*			getGeometryRenderPass() const				{ return m_pGeometryRenderPass; }
     RenderPassVK*           getBackBufferRenderPass() const             { return m_pBackBufferRenderPass; }
+    RenderPassVK*           getParticleRenderPass() const               { return m_pParticleRenderPass; }
     BufferVK*               getCameraMatricesBuffer() const             { return m_pCameraMatricesBuffer; }
     BufferVK*               getCameraDirectionsBuffer() const           { return m_pCameraDirectionsBuffer; }
     BufferVK*               getCameraBuffer() const                     { return m_pCameraBuffer; }
     FrameBufferVK*          getCurrentBackBuffer() const                { return m_ppBackbuffers[m_BackBufferIndex]; }
+    FrameBufferVK*          getCurrentBackBufferWithDepth() const       { return m_ppBackBuffersWithDepth[m_BackBufferIndex]; }
     CommandBufferVK*        getCurrentGraphicsCommandBuffer() const     { return m_ppGraphicsCommandBuffers[m_CurrentFrame]; }
-	CommandBufferVK*        getCurrentComputeCommandBuffer() const      { return m_ppComputeCommandBuffers[m_CurrentFrame]; }
 	GBufferVK*				getGBuffer() const							{ return m_pGBuffer; }
 
 private:
-	void beginFrame(SceneVK* pScene);
-	void endFrame(SceneVK* pScene);
-
     bool createBackBuffers();
     bool createCommandPoolAndBuffers();
     bool createRenderPasses();
     bool createSemaphores();
     bool createBuffers();
-	bool createRayTracingRenderImage(uint32_t width, uint32_t height);
+	bool createRayTracingRenderImages(uint32_t width, uint32_t height);
 	bool createGBuffer();
 
     void releaseBackBuffers();
@@ -98,11 +96,15 @@ private:
     ImguiVK* m_pImGuiRenderer;
 
     FrameBufferVK* m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
+    FrameBufferVK* m_ppBackBuffersWithDepth[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore m_ImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
-	VkSemaphore m_RenderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
+    VkSemaphore m_GeometryFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
+    VkSemaphore m_RenderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
+    VkSemaphore m_ComputeFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
 
     CommandPoolVK* m_ppGraphicsCommandPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppGraphicsCommandBuffers[MAX_FRAMES_IN_FLIGHT];
+    CommandBufferVK* m_ppGraphicsCommandBuffers2[MAX_FRAMES_IN_FLIGHT];
 
 	CommandPoolVK* m_ppComputeCommandPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppComputeCommandBuffers[MAX_FRAMES_IN_FLIGHT];
@@ -112,6 +114,8 @@ private:
 
 	RenderPassVK* m_pGeometryRenderPass;
     RenderPassVK* m_pBackBufferRenderPass;
+    RenderPassVK* m_pParticleRenderPass;
+    RenderPassVK* m_pUIRenderPass;
     PipelineVK* m_pPipeline;
 
     uint32_t m_CurrentFrame;
@@ -128,7 +132,32 @@ private:
     BufferVK* m_pCameraBuffer;
 
 	//Render Results
-	ImageVK* m_pRayTracingStorageImage;
-	ImageViewVK* m_pRayTracingStorageImageView;
+
+	union
+	{
+		struct
+		{
+			ImageVK* m_pRadianceImage;
+			ImageVK* m_pGlossyImage;
+
+		};
+
+		ImageVK* m_RayTracingImages[2];
+	};
+
+	union
+	{
+		struct
+		{
+			ImageViewVK* m_pRadianceImageView;
+			ImageViewVK* m_pGlossyImageView;
+
+		};
+
+		ImageVK* m_RayTracingImageViews[2];
+	};
+
 	GBufferVK* m_pGBuffer;
+
+    CameraBuffer m_CameraBuffer;
 };

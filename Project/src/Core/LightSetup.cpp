@@ -5,6 +5,12 @@ LightSetup::LightSetup()
 {
 }
 
+void LightSetup::release()
+{
+	m_PointLights.clear();
+	m_VolumetricPointLights.clear();
+}
+
 void LightSetup::addPointLight(const PointLight& pointlight)
 {
 	m_PointLights.emplace_back(pointlight);

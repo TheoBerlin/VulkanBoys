@@ -80,20 +80,21 @@ bool ParticleRendererVK::init()
 
 void ParticleRendererVK::beginFrame(IScene* pScene)
 {
+	UNREFERENCED_PARAMETER(pScene);
+
 	// Prepare for frame
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
 
 	m_ppCommandBuffers[frameIndex]->reset(false);
 	m_ppCommandPools[frameIndex]->reset();
-	m_pProfiler->reset(frameIndex, m_pRenderingHandler->getCurrentGraphicsCommandBuffer());
 
 	// Needed to begin a secondary buffer
 	VkCommandBufferInheritanceInfo inheritanceInfo = {};
 	inheritanceInfo.sType		= VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
 	inheritanceInfo.pNext		= nullptr;
-	inheritanceInfo.renderPass	= m_pRenderingHandler->getBackBufferRenderPass()->getRenderPass();
+	inheritanceInfo.renderPass	= m_pRenderingHandler->getParticleRenderPass()->getRenderPass();
 	inheritanceInfo.subpass		= 0; // TODO: Don't hardcode this :(
-	inheritanceInfo.framebuffer = m_pRenderingHandler->getCurrentBackBuffer()->getFrameBuffer();
+	inheritanceInfo.framebuffer = m_pRenderingHandler->getCurrentBackBufferWithDepth()->getFrameBuffer();
 
 	m_ppCommandBuffers[frameIndex]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
 	m_pProfiler->beginFrame(m_ppCommandBuffers[frameIndex]);
@@ -104,7 +105,6 @@ void ParticleRendererVK::beginFrame(IScene* pScene)
 	// Bind quad
 	BufferVK* pIndexBuffer = reinterpret_cast<BufferVK*>(m_pQuadMesh->getIndexBuffer());
 	m_ppCommandBuffers[frameIndex]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
 	m_ppCommandBuffers[frameIndex]->bindPipeline(m_pPipeline);
 }
 
@@ -116,13 +116,13 @@ void ParticleRendererVK::endFrame(IScene* pScene)
 	m_ppCommandBuffers[currentFrame]->end();
 }
 
+void ParticleRendererVK::renderUI()
+{
+}
+
 void ParticleRendererVK::submitParticles(ParticleEmitter* pEmitter)
 {
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
-
-	BufferVK* pEmitterBuffer = reinterpret_cast<BufferVK*>(pEmitter->getEmitterBuffer());
-	BufferVK* pPositionBuffer = reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer());
-	Texture2DVK* pParticleTexture = reinterpret_cast<Texture2DVK*>(pEmitter->getParticleTexture());
 
 	if (!bindDescriptorSet(pEmitter)) {
 		return;
@@ -152,11 +152,12 @@ void ParticleRendererVK::setViewport(float width, float height, float minDepth, 
 
 bool ParticleRendererVK::createCommandPoolAndBuffers()
 {
-	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
+	DeviceVK* pDevice		= m_pGraphicsContext->getDevice();
+	InstanceVK* pInstance	= m_pGraphicsContext->getInstance();
 
 	const uint32_t graphicsQueueIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, graphicsQueueIndex);
+		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, pInstance, graphicsQueueIndex);
 
 		if (!m_ppCommandPools[i]->init()) {
 			return false;
@@ -194,7 +195,7 @@ bool ParticleRendererVK::createPipelineLayout()
 	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, 4, 1);
 
 	// Particle Texture
-	m_pSampler = new SamplerVK(pDevice);
+	m_pSampler = DBG_NEW SamplerVK(pDevice);
 
 	SamplerParams samplerParams = {};
 	samplerParams.MinFilter = VkFilter::VK_FILTER_LINEAR;
@@ -269,14 +270,13 @@ bool ParticleRendererVK::createPipeline()
 	m_pPipeline->setRasterizerState(rasterizerState);
 
 	VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
-	//depthStencilState.depthTestEnable	= VK_TRUE;
-	depthStencilState.depthTestEnable	= VK_FALSE;
+	depthStencilState.depthTestEnable	= VK_TRUE;
 	depthStencilState.depthWriteEnable	= VK_FALSE;
 	depthStencilState.depthCompareOp	= VK_COMPARE_OP_LESS;
 	depthStencilState.stencilTestEnable	= VK_FALSE;
 	m_pPipeline->setDepthStencilState(depthStencilState);
 
-	m_pPipeline->finalizeGraphics(shaders, m_pRenderingHandler->getBackBufferRenderPass(), m_pPipelineLayout);
+	m_pPipeline->finalizeGraphics(shaders, m_pRenderingHandler->getParticleRenderPass(), m_pPipelineLayout);
 
 	SAFEDELETE(pVertexShader);
 	SAFEDELETE(pPixelShader);
@@ -304,7 +304,7 @@ bool ParticleRendererVK::createQuadMesh()
 	const std::array<uint32_t, 6> pQuadIndices = {0, 1, 2, 2, 3, 0};
 
 	m_pQuadMesh = DBG_NEW MeshVK(m_pGraphicsContext->getDevice());
-	return m_pQuadMesh->initFromMemory(pQuadVertices.data(), sizeof(QuadVertex), pQuadVertices.size(), pQuadIndices.data(), pQuadIndices.size());
+	return m_pQuadMesh->initFromMemory(pQuadVertices.data(), sizeof(QuadVertex), uint32_t(pQuadVertices.size()), pQuadIndices.data(), uint32_t(pQuadIndices.size()));
 }
 
 void ParticleRendererVK::createProfiler()

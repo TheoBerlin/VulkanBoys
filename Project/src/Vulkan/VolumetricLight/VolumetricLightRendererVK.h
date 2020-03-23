@@ -45,7 +45,7 @@ public:
     virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
     void onWindowResize(uint32_t width, uint32_t height);
 
-    void drawUI();
+    virtual void renderUI() override;
 
     FrameBufferVK* getLightFrameBuffer() { return m_pLightFrameBuffer; }
     VkClearValue getLightBufferClearColor() { return m_LightBufferClearColor; }

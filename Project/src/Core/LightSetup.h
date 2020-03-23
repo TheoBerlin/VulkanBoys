@@ -10,6 +10,8 @@ public:
 	LightSetup();
 	~LightSetup() = default;
 
+	void release();
+
 	void addPointLight(const PointLight& pointlight);
 	void addVolumetricPointLight(const VolumetricPointLight& pointlight);
 
