@@ -62,10 +62,12 @@ RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 	m_ppGraphicsCommandBuffers2(),
 	m_RayTracingImageViews(),
 	m_RayTracingImages(),
-	m_pComputeFinishedSemaphores(),
-	m_pGeometryFinishedSemaphores(),
+	m_ComputeFinishedSemaphore(),
 	m_pImageAvailableSemaphores(),
 	m_pRenderFinishedSemaphores(),
+	m_GeometryFinishedSemaphore(VK_NULL_HANDLE),
+	m_TransferFinishedSemaphore(VK_NULL_HANDLE),
+	m_TransferStartSemaphore(VK_NULL_HANDLE),
     m_CurrentFrame(0),
 	m_BackBufferIndex(0),
 	m_ClearColor(),
@@ -124,22 +126,32 @@ RenderingHandlerVK::~RenderingHandlerVK()
 		{
 			vkDestroySemaphore(device, m_pRenderFinishedSemaphores[i], nullptr);
 		}
-
-		if (m_pComputeFinishedSemaphores[i] != VK_NULL_HANDLE)
-		{
-			vkDestroySemaphore(device, m_pComputeFinishedSemaphores[i], nullptr);
-		}
-
-		if (m_pTransferFinishedSemaphores[i] != VK_NULL_HANDLE)
-		{
-			vkDestroySemaphore(device, m_pTransferFinishedSemaphores[i], nullptr);
-		}
     }
+
+	if (m_ComputeFinishedSemaphore != VK_NULL_HANDLE)
+	{
+		vkDestroySemaphore(device, m_ComputeFinishedSemaphore, nullptr);
+	}
+
+	if (m_GeometryFinishedSemaphore != VK_NULL_HANDLE)
+	{
+		vkDestroySemaphore(device, m_GeometryFinishedSemaphore, nullptr);
+	}
+
+	if (m_TransferFinishedSemaphore != VK_NULL_HANDLE)
+	{
+		vkDestroySemaphore(device, m_TransferFinishedSemaphore, nullptr);
+	}
+
+	if (m_TransferStartSemaphore != VK_NULL_HANDLE)
+	{
+		vkDestroySemaphore(device, m_TransferStartSemaphore, nullptr);
+	}
 }
 
 bool RenderingHandlerVK::initialize()
 {
-	m_pSkyboxRenderer = DBG_NEW SkyboxRendererVK(m_pGraphicsContext->getDevice(), m_pGraphicsContext->getInstance());
+	m_pSkyboxRenderer = DBG_NEW SkyboxRendererVK(m_pGraphicsContext->getDevice());
 	if (!m_pSkyboxRenderer->init())
 	{
 		return false;
@@ -223,11 +235,16 @@ void RenderingHandlerVK::render(IScene* pScene)
 	m_ppTransferCommandBuffers[m_CurrentFrame]->end();
 	
 	{
-		VkSemaphore transferWaitSemphores[]			= { m_pTransferStartSemaphores[0] };
-		VkPipelineStageFlags transferWaitStages[]	= { VK_PIPELINE_STAGE_TRANSFER_BIT };
+		static bool firstFrame = true;
+		
+		const uint32_t waitCount = firstFrame ? 0 : 1;
+		firstFrame = false;
 
-		VkSemaphore transferSignalSemaphores[] = { m_pTransferFinishedSemaphores[m_CurrentFrame] };
-		pDevice->executeTransfer(m_ppTransferCommandBuffers[m_CurrentFrame], transferWaitSemphores, transferWaitStages, 1, transferSignalSemaphores, 1);
+		VkSemaphore				transferWaitSemphores[]		= { m_TransferStartSemaphore };
+		VkPipelineStageFlags	transferWaitStages[]		= { VK_PIPELINE_STAGE_TRANSFER_BIT };
+		VkSemaphore				transferSignalSemaphores[]	= { m_TransferFinishedSemaphore };
+
+		pDevice->executeTransfer(m_ppTransferCommandBuffers[m_CurrentFrame], transferWaitSemphores, transferWaitStages, waitCount, transferSignalSemaphores, 1);
 	}
 
 	if (m_pParticleRenderer)
@@ -380,10 +397,10 @@ void RenderingHandlerVK::render(IScene* pScene)
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->end();
 
 	{
-		VkSemaphore geometryWaitSemphores[]			= { m_pTransferFinishedSemaphores[m_CurrentFrame] };
+		VkSemaphore geometryWaitSemphores[]			= { m_TransferFinishedSemaphore };
 		VkPipelineStageFlags geometryWaitStages[]	= { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT };
 		
-		VkSemaphore signalSemaphores[]	= { m_pGeometryFinishedSemaphores[m_CurrentFrame], m_pTransferStartSemaphores[0] };
+		VkSemaphore signalSemaphores[]	= { m_GeometryFinishedSemaphore, m_TransferStartSemaphore };
 		pDevice->executeGraphics(m_ppGraphicsCommandBuffers[m_CurrentFrame], geometryWaitSemphores, geometryWaitStages, 1, signalSemaphores, 2);
 	}
 
@@ -483,11 +500,11 @@ void RenderingHandlerVK::render(IScene* pScene)
 	// Execute commandbuffer
 	{
 		VkSemaphore graphicsSignalSemaphores[]		= { m_pRenderFinishedSemaphores[m_CurrentFrame] };
-		VkSemaphore graphicsWaitSemaphores[]		= { m_pImageAvailableSemaphores[m_CurrentFrame], m_pComputeFinishedSemaphores[m_CurrentFrame] };
+		VkSemaphore graphicsWaitSemaphores[]		= { m_pImageAvailableSemaphores[m_CurrentFrame], m_ComputeFinishedSemaphore };
 		VkPipelineStageFlags graphicswaitStages[]	= { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT , VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT };
 		
-		VkSemaphore computeSignalSemaphores[]		= { m_pComputeFinishedSemaphores[m_CurrentFrame] };
-		VkSemaphore computeWaitSemaphores[]			= { m_pGeometryFinishedSemaphores[m_CurrentFrame] };
+		VkSemaphore computeSignalSemaphores[]		= { m_ComputeFinishedSemaphore };
+		VkSemaphore computeWaitSemaphores[]			= { m_GeometryFinishedSemaphore };
 		VkPipelineStageFlags computeWaitStages[]	= { VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV };
 
 		pDevice->executeCompute(m_ppComputeCommandBuffers[m_CurrentFrame], computeWaitSemaphores, computeWaitStages, 1, computeSignalSemaphores, 1);
@@ -685,15 +702,14 @@ bool RenderingHandlerVK::createBackBuffers()
 
 bool RenderingHandlerVK::createCommandPoolAndBuffers()
 {
-    DeviceVK* pDevice		= m_pGraphicsContext->getDevice();
-	InstanceVK* pInstance	= m_pGraphicsContext->getInstance();
+    DeviceVK* pDevice = m_pGraphicsContext->getDevice();
     const uint32_t graphicsQueueFamilyIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
 	const uint32_t computeQueueFamilyIndex	= pDevice->getQueueFamilyIndices().computeFamily.value();
 	const uint32_t transferQueueFamilyIndex = pDevice->getQueueFamilyIndices().transferFamily.value();
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-        m_ppGraphicsCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, pInstance, graphicsQueueFamilyIndex);
+        m_ppGraphicsCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, graphicsQueueFamilyIndex);
 		if (!m_ppGraphicsCommandPools[i]->init())
 		{
 			return false;
@@ -718,7 +734,7 @@ bool RenderingHandlerVK::createCommandPoolAndBuffers()
 		m_ppGraphicsCommandBuffers2[i]->setName(name.c_str());
 
 		//Compute
-		m_ppComputeCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, pInstance, computeQueueFamilyIndex);
+		m_ppComputeCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, computeQueueFamilyIndex);
 		if (!m_ppComputeCommandPools[i]->init())
 		{
 			return false;
@@ -736,7 +752,7 @@ bool RenderingHandlerVK::createCommandPoolAndBuffers()
 		m_ppComputeCommandBuffers[i]->setName(name.c_str());
 
 		//Transfer
-		m_ppTransferCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, pInstance, transferQueueFamilyIndex);
+		m_ppTransferCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, transferQueueFamilyIndex);
 		if (!m_ppTransferCommandPools[i]->init())
 		{
 			return false;
@@ -753,7 +769,7 @@ bool RenderingHandlerVK::createCommandPoolAndBuffers()
 		m_ppTransferCommandBuffers[i]->setName(name.c_str());
 
 		//Secondary
-        m_ppCommandPoolsSecondary[i] = DBG_NEW CommandPoolVK(pDevice, pInstance, graphicsQueueFamilyIndex);
+        m_ppCommandPoolsSecondary[i] = DBG_NEW CommandPoolVK(pDevice, graphicsQueueFamilyIndex);
 		if (!m_ppCommandPoolsSecondary[i]->init())
 		{
 			return false;
@@ -959,11 +975,12 @@ bool RenderingHandlerVK::createSemaphores()
 	{
 		VK_CHECK_RESULT_RETURN_FALSE(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_pImageAvailableSemaphores[i]), "Failed to create semaphores for Frame");
 		VK_CHECK_RESULT_RETURN_FALSE(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_pRenderFinishedSemaphores[i]), "Failed to create semaphores for Frame");
-		VK_CHECK_RESULT_RETURN_FALSE(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_pComputeFinishedSemaphores[i]), "Failed to create semaphores for Frame");
-		VK_CHECK_RESULT_RETURN_FALSE(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_pGeometryFinishedSemaphores[i]), "Failed to create semaphores for Frame");
-		VK_CHECK_RESULT_RETURN_FALSE(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_pTransferStartSemaphores[i]), "Failed to create semaphores for Frame");
-		VK_CHECK_RESULT_RETURN_FALSE(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_pTransferFinishedSemaphores[i]), "Failed to create semaphores for Frame");
 	}
+
+	VK_CHECK_RESULT_RETURN_FALSE(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_ComputeFinishedSemaphore), "Failed to create semaphores for Frame");
+	VK_CHECK_RESULT_RETURN_FALSE(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_GeometryFinishedSemaphore), "Failed to create semaphores for Frame");
+	VK_CHECK_RESULT_RETURN_FALSE(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_TransferStartSemaphore), "Failed to create semaphores for Transfer");
+	VK_CHECK_RESULT_RETURN_FALSE(vkCreateSemaphore(device, &semaphoreInfo, nullptr, &m_TransferFinishedSemaphore), "Failed to create semaphores for Transfer");
 
 	return true;
 }

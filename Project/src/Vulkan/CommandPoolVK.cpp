@@ -3,9 +3,8 @@
 #include "DeviceVK.h"
 #include "InstanceVK.h"
 
-CommandPoolVK::CommandPoolVK(DeviceVK* pDevice, InstanceVK* pInstance, uint32_t queueFamilyIndex)
+CommandPoolVK::CommandPoolVK(DeviceVK* pDevice, uint32_t queueFamilyIndex)
 	: m_pDevice(pDevice),
-	m_pInstance(pInstance),
 	m_QueueFamilyIndex(queueFamilyIndex),
 	m_CommandPool(VK_NULL_HANDLE),
 	m_ppCommandBuffers()
@@ -61,7 +60,7 @@ CommandBufferVK* CommandPoolVK::allocateCommandBuffer(VkCommandBufferLevel buffe
 
 	D_LOG("--- CommandPool: Vulkan CommandBuffer allocated successfully");
 	
-	CommandBufferVK* pCommandBuffer = DBG_NEW CommandBufferVK(m_pDevice, m_pInstance, commandBuffer);
+	CommandBufferVK* pCommandBuffer = DBG_NEW CommandBufferVK(m_pDevice, commandBuffer);
 	pCommandBuffer->finalize();
 
 	m_ppCommandBuffers.emplace_back(pCommandBuffer);
@@ -100,17 +99,5 @@ void CommandPoolVK::reset()
 
 void CommandPoolVK::setName(const char* pName)
 {
-	if (pName)
-	{
-		if (m_pInstance->vkSetDebugUtilsObjectNameEXT)
-		{
-			VkDebugUtilsObjectNameInfoEXT info = {};
-			info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-			info.pNext = nullptr;
-			info.objectType = VK_OBJECT_TYPE_COMMAND_POOL;
-			info.objectHandle = (uint64_t)m_CommandPool;
-			info.pObjectName = pName;
-			m_pInstance->vkSetDebugUtilsObjectNameEXT(m_pDevice->getDevice(), &info);
-		}
-	}
+	m_pDevice->setVulkanObjectName(pName, (uint64_t)m_CommandPool, VK_OBJECT_TYPE_COMMAND_POOL);
 }

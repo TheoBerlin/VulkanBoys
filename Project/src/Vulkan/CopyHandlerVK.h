@@ -15,7 +15,7 @@ class CommandBufferVK;
 class CopyHandlerVK
 {
 public:
-	CopyHandlerVK(DeviceVK* pDevice, InstanceVK* pInstance);
+	CopyHandlerVK(DeviceVK* pDevice);
 	~CopyHandlerVK();
 
 	bool init();
@@ -38,7 +38,6 @@ private:
 
 private:
 	DeviceVK* m_pDevice;
-	InstanceVK* m_pInstance;
 	CommandPoolVK* m_pTransferPool[MAX_COMMAND_BUFFERS];
 	CommandPoolVK* m_pGraphicsPool[MAX_COMMAND_BUFFERS];
 	CommandBufferVK* m_pTransferBuffers[MAX_COMMAND_BUFFERS];
