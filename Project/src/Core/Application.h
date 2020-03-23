@@ -1,7 +1,6 @@
 #pragma once
 #include "Camera.h"
 #include "Material.h"
-#include "LightSetup.h"
 
 #include "Common/CommonEventHandler.h"
 #include "Common/ParticleEmitterHandler.h"
@@ -74,7 +73,6 @@ private:
 
 private:
 	Camera m_Camera;
-	LightSetup m_LightSetup;
 	IWindow* m_pWindow;
 	IGraphicsContext* m_pContext;
 	RenderingHandler* m_pRenderingHandler;

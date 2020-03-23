@@ -57,7 +57,7 @@ class SceneVK : public IScene
 		uint32_t Flags : 8;
 		uint64_t AccelerationStructureHandle;
 	};
-	
+
 	struct BottomLevelAccelerationStructure
 	{
 		VkDeviceMemory Memory = VK_NULL_HANDLE;
@@ -83,7 +83,7 @@ class SceneVK : public IScene
 		float AO;
 		float Padding;
 	};
-	
+
 public:
 	DECL_NO_COPY(SceneVK);
 
@@ -97,14 +97,13 @@ public:
 	virtual void updateMaterials() override;
 
 	virtual void updateCamera(const Camera& camera) override;
-	virtual void updateLightSetup(const LightSetup& lightsetup) override;
 
 	virtual uint32_t submitGraphicsObject(const IMesh* pMesh, const Material* pMaterial, const glm::mat4& transform = glm::mat4(1.0f), uint8_t customMask = 0x80) override;
 	virtual void updateGraphicsObjectTransform(uint32_t index, const glm::mat4& transform) override;
 
 	const Camera& getCamera() { return m_Camera; }
 
-	const LightSetup& getLightSetup() { return m_LightSetup; }
+	virtual LightSetup& getLightSetup() override { return m_LightSetup; }
 
 	const std::vector<GraphicsObjectVK>& getGraphicsObjects() { return m_GraphicsObjects; }
 
@@ -124,7 +123,7 @@ public:
 	const TopLevelAccelerationStructure& getTLAS() { return m_TopLevelAccelerationStructure; }
 
 	ProfilerVK* getProfiler() { return m_pProfiler; }
-	
+
 	//Debug
 	virtual void renderUI() override;
 	virtual void updateDebugParameters() override;
