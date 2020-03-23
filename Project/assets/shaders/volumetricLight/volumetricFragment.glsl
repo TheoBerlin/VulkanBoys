@@ -32,15 +32,19 @@ layout (binding = 2) uniform CameraMatrices
 
 layout(binding = 3) uniform sampler2D u_DepthBuffer;
 
-float sphereFrontIntersect(vec3 rayOrigin, vec3 rayDir, vec3 sphereCenter, float radius)
+layout(location = 0) in vec3 in_WorldPosition;
+
+layout(location = 0) out vec4 outColor;
+
+vec3 getSphereFrontIntersection(vec3 rayDir, vec3 sphereCenter, float radius)
 {
-	// Assuming that the ray's origin is on the sphere's rear edge, facing outwards, away from the camera
-	vec3 toCenter = sphereCenter - rayOrigin;
+	// in_WorldPosition is on the sphere's rear edge, and the ray facing outwards, away from the camera
+	vec3 toCenter = sphereCenter - in_WorldPosition;
 
 	// t: coefficient that brings ray to its closest point to the sphere center
 	float t = dot(rayDir, toCenter);
 
-	return t * 2.0;
+	return in_WorldPosition + rayDir * (t * 2.0);
 }
 
 // Either a point on the rear edge of the sphere or on geometry intersecting the sphere
@@ -57,14 +61,16 @@ vec3 getRayDestination()
 	return worldPos.xyz;
 }
 
-vec3 getRayOrigin(vec3 rayOrigin, vec3 rayDir, vec3 sphereCenter, float radius)
+vec3 getRayOrigin(vec3 rayDir)
 {
 	vec3 camPos = g_Camera.Position.xyz;
+	vec3 lightPos = g_Light.lightPosition.xyz;
+	float lightRadius = g_Light.lightRadius;
 
-	if (length(camPos - sphereCenter) < radius) {
+	if (length(camPos - lightPos) < lightRadius) {
 		return camPos;
 	} else {
-		return rayOrigin + rayDir * sphereFrontIntersect(rayOrigin, rayDir, sphereCenter, radius);
+		return getSphereFrontIntersection(rayDir, lightPos, lightRadius);
 	}
 }
 
@@ -94,15 +100,11 @@ vec3 calculateLight(vec3 position, vec3 rayDir)
 	return diffuse * phaseFunction(rayDir, posToLight / lightDistance) * g_Light.lightScatterAmount;
 }
 
-layout(location = 0) in vec3 in_WorldPosition;
-
-layout(location = 0) out vec4 outColor;
-
 void main()
 {
 	vec3 rayDestination = getRayDestination();
     vec3 rayDir = normalize(rayDestination - g_Camera.Position.xyz);
-	vec3 rayOrigin = getRayOrigin(rayDestination, rayDir, g_Light.lightPosition.xyz, g_Light.lightRadius);
+	vec3 rayOrigin = getRayOrigin(rayDir);
 
 	// Ray-march section
 	vec3 raymarchStep = rayDir * length(rayDestination - rayOrigin) / g_PushConstants.raymarchSteps;
