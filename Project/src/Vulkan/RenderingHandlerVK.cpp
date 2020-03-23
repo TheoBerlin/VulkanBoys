@@ -498,6 +498,10 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 	}
 
 	createBackBuffers();
+
+	if (m_pVolumetricLightRenderer) {
+		m_pVolumetricLightRenderer->onWindowResize(width, height);
+	}
 }
 
 void RenderingHandlerVK::onSceneUpdated(IScene* pScene)

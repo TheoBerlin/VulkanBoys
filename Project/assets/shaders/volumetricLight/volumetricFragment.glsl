@@ -14,8 +14,8 @@ layout (binding = 1) uniform VolumetricPointLight
 	mat4 worldMatrix;
 
 	// Light data
-	vec4 lightPosition, lightColor;
-	float lightRadius, lightScatterAmount;
+	vec4 position, color;
+	float radius, scatterAmount;
 
 	// Determines the portion of forward scattered light
 	float particleG;
@@ -25,6 +25,8 @@ layout (binding = 2) uniform CameraMatrices
 {
 	mat4 Projection;
 	mat4 View;
+	mat4 LastProjection;
+	mat4 LastView;
 	mat4 InvView;
 	mat4 InvProjection;
 	vec4 Position;
@@ -64,13 +66,13 @@ vec3 getRayDestination()
 vec3 getRayOrigin(vec3 rayDir)
 {
 	vec3 camPos = g_Camera.Position.xyz;
-	vec3 lightPos = g_Light.lightPosition.xyz;
-	float lightRadius = g_Light.lightRadius;
+	vec3 lightPos = g_Light.position.xyz;
+	float radius = g_Light.radius;
 
-	if (length(camPos - lightPos) < lightRadius) {
+	if (length(camPos - lightPos) < radius) {
 		return camPos;
 	} else {
-		return getSphereFrontIntersection(rayDir, lightPos, lightRadius);
+		return getSphereFrontIntersection(rayDir, lightPos, radius);
 	}
 }
 
@@ -88,16 +90,16 @@ float phaseFunction(vec3 rayDir, vec3 posToLightDir)
 
 vec3 calculateLight(vec3 position, vec3 rayDir)
 {
-	vec3 posToLight = g_Light.lightPosition.xyz - position;
+	vec3 posToLight = g_Light.position.xyz - position;
 	float lightDistance = length(posToLight);
 
 	// Diffuse light
 	float attenuation = 1.0 / (lightDistance * lightDistance);
 
 	// The normal is pointing right at the light
-	vec3 diffuse = g_Light.lightColor.xyz * attenuation;
+	vec3 diffuse = g_Light.color.xyz * attenuation;
 
-	return diffuse * phaseFunction(rayDir, posToLight / lightDistance) * g_Light.lightScatterAmount;
+	return diffuse * phaseFunction(rayDir, posToLight / lightDistance) * g_Light.scatterAmount;
 }
 
 void main()
