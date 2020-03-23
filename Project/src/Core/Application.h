@@ -20,6 +20,20 @@ class RenderingHandler;
 
 class Application : public CommonEventHandler
 {
+	struct TestParameters
+	{
+		bool Running = false;
+		int CurrentRound = 0;
+		float FrameTimeSum = 0.0f;
+		float FrameCount = 0.0f;
+		float AverageFrametime = 0.0f;
+		float BestFrametime = 0.0f;
+		float WorstFrametime = 0.0f;
+
+		char TestName[256] = "";
+		int NumRounds = 1;
+	};
+
 public:
 	Application();
 	~Application();
@@ -47,6 +61,9 @@ private:
 	void update(double dt);
 	void renderUI(double dt);
 	void render(double dt);
+
+	void testFinished();
+	void sanitizeString(char string[], uint32_t numCharacters);
 
 private:
 	Camera m_Camera;
@@ -102,6 +119,9 @@ private:
 	LoopingUniformCRSpline<glm::vec3, float>* m_CameraDirectionSpline;
 	float m_CameraSplineTimer;
 	bool m_CameraSplineEnabled;
+
+	TestParameters m_TestParameters;
+	bool m_KeyInputEnabled;
 
 	static Application* s_pInstance;
 };
