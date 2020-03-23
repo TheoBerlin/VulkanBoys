@@ -20,6 +20,13 @@ class RenderingHandler;
 
 class Application : public CommonEventHandler
 {
+	struct ApplicationParameters
+	{
+		bool IsDirty = false;
+
+		int RayTracingResolutionDenominator = 1;
+	};
+
 	struct TestParameters
 	{
 		bool Running = false;
@@ -120,6 +127,7 @@ private:
 	float m_CameraSplineTimer;
 	bool m_CameraSplineEnabled;
 
+	ApplicationParameters m_ApplicationParameters;
 	TestParameters m_TestParameters;
 	bool m_KeyInputEnabled;
 

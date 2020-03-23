@@ -42,7 +42,7 @@
 
 Application* Application::s_pInstance = nullptr;
 
-constexpr bool FORCE_RAY_TRACING_OFF	= true;
+constexpr bool FORCE_RAY_TRACING_OFF	= false;
 constexpr bool HIGH_RESOLUTION_SPHERE	= false;
 constexpr float CAMERA_PAN_LENGTH		= 10.0f;
 
@@ -668,6 +668,12 @@ void Application::renderUI(double dt)
 {
 	m_pImgui->begin(dt);
 
+	if (m_ApplicationParameters.IsDirty)
+	{
+		m_pRenderingHandler->setRayTracingResolutionDenominator(m_ApplicationParameters.RayTracingResolutionDenominator);
+		m_ApplicationParameters.IsDirty = false;
+	}
+
 	if (!m_TestParameters.Running)
 	{
 		// Color picker for mesh
@@ -825,13 +831,14 @@ void Application::renderUI(double dt)
 
 	// Draw Application UI
 	ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);
-	if (ImGui::Begin("Test", NULL))
+	if (ImGui::Begin("Application", NULL))
 	{
 		if (!m_TestParameters.Running)
 		{
 			//ImGui::Checkbox("Camera Spline Enabled", &m_CameraSplineEnabled);
 			//ImGui::SliderFloat("Camera Timer", &m_CameraSplineTimer, 0.0f, m_CameraPositionSpline->getMaxT());
 
+			//Input Parameters
 			if (ImGui::Button("Toggle Key Input"))
 			{
 				m_KeyInputEnabled = !m_KeyInputEnabled;
@@ -842,6 +849,15 @@ void Application::renderUI(double dt)
 			else
 				ImGui::Text("Key Input Disabled");
 
+			ImGui::NewLine();
+
+			//Graphical Parameters
+
+			m_ApplicationParameters.IsDirty = m_ApplicationParameters.IsDirty || ImGui::SliderInt("Ray Tracing Res. Denom.", &m_ApplicationParameters.RayTracingResolutionDenominator, 1, 8);
+
+			ImGui::NewLine();
+
+			//Test Parameters
 			ImGui::InputText("Test Name", m_TestParameters.TestName, 256);
 			ImGui::SliderInt("Number of Test Rounds", &m_TestParameters.NumRounds, 1, 5);
 

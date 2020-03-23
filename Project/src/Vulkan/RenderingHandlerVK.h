@@ -54,6 +54,8 @@ public:
     virtual void onWindowResize(uint32_t width, uint32_t height) override;
 	virtual void onSceneUpdated(IScene* pScene) override;
 
+	virtual void setRayTracingResolutionDenominator(uint32_t denom) override;
+
     uint32_t                getCurrentFrameIndex() const                { return m_CurrentFrame; }
     FrameBufferVK* const*   getBackBuffers() const                      { return m_ppBackbuffers; }
 	RenderPassVK*			getGeometryRenderPass() const				{ return m_pGeometryRenderPass; }
@@ -128,6 +130,7 @@ private:
     BufferVK* m_pCameraBuffer;
 
 	//Render Results
+	uint32_t m_RayTracingResolutionDenominator;
 
 	union
 	{
