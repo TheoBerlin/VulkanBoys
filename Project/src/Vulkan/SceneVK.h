@@ -162,6 +162,7 @@ private:
 	Timestamp m_TimestampBuildAccelStruct; //Todo: create more of these
 
 	std::vector<MeshVK*> m_SceneMeshes;
+	std::unordered_map<std::string, ITexture2D*> m_SceneTextures;
 	std::vector<Material*> m_SceneMaterials;
 
 	Camera m_Camera;

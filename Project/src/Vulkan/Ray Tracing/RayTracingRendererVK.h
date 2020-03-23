@@ -83,8 +83,6 @@ public:
 	virtual void renderUI() override;
 
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
-
-	void setResolution(uint32_t width, uint32_t height);
 	
 	void onWindowResize(uint32_t width, uint32_t height);
 

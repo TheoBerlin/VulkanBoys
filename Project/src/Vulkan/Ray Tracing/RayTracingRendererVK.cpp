@@ -37,6 +37,7 @@ RayTracingRendererVK::RayTracingRendererVK(GraphicsContextVK* pContext, Renderin
 	m_pContext(pContext),
 	m_pRenderingHandler(pRenderingHandler),
 	m_pRayTracingPipeline(nullptr),
+	m_pRayTracingPipelineLayout(nullptr),
 	m_pRayTracingDescriptorSet(nullptr),
 	m_pRayTracingDescriptorPool(nullptr),
 	m_pRayTracingDescriptorSetLayout(nullptr),
@@ -49,6 +50,8 @@ RayTracingRendererVK::RayTracingRendererVK(GraphicsContextVK* pContext, Renderin
 	m_pBlueNoise(nullptr),
 	m_pCameraBuffer(nullptr),
 	m_pLightsBuffer(nullptr),
+	m_pReflectionFinalImage(nullptr),
+	m_pReflectionFinalImageView(nullptr),
 	m_pReflectionIntermediateImage(nullptr),
 	m_pReflectionIntermediateImageView(nullptr),
 	m_pReflectionTemporalAccumulationImage(nullptr),
@@ -57,7 +60,14 @@ RayTracingRendererVK::RayTracingRendererVK(GraphicsContextVK* pContext, Renderin
 	m_pLinearSampler(nullptr),
 	m_RaysWidth(0),
 	m_RaysHeight(0),
-	m_NumBlurImagePixels(0)
+	m_NumBlurImagePixels(0),
+	m_WorkGroupSize(),
+	m_pHorizontalExtraBlurPassDescriptorSet(nullptr),
+	m_pHorizontalInitialBlurPassDescriptorSet(nullptr),
+	m_pVerticalBlurPassDescriptorSet(nullptr),
+	m_ppComputeCommandBuffers(),
+	m_ppComputeCommandPools(),
+	m_pProfiler(nullptr)
 {
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
@@ -137,11 +147,11 @@ bool RayTracingRendererVK::init()
 	return true;
 }
 
-void RayTracingRendererVK::beginFrame(IScene* pScene)
+void RayTracingRendererVK::beginFrame(IScene*)
 {
 }
 
-void RayTracingRendererVK::endFrame(IScene* pScene)
+void RayTracingRendererVK::endFrame(IScene*)
 {
 }
 
@@ -234,7 +244,7 @@ void RayTracingRendererVK::render(IScene* pScene)
 		if (m_CPURayTracingParameters.NumBlurPasses > 1)
 		{
 
-			for (uint32_t blurPass = 1; blurPass < m_CPURayTracingParameters.NumBlurPasses; blurPass++)
+			for (uint32_t blurPass = 1; blurPass < (uint32_t)m_CPURayTracingParameters.NumBlurPasses; blurPass++)
 			{
 				//Horizontal Blur
 				{
@@ -282,12 +292,12 @@ void RayTracingRendererVK::renderUI()
 	ImGui::SliderInt("Num Spatial Filter Passes", &m_CPURayTracingParameters.NumBlurPasses, 1, 16);
 }
 
-void RayTracingRendererVK::setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY)
+void RayTracingRendererVK::setViewport(float, float, float, float, float, float)
 {
 	
 }
 
-void RayTracingRendererVK::setResolution(uint32_t width, uint32_t height)
+void RayTracingRendererVK::onWindowResize(uint32_t width, uint32_t height)
 {
 	if (m_RaysWidth != width || m_RaysHeight != height)
 	{
@@ -355,11 +365,7 @@ void RayTracingRendererVK::setResolution(uint32_t width, uint32_t height)
 	}
 }
 
-void RayTracingRendererVK::onWindowResize(uint32_t width, uint32_t height)
-{
-}
-
-void RayTracingRendererVK::setRayTracingResultTextures(ImageVK* pRadianceImage, ImageViewVK* pRadianceImageView, ImageVK* pGlossyImage, ImageViewVK* pGlossyImageView, uint32_t width, uint32_t height)
+void RayTracingRendererVK::setRayTracingResultTextures(ImageVK*, ImageViewVK* pRadianceImageView, ImageVK* pGlossyImage, ImageViewVK* pGlossyImageView, uint32_t width, uint32_t height)
 {
 	m_NumBlurImagePixels = width * height;
 	m_pRayTracingDescriptorSet->writeStorageImageDescriptor(pRadianceImageView, RT_RADIANCE_IMAGE_BINDING);

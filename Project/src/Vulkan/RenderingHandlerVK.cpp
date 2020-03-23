@@ -29,9 +29,6 @@
 
 #include "Ray Tracing/RayTracingRendererVK.h"
 
-
-constexpr uint32_t RAY_TRACING_RESOLUTION_DENOMINATOR = 1;
-
 #define MULTITHREADED 1
 
 RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
@@ -39,6 +36,8 @@ RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 	m_pMeshRenderer(nullptr),
 	m_pRayTracer(nullptr),
 	m_pParticleRenderer(nullptr),
+	m_pImGuiRenderer(nullptr),
+	m_pSkyboxRenderer(nullptr),
 	m_pRadianceImage(nullptr),
 	m_pRadianceImageView(nullptr),
 	m_pGlossyImage(nullptr),
@@ -46,16 +45,34 @@ RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 	m_pGBuffer(nullptr),
 	m_pGeometryRenderPass(nullptr),
 	m_pBackBufferRenderPass(nullptr),
+	m_pParticleRenderPass(nullptr),
 	m_pUIRenderPass(nullptr),
 	m_pCameraMatricesBuffer(nullptr),
 	m_pCameraDirectionsBuffer(nullptr),
 	m_pCameraBuffer(nullptr),
+	m_pPipeline(nullptr),
+	m_ppBackbuffers(),
+	m_ppBackBuffersWithDepth(),
+	m_ppCommandPoolsSecondary(),
+	m_ppCommandBuffersSecondary(),
+	m_ppComputeCommandPools(),
+	m_ppComputeCommandBuffers(),
+	m_ppGraphicsCommandPools(),
+	m_ppGraphicsCommandBuffers(),
+	m_ppGraphicsCommandBuffers2(),
+	m_RayTracingImageViews(),
+	m_RayTracingImages(),
+	m_ComputeFinishedSemaphores(),
+	m_GeometryFinishedSemaphores(),
+	m_ImageAvailableSemaphores(),
+	m_RenderFinishedSemaphores(),
     m_CurrentFrame(0),
 	m_BackBufferIndex(0),
 	m_ClearColor(),
 	m_ClearDepth(),
 	m_Viewport(),
-	m_ScissorRect()
+	m_ScissorRect(),
+	m_RayTracingResolutionDenominator(1)
 {
 	m_ClearDepth.depthStencil.depth = 1.0f;
 	m_ClearDepth.depthStencil.stencil = 0;
@@ -501,7 +518,7 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 
 	if (m_pRayTracer)
 	{
-		m_pRayTracer->setResolution(width / RAY_TRACING_RESOLUTION_DENOMINATOR, height / RAY_TRACING_RESOLUTION_DENOMINATOR);
+		m_pRayTracer->onWindowResize(width / m_RayTracingResolutionDenominator, height / m_RayTracingResolutionDenominator);
 		m_pRayTracer->setGBufferTextures(m_pGBuffer);
 		m_pRayTracer->setRayTracingResultTextures(m_pRadianceImage, m_pRadianceImageView, m_pGlossyImage, m_pGlossyImageView, m_pGraphicsContext->getSwapChain()->getExtent().width, m_pGraphicsContext->getSwapChain()->getExtent().height);
 	}
@@ -521,6 +538,27 @@ void RenderingHandlerVK::onSceneUpdated(IScene* pScene)
 	if (m_pRayTracer)
 	{
 		m_pRayTracer->setSceneData(pScene);
+	}
+}
+
+void RenderingHandlerVK::setRayTracingResolutionDenominator(uint32_t denom)
+{
+	m_RayTracingResolutionDenominator = denom;
+	m_pGraphicsContext->getDevice()->wait();
+
+	VkExtent2D extent = m_pGBuffer->getExtent();
+
+	createRayTracingRenderImages(extent.width, extent.height);
+
+	if (m_pMeshRenderer)
+	{
+		m_pMeshRenderer->setRayTracingResultImages(m_pRadianceImageView, m_pGlossyImageView);
+	}
+
+	if (m_pRayTracer)
+	{
+		m_pRayTracer->onWindowResize(extent.width / m_RayTracingResolutionDenominator, extent.height / m_RayTracingResolutionDenominator);
+		m_pRayTracer->setRayTracingResultTextures(m_pRadianceImage, m_pRadianceImageView, m_pGlossyImage, m_pGlossyImageView, m_pGraphicsContext->getSwapChain()->getExtent().width, m_pGraphicsContext->getSwapChain()->getExtent().height);
 	}
 }
 
@@ -1055,8 +1093,8 @@ bool RenderingHandlerVK::createRayTracingRenderImages(uint32_t width, uint32_t h
 	ImageParams imageParams = {};
 	imageParams.Type = VK_IMAGE_TYPE_2D;
 	imageParams.Format = VK_FORMAT_R16G16B16A16_SFLOAT; //Todo: What format should this be?
-	imageParams.Extent.width = width / RAY_TRACING_RESOLUTION_DENOMINATOR;
-	imageParams.Extent.height = height / RAY_TRACING_RESOLUTION_DENOMINATOR;
+	imageParams.Extent.width = width / m_RayTracingResolutionDenominator;
+	imageParams.Extent.height = height / m_RayTracingResolutionDenominator;
 	imageParams.Extent.depth = 1;
 	imageParams.MipLevels = 1;
 	imageParams.ArrayLayers = 1;
