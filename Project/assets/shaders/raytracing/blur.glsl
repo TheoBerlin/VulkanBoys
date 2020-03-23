@@ -32,7 +32,7 @@ void main()
 
     vec4 centerColor = texture(u_InputImage, texCoords);
 
-    if (centerColor.a < u_PushConstants.MaxTemporalFrames * 0.5f)
+    if (centerColor.a < u_PushConstants.MaxTemporalFrames)
     {
         //float roughness = texture(u_Normal_Roughness, texCoords).a;
         //float depth = texture(u_Depth, texCoords).r;

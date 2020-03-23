@@ -268,7 +268,7 @@ void main()
   
 	if(temporal_sample_valid)
 	{
-		float hist_len_spec = clamp(temporal_color_histlen_spec.a + 1.0f, 1.0f, u_PushConstants.MaxTemporalFrames);
+		float hist_len_spec = clamp(temporal_color_histlen_spec.a + 1.0f, 1.0f, u_PushConstants.MaxTemporalFrames - 1.0f);
 
 		// Compute the blending weights based on history length, so that the filter
 		// converges faster. I.e. the first frame has weight of 1.0, the second frame 1/2, third 1/3 and so on.

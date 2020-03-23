@@ -223,7 +223,7 @@ void RenderingHandlerVK::render(IScene* pScene)
 	m_ppTransferCommandBuffers[m_CurrentFrame]->end();
 	
 	{
-		VkSemaphore transferWaitSemphores[]			= { m_pTransferStartSemaphores[m_CurrentFrame] };
+		VkSemaphore transferWaitSemphores[]			= { m_pTransferStartSemaphores[0] };
 		VkPipelineStageFlags transferWaitStages[]	= { VK_PIPELINE_STAGE_TRANSFER_BIT };
 
 		VkSemaphore transferSignalSemaphores[] = { m_pTransferFinishedSemaphores[m_CurrentFrame] };
@@ -383,7 +383,7 @@ void RenderingHandlerVK::render(IScene* pScene)
 		VkSemaphore geometryWaitSemphores[]			= { m_pTransferFinishedSemaphores[m_CurrentFrame] };
 		VkPipelineStageFlags geometryWaitStages[]	= { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT };
 		
-		VkSemaphore signalSemaphores[]	= { m_pGeometryFinishedSemaphores[m_CurrentFrame], m_pTransferStartSemaphores[m_CurrentFrame] };
+		VkSemaphore signalSemaphores[]	= { m_pGeometryFinishedSemaphores[m_CurrentFrame], m_pTransferStartSemaphores[0] };
 		pDevice->executeGraphics(m_ppGraphicsCommandBuffers[m_CurrentFrame], geometryWaitSemphores, geometryWaitStages, 1, signalSemaphores, 2);
 	}
 
