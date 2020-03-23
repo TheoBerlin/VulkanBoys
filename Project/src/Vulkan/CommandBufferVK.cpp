@@ -4,9 +4,8 @@
 
 #include "Ray Tracing/ShaderBindingTableVK.h"
 
-CommandBufferVK::CommandBufferVK(DeviceVK* pDevice, InstanceVK* pInstance, VkCommandBuffer commandBuffer)
+CommandBufferVK::CommandBufferVK(DeviceVK* pDevice, VkCommandBuffer commandBuffer)
 	: m_pDevice(pDevice),
-	m_pInstance(pInstance),
 	m_pStagingBuffer(nullptr),
 	m_pStagingTexture(nullptr),
 	m_CommandBuffer(commandBuffer),
@@ -470,17 +469,5 @@ void CommandBufferVK::traceRays(ShaderBindingTableVK* pShaderBindingTable, uint3
 
 void CommandBufferVK::setName(const char* pName)
 {
-	if (pName)
-	{
-		if (m_pInstance->vkSetDebugUtilsObjectNameEXT)
-		{
-			VkDebugUtilsObjectNameInfoEXT info = {};
-			info.sType			= VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-			info.pNext			= nullptr;
-			info.objectType		= VK_OBJECT_TYPE_COMMAND_BUFFER;
-			info.objectHandle	= (uint64_t)m_CommandBuffer;
-			info.pObjectName	= pName;
-			m_pInstance->vkSetDebugUtilsObjectNameEXT(m_pDevice->getDevice(), &info);
-		}
-	}
+	m_pDevice->setVulkanObjectName(pName, (uint64_t)m_CommandBuffer, VK_OBJECT_TYPE_COMMAND_BUFFER);
 }

@@ -12,9 +12,8 @@
 	#undef max
 #endif
 
-CopyHandlerVK::CopyHandlerVK(DeviceVK* pDevice, InstanceVK* pInstance)
+CopyHandlerVK::CopyHandlerVK(DeviceVK* pDevice)
 	: m_pDevice(pDevice),
-	m_pInstance(pInstance),
 	m_pTransferPool(),
 	m_pGraphicsPool(),
 	m_pTransferBuffers(),
@@ -39,13 +38,13 @@ bool CopyHandlerVK::init()
 {
 	for (uint32_t i = 0; i < MAX_COMMAND_BUFFERS; i++)
 	{
-		m_pGraphicsPool[i] = DBG_NEW CommandPoolVK(m_pDevice, m_pInstance, m_pDevice->getQueueFamilyIndices().graphicsFamily.value());
+		m_pGraphicsPool[i] = DBG_NEW CommandPoolVK(m_pDevice, m_pDevice->getQueueFamilyIndices().graphicsFamily.value());
 		if (!m_pGraphicsPool[i]->init())
 		{
 			return false;
 		}
 
-		m_pTransferPool[i] = DBG_NEW CommandPoolVK(m_pDevice, m_pInstance, m_pDevice->getQueueFamilyIndices().transferFamily.value());
+		m_pTransferPool[i] = DBG_NEW CommandPoolVK(m_pDevice, m_pDevice->getQueueFamilyIndices().transferFamily.value());
 		if (!m_pTransferPool[i]->init())
 		{
 			return false;

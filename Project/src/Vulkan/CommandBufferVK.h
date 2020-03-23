@@ -176,7 +176,7 @@ public:
 	FORCEINLINE VkCommandBuffer getCommandBuffer() const	{ return m_CommandBuffer; }
 
 private:
-	CommandBufferVK(DeviceVK* pDevice, InstanceVK* pInstance, VkCommandBuffer commandBuffer);
+	CommandBufferVK(DeviceVK* pDevice, VkCommandBuffer commandBuffer);
 	~CommandBufferVK();
 
 	bool finalize();
@@ -185,7 +185,6 @@ private:
 	std::vector<VkBuffer> m_VertexBuffers;
 	std::vector<VkDescriptorSet> m_DescriptorSets;
 	DeviceVK* m_pDevice;
-	InstanceVK* m_pInstance;
 	StagingBufferVK* m_pStagingBuffer;
 	StagingBufferVK* m_pStagingTexture;
 	VkFence m_Fence;

@@ -390,13 +390,12 @@ void ParticleEmitterHandlerVK::endUpdateFrame()
 bool ParticleEmitterHandlerVK::createCommandPoolAndBuffers()
 {
     GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
-    DeviceVK* pDevice		= pGraphicsContext->getDevice();
-	InstanceVK* pInstance	= pGraphicsContext->getInstance();
+    DeviceVK* pDevice = pGraphicsContext->getDevice();
 
 	const QueueFamilyIndices& queueFamilyIndices = pDevice->getQueueFamilyIndices();
 	const uint32_t computeQueueIndex = queueFamilyIndices.computeFamily.value();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, pInstance, computeQueueIndex);
+		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, computeQueueIndex);
 
 		if (!m_ppCommandPools[i]->init()) {
 			return false;
@@ -408,7 +407,7 @@ bool ParticleEmitterHandlerVK::createCommandPoolAndBuffers()
 		}
 	}
 
-	m_pCommandPoolGraphics = DBG_NEW CommandPoolVK(pDevice, pInstance, queueFamilyIndices.graphicsFamily.value());
+	m_pCommandPoolGraphics = DBG_NEW CommandPoolVK(pDevice, queueFamilyIndices.graphicsFamily.value());
 	return m_pCommandPoolGraphics->init();
 }
 

@@ -98,11 +98,11 @@ private:
     FrameBufferVK*  m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
     FrameBufferVK*  m_ppBackBuffersWithDepth[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore     m_pImageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
-    VkSemaphore     m_pGeometryFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
     VkSemaphore     m_pRenderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
-    VkSemaphore     m_pComputeFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
-    VkSemaphore     m_pTransferStartSemaphores[MAX_FRAMES_IN_FLIGHT];
-    VkSemaphore     m_pTransferFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
+    VkSemaphore     m_ComputeFinishedSemaphore;
+    VkSemaphore     m_GeometryFinishedSemaphore;
+    VkSemaphore     m_TransferStartSemaphore;
+    VkSemaphore     m_TransferFinishedSemaphore;
 
     CommandPoolVK*      m_ppGraphicsCommandPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK*    m_ppGraphicsCommandBuffers[MAX_FRAMES_IN_FLIGHT];
