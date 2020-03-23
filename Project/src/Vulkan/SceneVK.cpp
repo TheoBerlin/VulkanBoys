@@ -333,7 +333,7 @@ bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
 			v2.calculateTangent(v0, v1);
 		}
 
-		MeshVK* pMesh = reinterpret_cast<MeshVK*>(m_pContext->createMesh()); 
+		MeshVK* pMesh = reinterpret_cast<MeshVK*>(m_pContext->createMesh());
 		pMesh->initFromMemory(vertices.data(), sizeof(Vertex), uint32_t(vertices.size()), indices.data(), uint32_t(indices.size()));
 		m_SceneMeshes[s]  = pMesh;
 
@@ -354,7 +354,7 @@ bool SceneVK::finalize()
 	m_pTempCommandBuffer = m_pTempCommandPool->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
 	createProfiler();
-	
+
 	if (!createDefaultTexturesAndSamplers())
 	{
 		LOG("--- SceneVK: Failed to create Default Textures and/or Samplers!");
@@ -394,7 +394,7 @@ bool SceneVK::finalize()
 		}
 	}
 
-	updateMaterials(); 
+	updateMaterials();
 	updateTransformBuffer();
 
 	LOG("--- SceneVK: Successfully initialized Acceleration Table!");
@@ -521,16 +521,11 @@ void SceneVK::updateCamera(const Camera& camera)
 	m_Camera = camera;
 }
 
-void SceneVK::updateLightSetup(const LightSetup& lightsetup)
-{
-	m_LightSetup = lightsetup;
-}
-
 uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMaterial, const glm::mat4& transform, uint8_t customMask)
 {
 	const MeshVK* pVulkanMesh = reinterpret_cast<const MeshVK*>(pMesh);
 
-	uint32_t materialIndex = 0; 
+	uint32_t materialIndex = 0;
 
 	if (m_RayTracingEnabled)
 	{
@@ -627,7 +622,7 @@ uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMate
 
 	m_GraphicsObjects.push_back({ pVulkanMesh, pMaterial, materialIndex });
 	m_SceneTransforms.push_back({ transform, transform });
-	
+
 	return uint32_t(m_GraphicsObjects.size()) - 1u;
 }
 
@@ -1258,11 +1253,11 @@ bool SceneVK::createCombinedGraphicsObjectData()
 VkDeviceSize SceneVK::findMaxMemReqBLAS()
 {
 	VkDeviceSize maxSize = 0;
-	
+
 	VkAccelerationStructureMemoryRequirementsInfoNV memoryRequirementsInfo = {};
 	memoryRequirementsInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV;
 	memoryRequirementsInfo.type = VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_BUILD_SCRATCH_NV;
-	
+
 	//Todo: Do we need to loop through finalized BLASs here as well?
 	for (auto& bottomLevelAccelerationStructurePerMesh : m_NewBottomLevelAccelerationStructures)
 	{
@@ -1307,9 +1302,34 @@ uint32_t SceneVK::registerMaterial(const Material* pMaterial)
 
 void SceneVK::renderUI()
 {
-	m_DebugParametersDirty = m_DebugParametersDirty || ImGui::SliderFloat("Roughness Scale", &m_SceneParameters.RoughnessScale, 0.01f, 10.0f);
-	m_DebugParametersDirty = m_DebugParametersDirty || ImGui::SliderFloat("Metallic Scale", &m_SceneParameters.MetallicScale, 0.01f, 10.0f);
-	m_DebugParametersDirty = m_DebugParametersDirty || ImGui::SliderFloat("Ambient Occlusion Scale", &m_SceneParameters.AOScale, 0.01f, 1.0f);
+	ImGui::SetNextWindowSize(ImVec2(430, 450), ImGuiCond_FirstUseEver);
+	if (ImGui::Begin("Scene", NULL))
+	{
+		m_DebugParametersDirty = m_DebugParametersDirty || ImGui::SliderFloat("Roughness Scale", &m_SceneParameters.RoughnessScale, 0.01f, 10.0f);
+		m_DebugParametersDirty = m_DebugParametersDirty || ImGui::SliderFloat("Metallic Scale", &m_SceneParameters.MetallicScale, 0.01f, 10.0f);
+		m_DebugParametersDirty = m_DebugParametersDirty || ImGui::SliderFloat("Ambient Occlusion Scale", &m_SceneParameters.AOScale, 0.01f, 1.0f);
+	}
+	ImGui::End();
+
+	if (m_LightSetup.hasDirectionalLight()) {
+		ImGui::SetNextWindowSize(ImVec2(430, 100), ImGuiCond_FirstUseEver);
+
+		if (ImGui::Begin("Directional Light", NULL, ImGuiWindowFlags_NoResize)) {
+			DirectionalLight* pDirectionalLight = m_LightSetup.getDirectionalLight();
+
+			float particleG = pDirectionalLight->getParticleG();
+			float scatterAmount = pDirectionalLight->getScatterAmount();
+
+			if (ImGui::SliderFloat("Particle G", &particleG, 0.0f, 1.0f)) {
+				pDirectionalLight->setParticleG(particleG);
+			}
+
+			if (ImGui::SliderFloat("Scatter Amount", &scatterAmount, 0.0f, 1.0f)) {
+				pDirectionalLight->setScatterAmount(scatterAmount);
+			}
+		}
+		ImGui::End();
+	}
 }
 
 void SceneVK::updateDebugParameters()

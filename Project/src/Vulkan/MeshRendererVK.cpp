@@ -353,7 +353,7 @@ void MeshRendererVK::buildLightPass(RenderPassVK* pRenderPass, FrameBufferVK* pF
 	inheritanceInfo.subpass		= 0;
 	inheritanceInfo.framebuffer = pFramebuffer->getFrameBuffer();
 	m_ppLightPassBuffers[m_CurrentFrame]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
-	
+
 	m_pLightPassProfiler->beginFrame(m_ppLightPassBuffers[m_CurrentFrame]);
 
 	m_ppLightPassBuffers[m_CurrentFrame]->bindPipeline(m_pLightPipeline);
@@ -365,7 +365,7 @@ void MeshRendererVK::buildLightPass(RenderPassVK* pRenderPass, FrameBufferVK* pF
 	m_ppLightPassBuffers[m_CurrentFrame]->drawInstanced(3, 1, 0, 0);
 
 	m_pLightPassProfiler->endFrame();
-	
+
 	m_ppLightPassBuffers[m_CurrentFrame]->end();
 }
 
@@ -444,7 +444,7 @@ bool MeshRendererVK::generateBRDFLookUp()
 	pCommandBuffer->bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, pPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
 
 	pCommandBuffer->dispatch(size, size, 1);
-	
+
 	pCommandBuffer->transitionImageLayout(m_pIntegrationLUT->getImage(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1);
 	pCommandBuffer->end();
 
