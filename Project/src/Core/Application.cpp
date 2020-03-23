@@ -117,7 +117,7 @@ void Application::init()
 	m_pParticleRenderer = m_pContext->createParticleRenderer(m_pRenderingHandler);
 	m_pParticleRenderer->init();
 
-	if (m_pContext->isRayTracingEnabled()) 
+	if (m_pContext->isRayTracingEnabled())
 	{
 		m_pRayTracingRenderer = m_pContext->createRayTracingRenderer(m_pRenderingHandler);
 		m_pRayTracingRenderer->init();
@@ -223,12 +223,21 @@ void Application::init()
 	samplerParams.WrapModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
 	m_GunMaterial.createSampler(m_pContext, samplerParams);
-	
+
 	//Setup lights
 	m_LightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
 	m_LightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
 	m_LightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
 	m_LightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
+
+
+	VolumetricLightSettings volumetricLightSettings = {
+		0.8f, 	// Scatter amount
+		0.2f 	// Particle G
+	};
+
+	glm::vec3 sunPos = {100.0f, 100.0f, 0.0f};
+	m_LightSetup.setDirectionalLight(DirectionalLight(volumetricLightSettings, sunPos, -sunPos, {0.6f, 0.45f, 0.2f, 1.0f}));
 
 	//Setup camera
 	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
@@ -250,7 +259,6 @@ void Application::init()
 
 	SAFEDELETE(pPanorama);
 
-	
 	m_pScene->finalize();
 
 	m_pRenderingHandler->onSceneUpdated(m_pScene);
@@ -416,7 +424,7 @@ void Application::onKeyPressed(EKey key)
 	{
 		m_IsRunning = false;
 	}
-	
+
 	if (m_KeyInputEnabled)
 	{
 		if (key == EKey::KEY_1)
@@ -804,7 +812,7 @@ void Application::renderUI(double dt)
 			ImGui::Text("Best Frametime: %f", m_TestParameters.BestFrametime);
 			ImGui::Text("Frame Count: %f", m_TestParameters.FrameCount);
 		}
-		
+
 	}
 	ImGui::End();
 
