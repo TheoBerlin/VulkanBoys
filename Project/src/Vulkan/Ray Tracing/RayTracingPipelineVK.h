@@ -40,15 +40,15 @@ public:
 	
 	void setMaxRecursionDepth(uint32_t value) { m_MaxRecursionDepth = value; }
 
-	VkPipeline getPipeline() { return m_Pipeline; }
-	uint32_t getNumRaygenShaderGroups() { return m_RaygenShaderGroups.size(); }
-	uint32_t getNumMissShaderGroups() { return m_MissShaderGroups.size(); }
-	uint32_t getNumIntersectShaderGroups() { return m_HitShaderGroups.size(); }
-	uint32_t getNumTotalShaderGroups() { return m_AllShaderGroups.size(); }
+	VkPipeline getPipeline()				{ return m_Pipeline; }
+	uint32_t getNumRaygenShaderGroups()		{ return (uint32_t)m_RaygenShaderGroups.size(); }
+	uint32_t getNumMissShaderGroups()		{ return (uint32_t)m_MissShaderGroups.size(); }
+	uint32_t getNumIntersectShaderGroups()	{ return (uint32_t)m_HitShaderGroups.size(); }
+	uint32_t getNumTotalShaderGroups()		{ return (uint32_t)m_AllShaderGroups.size(); }
 	
-	uint32_t getNumShaders() { return m_Shaders.size(); }
+	uint32_t getNumShaders()				{ return (uint32_t)m_Shaders.size(); }
 
-	ShaderBindingTableVK* getSBT() { return m_pSBT; }
+	ShaderBindingTableVK* getSBT()			{ return m_pSBT; }
 
 private:
 	void createShaderStageInfo(VkPipelineShaderStageCreateInfo& shaderStageInfo, const ShaderVK* pShader);

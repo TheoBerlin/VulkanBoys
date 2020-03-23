@@ -20,7 +20,16 @@ DeviceVK::DeviceVK() :
 	m_PresentQueue(VK_NULL_HANDLE),
 	m_DeviceLimits({}),
 	m_RayTracingProperties({}),
-	m_pCopyHandler()
+	m_pCopyHandler(),
+	vkCreateAccelerationStructureNV(),
+	vkDestroyAccelerationStructureNV(),
+	vkBindAccelerationStructureMemoryNV(),
+	vkGetAccelerationStructureHandleNV(),
+	vkGetAccelerationStructureMemoryRequirementsNV(),
+	vkCmdBuildAccelerationStructureNV(),
+	vkCreateRayTracingPipelinesNV(),
+	vkGetRayTracingShaderGroupHandlesNV(),
+	vkCmdTraceRaysNV()
 {
 }
 

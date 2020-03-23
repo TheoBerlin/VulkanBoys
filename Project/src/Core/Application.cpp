@@ -54,7 +54,7 @@ Application::Application()
 	m_pRayTracingRenderer(nullptr),
 	m_pImgui(nullptr),
 	m_pScene(nullptr),
-	m_pMesh(nullptr),
+	m_pGunMesh(nullptr),
 	m_pGunAlbedo(nullptr),
 	m_pInputHandler(nullptr),
 	m_Camera(),
@@ -62,8 +62,13 @@ Application::Application()
 	m_UpdateCamera(false),
 	m_pParticleTexture(nullptr),
 	m_pParticleEmitterHandler(nullptr),
+	m_NewEmitterInfo(),
 	m_CurrentEmitterIdx(0),
 	m_CreatingEmitter(false),
+	m_CameraPositionSpline(),
+	m_CameraDirectionSpline(),
+	m_CameraSplineTimer(0.0f),
+	m_CameraSplineEnabled(false),
 	m_KeyInputEnabled(false)
 {
 	ASSERT(s_pInstance == nullptr);
@@ -148,29 +153,10 @@ void Application::init()
 			m_pSkybox = m_pRenderingHandler->generateTextureCube(pPanorama, ETextureFormat::FORMAT_R16G16B16A16_FLOAT, 2048, 1);
 		});
 
-	m_pMesh = m_pContext->createMesh();
+	m_pGunMesh = m_pContext->createMesh();
 	TaskDispatcher::execute([&]
 		{
-			m_pMesh->initFromFile("assets/meshes/gun.obj");
-		});
-
-	m_pSphere = m_pContext->createMesh();
-	TaskDispatcher::execute([&]
-		{
-			if (HIGH_RESOLUTION_SPHERE)
-			{
-				m_pSphere->initFromFile("assets/meshes/sphere2.obj");
-			}
-			else
-			{
-				m_pSphere->initFromFile("assets/meshes/sphere.obj");
-			}
-		});
-
-	m_pCube = m_pContext->createMesh();
-	TaskDispatcher::execute([&]
-		{
-			m_pCube->initAsCube();
+			m_pGunMesh->initFromFile("assets/meshes/gun.obj");
 		});
 
 	m_pGunAlbedo = m_pContext->createTexture2D();
@@ -195,30 +181,6 @@ void Application::init()
 	TaskDispatcher::execute([this]
 		{
 			m_pGunRoughness->initFromFile("assets/textures/gunRoughness.tga", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
-		});
-
-	m_pCubeAlbedo = m_pContext->createTexture2D();
-	TaskDispatcher::execute([this]
-		{
-			m_pCubeAlbedo->initFromFile("assets/textures/cubeAlbedo.jpg", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
-		});
-
-	m_pCubeNormal = m_pContext->createTexture2D();
-	TaskDispatcher::execute([this]
-		{
-			m_pCubeNormal->initFromFile("assets/textures/cubeNormal.jpg", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
-		});
-
-	m_pCubeMetallic = m_pContext->createTexture2D();
-	TaskDispatcher::execute([this]
-		{
-			m_pCubeMetallic->initFromFile("assets/textures/cubeMetallic.jpg", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
-		});
-
-	m_pCubeRoughness = m_pContext->createTexture2D();
-	TaskDispatcher::execute([this]
-		{
-			m_pCubeRoughness->initFromFile("assets/textures/cubeRoughness.jpg", ETextureFormat::FORMAT_R8G8B8A8_UNORM);
 		});
 
 	// Setup particles
@@ -253,35 +215,14 @@ void Application::init()
 	m_GunMaterial.setNormalMap(m_pGunNormal);
 	m_GunMaterial.setMetallicMap(m_pGunMetallic);
 	m_GunMaterial.setRoughnessMap(m_pGunRoughness);
-	
-	m_PlaneMaterial.setAlbedo(glm::vec4(1.0f));
-	m_PlaneMaterial.setAmbientOcclusion(1.0f);
-	m_PlaneMaterial.setMetallic(1.0f);
-	m_PlaneMaterial.setRoughness(1.0f);
-	m_PlaneMaterial.setAlbedoMap(m_pCubeAlbedo);
-	m_PlaneMaterial.setNormalMap(m_pCubeNormal);
-	m_PlaneMaterial.setMetallicMap(m_pCubeMetallic);
-	m_PlaneMaterial.setRoughnessMap(m_pCubeRoughness);
 
 	SamplerParams samplerParams = {};
 	samplerParams.MinFilter = VK_FILTER_LINEAR;
 	samplerParams.MagFilter = VK_FILTER_LINEAR;
 	samplerParams.WrapModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerParams.WrapModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	m_GunMaterial.createSampler(m_pContext, samplerParams);
-	m_PlaneMaterial.createSampler(m_pContext, samplerParams);
 
-	for (uint32_t y = 0; y < SPHERE_COUNT_DIMENSION; y++)
-	{
-		for (uint32_t x = 0; x < SPHERE_COUNT_DIMENSION; x++)
-		{
-			Material& material = m_SphereMaterials[x + y * SPHERE_COUNT_DIMENSION];
-			material.setAmbientOcclusion(1.0f);
-			material.setMetallic(float(y) / float(SPHERE_COUNT_DIMENSION));
-			material.setRoughness(glm::clamp((float(x) / float(SPHERE_COUNT_DIMENSION)), 0.05f, 1.0f));
-			material.createSampler(m_pContext, samplerParams);
-		}
-	}
+	m_GunMaterial.createSampler(m_pContext, samplerParams);
 	
 	//Setup lights
 	m_LightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
@@ -309,27 +250,6 @@ void Application::init()
 
 	SAFEDELETE(pPanorama);
 
-	//Add Game Objects to Scene
-	//m_GraphicsIndex0 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
-	//m_GraphicsIndex1 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
-	//m_GraphicsIndex2 = m_pScene->submitGraphicsObject(m_pMesh, &m_GunMaterial);
-	//m_GraphicsIndex3 = m_pScene->submitGraphicsObject(m_pCube, &m_PlaneMaterial, glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.5f, 0.0f)), glm::vec3(10.0f, 0.1f, 10.0f)));
-	//	
-	//constexpr float SPHERE_SCALE = HIGH_RESOLUTION_SPHERE ? 0.25f : 1.15f;
-	//
-	//for (uint32_t y = 0; y < SPHERE_COUNT_DIMENSION; y++)
-	//{
-	//	float yCoord = ((float(SPHERE_COUNT_DIMENSION) * 0.5f) / -2.0f) + float(y * 0.5);
-
-	//	for (uint32_t x = 0; x < SPHERE_COUNT_DIMENSION; x++)
-	//	{
-	//		float xCoord = ((float(SPHERE_COUNT_DIMENSION) * 0.5f) / -2.0f) + float(x * 0.5);
-
-	//		m_SphereIndexes[x + y * SPHERE_COUNT_DIMENSION] = m_pScene->submitGraphicsObject(
-	//			m_pSphere, &m_SphereMaterials[x + y * SPHERE_COUNT_DIMENSION], 
-	//			glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(xCoord, yCoord, 1.5f)), glm::vec3(SPHERE_SCALE)));
-	//	}
-	//}
 	
 	m_pScene->finalize();
 
@@ -422,25 +342,13 @@ void Application::release()
 	m_pContext->sync();
 
 	m_GunMaterial.release();
-	m_PlaneMaterial.release();
-
-	for (uint32_t i = 0; i < SPHERE_COUNT_DIMENSION * SPHERE_COUNT_DIMENSION; i++)
-	{
-		m_SphereMaterials[i].release();
-	}
 
 	SAFEDELETE(m_pSkybox);
-	SAFEDELETE(m_pSphere);
 	SAFEDELETE(m_pGunRoughness);
 	SAFEDELETE(m_pGunMetallic);
 	SAFEDELETE(m_pGunNormal);
 	SAFEDELETE(m_pGunAlbedo);
-	SAFEDELETE(m_pCube);
-	SAFEDELETE(m_pCubeAlbedo);
-	SAFEDELETE(m_pCubeNormal);
-	SAFEDELETE(m_pCubeMetallic);
-	SAFEDELETE(m_pCubeRoughness);
-	SAFEDELETE(m_pMesh);
+	SAFEDELETE(m_pGunMesh);
 	SAFEDELETE(m_pRenderingHandler);
 	SAFEDELETE(m_pMeshRenderer);
 	SAFEDELETE(m_pRayTracingRenderer);
@@ -608,7 +516,7 @@ void Application::update(double dt)
 	}
 	else
 	{
-		float deltaTimeMS = dt * 1000.0f;
+		float deltaTimeMS = (float)dt * 1000.0f;
 		m_TestParameters.FrameTimeSum += deltaTimeMS;
 		m_TestParameters.FrameCount += 1.0f;
 		m_TestParameters.AverageFrametime = m_TestParameters.FrameTimeSum / m_TestParameters.FrameCount;
@@ -620,7 +528,7 @@ void Application::update(double dt)
 		glm::vec3 heading = interpolatedPositionPT.tangent;
 		glm::vec3 direction = m_CameraDirectionSpline->getPosition(m_CameraSplineTimer);
 
-		m_CameraSplineTimer += dt / (glm::max(glm::length(heading), 0.0001f));
+		m_CameraSplineTimer += (float)dt / (glm::max(glm::length(heading), 0.0001f));
 
 		m_Camera.setPosition(position);
 		m_Camera.setDirection(normalize(glm::normalize(heading) + direction));
@@ -863,6 +771,8 @@ void Application::renderUI(double dt)
 
 			if (ImGui::Button("Start Test"))
 			{
+				m_CameraSplineTimer = 0.0f;
+
 				m_TestParameters.Running = true;
 				m_TestParameters.FrameTimeSum = 0.0f;
 				m_TestParameters.FrameCount = 0.0f;

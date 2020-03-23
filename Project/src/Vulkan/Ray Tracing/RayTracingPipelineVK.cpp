@@ -32,7 +32,7 @@ void RayTracingPipelineVK::addRaygenShaderGroup(const RaygenGroupParams& params)
 	VkRayTracingShaderGroupCreateInfoNV shaderGroupCreateInfo = {};
 	shaderGroupCreateInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_NV;
 	shaderGroupCreateInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_NV;
-	shaderGroupCreateInfo.generalShader = m_Shaders.size() - 1;
+	shaderGroupCreateInfo.generalShader = (uint32_t)m_Shaders.size() - 1;
 	shaderGroupCreateInfo.intersectionShader = VK_SHADER_UNUSED_NV;
 	shaderGroupCreateInfo.anyHitShader = VK_SHADER_UNUSED_NV;
 	shaderGroupCreateInfo.closestHitShader = VK_SHADER_UNUSED_NV;
@@ -46,7 +46,7 @@ void RayTracingPipelineVK::addMissShaderGroup(const MissGroupParams& params)
 	VkRayTracingShaderGroupCreateInfoNV shaderGroupCreateInfo = {};
 	shaderGroupCreateInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_NV;
 	shaderGroupCreateInfo.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_NV;
-	shaderGroupCreateInfo.generalShader = m_Shaders.size() - 1;
+	shaderGroupCreateInfo.generalShader = (uint32_t)m_Shaders.size() - 1;
 	shaderGroupCreateInfo.intersectionShader = VK_SHADER_UNUSED_NV;
 	shaderGroupCreateInfo.anyHitShader = VK_SHADER_UNUSED_NV;
 	shaderGroupCreateInfo.closestHitShader = VK_SHADER_UNUSED_NV;
@@ -64,7 +64,7 @@ void RayTracingPipelineVK::addHitShaderGroup(const HitGroupParams& params)
 	if (params.pAnyHitShader != nullptr)
 	{
 		m_Shaders.push_back(params.pAnyHitShader);
-		shaderGroupCreateInfo.anyHitShader = m_Shaders.size() - 1;
+		shaderGroupCreateInfo.anyHitShader = (uint32_t)m_Shaders.size() - 1;
 	}
 	else
 	{
@@ -74,7 +74,7 @@ void RayTracingPipelineVK::addHitShaderGroup(const HitGroupParams& params)
 	if (params.pClosestHitShader != nullptr)
 	{
 		m_Shaders.push_back(params.pClosestHitShader);
-		shaderGroupCreateInfo.closestHitShader = m_Shaders.size() - 1;
+		shaderGroupCreateInfo.closestHitShader = (uint32_t)m_Shaders.size() - 1;
 	}
 	else
 	{
@@ -125,9 +125,9 @@ bool RayTracingPipelineVK::finalize(PipelineLayoutVK* pPipelineLayout)
 
 	VkRayTracingPipelineCreateInfoNV rayPipelineInfo{};
 	rayPipelineInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_NV;
-	rayPipelineInfo.stageCount = m_ShaderStagesInfos.size();
+	rayPipelineInfo.stageCount = (uint32_t)m_ShaderStagesInfos.size();
 	rayPipelineInfo.pStages = m_ShaderStagesInfos.data();
-	rayPipelineInfo.groupCount = m_AllShaderGroups.size();
+	rayPipelineInfo.groupCount = (uint32_t)m_AllShaderGroups.size();
 	rayPipelineInfo.pGroups = m_AllShaderGroups.data();
 	rayPipelineInfo.maxRecursionDepth = m_MaxRecursionDepth;
 	rayPipelineInfo.layout = pPipelineLayout->getPipelineLayout();

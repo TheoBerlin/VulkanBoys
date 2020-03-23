@@ -45,6 +45,7 @@ SceneVK::SceneVK(IGraphicsContext* pContext) :
 	m_pTransformsBuffer(nullptr),
 	m_pGarbageTransformsBuffer(nullptr),
 	m_DebugParametersDirty(false),
+	m_pProfiler(nullptr),
 	m_RayTracingEnabled(pContext->isRayTracingEnabled())
 {
 	m_pDevice = reinterpret_cast<DeviceVK*>(m_pContext->getDevice());
@@ -115,6 +116,13 @@ SceneVK::~SceneVK()
 
 	m_TopLevelAccelerationStructure.Handle = VK_NULL_HANDLE;
 
+	for (auto pair : m_SceneTextures)
+	{
+		ITexture2D* pTexture = pair.second;
+		SAFEDELETE(pTexture);
+	}
+	m_SceneTextures.clear();
+
 	for (uint32_t m = 0; m < m_SceneMaterials.size(); m++)
 	{
 		SAFEDELETE(m_SceneMaterials[m]);
@@ -168,7 +176,6 @@ bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
 	pDefaultMaterial->createSampler(m_pContext, samplerParams);
 	m_SceneMaterials[0] = pDefaultMaterial;
 
-	std::unordered_map<std::string, ITexture2D*> textures = {};
 	for (uint32_t m = 1; m < materials.size() + 1; m++)
 	{
 		tinyobj::material_t& material = materials[m - 1];
@@ -177,9 +184,11 @@ bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
 		if (material.diffuse_texname.length() > 0)
 		{
 			std::string filename = dir + material.diffuse_texname;
-			if (textures.count(filename) == 0)
+			if (m_SceneTextures.count(filename) == 0)
 			{
 				ITexture2D* pAlbedoMap = m_pContext->createTexture2D();
+				m_SceneTextures[filename] = pAlbedoMap;
+
 				TaskDispatcher::execute([=]
 					{
 						pAlbedoMap->initFromFile(filename, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
@@ -188,16 +197,18 @@ bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
 			}
 			else
 			{
-				pMaterial->setAlbedoMap(textures[filename]);
+				pMaterial->setAlbedoMap(m_SceneTextures[filename]);
 			}
 		}
 
 		if (material.bump_texname.length() > 0)
 		{
 			std::string filename = dir + material.bump_texname;
-			if (textures.count(filename) == 0)
+			if (m_SceneTextures.count(filename) == 0)
 			{
 				ITexture2D* pNormalMap = m_pContext->createTexture2D();
+				m_SceneTextures[filename] = pNormalMap;
+
 				TaskDispatcher::execute([=]
 					{
 						pNormalMap->initFromFile(filename, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
@@ -206,16 +217,18 @@ bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
 			}
 			else
 			{
-				pMaterial->setNormalMap(textures[filename]);
+				pMaterial->setNormalMap(m_SceneTextures[filename]);
 			}
 		}
 
 		if (material.ambient_texname.length() > 0)
 		{
 			std::string filename = dir + material.ambient_texname;
-			if (textures.count(filename) == 0)
+			if (m_SceneTextures.count(filename) == 0)
 			{
 				ITexture2D* pMetallicMap = m_pContext->createTexture2D();
+				m_SceneTextures[filename] = pMetallicMap;
+
 				TaskDispatcher::execute([=]
 					{
 						pMetallicMap->initFromFile(filename, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
@@ -224,16 +237,18 @@ bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
 			}
 			else
 			{
-				pMaterial->setMetallicMap(textures[filename]);
+				pMaterial->setMetallicMap(m_SceneTextures[filename]);
 			}
 		}
 
 		if (material.specular_highlight_texname.length() > 0)
 		{
 			std::string filename = dir + material.specular_highlight_texname;
-			if (textures.count(filename) == 0)
+			if (m_SceneTextures.count(filename) == 0)
 			{
 				ITexture2D* pRoughnessMap = m_pContext->createTexture2D();
+				m_SceneTextures[filename] = pRoughnessMap;
+
 				TaskDispatcher::execute([=]
 					{
 						pRoughnessMap->initFromFile(filename, ETextureFormat::FORMAT_R8G8B8A8_UNORM);
@@ -242,7 +257,7 @@ bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
 			}
 			else
 			{
-				pMaterial->setRoughnessMap(textures[filename]);
+				pMaterial->setRoughnessMap(m_SceneTextures[filename]);
 			}
 		}
 
@@ -273,18 +288,18 @@ bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
 
 			vertex.Position =
 			{
-				attributes.vertices[3 * index.vertex_index + 0],
-				attributes.vertices[3 * index.vertex_index + 1],
-				attributes.vertices[3 * index.vertex_index + 2]
+				attributes.vertices[3 * (size_t)index.vertex_index + 0],
+				attributes.vertices[3 * (size_t)index.vertex_index + 1],
+				attributes.vertices[3 * (size_t)index.vertex_index + 2]
 			};
 
 			if (index.normal_index >= 0)
 			{
 				vertex.Normal =
 				{
-					attributes.normals[3 * index.normal_index + 0],
-					attributes.normals[3 * index.normal_index + 1],
-					attributes.normals[3 * index.normal_index + 2]
+					attributes.normals[3 * (size_t)index.normal_index + 0],
+					attributes.normals[3 * (size_t)index.normal_index + 1],
+					attributes.normals[3 * (size_t)index.normal_index + 2]
 				};
 			}
 
@@ -292,8 +307,8 @@ bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
 			{
 				vertex.TexCoord =
 				{
-					attributes.texcoords[2 * index.texcoord_index + 0],
-					1.0f - attributes.texcoords[2 * index.texcoord_index + 1]
+					attributes.texcoords[2 * (size_t)index.texcoord_index + 0],
+					1.0f - attributes.texcoords[2 * (size_t)index.texcoord_index + 1]
 				};
 			}
 
@@ -309,9 +324,9 @@ bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
 		//Calculate tangents
 		for (uint32_t index = 0; index < indices.size(); index += 3)
 		{
-			Vertex& v0 = vertices[indices[index + 0]];
-			Vertex& v1 = vertices[indices[index + 1]];
-			Vertex& v2 = vertices[indices[index + 2]];
+			Vertex& v0 = vertices[indices[(size_t)index + 0]];
+			Vertex& v1 = vertices[indices[(size_t)index + 1]];
+			Vertex& v2 = vertices[indices[(size_t)index + 2]];
 
 			v0.calculateTangent(v1, v2);
 			v1.calculateTangent(v2, v0);
@@ -327,6 +342,8 @@ bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
 
 		submitGraphicsObject(pMesh, pMaterial, transform);
 	}
+
+	return true;
 }
 
 bool SceneVK::finalize()
@@ -543,7 +560,7 @@ uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMate
 				pBottomLevelAccelerationStructure = createBLAS(pVulkanMesh, pMaterial);
 				m_AllMeshes.push_back(pVulkanMesh);
 				m_TotalNumberOfVertices += static_cast<uint32_t>(pVulkanMesh->getVertexBuffer()->getSizeInBytes() / sizeof(Vertex));
-				m_TotalNumberOfIndices += pVulkanMesh->getIndexBuffer()->getSizeInBytes() / sizeof(uint32_t);
+				m_TotalNumberOfIndices += static_cast<uint32_t>(pVulkanMesh->getIndexBuffer()->getSizeInBytes() / sizeof(uint32_t));
 			}
 			else if (finalizedBLASPerMesh->second.find(pMaterial) == finalizedBLASPerMesh->second.end())
 			{
@@ -555,7 +572,7 @@ uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMate
 				blasCopy.Index = m_NumBottomLevelAccelerationStructures;
 				m_NumBottomLevelAccelerationStructures++;
 
-				blasCopy.MaterialIndex = m_Materials.size();
+				blasCopy.MaterialIndex = (uint32_t)m_Materials.size();
 				m_Materials.push_back(pMaterial);
 
 				std::map<const Material*, BottomLevelAccelerationStructure> tempBLASPerMesh;
@@ -580,7 +597,7 @@ uint32_t SceneVK::submitGraphicsObject(const IMesh* pMesh, const Material* pMate
 			blasCopy.Index = m_NumBottomLevelAccelerationStructures;
 			m_NumBottomLevelAccelerationStructures++;
 
-			blasCopy.MaterialIndex = m_Materials.size();
+			blasCopy.MaterialIndex = (uint32_t)m_Materials.size();
 			m_Materials.push_back(pMaterial);
 
 			newBLASPerMesh->second[pMaterial] = blasCopy;
@@ -902,7 +919,7 @@ bool SceneVK::buildTLAS()
 	buildInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_NV;
 	buildInfo.pGeometries = 0;
 	buildInfo.geometryCount = 0;
-	buildInfo.instanceCount = m_GeometryInstances.size();
+	buildInfo.instanceCount = (uint32_t)m_GeometryInstances.size();
 
 	//Create Memory Barrier
 	VkMemoryBarrier memoryBarrier = {};
@@ -1282,7 +1299,7 @@ uint32_t SceneVK::registerMaterial(const Material* pMaterial)
 	if (entry == m_MaterialIndices.end())
 	{
 		m_Materials.push_back(pMaterial);
-		m_MaterialIndices[pMaterial] = m_Materials.size() - 1;
+		m_MaterialIndices[pMaterial] = (uint32_t)m_Materials.size() - 1;
 	}
 
 	return m_MaterialIndices[pMaterial];

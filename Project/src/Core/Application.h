@@ -89,22 +89,14 @@ private:
 	//TODO: Resoures should they be here?
 	static constexpr uint32_t SPHERE_COUNT_DIMENSION = 8;
 
-	IMesh* m_pMesh;
-	IMesh* m_pSphere;
-	IMesh* m_pCube;
+	IMesh* m_pGunMesh;
 	ITexture2D* m_pGunAlbedo;
 	ITexture2D* m_pGunNormal;
 	ITexture2D* m_pGunMetallic;
 	ITexture2D* m_pGunRoughness;
-	ITexture2D* m_pCubeAlbedo;
-	ITexture2D* m_pCubeNormal;
-	ITexture2D* m_pCubeMetallic;
-	ITexture2D* m_pCubeRoughness;
-	ITextureCube* m_pSkybox;
 	Material m_GunMaterial;
-	Material m_SphereMaterials[SPHERE_COUNT_DIMENSION * SPHERE_COUNT_DIMENSION];
-	uint32_t m_SphereIndexes[SPHERE_COUNT_DIMENSION * SPHERE_COUNT_DIMENSION];
-	Material m_PlaneMaterial;
+
+	ITextureCube* m_pSkybox;
 
 	ParticleEmitterHandler* m_pParticleEmitterHandler;
 	ITexture2D* m_pParticleTexture;
@@ -116,11 +108,6 @@ private:
 
 	bool m_IsRunning;
 	bool m_UpdateCamera;
-
-	uint32_t m_GraphicsIndex0;
-	uint32_t m_GraphicsIndex1;
-	uint32_t m_GraphicsIndex2;
-	uint32_t m_GraphicsIndex3;
 
 	LoopingUniformCRSpline<glm::vec3, float>* m_CameraPositionSpline;
 	LoopingUniformCRSpline<glm::vec3, float>* m_CameraDirectionSpline;
