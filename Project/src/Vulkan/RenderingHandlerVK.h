@@ -63,6 +63,8 @@ public:
     RenderPassVK*           getParticleRenderPass() const               { return m_pParticleRenderPass; }
     BufferVK*               getCameraBufferCompute() const              { return m_pCameraBufferCompute; }
     BufferVK*               getCameraBufferGraphics() const             { return m_pCameraBufferGraphics; }
+    BufferVK*               getLightBufferCompute() const               { return m_pLightBufferCompute; }
+    BufferVK*               getLightBufferGraphics() const              { return m_pLightBufferGraphics; }
     FrameBufferVK*          getCurrentBackBuffer() const                { return m_ppBackbuffers[m_BackBufferIndex]; }
     FrameBufferVK*          getCurrentBackBufferWithDepth() const       { return m_ppBackBuffersWithDepth[m_BackBufferIndex]; }
     CommandBufferVK*        getCurrentGraphicsCommandBuffer() const     { return m_ppGraphicsCommandBuffers[m_CurrentFrame]; }
@@ -79,7 +81,7 @@ private:
 
     void releaseBackBuffers();
 
-    void updateBuffers(const Camera& camera);
+    void updateBuffers(const Camera& camera, const LightSetup& lightSetup);
 
     void submitParticles();
 
@@ -132,6 +134,8 @@ private:
 
     BufferVK*   m_pCameraBufferGraphics;
     BufferVK*   m_pCameraBufferCompute;
+    BufferVK*   m_pLightBufferGraphics;
+    BufferVK*   m_pLightBufferCompute;
     GBufferVK*  m_pGBuffer;
 
 	//Render Results

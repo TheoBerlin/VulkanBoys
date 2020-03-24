@@ -3,7 +3,7 @@
 
 #include "../helpers.glsl"
 
-layout(binding = 0, set = 0, rgba16f) uniform image2D u_RadianceImage;
+layout(binding = 0, set = 0, rgba16f) writeonly uniform image2D u_RadianceImage;
 layout(binding = 19, set = 0, rgba16f) uniform image2D u_ReflectionImage;
 layout(binding = 1, set = 0) uniform CameraProperties 
 {

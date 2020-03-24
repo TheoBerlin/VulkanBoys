@@ -96,7 +96,7 @@ RayTracingRendererVK::~RayTracingRendererVK()
 	SAFEDELETE(m_pBlurPassDescriptorSetLayout);
 
 	//SAFEDELETE(m_pCameraBuffer);
-	SAFEDELETE(m_pLightsBuffer);
+	//SAFEDELETE(m_pLightsBuffer);
 
 	SAFEDELETE(m_pNearestSampler);
 	SAFEDELETE(m_pLinearSampler);
@@ -689,13 +689,13 @@ bool RayTracingRendererVK::createUniformBuffers()
 	//m_pCameraBuffer->init(cameraBufferParams);
 	m_pRayTracingDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer, RT_CAMERA_BUFFER_BINDING);
 
-	BufferParams lightsBufferParams = {};
-	lightsBufferParams.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	lightsBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	lightsBufferParams.SizeInBytes = sizeof(PointLight) * MAX_POINTLIGHTS;
+	//BufferParams lightsBufferParams = {};
+	//lightsBufferParams.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	//lightsBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	//lightsBufferParams.SizeInBytes = sizeof(PointLight) * MAX_POINTLIGHTS;
 
-	m_pLightsBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
-	m_pLightsBuffer->init(lightsBufferParams);
+	m_pLightsBuffer = m_pRenderingHandler->getLightBufferCompute();// reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
+	//m_pLightsBuffer->init(lightsBufferParams);
 	m_pRayTracingDescriptorSet->writeUniformBufferDescriptor(m_pLightsBuffer, RT_LIGHT_BUFFER_BINDING);
 
 	return true;
@@ -755,6 +755,6 @@ void RayTracingRendererVK::updateBuffers(SceneVK* pScene, CommandBufferVK* pComm
 	//pCommandBuffer->updateBuffer(m_pCameraBuffer, 0, (const void*)&cameraMatricesBuffer, sizeof(CameraMatricesBuffer));
 
 	//Update Lights
-	const uint32_t numPointLights = pScene->getLightSetup().getPointLightCount();
-	pCommandBuffer->updateBuffer(m_pLightsBuffer, 0, (const void*)pScene->getLightSetup().getPointLights(), sizeof(PointLight) * numPointLights);
+	//const uint32_t numPointLights = pScene->getLightSetup().getPointLightCount();
+	//pCommandBuffer->updateBuffer(m_pLightsBuffer, 0, (const void*)pScene->getLightSetup().getPointLights(), sizeof(PointLight) * numPointLights);
 }
