@@ -147,7 +147,7 @@ public:
 	virtual void updateGraphicsObjectTransform(uint32_t index, const glm::mat4& transform) override;
 
 	// Used for geometry rendering
-	void setSceneData();
+	void UpdateSceneData();
 	DescriptorSetVK* getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial);
 
 	PipelineLayoutVK* getGeometryPipelineLayout() { return m_pGeometryPipelineLayout; }

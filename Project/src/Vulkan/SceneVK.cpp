@@ -649,44 +649,12 @@ void SceneVK::updateGraphicsObjectTransform(uint32_t index, const glm::mat4& tra
 	transforms.Transform = transform;
 }
 
-void SceneVK::setSceneData()
+void SceneVK::UpdateSceneData()
 {
-	const BufferVK* pMaterialParametersBuffer = getMaterialParametersBuffer();
-	const BufferVK* pTransformsBuffer = getTransformsBuffer();
-
-	if (m_pMaterialParametersBuffer != pMaterialParametersBuffer)
+	for (auto& instance : m_MeshTable)
 	{
-		m_pMaterialParametersBuffer = pMaterialParametersBuffer;
-
-		if (m_pTransformsBuffer != pTransformsBuffer)
-		{
-			//Both Buffers Needs Update
-			m_pTransformsBuffer = pTransformsBuffer;
-
-			for (auto& instance : m_MeshTable)
-			{
-				instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pMaterialParametersBuffer, MATERIAL_PARAMETERS_BINDING);
-				instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pTransformsBuffer, INSTANCE_TRANSFORMS_BINDING);
-			}
-		}
-		else
-		{
-			//Just Materials Buffer Needs Update
-			for (auto& instance : m_MeshTable)
-			{
-				instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pMaterialParametersBuffer, MATERIAL_PARAMETERS_BINDING);
-			}
-		}
-	}
-	else if (m_pTransformsBuffer != pTransformsBuffer)
-	{
-		//Just Transforms Buffer Needs Update
-		m_pTransformsBuffer = pTransformsBuffer;
-
-		for (auto& instance : m_MeshTable)
-		{
-			instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pTransformsBuffer, INSTANCE_TRANSFORMS_BINDING);
-		}
+		instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pMaterialParametersBuffer, MATERIAL_PARAMETERS_BINDING);
+		instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pTransformsBuffer, INSTANCE_TRANSFORMS_BINDING);
 	}
 }
 
@@ -751,11 +719,8 @@ DescriptorSetVK* SceneVK::getDescriptorSetFromMeshAndMaterial(const MeshVK* pMes
 		ImageViewVK* pRoughnessView = pRoughness->getImageView();
 		pDescriptorSet->writeCombinedImageDescriptors(&pRoughnessView, &pSampler, 1, ROUGHNESS_MAP_BINDING);
 
-		if (m_pMaterialParametersBuffer != nullptr)
-			pDescriptorSet->writeStorageBufferDescriptor(m_pMaterialParametersBuffer, MATERIAL_PARAMETERS_BINDING);
-
-		if (m_pTransformsBuffer!= nullptr)
-			pDescriptorSet->writeStorageBufferDescriptor(m_pTransformsBuffer, INSTANCE_TRANSFORMS_BINDING);
+		pDescriptorSet->writeStorageBufferDescriptor(m_pMaterialParametersBuffer, MATERIAL_PARAMETERS_BINDING);
+		pDescriptorSet->writeStorageBufferDescriptor(m_pTransformsBuffer, INSTANCE_TRANSFORMS_BINDING);
 
 		MeshPipeline meshPipeline = {};
 		meshPipeline.pDescriptorSets = pDescriptorSet;
@@ -1432,8 +1397,8 @@ VkDeviceSize SceneVK::findMaxMemReqBLAS()
 	VkDeviceSize maxSize = 0;
 
 	VkAccelerationStructureMemoryRequirementsInfoNV memoryRequirementsInfo = {};
-	memoryRequirementsInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV;
-	memoryRequirementsInfo.type = VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_BUILD_SCRATCH_NV;
+	memoryRequirementsInfo.sType	= VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV;
+	memoryRequirementsInfo.type		= VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_BUILD_SCRATCH_NV;
 
 	//Todo: Do we need to loop through finalized BLASs here as well?
 	for (auto& bottomLevelAccelerationStructurePerMesh : m_NewBottomLevelAccelerationStructures)
