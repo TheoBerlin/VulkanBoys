@@ -102,9 +102,9 @@ IImgui* GraphicsContextVK::createImgui()
 	return DBG_NEW ImguiVK(this);
 }
 
-IScene* GraphicsContextVK::createScene()
+IScene* GraphicsContextVK::createScene(const RenderingHandler* pRenderingHandler)
 {
-	return DBG_NEW SceneVK(this);
+	return DBG_NEW SceneVK(this, reinterpret_cast<const RenderingHandlerVK*>(pRenderingHandler));
 }
 
 IMesh* GraphicsContextVK::createMesh()

@@ -31,9 +31,12 @@ public:
 	virtual void render(IScene* pScene) = 0;
 
     virtual void drawProfilerUI() = 0;
-    
+
     virtual void swapBuffers() = 0;
 
+    IScene* getScene() { return m_pScene; }
+
+    void setScene(IScene* pScene) { m_pScene = pScene; };
     virtual void setClearColor(float r, float g, float b) = 0;
 	virtual void setClearColor(const glm::vec3& color) = 0;
     virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) = 0;
@@ -50,11 +53,12 @@ public:
 
 	//Test Parameters
 	virtual void setRayTracingResolutionDenominator(uint32_t denom) = 0;
-    
+
     void setParticleEmitterHandler(ParticleEmitterHandler* pParticleEmitterHandler) { m_pParticleEmitterHandler = pParticleEmitterHandler; }
 
 
 protected:
     IGraphicsContext* m_pGraphicsContext;
+    IScene* m_pScene;
     ParticleEmitterHandler* m_pParticleEmitterHandler;
 };
