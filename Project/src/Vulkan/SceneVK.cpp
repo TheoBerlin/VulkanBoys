@@ -727,7 +727,7 @@ void SceneVK::copySceneData(CommandBufferVK* pTransferBuffer)
 	}
 }
 
-void SceneVK::updateSceneData()
+bool SceneVK::updateSceneData()
 {
 	if (m_pGarbageTransformsBufferGraphics || m_MaterialDataIsDirty)
 	{
@@ -740,7 +740,11 @@ void SceneVK::updateSceneData()
 		}
 
 		cleanGarbage();
+
+		return true;
 	}
+
+	return false;
 }
 
 DescriptorSetVK* SceneVK::getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial)

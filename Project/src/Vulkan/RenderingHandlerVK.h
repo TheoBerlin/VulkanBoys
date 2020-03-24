@@ -56,19 +56,19 @@ public:
 
 	virtual void setRayTracingResolutionDenominator(uint32_t denom) override;
 
-    uint32_t                getCurrentFrameIndex() const                { return m_CurrentFrame; }
-    FrameBufferVK* const*   getBackBuffers() const                      { return m_ppBackbuffers; }
-	RenderPassVK*			getGeometryRenderPass() const				{ return m_pGeometryRenderPass; }
-    RenderPassVK*           getBackBufferRenderPass() const             { return m_pBackBufferRenderPass; }
-    RenderPassVK*           getParticleRenderPass() const               { return m_pParticleRenderPass; }
-    BufferVK*               getCameraBufferCompute() const              { return m_pCameraBufferCompute; }
-    BufferVK*               getCameraBufferGraphics() const             { return m_pCameraBufferGraphics; }
-    BufferVK*               getLightBufferCompute() const               { return m_pLightBufferCompute; }
-    BufferVK*               getLightBufferGraphics() const              { return m_pLightBufferGraphics; }
-    FrameBufferVK*          getCurrentBackBuffer() const                { return m_ppBackbuffers[m_BackBufferIndex]; }
-    FrameBufferVK*          getCurrentBackBufferWithDepth() const       { return m_ppBackBuffersWithDepth[m_BackBufferIndex]; }
-    CommandBufferVK*        getCurrentGraphicsCommandBuffer() const     { return m_ppGraphicsCommandBuffers[m_CurrentFrame]; }
-	GBufferVK*				getGBuffer() const							{ return m_pGBuffer; }
+    FORCEINLINE uint32_t                getCurrentFrameIndex() const            { return m_CurrentFrame; }
+    FORCEINLINE FrameBufferVK* const*   getBackBuffers() const                  { return m_ppBackbuffers; }
+	FORCEINLINE RenderPassVK*			getGeometryRenderPass() const			{ return m_pGeometryRenderPass; }
+    FORCEINLINE RenderPassVK*           getBackBufferRenderPass() const         { return m_pBackBufferRenderPass; }
+    FORCEINLINE RenderPassVK*           getParticleRenderPass() const           { return m_pParticleRenderPass; }
+    FORCEINLINE BufferVK*               getCameraBufferCompute() const          { return m_pCameraBufferCompute; }
+    FORCEINLINE BufferVK*               getCameraBufferGraphics() const         { return m_pCameraBufferGraphics; }
+    FORCEINLINE BufferVK*               getLightBufferCompute() const           { return m_pLightBufferCompute; }
+    FORCEINLINE BufferVK*               getLightBufferGraphics() const          { return m_pLightBufferGraphics; }
+    FORCEINLINE FrameBufferVK*          getCurrentBackBuffer() const            { return m_ppBackbuffers[m_BackBufferIndex]; }
+    FORCEINLINE FrameBufferVK*          getCurrentBackBufferWithDepth() const   { return m_ppBackBuffersWithDepth[m_BackBufferIndex]; }
+    FORCEINLINE CommandBufferVK*        getCurrentGraphicsCommandBuffer() const { return m_ppGraphicsCommandBuffers[m_CurrentFrame]; }
+	FORCEINLINE GBufferVK*				getGBuffer() const						{ return m_pGBuffer; }
 
 private:
     bool createBackBuffers();

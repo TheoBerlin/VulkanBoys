@@ -154,7 +154,7 @@ public:
 	virtual LightSetup& getLightSetup() override { return m_LightSetup; }
 	
 	// Used for geometry rendering
-	void updateSceneData();
+	bool updateSceneData();
 	void copySceneData(CommandBufferVK* pTransferBuffer);
 	
 	DescriptorSetVK* getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial);

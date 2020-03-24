@@ -569,13 +569,15 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 
 void RenderingHandlerVK::onSceneUpdated(IScene* pScene)
 {
-	//m_pGraphicsContext->getDevice()->wait();
 	SceneVK* pSceneVK = reinterpret_cast<SceneVK*>(pScene);
-	pSceneVK->updateSceneData();
+	bool update = pSceneVK->updateSceneData();
 
 	if (m_pRayTracer)
 	{
-		m_pRayTracer->setSceneData(pScene);
+		if (update)
+		{
+			m_pRayTracer->setSceneData(pScene);
+		}
 	}
 }
 
