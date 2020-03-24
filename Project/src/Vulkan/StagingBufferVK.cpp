@@ -26,6 +26,7 @@ bool StagingBufferVK::init(VkDeviceSize initalSizeInBytes)
 	params.Usage			= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	params.MemoryProperty	= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 	params.SizeInBytes		= initalSizeInBytes;
+	params.IsExclusive		= true;
 
 	m_pBuffer = DBG_NEW BufferVK(m_pDevice);
 	if (m_pBuffer->init(params))
@@ -59,7 +60,8 @@ void* StagingBufferVK::allocate(VkDeviceSize sizeInBytes)
 	params.Usage			= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	params.MemoryProperty	= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 	params.SizeInBytes		= m_pBuffer->getSizeInBytes() + sizeInBytes + MB(1); 
-	
+	params.IsExclusive		= true;
+
 	if (m_pBuffer->init(params))
 	{
 		m_pBuffer->map((void**)&m_pHostMemory);

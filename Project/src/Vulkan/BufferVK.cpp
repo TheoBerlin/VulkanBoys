@@ -41,7 +41,8 @@ bool BufferVK::init(const BufferParams& params)
 	bufferInfo.size		= params.SizeInBytes;
 	bufferInfo.usage	= params.Usage;
 
-	if (params.IsExclusive || !m_pDevice->hasUniqueQueueFamilyIndices())
+	bool hasUniqueQueues = m_pDevice->hasUniqueQueueFamilyIndices();
+	if (params.IsExclusive || !hasUniqueQueues)
 	{
 		bufferInfo.queueFamilyIndexCount	= 0;
 		bufferInfo.pQueueFamilyIndices		= nullptr;
@@ -53,6 +54,8 @@ bool BufferVK::init(const BufferParams& params)
 		bufferInfo.queueFamilyIndexCount	= 3;
 		bufferInfo.pQueueFamilyIndices		= queueFamilies;
 		bufferInfo.sharingMode				= VK_SHARING_MODE_CONCURRENT;
+
+		LOG("CONCURRENT BUFFER");
 	}
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateBuffer(m_pDevice->getDevice(), &bufferInfo, nullptr, &m_Buffer), "Failed to create buffer");

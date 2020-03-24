@@ -131,10 +131,10 @@ class SceneVK : public IScene
 	};
 
 public:
-	DECL_NO_COPY(SceneVK);
-
 	SceneVK(IGraphicsContext* pContext, const RenderingHandlerVK* pRenderingHandler);
 	~SceneVK();
+	
+	DECL_NO_COPY(SceneVK);
 
 	virtual bool loadFromFile(const std::string& dir, const std::string& fileName) override;
 
@@ -148,23 +148,20 @@ public:
 	virtual uint32_t submitGraphicsObject(const IMesh* pMesh, const Material* pMaterial, const glm::mat4& transform = glm::mat4(1.0f), uint8_t customMask = 0x80) override;
 	virtual void updateGraphicsObjectTransform(uint32_t index, const glm::mat4& transform) override;
 
-	void copySceneData(CommandBufferVK* pTransferBuffer);
-
-	// Used for geometry rendering
-	void updateSceneData();
-	DescriptorSetVK* getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial);
-
-	PipelineLayoutVK* getGeometryPipelineLayout() { return m_pGeometryPipelineLayout; }
-
-	const Camera& getCamera() { return m_Camera; }
-
 	virtual void renderUI() override;
 	virtual void updateDebugParameters() override;
 
 	virtual LightSetup& getLightSetup() override { return m_LightSetup; }
+	
+	// Used for geometry rendering
+	void updateSceneData();
+	void copySceneData(CommandBufferVK* pTransferBuffer);
+	
+	DescriptorSetVK* getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial);
 
-	const Camera&							getCamera() const			{ return m_Camera; }
-	const std::vector<GraphicsObjectVK>&	getGraphicsObjects() const	{ return m_GraphicsObjects; }
+	const Camera&							getCamera() const					{ return m_Camera; }
+	const std::vector<GraphicsObjectVK>&	getGraphicsObjects() const			{ return m_GraphicsObjects; }
+	PipelineLayoutVK*						getGeometryPipelineLayout() const	{ return m_pGeometryPipelineLayout; }
 
 	FORCEINLINE BufferVK*	getCombinedVertexBuffer()		{ return m_pCombinedVertexBuffer; }
 	FORCEINLINE BufferVK*	getCombinedIndexBuffer()		{ return m_pCombinedIndexBuffer; }
@@ -178,16 +175,15 @@ public:
 	FORCEINLINE const std::vector<const ImageViewVK*>&	getRoughnessMaps() const			{ return m_RoughnessMaps; }
 	FORCEINLINE const std::vector<const SamplerVK*>&	getSamplers() const					{ return m_Samplers; }
 	FORCEINLINE const BufferVK*							getMaterialParametersBuffer() const	{ return m_pMaterialParametersBuffer; }
-	FORCEINLINE const BufferVK*							getTransformsBuffer() const			{ return m_pTransformsBuffer; }
+	FORCEINLINE const BufferVK*							getTransformsBuffer() const			{ return m_pTransformsBufferGraphics; }
 	FORCEINLINE const TopLevelAccelerationStructure&	getTLAS() const						{ return m_TopLevelAccelerationStructure; }
 
 private:
 	bool createDefaultTexturesAndSamplers();
+	bool createGeometryPipelineLayout();
+	bool createCombinedGraphicsObjectData();
 
 	void initBuffers();
-
-	bool createGeometryPipelineLayout();
-
 	void initAccelerationStructureBuffers();
 
 	BottomLevelAccelerationStructure* createBLAS(const MeshVK* pMesh, const Material* pMaterial);
@@ -198,33 +194,34 @@ private:
 	bool updateTLAS();
 
 	void createProfiler();
-
 	void cleanGarbage();
+
 	void updateScratchBufferForBLAS();
 	void updateScratchBufferForTLAS();
 	void updateInstanceBuffer();
 	void updateTransformBuffer();
-	bool createCombinedGraphicsObjectData();
+
 	VkDeviceSize findMaxMemReqBLAS();
 	VkDeviceSize findMaxMemReqTLAS();
 
 	uint32_t registerMaterial(const Material* pMaterial);
 
 private:
+	SceneParameters m_SceneParameters;
+	Camera m_Camera;
+	LightSetup m_LightSetup;
+	Timestamp m_TimestampBuildAccelStruct; //Todo: create more of these
+
 	GraphicsContextVK* m_pContext;
 	DeviceVK* m_pDevice;
 	ProfilerVK* m_pProfiler;
-	Timestamp m_TimestampBuildAccelStruct; //Todo: create more of these
+	CommandPoolVK* m_pTempCommandPool;
+	CommandBufferVK* m_pTempCommandBuffer;
 
 	std::vector<MeshVK*> m_SceneMeshes;
 	std::unordered_map<std::string, ITexture2D*> m_SceneTextures;
 	std::vector<Material*> m_SceneMaterials;
-
-	Camera m_Camera;
-	LightSetup m_LightSetup;
-
 	std::vector<GraphicsObjectVK> m_GraphicsObjects;
-
 	std::vector<GeometryInstance> m_GeometryInstances;
 
 	// Geometry pass resources
@@ -251,11 +248,13 @@ private:
 	std::vector<const ImageViewVK*> m_MetallicMaps;
 	std::vector<const ImageViewVK*> m_RoughnessMaps;
 	std::vector<const SamplerVK*> m_Samplers;
+
 	std::vector<MaterialParameters> m_MaterialParameters;
 	BufferVK* m_pMaterialParametersBuffer;
 
 	std::vector<GraphicsObjectTransforms> m_SceneTransforms;
-	BufferVK* m_pTransformsBuffer;
+	BufferVK* m_pTransformsBufferGraphics;
+	BufferVK* m_pTransformsBufferCompute;
 
 	TopLevelAccelerationStructure m_OldTopLevelAccelerationStructure;
 	TopLevelAccelerationStructure m_TopLevelAccelerationStructure;
@@ -265,27 +264,21 @@ private:
 
 	BufferVK* m_pScratchBuffer;
 	BufferVK* m_pInstanceBuffer;
+
 	BufferVK* m_pGarbageScratchBuffer;
 	BufferVK* m_pGarbageInstanceBuffer;
-	BufferVK* m_pGarbageTransformsBuffer;
+	BufferVK* m_pGarbageTransformsBufferGraphics;
+	BufferVK* m_pGarbageTransformsBufferCompute;
+
+	Texture2DVK* m_pDefaultTexture;
+	Texture2DVK* m_pDefaultNormal;
+	SamplerVK* m_pDefaultSampler;
 
 	bool m_BottomLevelIsDirty;
 	bool m_TopLevelIsDirty;
 	bool m_TransformDataIsDirty;
 	bool m_MaterialDataIsDirty;
 	bool m_MeshDataIsDirty;
-
-	Texture2DVK* m_pDefaultTexture;
-	Texture2DVK* m_pDefaultNormal;
-	SamplerVK* m_pDefaultSampler;
-
 	bool m_RayTracingEnabled;
-
-	//Temp / Debug
-	CommandPoolVK* m_pTempCommandPool;
-	CommandBufferVK* m_pTempCommandBuffer;
-
-	SceneParameters m_SceneParameters;
-
 	bool m_DebugParametersDirty;
 };

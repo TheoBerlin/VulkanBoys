@@ -169,11 +169,10 @@ bool DeviceVK::hasUniqueQueueFamilyIndices() const
 	std::set<uint32_t> familyIndices = {
 		m_DeviceQueueFamilyIndices.computeFamily.value(),
 		m_DeviceQueueFamilyIndices.graphicsFamily.value(),
-		m_DeviceQueueFamilyIndices.presentFamily.value(),
 		m_DeviceQueueFamilyIndices.transferFamily.value()
 	};
 
-	return familyIndices.size() == 4;
+	return familyIndices.size() == 3;
 }
 
 void DeviceVK::getMaxComputeWorkGroupSize(uint32_t pWorkGroupSize[3])
