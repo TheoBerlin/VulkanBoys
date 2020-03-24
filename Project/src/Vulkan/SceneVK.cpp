@@ -471,12 +471,12 @@ void SceneVK::updateMaterials()
 			}
 		}
 
-		constexpr uint32_t SIZE_IN_BYTES = MAX_NUM_UNIQUE_MATERIALS * sizeof(MaterialParameters);
+		
 
-		void* pDest;
+		/*void* pDest;
 		m_pMaterialParametersBuffer->map(&pDest);
 		memcpy(pDest, m_MaterialParameters.data(), SIZE_IN_BYTES);
-		m_pMaterialParametersBuffer->unmap();
+		m_pMaterialParametersBuffer->unmap();*/
 	}
 	else
 	{
@@ -507,13 +507,22 @@ void SceneVK::updateMaterials()
 			}
 		}
 
-		constexpr uint32_t SIZE_IN_BYTES = MAX_NUM_UNIQUE_MATERIALS * sizeof(MaterialParameters);
-
-		void* pDest;
-		m_pMaterialParametersBuffer->map(&pDest);
-		memcpy(pDest, m_MaterialParameters.data(), SIZE_IN_BYTES);
-		m_pMaterialParametersBuffer->unmap();
+		//void* pDest;
+		//m_pMaterialParametersBuffer->map(&pDest);
+		//memcpy(pDest, m_MaterialParameters.data(), SIZE_IN_BYTES);
+		//m_pMaterialParametersBuffer->unmap();
 	}
+
+	constexpr uint32_t SIZE_IN_BYTES = MAX_NUM_UNIQUE_MATERIALS * sizeof(MaterialParameters);
+
+	m_pTempCommandBuffer->reset(true);
+	m_pTempCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+	m_pTempCommandBuffer->updateBuffer(m_pMaterialParametersBuffer, 0, m_MaterialParameters.data(), SIZE_IN_BYTES);
+
+	m_pTempCommandBuffer->end();
+
+	m_pDevice->executeCompute(m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 }
 
 void SceneVK::updateCamera(const Camera& camera)
@@ -681,16 +690,16 @@ bool SceneVK::createDefaultTexturesAndSamplers()
 void SceneVK::initBuffers()
 {
 	BufferParams materialParametersBufferParams = {};
-	materialParametersBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-	materialParametersBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	materialParametersBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	materialParametersBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	materialParametersBufferParams.SizeInBytes = sizeof(MaterialParameters) * MAX_NUM_UNIQUE_MATERIALS;
 
 	m_pMaterialParametersBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
 	m_pMaterialParametersBuffer->init(materialParametersBufferParams);
 
 	BufferParams transformBufferParams = {};
-	transformBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-	transformBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	transformBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	transformBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	transformBufferParams.SizeInBytes = sizeof(GraphicsObjectTransforms) * NUM_INITIAL_GRAPHICS_OBJECTS;
 
 	m_pTransformsBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
@@ -717,8 +726,8 @@ void SceneVK::initAccelerationStructureBuffers()
 	m_pScratchBuffer->init(scratchBufferParams);
 
 	BufferParams instanceBufferParams = {};
-	instanceBufferParams.Usage = VK_BUFFER_USAGE_RAY_TRACING_BIT_NV;
-	instanceBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	instanceBufferParams.Usage = VK_BUFFER_USAGE_RAY_TRACING_BIT_NV | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	instanceBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	instanceBufferParams.SizeInBytes = sizeof(GeometryInstance) * m_GeometryInstances.size();
 
 	m_pInstanceBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
@@ -903,10 +912,7 @@ bool SceneVK::createTLAS()
 
 bool SceneVK::buildTLAS()
 {
-	void* pData;
-	m_pInstanceBuffer->map(&pData);
-	memcpy(pData, m_GeometryInstances.data(), sizeof(GeometryInstance) * m_GeometryInstances.size());
-	m_pInstanceBuffer->unmap();
+	updateInstanceBuffer();
 
 	VkAccelerationStructureInfoNV buildInfo = {};
 	buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV;
@@ -961,11 +967,6 @@ bool SceneVK::updateTLAS()
 		cleanGarbage();
 		updateScratchBufferForTLAS();
 		updateInstanceBuffer();
-
-		void* pData;
-		m_pInstanceBuffer->map(&pData);
-		memcpy(pData, m_GeometryInstances.data(), sizeof(GeometryInstance) * m_GeometryInstances.size());
-		m_pInstanceBuffer->unmap();
 
 		VkAccelerationStructureInfoNV buildInfo = {};
 		buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV;
@@ -1127,18 +1128,27 @@ void SceneVK::updateInstanceBuffer()
 		m_pGarbageInstanceBuffer = m_pInstanceBuffer;
 
 		BufferParams instanceBufferParmas = {};
-		instanceBufferParmas.Usage = VK_BUFFER_USAGE_RAY_TRACING_BIT_NV;
-		instanceBufferParmas.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+		instanceBufferParmas.Usage = VK_BUFFER_USAGE_RAY_TRACING_BIT_NV | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		instanceBufferParmas.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 		instanceBufferParmas.SizeInBytes = sizeof(GeometryInstance) * m_GeometryInstances.size();
 
 		m_pInstanceBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
 		m_pInstanceBuffer->init(instanceBufferParmas);
 	}
 
-	void* pData;
-	m_pInstanceBuffer->map(&pData);
-	memcpy(pData, m_GeometryInstances.data(), sizeof(GeometryInstance) * m_GeometryInstances.size());
-	m_pInstanceBuffer->unmap();
+	//void* pData;
+	//m_pInstanceBuffer->map(&pData);
+	//memcpy(pData, m_GeometryInstances.data(), sizeof(GeometryInstance) * m_GeometryInstances.size());
+	//m_pInstanceBuffer->unmap();
+
+	m_pTempCommandBuffer->reset(true);
+	m_pTempCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+	m_pTempCommandBuffer->updateBuffer(m_pInstanceBuffer, 0, m_GeometryInstances.data(), m_GeometryInstances.size() * sizeof(GeometryInstance));
+
+	m_pTempCommandBuffer->end();
+	m_pDevice->executeCompute(m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+
 }
 
 void SceneVK::updateTransformBuffer()
@@ -1148,18 +1158,26 @@ void SceneVK::updateTransformBuffer()
 		m_pGarbageTransformsBuffer = m_pTransformsBuffer;
 
 		BufferParams transformBufferParams = {};
-		transformBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-		transformBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+		transformBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		transformBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 		transformBufferParams.SizeInBytes = sizeof(GraphicsObjectTransforms) * m_SceneTransforms.size();
 
 		m_pTransformsBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
 		m_pTransformsBuffer->init(transformBufferParams);
 	}
 
-	void* pData;
+	/*void* pData;
 	m_pTransformsBuffer->map(&pData);
 	memcpy(pData, m_SceneTransforms.data(), sizeof(GraphicsObjectTransforms) * m_SceneTransforms.size());
-	m_pTransformsBuffer->unmap();
+	m_pTransformsBuffer->unmap();*/
+
+	m_pTempCommandBuffer->reset(true);
+	m_pTempCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+	m_pTempCommandBuffer->updateBuffer(m_pTransformsBuffer, 0, m_SceneTransforms.data(), m_SceneTransforms.size() * sizeof(GraphicsObjectTransforms));
+
+	m_pTempCommandBuffer->end();
+	m_pDevice->executeCompute(m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 }
 
 bool SceneVK::createCombinedGraphicsObjectData()
@@ -1191,7 +1209,7 @@ bool SceneVK::createCombinedGraphicsObjectData()
 	BufferParams meshIndexBufferParams = {};
 	meshIndexBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	meshIndexBufferParams.SizeInBytes = sizeof(uint32_t) * 3 * m_NumBottomLevelAccelerationStructures;
-	meshIndexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	meshIndexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 	m_pCombinedVertexBuffer->init(vertexBufferParams);
 	m_pCombinedIndexBuffer->init(indexBufferParams);
@@ -1204,9 +1222,6 @@ bool SceneVK::createCombinedGraphicsObjectData()
 	uint32_t indexBufferOffset = 0;
 	uint64_t meshIndexBufferOffset = 0;
 	uint32_t currentCustomInstanceIndexNV = 0;
-
-	void* pMeshIndexBufferMapped;
-	m_pMeshIndexBuffer->map(&pMeshIndexBufferMapped);
 
 	for (auto& pMesh : m_AllMeshes)
 	{
@@ -1228,9 +1243,11 @@ bool SceneVK::createCombinedGraphicsObjectData()
 				}
 			}
 
-			memcpy((void*)((size_t)pMeshIndexBufferMapped +  meshIndexBufferOffset		* sizeof(uint32_t)), &vertexBufferOffset, sizeof(uint32_t));
+			uint32_t meshIndices[3] = { vertexBufferOffset, indexBufferOffset, bottomLevelAccelerationStructure.second.MaterialIndex };
+			m_pTempCommandBuffer->updateBuffer(m_pMeshIndexBuffer, meshIndexBufferOffset * sizeof(uint32_t), meshIndices, 3 * sizeof(uint32_t));
+			/*memcpy((void*)((size_t)pMeshIndexBufferMapped +  meshIndexBufferOffset		* sizeof(uint32_t)), &vertexBufferOffset, sizeof(uint32_t));
 			memcpy((void*)((size_t)pMeshIndexBufferMapped + (meshIndexBufferOffset + 1) * sizeof(uint32_t)), &indexBufferOffset, sizeof(uint32_t));
-			memcpy((void*)((size_t)pMeshIndexBufferMapped + (meshIndexBufferOffset + 2) * sizeof(uint32_t)), &bottomLevelAccelerationStructure.second.MaterialIndex, sizeof(uint32_t));
+			memcpy((void*)((size_t)pMeshIndexBufferMapped + (meshIndexBufferOffset + 2) * sizeof(uint32_t)), &bottomLevelAccelerationStructure.second.MaterialIndex, sizeof(uint32_t));*/
 			meshIndexBufferOffset += 3;
 			currentCustomInstanceIndexNV++;
 		}
@@ -1239,13 +1256,9 @@ bool SceneVK::createCombinedGraphicsObjectData()
 		indexBufferOffset += numIndices;
 	}
 
-	uint32_t test[8];
-	memcpy(test, pMeshIndexBufferMapped, sizeof(uint32_t) * 6);
-	m_pMeshIndexBuffer->unmap();
-
 	m_pTempCommandBuffer->end();
 	m_pDevice->executeCompute(m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
-	m_pDevice->wait(); //Todo: Remove?
+	//m_pDevice->wait(); //Todo: Remove?
 
 	return true;
 }
