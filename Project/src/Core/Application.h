@@ -70,53 +70,51 @@ private:
 	void sanitizeString(char string[], uint32_t numCharacters);
 
 private:
-	Camera m_Camera;
-	IWindow* m_pWindow;
-	IGraphicsContext* m_pContext;
-	RenderingHandler* m_pRenderingHandler;
-	IRenderer* m_pMeshRenderer;
-	IRenderer* m_pParticleRenderer;
-	IRenderer* m_pRayTracingRenderer;
-	IImgui* m_pImgui;
-	IInputHandler* m_pInputHandler;
+	Camera					m_Camera;
+	Material				m_GunMaterial;
+	ApplicationParameters	m_ApplicationParameters;
+	TestParameters			m_TestParameters;
+	
+	IWindow*			m_pWindow;
+	IGraphicsContext*	m_pContext;
+	RenderingHandler*	m_pRenderingHandler;
+	IRenderer*			m_pMeshRenderer;
+	IRenderer*			m_pParticleRenderer;
+	IRenderer*			m_pRayTracingRenderer;
+	IImgui*				m_pImgui;
+	IInputHandler*		m_pInputHandler;
 
 	IScene* m_pScene;
 
-	//TODO: Resoures should they be here?
-	static constexpr uint32_t SPHERE_COUNT_DIMENSION = 8;
-
-	IMesh* m_pGunMesh;
+	IMesh*		m_pGunMesh;
 	ITexture2D* m_pGunAlbedo;
 	ITexture2D* m_pGunNormal;
 	ITexture2D* m_pGunMetallic;
 	ITexture2D* m_pGunRoughness;
-	Material m_GunMaterial;
+	ITexture2D* m_pParticleTexture;
 
 	ITextureCube* m_pSkybox;
 
 	ParticleEmitterHandler* m_pParticleEmitterHandler;
-	ITexture2D* m_pParticleTexture;
 
 	// Resources for ImGui Particle window
 	size_t m_CurrentEmitterIdx;
-	bool m_CreatingEmitter;
 	ParticleEmitterInfo m_NewEmitterInfo;
-
-	bool m_IsRunning;
-	bool m_UpdateCamera;
 
 	LoopingUniformCRSpline<glm::vec3, float>* m_pCameraPositionSpline;
 	LoopingUniformCRSpline<glm::vec3, float>* m_pCameraDirectionSpline;
 	float m_CameraSplineTimer;
-	bool m_CameraSplineEnabled;
-
-	ApplicationParameters m_ApplicationParameters;
-	TestParameters m_TestParameters;
-	bool m_KeyInputEnabled;
 
 	uint32_t m_GraphicsIndex0;
 	uint32_t m_GraphicsIndex1;
 	uint32_t m_GraphicsIndex2;
 
+	bool m_IsRunning;
+	bool m_UpdateCamera;
+	bool m_KeyInputEnabled;
+	bool m_CameraSplineEnabled;
+	bool m_CreatingEmitter;
+
+	static constexpr uint32_t SPHERE_COUNT_DIMENSION = 8;
 	static Application* s_pInstance;
 };
