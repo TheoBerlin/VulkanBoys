@@ -57,9 +57,6 @@ public:
 	virtual void renderUI() override;
 
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
-
-	void setupFrame(CommandBufferVK* pPrimaryBuffer, const Camera& camera, const LightSetup& lightsetup);
-
 	void setClearColor(float r, float g, float b);
 	void setClearColor(const glm::vec3& color);
 	void setSkybox(TextureCubeVK* pSkybox, TextureCubeVK* pIrradiance, TextureCubeVK* pEnvironmentMap);
@@ -71,8 +68,13 @@ public:
 
 	void onWindowResize(uint32_t width, uint32_t height);
 
-	Texture2DVK* getBRDFLookUp() { return m_pIntegrationLUT; }
+	FORCEINLINE void setupFrame(CommandBufferVK* pPrimaryBuffer)
+	{
+		m_pGPassProfiler->reset(uint32_t(m_CurrentFrame), pPrimaryBuffer);
+		m_pLightPassProfiler->reset(uint32_t(m_CurrentFrame), pPrimaryBuffer);
+	}
 
+	FORCEINLINE Texture2DVK*		getBRDFLookUp() const				{ return m_pIntegrationLUT; }
 	FORCEINLINE ProfilerVK*			getLightProfiler() const			{ return m_pLightPassProfiler; }
 	FORCEINLINE ProfilerVK*			getGeometryProfiler() const			{ return m_pGPassProfiler; }
 	FORCEINLINE CommandBufferVK*	getGeometryCommandBuffer() const	{ return m_ppGeometryPassBuffers[m_CurrentFrame]; }
@@ -83,62 +85,59 @@ private:
 	bool createCommandPoolAndBuffers();
 	bool createPipelines();
 	bool createPipelineLayouts();
-	bool createBuffersAndTextures();
+	bool createTextures();
 	bool createSamplers();
 	void createProfiler();
 
 	void updateGBufferDescriptors();
-	void updateBuffers(CommandBufferVK* pPrimaryBuffer, const Camera& camera, const LightSetup& lightsetup);
 
-private:
-	GraphicsContextVK* m_pContext;
+	VkClearValue	m_ClearColor;
+	VkClearValue	m_ClearDepth;
+	VkViewport		m_Viewport;
+	VkRect2D		m_ScissorRect;
+
+	GraphicsContextVK*	m_pContext;
 	RenderingHandlerVK* m_pRenderingHandler;
-	ProfilerVK* m_pGPassProfiler;
-	ProfilerVK* m_pLightPassProfiler;
+	ProfilerVK*			m_pGPassProfiler;
+	ProfilerVK*			m_pLightPassProfiler;
 
 	// Per frame
 	SceneVK* m_pScene;
 
-	CommandPoolVK* m_ppGeometryPassPools[MAX_FRAMES_IN_FLIGHT];
-	CommandBufferVK* m_ppGeometryPassBuffers[MAX_FRAMES_IN_FLIGHT];
+	CommandPoolVK*		m_ppGeometryPassPools[MAX_FRAMES_IN_FLIGHT];
+	CommandBufferVK*	m_ppGeometryPassBuffers[MAX_FRAMES_IN_FLIGHT];
 
-	CommandPoolVK* m_ppLightPassPools[MAX_FRAMES_IN_FLIGHT];
-	CommandBufferVK* m_ppLightPassBuffers[MAX_FRAMES_IN_FLIGHT];
+	CommandPoolVK*		m_ppLightPassPools[MAX_FRAMES_IN_FLIGHT];
+	CommandBufferVK*	m_ppLightPassBuffers[MAX_FRAMES_IN_FLIGHT];
 
 	DescriptorPoolVK* m_pDescriptorPool;
 
-	SamplerVK* m_pSkyboxSampler;
-	SamplerVK* m_pGBufferSampler;
-	SamplerVK* m_pBRDFSampler;
-	SamplerVK* m_pRTSampler;
-	Texture2DVK* m_pDefaultTexture;
-	Texture2DVK* m_pDefaultNormal;
-	BufferVK* m_pCameraBuffer;
-	BufferVK* m_pLightBuffer;
+	SamplerVK*		m_pSkyboxSampler;
+	SamplerVK*		m_pGBufferSampler;
+	SamplerVK*		m_pBRDFSampler;
+	SamplerVK*		m_pRTSampler;
+	Texture2DVK*	m_pDefaultTexture;
+	Texture2DVK*	m_pDefaultNormal;
 
 	const BufferVK* m_pMaterialParametersBuffer;
 	const BufferVK* m_pTransformsBuffer;
 
-	PipelineVK* m_pLightPipeline;
-	PipelineLayoutVK* m_pLightPipelineLayout;
-	DescriptorSetVK* m_pLightDescriptorSet;
-	DescriptorSetLayoutVK* m_pLightDescriptorSetLayout;
+	PipelineVK*				m_pLightPipeline;
+	PipelineLayoutVK*		m_pLightPipelineLayout;
+	DescriptorSetVK*		m_pLightDescriptorSet;
+	DescriptorSetLayoutVK*	m_pLightDescriptorSetLayout;
 
-	PipelineVK* m_pSkyboxPipeline;
-	PipelineLayoutVK* m_pSkyboxPipelineLayout;
-	DescriptorSetVK* m_pSkyboxDescriptorSet;
-	DescriptorSetLayoutVK* m_pSkyboxDescriptorSetLayout;
+	PipelineVK*				m_pSkyboxPipeline;
+	PipelineLayoutVK*		m_pSkyboxPipelineLayout;
+	DescriptorSetVK*		m_pSkyboxDescriptorSet;
+	DescriptorSetLayoutVK*	m_pSkyboxDescriptorSetLayout;
 
-	PipelineVK* m_pGeometryPipeline;
+	PipelineVK*				m_pGeometryPipeline;
 
-	Texture2DVK* m_pIntegrationLUT;
-	TextureCubeVK* m_pSkybox;
-	TextureCubeVK* m_pIrradianceMap;
-	TextureCubeVK* m_pEnvironmentMap;
-	VkClearValue m_ClearColor;
-	VkClearValue m_ClearDepth;
-	VkViewport m_Viewport;
-	VkRect2D m_ScissorRect;
+	Texture2DVK*	m_pIntegrationLUT;
+	TextureCubeVK*	m_pSkybox;
+	TextureCubeVK*	m_pIrradianceMap;
+	TextureCubeVK*	m_pEnvironmentMap;
 
 	uint64_t m_CurrentFrame;
 };

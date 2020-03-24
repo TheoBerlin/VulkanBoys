@@ -11,7 +11,8 @@
 
 #define GET_DEVICE_PROC_ADDR(device, function_name) if ((function_name = reinterpret_cast<PFN_##function_name>(vkGetDeviceProcAddr(device, #function_name))) == nullptr) { LOG("--- Vulkan: Failed to load DeviceFunction '%s'", #function_name); }
 
-DeviceVK::DeviceVK() :
+DeviceVK::DeviceVK() 
+	: m_pInstance(nullptr),
 	m_PhysicalDevice(VK_NULL_HANDLE),
 	m_Device(VK_NULL_HANDLE),
 	m_GraphicsQueue(VK_NULL_HANDLE),
@@ -40,15 +41,17 @@ DeviceVK::~DeviceVK()
 
 bool DeviceVK::finalize(InstanceVK* pInstance)
 {
-	if (!initPhysicalDevice(pInstance))
+	m_pInstance = pInstance;
+	
+	if (!initPhysicalDevice())
 		return false;
 
-	if (!initLogicalDevice(pInstance))
+	if (!initLogicalDevice())
 		return false;
 
 	registerExtensionFunctions();
 
-	m_pCopyHandler = DBG_NEW CopyHandlerVK(this, pInstance);
+	m_pCopyHandler = DBG_NEW CopyHandlerVK(this);
 	m_pCopyHandler->init();
 
 	std::cout << "--- Device: Vulkan Device created successfully!" << std::endl;
@@ -141,6 +144,23 @@ void DeviceVK::wait()
 	}
 }
 
+void DeviceVK::setVulkanObjectName(const char* pName, uint64_t objectHandle, VkObjectType type)
+{
+	if (pName)
+	{
+		if (m_pInstance->vkSetDebugUtilsObjectNameEXT)
+		{
+			VkDebugUtilsObjectNameInfoEXT info = {};
+			info.sType			= VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+			info.pNext			= nullptr;
+			info.objectType		= type;
+			info.objectHandle	= objectHandle;
+			info.pObjectName	= pName;
+			m_pInstance->vkSetDebugUtilsObjectNameEXT(m_Device, &info);
+		}
+	}
+}
+
 bool DeviceVK::hasUniqueQueueFamilyIndices() const
 {
 	std::set<uint32_t> familyIndices = {
@@ -158,10 +178,10 @@ void DeviceVK::getMaxComputeWorkGroupSize(uint32_t pWorkGroupSize[3])
 	std::memcpy(pWorkGroupSize, m_DeviceLimits.maxComputeWorkGroupSize, sizeof(uint32_t) * 3);
 }
 
-bool DeviceVK::initPhysicalDevice(InstanceVK* pInstance)
+bool DeviceVK::initPhysicalDevice()
 {
 	uint32_t deviceCount = 0;
-	vkEnumeratePhysicalDevices(pInstance->getInstance() , &deviceCount, nullptr);
+	vkEnumeratePhysicalDevices(m_pInstance->getInstance() , &deviceCount, nullptr);
 
 	if (deviceCount == 0)
 	{
@@ -170,7 +190,7 @@ bool DeviceVK::initPhysicalDevice(InstanceVK* pInstance)
 	}
 
 	std::vector<VkPhysicalDevice> physicalDevices(deviceCount);
-	vkEnumeratePhysicalDevices(pInstance->getInstance(), &deviceCount, physicalDevices.data());
+	vkEnumeratePhysicalDevices(m_pInstance->getInstance(), &deviceCount, physicalDevices.data());
 
 	std::multimap<int32_t, VkPhysicalDevice> physicalDeviceCandidates;
 
@@ -199,7 +219,7 @@ bool DeviceVK::initPhysicalDevice(InstanceVK* pInstance)
 	return true;
 }
 
-bool DeviceVK::initLogicalDevice(InstanceVK* pInstance)
+bool DeviceVK::initLogicalDevice()
 {
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 	std::set<uint32_t> uniqueQueueFamilies = 
@@ -237,11 +257,11 @@ bool DeviceVK::initLogicalDevice(InstanceVK* pInstance)
 	createInfo.enabledExtensionCount = static_cast<uint32_t>(m_EnabledExtensions.size());
 	createInfo.ppEnabledExtensionNames = m_EnabledExtensions.data();
 
-	if (pInstance->validationLayersEnabled())
+	if (m_pInstance->validationLayersEnabled())
 	{
-		auto& validationLayers = pInstance->getValidationLayers();
-		createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-		createInfo.ppEnabledLayerNames = validationLayers.data();
+		auto& validationLayers = m_pInstance->getValidationLayers();
+		createInfo.enabledLayerCount	= static_cast<uint32_t>(validationLayers.size());
+		createInfo.ppEnabledLayerNames	= validationLayers.data();
 	}
 	else
 	{
@@ -254,10 +274,16 @@ bool DeviceVK::initLogicalDevice(InstanceVK* pInstance)
 		return false;
 	}
 
+	//Retrive queues
 	vkGetDeviceQueue(m_Device, m_DeviceQueueFamilyIndices.graphicsFamily.value(), 0, &m_GraphicsQueue);
-	vkGetDeviceQueue(m_Device, m_DeviceQueueFamilyIndices.computeFamily.value(), 0, &m_ComputeQueue);
-	vkGetDeviceQueue(m_Device, m_DeviceQueueFamilyIndices.transferFamily.value(), 0, &m_TransferQueue);
 	vkGetDeviceQueue(m_Device, m_DeviceQueueFamilyIndices.presentFamily.value(), 0, &m_PresentQueue);
+	setVulkanObjectName("GraphicsQueue", (uint64_t)m_GraphicsQueue, VK_OBJECT_TYPE_QUEUE);
+	
+	vkGetDeviceQueue(m_Device, m_DeviceQueueFamilyIndices.computeFamily.value(), 0, &m_ComputeQueue);
+	setVulkanObjectName("ComputeQueue", (uint64_t)m_ComputeQueue, VK_OBJECT_TYPE_QUEUE);
+
+	vkGetDeviceQueue(m_Device, m_DeviceQueueFamilyIndices.transferFamily.value(), 0, &m_TransferQueue);
+	setVulkanObjectName("TransferQueue", (uint64_t)m_TransferQueue, VK_OBJECT_TYPE_QUEUE);
 
 	return true;
 }
@@ -353,10 +379,10 @@ QueueFamilyIndices DeviceVK::findQueueFamilies(VkPhysicalDevice physicalDevice)
 	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
 	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
 
-	indices.graphicsFamily = getQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT, queueFamilies);
-	indices.computeFamily = getQueueFamilyIndex(VK_QUEUE_COMPUTE_BIT, queueFamilies);
-	indices.transferFamily = getQueueFamilyIndex(VK_QUEUE_TRANSFER_BIT, queueFamilies);
-	indices.presentFamily = indices.graphicsFamily; //Assume present support at this stage
+	indices.graphicsFamily	= getQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT, queueFamilies);
+	indices.computeFamily	= getQueueFamilyIndex(VK_QUEUE_COMPUTE_BIT, queueFamilies);
+	indices.transferFamily	= getQueueFamilyIndex(VK_QUEUE_TRANSFER_BIT, queueFamilies);
+	indices.presentFamily	= indices.graphicsFamily; //Assume present support at this stage
 
 	return indices;
 }

@@ -19,7 +19,7 @@ class DescriptorSetLayoutVK;
 class SkyboxRendererVK
 {
 public:
-	SkyboxRendererVK(DeviceVK* pDevice, InstanceVK* pInstance);
+	SkyboxRendererVK(DeviceVK* pDevice);
 	~SkyboxRendererVK();
 
 	DECL_NO_COPY(SkyboxRendererVK);
@@ -38,7 +38,6 @@ private:
 
 private:
 	DeviceVK* m_pDevice;
-	InstanceVK* m_pInstance;
 	CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];
 	CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
 

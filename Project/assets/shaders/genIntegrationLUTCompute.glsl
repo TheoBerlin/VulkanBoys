@@ -2,7 +2,7 @@
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-layout(set = 0, binding = 0, rgba16f) uniform image2D u_IntegrationLUT;
+layout(set = 0, binding = 0, rgba16f) writeonly uniform image2D u_IntegrationLUT;
 
 const uint  SAMPLE_COUNT    = 1024U;
 const float PI              = 3.14159265359f;

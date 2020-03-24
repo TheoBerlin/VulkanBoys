@@ -18,6 +18,8 @@ public:
 	virtual void map(void** ppMappedMemory) override;
 	virtual void unmap() override;
 
+	virtual void setName(const char* pName) override;
+
 	virtual uint64_t getSizeInBytes() const override;
 	
 	VkBuffer getBuffer() const { return m_Buffer; }

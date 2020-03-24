@@ -27,7 +27,7 @@
 
 SceneVK::SceneVK(IGraphicsContext* pContext, const RenderingHandlerVK* pRenderingHandler) :
 	m_pContext(reinterpret_cast<GraphicsContextVK*>(pContext)),
-	m_pCameraBuffer(pRenderingHandler->getCameraBuffer()),
+	m_pCameraBuffer(pRenderingHandler->getCameraBufferGraphics()),
 	m_pScratchBuffer(nullptr),
 	m_pInstanceBuffer(nullptr),
 	m_pGarbageScratchBuffer(nullptr),
@@ -370,7 +370,7 @@ bool SceneVK::init()
 
 bool SceneVK::finalize()
 {
-	m_pTempCommandPool = DBG_NEW CommandPoolVK(m_pContext->getDevice(), m_pContext->getInstance(), m_pContext->getDevice()->getQueueFamilyIndices().computeFamily.value());
+	m_pTempCommandPool = DBG_NEW CommandPoolVK(m_pContext->getDevice(), m_pContext->getDevice()->getQueueFamilyIndices().computeFamily.value());
 	m_pTempCommandPool->init();
 
 	m_pTempCommandBuffer = m_pTempCommandPool->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
@@ -654,8 +654,8 @@ void SceneVK::updateGraphicsObjectTransform(uint32_t index, const glm::mat4& tra
 	}
 
 	GraphicsObjectTransforms& transforms = m_SceneTransforms[index];
-	transforms.PrevTransform = transforms.Transform;
-	transforms.Transform = transform;
+	transforms.PrevTransform	= transforms.Transform;
+	transforms.Transform		= transform;
 }
 
 void SceneVK::UpdateSceneData()

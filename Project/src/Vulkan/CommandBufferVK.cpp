@@ -4,11 +4,9 @@
 
 #include "Ray Tracing/ShaderBindingTableVK.h"
 
-CommandBufferVK::CommandBufferVK(DeviceVK* pDevice, InstanceVK* pInstance, VkCommandBuffer commandBuffer)
+CommandBufferVK::CommandBufferVK(DeviceVK* pDevice, VkCommandBuffer commandBuffer)
 	: m_pDevice(pDevice),
-	m_pInstance(pInstance),
 	m_pStagingBuffer(nullptr),
-	m_pStagingTexture(nullptr),
 	m_CommandBuffer(commandBuffer),
 	m_Fence(VK_NULL_HANDLE),
 	m_DescriptorSets()
@@ -24,7 +22,6 @@ CommandBufferVK::~CommandBufferVK()
 	}
 
 	SAFEDELETE(m_pStagingBuffer);
-	SAFEDELETE(m_pStagingTexture);
 	m_pDevice = nullptr;
 }
 
@@ -40,13 +37,7 @@ bool CommandBufferVK::finalize()
 
 	//Create staging-buffers
 	m_pStagingBuffer = DBG_NEW StagingBufferVK(m_pDevice);
-	if (!m_pStagingBuffer->init(MB(16)))
-	{
-		return false;
-	}
-
-	m_pStagingTexture = DBG_NEW StagingBufferVK(m_pDevice);
-	if (!m_pStagingTexture->init(MB(32)))
+	if (!m_pStagingBuffer->init(MB(1)))
 	{
 		return false;
 	}
@@ -65,9 +56,7 @@ void CommandBufferVK::reset(bool waitForFence)
 	}
 
 	vkResetCommandBuffer(m_CommandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
-
 	m_pStagingBuffer->reset();
-	m_pStagingTexture->reset();
 }
 
 void CommandBufferVK::updateBuffer(BufferVK* pDestination, uint64_t destinationOffset, const void* pSource, uint64_t sizeInBytes)
@@ -199,11 +188,11 @@ void CommandBufferVK::updateImage(const void* pPixelData, ImageVK* pImage, uint3
 {
 	uint32_t sizeInBytes = width * height * pixelStride;
 	
-	VkDeviceSize offset = m_pStagingTexture->getCurrentOffset();
-	void* pHostMemory	= m_pStagingTexture->allocate(sizeInBytes);
+	VkDeviceSize offset = m_pStagingBuffer->getCurrentOffset();
+	void* pHostMemory	= m_pStagingBuffer->allocate(sizeInBytes);
 	memcpy(pHostMemory, pPixelData, sizeInBytes);
 	
-	copyBufferToImage(m_pStagingTexture->getBuffer(), offset, pImage, width, height, miplevel, layer);
+	copyBufferToImage(m_pStagingBuffer->getBuffer(), offset, pImage, width, height, miplevel, layer);
 }
 
 void CommandBufferVK::copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffset, ImageVK* pImage, uint32_t width, uint32_t height, uint32_t miplevel, uint32_t layer)
@@ -241,111 +230,6 @@ void CommandBufferVK::transitionImageLayout(ImageVK* pImage, VkImageLayout oldLa
 
 	VkPipelineStageFlags sourceStage		= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 	VkPipelineStageFlags destinationStage	= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-	/*if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) 
-	{
-		barrier.srcAccessMask = 0;
-		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-		sourceStage			= VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-		destinationStage	= VK_PIPELINE_STAGE_TRANSFER_BIT;
-	}
-	else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_GENERAL)
-	{
-		barrier.srcAccessMask = 0;
-		barrier.dstAccessMask = 0;
-
-		sourceStage			= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-		destinationStage	= VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-	}
-	else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-	{
-		barrier.srcAccessMask = 0;
-		barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-		sourceStage			= VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-		destinationStage	= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	}
-	else if (oldLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-	{
-		barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-		sourceStage			= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		destinationStage	= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	}
-	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-	{
-		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-		sourceStage			= VK_PIPELINE_STAGE_TRANSFER_BIT;
-		destinationStage	= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	}
-	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-	{
-		barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-		sourceStage			= VK_PIPELINE_STAGE_TRANSFER_BIT;
-		destinationStage	= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	}
-	else if (oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-	{
-		barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-		sourceStage			= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-		destinationStage	= VK_PIPELINE_STAGE_TRANSFER_BIT;
-	}
-	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
-	{
-		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-		sourceStage			= VK_PIPELINE_STAGE_TRANSFER_BIT;
-		destinationStage	= VK_PIPELINE_STAGE_TRANSFER_BIT;
-	}
-	else if (oldLayout == VK_IMAGE_LAYOUT_GENERAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL)
-	{
-		barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-		sourceStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-		destinationStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-	}
-	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-	{
-		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-
-		sourceStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-		destinationStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-	}
-	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_GENERAL)
-	{
-		barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
-		sourceStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-		destinationStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-	}
-	else if (oldLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-	{
-		barrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-		sourceStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-		destinationStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-	}
-	else if (oldLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-	{
-		barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-		barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-		sourceStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-		destinationStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-	}
-	else 
-	{
-		LOG("Unsupported layout transition");
-	}*/
 
 	// Source layouts (old)
 	// Source access mask controls actions that have to be finished on the old layout
@@ -470,17 +354,5 @@ void CommandBufferVK::traceRays(ShaderBindingTableVK* pShaderBindingTable, uint3
 
 void CommandBufferVK::setName(const char* pName)
 {
-	if (pName)
-	{
-		if (m_pInstance->vkSetDebugUtilsObjectNameEXT)
-		{
-			VkDebugUtilsObjectNameInfoEXT info = {};
-			info.sType			= VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-			info.pNext			= nullptr;
-			info.objectType		= VK_OBJECT_TYPE_COMMAND_BUFFER;
-			info.objectHandle	= (uint64_t)m_CommandBuffer;
-			info.pObjectName	= pName;
-			m_pInstance->vkSetDebugUtilsObjectNameEXT(m_pDevice->getDevice(), &info);
-		}
-	}
+	m_pDevice->setVulkanObjectName(pName, (uint64_t)m_CommandBuffer, VK_OBJECT_TYPE_COMMAND_BUFFER);
 }

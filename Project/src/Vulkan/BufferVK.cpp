@@ -74,6 +74,10 @@ bool BufferVK::init(const BufferParams& params)
 	vkBindBufferMemory(m_pDevice->getDevice(), m_Buffer, m_Memory, 0);
 	D_LOG("--- Buffer: Vulkan Allocated '%d' bytes for buffer", memRequirements.size);
 
+	static uint32_t num = 0;
+	std::string name = "Buffer " + std::to_string(num++);
+
+	setName(name.c_str());
     return true;
 }
 
@@ -92,6 +96,11 @@ void BufferVK::unmap()
 {
 	vkUnmapMemory(m_pDevice->getDevice(), m_Memory);
 	m_IsMapped = false;
+}
+
+void BufferVK::setName(const char* pName)
+{
+	m_pDevice->setVulkanObjectName(pName, (uint64_t)m_Buffer, VK_OBJECT_TYPE_BUFFER);
 }
 
 uint64_t BufferVK::getSizeInBytes() const
