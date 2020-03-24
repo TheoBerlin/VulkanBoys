@@ -577,14 +577,14 @@ void Application::update(double dt)
 	rotation = glm::rotate(rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
 
 	const glm::mat4 scale = glm::scale(glm::vec3(0.75f));
-	//m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex0, glm::translate(glm::mat4(1.0f), glm::vec3( 0.0f, 1.0f, 0.1f)) * rotation * scale);
+	m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex0, glm::translate(glm::mat4(1.0f), glm::vec3( 0.0f, 1.0f, 0.1f)) * rotation * scale);
 
 	m_pScene->updateCamera(m_Camera);
 	m_pScene->updateDebugParameters();
 
-	//m_pScene->updateMeshesAndGraphicsObjects();
+	m_pScene->updateMeshesAndGraphicsObjects();
 	
-	//m_pRenderingHandler->onSceneUpdated(m_pScene);
+	m_pRenderingHandler->onSceneUpdated(m_pScene);
 }
 
 void Application::renderUI(double dt)

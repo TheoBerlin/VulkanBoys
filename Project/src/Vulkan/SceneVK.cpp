@@ -42,6 +42,9 @@ SceneVK::SceneVK(IGraphicsContext* pContext, const RenderingHandlerVK* pRenderin
 	m_pTempCommandBuffer(nullptr),
 	m_TopLevelIsDirty(false),
 	m_BottomLevelIsDirty(false),
+	m_TransformDataIsDirty(false),
+	m_MaterialDataIsDirty(false),
+	m_MeshDataIsDirty(false),
 	m_pDefaultTexture(nullptr),
 	m_pDefaultNormal(nullptr),
 	m_pDefaultSampler(nullptr),
@@ -533,16 +536,7 @@ void SceneVK::updateMaterials()
 		//m_pMaterialParametersBuffer->unmap();
 	}
 
-	constexpr uint32_t SIZE_IN_BYTES = MAX_NUM_UNIQUE_MATERIALS * sizeof(MaterialParameters);
-
-	m_pTempCommandBuffer->reset(true);
-	m_pTempCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-	m_pTempCommandBuffer->updateBuffer(m_pMaterialParametersBuffer, 0, m_MaterialParameters.data(), SIZE_IN_BYTES);
-
-	m_pTempCommandBuffer->end();
-
-	m_pDevice->executeCompute(m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	m_MaterialDataIsDirty = true;
 }
 
 void SceneVK::updateCamera(const Camera& camera)
@@ -667,7 +661,65 @@ void SceneVK::updateGraphicsObjectTransform(uint32_t index, const glm::mat4& tra
 	transforms.Transform		= transform;
 }
 
-void SceneVK::UpdateSceneData()
+void SceneVK::copySceneData(CommandBufferVK* pTransferBuffer)
+{
+	if (m_TransformDataIsDirty)
+	{
+		pTransferBuffer->updateBuffer(m_pTransformsBuffer, 0, m_SceneTransforms.data(), m_SceneTransforms.size() * sizeof(GraphicsObjectTransforms));
+		m_TransformDataIsDirty = false;
+	}
+
+	if (m_MaterialDataIsDirty)
+	{
+		constexpr uint32_t SIZE_IN_BYTES = MAX_NUM_UNIQUE_MATERIALS * sizeof(MaterialParameters);
+		pTransferBuffer->updateBuffer(m_pMaterialParametersBuffer, 0, m_MaterialParameters.data(), SIZE_IN_BYTES);
+
+		m_MaterialDataIsDirty = false;
+	}
+
+	if (m_MeshDataIsDirty)
+	{
+		uint32_t vertexBufferOffset = 0;
+		uint32_t indexBufferOffset = 0;
+		uint64_t meshIndexBufferOffset = 0;
+		uint32_t currentCustomInstanceIndexNV = 0;
+
+		for (auto& pMesh : m_AllMeshes)
+		{
+			uint32_t numVertices = pMesh->getVertexCount();
+			uint32_t numIndices = pMesh->getIndexCount();
+
+			pTransferBuffer->copyBuffer(reinterpret_cast<BufferVK*>(pMesh->getVertexBuffer()), 0, m_pCombinedVertexBuffer, vertexBufferOffset * sizeof(Vertex), numVertices * sizeof(Vertex));
+			pTransferBuffer->copyBuffer(reinterpret_cast<BufferVK*>(pMesh->getIndexBuffer()), 0, m_pCombinedIndexBuffer, indexBufferOffset * sizeof(uint32_t), numIndices * sizeof(uint32_t));
+
+			for (auto& bottomLevelAccelerationStructure : m_FinalizedBottomLevelAccelerationStructures[pMesh])
+			{
+				for (uint32_t i = 0; i < m_GraphicsObjects.size(); i++)
+				{
+					GraphicsObjectVK& graphicsObject = m_GraphicsObjects[i];
+
+					if (graphicsObject.pMesh == pMesh && graphicsObject.pMaterial == bottomLevelAccelerationStructure.first)
+					{
+						m_GeometryInstances[i].InstanceId = currentCustomInstanceIndexNV;
+					}
+				}
+
+				uint32_t meshIndices[3] = { vertexBufferOffset, indexBufferOffset, bottomLevelAccelerationStructure.second.MaterialIndex };
+				pTransferBuffer->updateBuffer(m_pMeshIndexBuffer, meshIndexBufferOffset * sizeof(uint32_t), meshIndices, 3 * sizeof(uint32_t));
+
+				meshIndexBufferOffset += 3;
+				currentCustomInstanceIndexNV++;
+			}
+
+			vertexBufferOffset	+= numVertices;
+			indexBufferOffset	+= numIndices;
+		}
+
+		m_MeshDataIsDirty = false;
+	}
+}
+
+void SceneVK::updateSceneData()
 {
 	for (auto& instance : m_MeshTable)
 	{
@@ -1319,18 +1371,20 @@ void SceneVK::updateTransformBuffer()
 		m_pTransformsBuffer->init(transformBufferParams);
 	}
 
+	m_TransformDataIsDirty = true;
+
 	/*void* pData;
 	m_pTransformsBuffer->map(&pData);
 	memcpy(pData, m_SceneTransforms.data(), sizeof(GraphicsObjectTransforms) * m_SceneTransforms.size());
 	m_pTransformsBuffer->unmap();*/
 
-	m_pTempCommandBuffer->reset(true);
-	m_pTempCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+	//m_pTempCommandBuffer->reset(true);
+	//m_pTempCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
-	m_pTempCommandBuffer->updateBuffer(m_pTransformsBuffer, 0, m_SceneTransforms.data(), m_SceneTransforms.size() * sizeof(GraphicsObjectTransforms));
+	//m_pTempCommandBuffer->updateBuffer(m_pTransformsBuffer, 0, m_SceneTransforms.data(), m_SceneTransforms.size() * sizeof(GraphicsObjectTransforms));
 
-	m_pTempCommandBuffer->end();
-	m_pDevice->executeCompute(m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	//m_pTempCommandBuffer->end();
+	//m_pDevice->executeCompute(m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 }
 
 bool SceneVK::createCombinedGraphicsObjectData()
@@ -1346,8 +1400,8 @@ bool SceneVK::createCombinedGraphicsObjectData()
 	SAFEDELETE(m_pMeshIndexBuffer);
 
 	m_pCombinedVertexBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
-	m_pCombinedIndexBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
-	m_pMeshIndexBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
+	m_pCombinedIndexBuffer	= reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
+	m_pMeshIndexBuffer		= reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
 
 	BufferParams vertexBufferParams = {};
 	vertexBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
@@ -1368,50 +1422,7 @@ bool SceneVK::createCombinedGraphicsObjectData()
 	m_pCombinedIndexBuffer->init(indexBufferParams);
 	m_pMeshIndexBuffer->init(meshIndexBufferParams);
 
-	m_pTempCommandBuffer->reset(true);
-	m_pTempCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-
-	uint32_t vertexBufferOffset = 0;
-	uint32_t indexBufferOffset = 0;
-	uint64_t meshIndexBufferOffset = 0;
-	uint32_t currentCustomInstanceIndexNV = 0;
-
-	for (auto& pMesh : m_AllMeshes)
-	{
-		uint32_t numVertices = pMesh->getVertexCount();
-		uint32_t numIndices = pMesh->getIndexCount();
-
-		m_pTempCommandBuffer->copyBuffer(reinterpret_cast<BufferVK*>(pMesh->getVertexBuffer()), 0, m_pCombinedVertexBuffer, vertexBufferOffset * sizeof(Vertex), numVertices * sizeof(Vertex));
-		m_pTempCommandBuffer->copyBuffer(reinterpret_cast<BufferVK*>(pMesh->getIndexBuffer()), 0, m_pCombinedIndexBuffer, indexBufferOffset * sizeof(uint32_t), numIndices * sizeof(uint32_t));
-
-		for (auto& bottomLevelAccelerationStructure : m_FinalizedBottomLevelAccelerationStructures[pMesh])
-		{
-			for (uint32_t i = 0; i < m_GraphicsObjects.size(); i++)
-			{
-				GraphicsObjectVK& graphicsObject = m_GraphicsObjects[i];
-
-				if (graphicsObject.pMesh == pMesh && graphicsObject.pMaterial == bottomLevelAccelerationStructure.first)
-				{
-					m_GeometryInstances[i].InstanceId = currentCustomInstanceIndexNV;
-				}
-			}
-
-			uint32_t meshIndices[3] = { vertexBufferOffset, indexBufferOffset, bottomLevelAccelerationStructure.second.MaterialIndex };
-			m_pTempCommandBuffer->updateBuffer(m_pMeshIndexBuffer, meshIndexBufferOffset * sizeof(uint32_t), meshIndices, 3 * sizeof(uint32_t));
-			/*memcpy((void*)((size_t)pMeshIndexBufferMapped +  meshIndexBufferOffset		* sizeof(uint32_t)), &vertexBufferOffset, sizeof(uint32_t));
-			memcpy((void*)((size_t)pMeshIndexBufferMapped + (meshIndexBufferOffset + 1) * sizeof(uint32_t)), &indexBufferOffset, sizeof(uint32_t));
-			memcpy((void*)((size_t)pMeshIndexBufferMapped + (meshIndexBufferOffset + 2) * sizeof(uint32_t)), &bottomLevelAccelerationStructure.second.MaterialIndex, sizeof(uint32_t));*/
-			meshIndexBufferOffset += 3;
-			currentCustomInstanceIndexNV++;
-		}
-
-		vertexBufferOffset += numVertices;
-		indexBufferOffset += numIndices;
-	}
-
-	m_pTempCommandBuffer->end();
-	m_pDevice->executeCompute(m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
-	//m_pDevice->wait(); //Todo: Remove?
+	m_MeshDataIsDirty = true;
 
 	return true;
 }

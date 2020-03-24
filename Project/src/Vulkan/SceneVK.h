@@ -22,8 +22,6 @@ class PipelineLayoutVK;
 class RenderingHandlerVK;
 class SamplerVK;
 class Texture2DVK;
-
-//Todo: Remove these
 class CommandPoolVK;
 class CommandBufferVK;
 
@@ -150,8 +148,10 @@ public:
 	virtual uint32_t submitGraphicsObject(const IMesh* pMesh, const Material* pMaterial, const glm::mat4& transform = glm::mat4(1.0f), uint8_t customMask = 0x80) override;
 	virtual void updateGraphicsObjectTransform(uint32_t index, const glm::mat4& transform) override;
 
+	void copySceneData(CommandBufferVK* pTransferBuffer);
+
 	// Used for geometry rendering
-	void UpdateSceneData();
+	void updateSceneData();
 	DescriptorSetVK* getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial);
 
 	PipelineLayoutVK* getGeometryPipelineLayout() { return m_pGeometryPipelineLayout; }
@@ -271,6 +271,9 @@ private:
 
 	bool m_BottomLevelIsDirty;
 	bool m_TopLevelIsDirty;
+	bool m_TransformDataIsDirty;
+	bool m_MaterialDataIsDirty;
+	bool m_MeshDataIsDirty;
 
 	Texture2DVK* m_pDefaultTexture;
 	Texture2DVK* m_pDefaultNormal;

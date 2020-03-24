@@ -99,18 +99,21 @@ void DeviceVK::executeTransfer(CommandBufferVK* pCommandBuffer, const VkSemaphor
 	executeCommandBuffer(m_TransferQueue, pCommandBuffer, pWaitSemaphore, pWaitStages, waitSemaphoreCount, pSignalSemaphores, signalSemaphoreCount);
 }
 
-void DeviceVK::waitCompute()
-{
-	vkQueueWaitIdle(m_ComputeQueue);
-}
-
 void DeviceVK::waitGraphics()
 {
+	std::scoped_lock<Spinlock> lock(m_GraphicsLock);
 	vkQueueWaitIdle(m_GraphicsQueue);
+}
+
+void DeviceVK::waitCompute()
+{
+	std::scoped_lock<Spinlock> lock(m_ComputeLock);
+	vkQueueWaitIdle(m_ComputeQueue);
 }
 
 void DeviceVK::waitTransfer()
 {
+	std::scoped_lock<Spinlock> lock(m_TransferLock);
 	vkQueueWaitIdle(m_TransferQueue);
 }
 
@@ -119,8 +122,8 @@ void DeviceVK::executeCommandBuffer(VkQueue queue, CommandBufferVK* pCommandBuff
 {
 	//Submit
 	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.pNext = nullptr;
+	submitInfo.sType				= VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.pNext				= nullptr;
 	submitInfo.waitSemaphoreCount	= waitSemaphoreCount;
 	submitInfo.pWaitSemaphores		= pWaitSemaphore;
 	submitInfo.pWaitDstStageMask	= pWaitStages;

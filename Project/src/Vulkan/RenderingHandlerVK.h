@@ -81,7 +81,7 @@ private:
 
     void releaseBackBuffers();
 
-    void updateBuffers(const Camera& camera, const LightSetup& lightSetup);
+    void updateBuffers(SceneVK* pScene, const Camera& camera, const LightSetup& lightSetup);
 
     void submitParticles();
 

@@ -45,8 +45,8 @@ public:
 	void executeTransfer(CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages,
 		uint32_t waitSemaphoreCount, const VkSemaphore* pSignalSemaphores, uint32_t signalSemaphoreCount);
 
-	void waitCompute();
 	void waitGraphics();
+	void waitCompute();
 	void waitTransfer();
 	void wait();
 
