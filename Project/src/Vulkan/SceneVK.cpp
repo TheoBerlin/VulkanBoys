@@ -2,12 +2,15 @@
 
 #include "Core/Material.h"
 
-#include "Vulkan/GraphicsContextVK.h"
-#include "Vulkan/DeviceVK.h"
 #include "Vulkan/BufferVK.h"
+#include "Vulkan/DescriptorPoolVK.h"
+#include "Vulkan/DeviceVK.h"
+#include "Vulkan/GraphicsContextVK.h"
 #include "Vulkan/MeshVK.h"
-#include "Vulkan/Texture2DVK.h"
+#include "Vulkan/PipelineLayoutVK.h"
+#include "Vulkan/RenderingHandlerVK.h"
 #include "Vulkan/SamplerVK.h"
+#include "Vulkan/Texture2DVK.h"
 
 #include "Vulkan/CommandPoolVK.h"
 #include "Vulkan/CommandBufferVK.h"
@@ -22,8 +25,9 @@
     #undef max
 #endif
 
-SceneVK::SceneVK(IGraphicsContext* pContext) :
+SceneVK::SceneVK(IGraphicsContext* pContext, const RenderingHandlerVK* pRenderingHandler) :
 	m_pContext(reinterpret_cast<GraphicsContextVK*>(pContext)),
+	m_pCameraBuffer(pRenderingHandler->getCameraBuffer()),
 	m_pScratchBuffer(nullptr),
 	m_pInstanceBuffer(nullptr),
 	m_pGarbageScratchBuffer(nullptr),
@@ -46,7 +50,10 @@ SceneVK::SceneVK(IGraphicsContext* pContext) :
 	m_pGarbageTransformsBuffer(nullptr),
 	m_DebugParametersDirty(false),
 	m_pProfiler(nullptr),
-	m_RayTracingEnabled(pContext->isRayTracingEnabled())
+	m_RayTracingEnabled(pContext->isRayTracingEnabled()),
+	m_pDescriptorPool(nullptr),
+	m_pGeometryPipelineLayout(nullptr),
+	m_pGeometryDescriptorSetLayout(nullptr)
 {
 	m_pDevice = reinterpret_cast<DeviceVK*>(m_pContext->getDevice());
 }
@@ -60,6 +67,10 @@ SceneVK::~SceneVK()
 		m_pTempCommandPool->freeCommandBuffer(&m_pTempCommandBuffer);
 		m_pTempCommandBuffer = nullptr;
 	}
+
+	SAFEDELETE(m_pDescriptorPool);
+	SAFEDELETE(m_pGeometryDescriptorSetLayout);
+	SAFEDELETE(m_pGeometryPipelineLayout);
 
 	SAFEDELETE(m_pTempCommandPool);
 	SAFEDELETE(m_pScratchBuffer);
@@ -638,6 +649,125 @@ void SceneVK::updateGraphicsObjectTransform(uint32_t index, const glm::mat4& tra
 	transforms.Transform = transform;
 }
 
+void SceneVK::setSceneData()
+{
+	const BufferVK* pMaterialParametersBuffer = getMaterialParametersBuffer();
+	const BufferVK* pTransformsBuffer = getTransformsBuffer();
+
+	if (m_pMaterialParametersBuffer != pMaterialParametersBuffer)
+	{
+		m_pMaterialParametersBuffer = pMaterialParametersBuffer;
+
+		if (m_pTransformsBuffer != pTransformsBuffer)
+		{
+			//Both Buffers Needs Update
+			m_pTransformsBuffer = pTransformsBuffer;
+
+			for (auto& instance : m_MeshTable)
+			{
+				instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pMaterialParametersBuffer, MATERIAL_PARAMETERS_BINDING);
+				instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pTransformsBuffer, INSTANCE_TRANSFORMS_BINDING);
+			}
+		}
+		else
+		{
+			//Just Materials Buffer Needs Update
+			for (auto& instance : m_MeshTable)
+			{
+				instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pMaterialParametersBuffer, MATERIAL_PARAMETERS_BINDING);
+			}
+		}
+	}
+	else if (m_pTransformsBuffer != pTransformsBuffer)
+	{
+		//Just Transforms Buffer Needs Update
+		m_pTransformsBuffer = pTransformsBuffer;
+
+		for (auto& instance : m_MeshTable)
+		{
+			instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pTransformsBuffer, INSTANCE_TRANSFORMS_BINDING);
+		}
+	}
+}
+
+DescriptorSetVK* SceneVK::getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial)
+{
+	MeshFilter filter = {};
+	filter.pMesh		= pMesh;
+	filter.pMaterial	= pMaterial;
+
+	if (m_MeshTable.count(filter) == 0)
+	{
+		DescriptorSetVK* pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pGeometryDescriptorSetLayout);
+		pDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer, CAMERA_BUFFER_BINDING);
+
+		BufferVK* pVertBuffer = reinterpret_cast<BufferVK*>(pMesh->getVertexBuffer());
+		pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer, VERTEX_BUFFER_BINDING);
+
+		SamplerVK* pSampler = reinterpret_cast<SamplerVK*>(pMaterial->getSampler());
+
+		Texture2DVK* pAlbedo = m_pDefaultTexture;
+		if (pMaterial->hasAlbedoMap())
+		{
+			pAlbedo = reinterpret_cast<Texture2DVK*>(pMaterial->getAlbedoMap());
+		}
+
+		ImageViewVK* pAlbedoView = pAlbedo->getImageView();
+		pDescriptorSet->writeCombinedImageDescriptors(&pAlbedoView, &pSampler, 1, ALBEDO_MAP_BINDING);
+
+		Texture2DVK* pNormal = m_pDefaultNormal;
+		if (pMaterial->hasNormalMap())
+		{
+			pNormal = reinterpret_cast<Texture2DVK*>(pMaterial->getNormalMap());
+		}
+
+		ImageViewVK* pNormalView = pNormal->getImageView();
+		pDescriptorSet->writeCombinedImageDescriptors(&pNormalView, &pSampler, 1, NORMAL_MAP_BINDING);
+
+		Texture2DVK* pAO = m_pDefaultTexture;
+		if (pMaterial->hasAmbientOcclusionMap())
+		{
+			pAO = reinterpret_cast<Texture2DVK*>(pMaterial->getAmbientOcclusionMap());
+		}
+
+		ImageViewVK* pAOView = pAO->getImageView();
+		pDescriptorSet->writeCombinedImageDescriptors(&pAOView, &pSampler, 1, AO_MAP_BINDING);
+
+		Texture2DVK* pMetallic = m_pDefaultTexture;
+		if (pMaterial->hasMetallicMap())
+		{
+			pMetallic = reinterpret_cast<Texture2DVK*>(pMaterial->getMetallicMap());
+		}
+
+		ImageViewVK* pMetallicView = pMetallic->getImageView();
+		pDescriptorSet->writeCombinedImageDescriptors(&pMetallicView, &pSampler, 1, METALLIC_MAP_BINDING);
+
+		Texture2DVK* pRoughness = m_pDefaultTexture;
+		if (pMaterial->hasRoughnessMap())
+		{
+			pRoughness = reinterpret_cast<Texture2DVK*>(pMaterial->getRoughnessMap());
+		}
+
+		ImageViewVK* pRoughnessView = pRoughness->getImageView();
+		pDescriptorSet->writeCombinedImageDescriptors(&pRoughnessView, &pSampler, 1, ROUGHNESS_MAP_BINDING);
+
+		if (m_pMaterialParametersBuffer != nullptr)
+			pDescriptorSet->writeStorageBufferDescriptor(m_pMaterialParametersBuffer, MATERIAL_PARAMETERS_BINDING);
+
+		if (m_pTransformsBuffer!= nullptr)
+			pDescriptorSet->writeStorageBufferDescriptor(m_pTransformsBuffer, INSTANCE_TRANSFORMS_BINDING);
+
+		MeshPipeline meshPipeline = {};
+		meshPipeline.pDescriptorSets = pDescriptorSet;
+
+		m_MeshTable.insert(std::make_pair(filter, meshPipeline));
+		return pDescriptorSet;
+	}
+
+	MeshPipeline meshPipeline = m_MeshTable[filter];
+	return meshPipeline.pDescriptorSets;
+}
+
 bool SceneVK::createDefaultTexturesAndSamplers()
 {
 	uint8_t whitePixels[] = { 255, 255, 255, 255 };
@@ -695,6 +825,53 @@ void SceneVK::initBuffers()
 
 	m_pTransformsBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
 	m_pTransformsBuffer->init(transformBufferParams);
+}
+
+bool SceneVK::createGeometryPipelineLayout()
+{
+	//Descriptorpool
+	DescriptorCounts descriptorCounts = {};
+	descriptorCounts.m_SampledImages	= 4096;
+	descriptorCounts.m_StorageImages	= 1024;
+	descriptorCounts.m_StorageBuffers	= 2048;
+	descriptorCounts.m_UniformBuffers	= 1024;
+
+	m_pDescriptorPool = DBG_NEW DescriptorPoolVK(m_pContext->getDevice());
+	if (!m_pDescriptorPool->init(descriptorCounts, 512))
+	{
+		return false;
+	}
+
+	//GeometryPass
+	m_pGeometryDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(m_pContext->getDevice());
+	m_pGeometryDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, CAMERA_BUFFER_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, VERTEX_BUFFER_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ALBEDO_MAP_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, NORMAL_MAP_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, AO_MAP_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, METALLIC_MAP_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ROUGHNESS_MAP_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, MATERIAL_PARAMETERS_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, INSTANCE_TRANSFORMS_BINDING, 1);
+
+	if (!m_pGeometryDescriptorSetLayout->finalize())
+	{
+		return false;
+	}
+
+	//Transform and Color
+	VkPushConstantRange pushConstantRange = {};
+	pushConstantRange.size			= sizeof(glm::mat4) + sizeof(glm::vec4) + sizeof(glm::vec3);
+	pushConstantRange.stageFlags	= VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+	pushConstantRange.offset		= 0;
+	std::vector<VkPushConstantRange> pushConstantRanges = { pushConstantRange };
+	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { m_pGeometryDescriptorSetLayout };
+
+	m_pGeometryPipelineLayout = DBG_NEW PipelineLayoutVK(m_pContext->getDevice());
+	if (!m_pGeometryPipelineLayout->init(descriptorSetLayouts, pushConstantRanges))
+	{
+		return false;
+	}
 }
 
 void SceneVK::initAccelerationStructureBuffers()

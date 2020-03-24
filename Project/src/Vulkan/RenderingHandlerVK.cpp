@@ -91,19 +91,19 @@ RenderingHandlerVK::~RenderingHandlerVK()
 	SAFEDELETE(m_pCameraMatricesBuffer);
 	SAFEDELETE(m_pCameraDirectionsBuffer);
 	SAFEDELETE(m_pCameraBuffer);
-	
+
 	SAFEDELETE(m_pGeometryRenderPass);
 	SAFEDELETE(m_pBackBufferRenderPass);
 	SAFEDELETE(m_pParticleRenderPass);
 	SAFEDELETE(m_pUIRenderPass);
 
 	SAFEDELETE(m_pSkyboxRenderer);
-    
+
 	SAFEDELETE(m_pRadianceImage);
 	SAFEDELETE(m_pRadianceImageView);
 	SAFEDELETE(m_pGlossyImage);
 	SAFEDELETE(m_pGlossyImageView);
-    
+
 	SAFEDELETE(m_pGBuffer);
 	releaseBackBuffers();
 
@@ -221,7 +221,7 @@ void RenderingHandlerVK::render(IScene* pScene)
 
 	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
 	m_ppTransferCommandBuffers[m_CurrentFrame]->end();
-	
+
 	{
 		VkSemaphore transferWaitSemphores[]			= { m_pTransferStartSemaphores[m_CurrentFrame] };
 		VkPipelineStageFlags transferWaitStages[]	= { VK_PIPELINE_STAGE_TRANSFER_BIT };
@@ -382,7 +382,7 @@ void RenderingHandlerVK::render(IScene* pScene)
 	{
 		VkSemaphore geometryWaitSemphores[]			= { m_pTransferFinishedSemaphores[m_CurrentFrame] };
 		VkPipelineStageFlags geometryWaitStages[]	= { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT };
-		
+
 		VkSemaphore signalSemaphores[]	= { m_pGeometryFinishedSemaphores[m_CurrentFrame], m_pTransferStartSemaphores[m_CurrentFrame] };
 		pDevice->executeGraphics(m_ppGraphicsCommandBuffers[m_CurrentFrame], geometryWaitSemphores, geometryWaitStages, 1, signalSemaphores, 2);
 	}
@@ -412,7 +412,7 @@ void RenderingHandlerVK::render(IScene* pScene)
 			};
 			m_ppComputeCommandBuffers[m_CurrentFrame]->imageMemoryBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV, IMAGE_BARRIER_COUNT, imageBarriers);
 		}
-	
+
 		m_pRayTracer->render(pScene);
 		m_ppComputeCommandBuffers[m_CurrentFrame]->executeSecondary(m_pRayTracer->getComputeCommandBuffer());
 
@@ -485,7 +485,7 @@ void RenderingHandlerVK::render(IScene* pScene)
 		VkSemaphore graphicsSignalSemaphores[]		= { m_pRenderFinishedSemaphores[m_CurrentFrame] };
 		VkSemaphore graphicsWaitSemaphores[]		= { m_pImageAvailableSemaphores[m_CurrentFrame], m_pComputeFinishedSemaphores[m_CurrentFrame] };
 		VkPipelineStageFlags graphicswaitStages[]	= { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT , VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT };
-		
+
 		VkSemaphore computeSignalSemaphores[]		= { m_pComputeFinishedSemaphores[m_CurrentFrame] };
 		VkSemaphore computeWaitSemaphores[]			= { m_pGeometryFinishedSemaphores[m_CurrentFrame] };
 		VkPipelineStageFlags computeWaitStages[]	= { VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV };
@@ -530,10 +530,8 @@ void RenderingHandlerVK::onSceneUpdated(IScene* pScene)
 {
 	m_pGraphicsContext->getDevice()->wait();
 
-	if (m_pMeshRenderer)
-	{
-		m_pMeshRenderer->setSceneData(pScene);
-	}
+	SceneVK* pSceneVK = reinterpret_cast<SceneVK*>(pScene);
+	pSceneVK->setSceneData();
 
 	if (m_pRayTracer)
 	{
@@ -570,18 +568,18 @@ void RenderingHandlerVK::swapBuffers()
 
 void RenderingHandlerVK::drawProfilerUI()
 {
-	if (m_pMeshRenderer) 
+	if (m_pMeshRenderer)
 	{
 		m_pMeshRenderer->getGeometryProfiler()->drawResults();
 		m_pMeshRenderer->getLightProfiler()->drawResults();
 	}
 
-	if (m_pParticleRenderer) 
+	if (m_pParticleRenderer)
 	{
 		m_pParticleRenderer->getProfiler()->drawResults();
 	}
 
-	if (m_pRayTracer) 
+	if (m_pRayTracer)
 	{
 		m_pRayTracer->getProfiler()->drawResults();
 	}
@@ -877,7 +875,7 @@ bool RenderingHandlerVK::createRenderPasses()
 	description.finalLayout		= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	m_pGeometryRenderPass->addAttachment(description);
 
-	//Normals + Metallic + Roughness 
+	//Normals + Metallic + Roughness
 	description.format			= VK_FORMAT_R16G16B16A16_SFLOAT;
 	description.samples			= VK_SAMPLE_COUNT_1_BIT;
 	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -984,10 +982,10 @@ void RenderingHandlerVK::updateBuffers(const Camera& camera)
 	const uint32_t transferQueueFamilyIndex = pDevice->getQueueFamilyIndices().transferFamily.value();
 
 	//Transfer ownership to transfer-queue
-	VkBufferMemoryBarrier barrier = createVkBufferMemoryBarrier(m_pCameraBuffer->getBuffer(), 
+	VkBufferMemoryBarrier barrier = createVkBufferMemoryBarrier(m_pCameraBuffer->getBuffer(),
 		VK_ACCESS_MEMORY_READ_BIT, 0, graphicsQueueFamilyIndex, transferQueueFamilyIndex, 0, VK_WHOLE_SIZE);
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->bufferMemoryBarrier(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 1, &barrier);
-	
+
 	barrier.srcAccessMask = 0;
 	barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 	m_ppTransferCommandBuffers[m_CurrentFrame]->bufferMemoryBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 1, &barrier);

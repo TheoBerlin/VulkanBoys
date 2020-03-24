@@ -26,7 +26,7 @@ public:
 	virtual ParticleEmitterHandler* createParticleEmitterHandler() override;
 	virtual IImgui* createImgui() override;
 
-	virtual IScene* createScene() override;
+	virtual IScene* createScene(const RenderingHandler* pRenderingHandler) override;
 
     virtual IMesh* createMesh() override;
 

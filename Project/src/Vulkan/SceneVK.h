@@ -24,6 +24,17 @@ class SamplerVK;
 class CommandPoolVK;
 class CommandBufferVK;
 
+//Geometry pass
+#define CAMERA_BUFFER_BINDING		0
+#define VERTEX_BUFFER_BINDING		1
+#define ALBEDO_MAP_BINDING			2
+#define NORMAL_MAP_BINDING			3
+#define AO_MAP_BINDING				4
+#define METALLIC_MAP_BINDING		5
+#define ROUGHNESS_MAP_BINDING		6
+#define MATERIAL_PARAMETERS_BINDING	7
+#define INSTANCE_TRANSFORMS_BINDING	8
+
 constexpr uint32_t NUM_INITIAL_GRAPHICS_OBJECTS = 10;
 
 struct GraphicsObjectVK
@@ -32,6 +43,40 @@ struct GraphicsObjectVK
 	const Material* pMaterial = nullptr;
 	uint32_t MaterialParametersIndex = 0;
 };
+
+//Meshfilter is key, returns a meshpipeline -> gets descriptorset with correct vertexbuffer, textures, etc.
+struct MeshPipeline
+{
+	DescriptorSetVK* pDescriptorSets;
+};
+
+struct MeshFilter
+{
+	const MeshVK*	pMesh		= nullptr;
+	const Material* pMaterial	= nullptr;
+
+	FORCEINLINE bool operator==(const MeshFilter& other) const
+	{
+		ASSERT(pMesh		&& other.pMesh);
+		ASSERT(pMaterial	&& other.pMaterial);
+
+		return (pMesh->getMeshID() == other.pMesh->getMeshID()) && (pMaterial->getMaterialID() == other.pMaterial->getMaterialID());
+	}
+};
+
+namespace std
+{
+	template<> struct hash<MeshFilter>
+	{
+		FORCEINLINE size_t operator()(const MeshFilter& filter) const
+		{
+			ASSERT(filter.pMesh);
+			ASSERT(filter.pMaterial);
+
+			return ((hash<uint32_t>()(filter.pMesh->getMeshID()) ^ (hash<uint32_t>()(filter.pMaterial->getMaterialID()) << 1)) >> 1);
+		}
+	};
+}
 
 class SceneVK : public IScene
 {
@@ -87,7 +132,7 @@ class SceneVK : public IScene
 public:
 	DECL_NO_COPY(SceneVK);
 
-	SceneVK(IGraphicsContext* pContext);
+	SceneVK(IGraphicsContext* pContext, const RenderingHandlerVK* pRenderingHandler);
 	~SceneVK();
 
 	virtual bool initFromFile(const std::string& dir, const std::string& fileName) override;
@@ -100,6 +145,12 @@ public:
 
 	virtual uint32_t submitGraphicsObject(const IMesh* pMesh, const Material* pMaterial, const glm::mat4& transform = glm::mat4(1.0f), uint8_t customMask = 0x80) override;
 	virtual void updateGraphicsObjectTransform(uint32_t index, const glm::mat4& transform) override;
+
+	// Used for geometry rendering
+	void setSceneData();
+	DescriptorSetVK* getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial);
+
+	PipelineLayoutVK* getGeometryPipelineLayout() { return m_pGeometryPipelineLayout; }
 
 	const Camera& getCamera() { return m_Camera; }
 
@@ -132,6 +183,9 @@ private:
 	bool createDefaultTexturesAndSamplers();
 
 	void initBuffers();
+
+	bool createGeometryPipelineLayout();
+
 	void initAccelerationStructureBuffers();
 
 	BottomLevelAccelerationStructure* createBLAS(const MeshVK* pMesh, const Material* pMaterial);
@@ -155,6 +209,7 @@ private:
 	uint32_t registerMaterial(const Material* pMaterial);
 
 private:
+
 	GraphicsContextVK* m_pContext;
 	DeviceVK* m_pDevice;
 	ProfilerVK* m_pProfiler;
@@ -170,6 +225,13 @@ private:
 	std::vector<GraphicsObjectVK> m_GraphicsObjects;
 
 	std::vector<GeometryInstance> m_GeometryInstances;
+
+	// Geometry pass resources
+	std::unordered_map<MeshFilter, MeshPipeline> m_MeshTable;
+	BufferVK* m_pCameraBuffer;
+	DescriptorPoolVK* m_pDescriptorPool;
+	PipelineLayoutVK* m_pGeometryPipelineLayout;
+	DescriptorSetLayoutVK* m_pGeometryDescriptorSetLayout;
 
 	std::vector<const MeshVK*> m_AllMeshes;
 	uint32_t m_TotalNumberOfVertices;

@@ -226,7 +226,7 @@ void Application::init()
 	m_GunMaterial.createSampler(m_pContext, samplerParams);
 
 	//Create Scene
-	m_pScene = m_pContext->createScene();
+	m_pScene = m_pContext->createScene(m_pRenderingHandler);
 	TaskDispatcher::execute([this]
 		{
 			m_pScene->initFromFile("assets/sponza/", "sponza.obj");

@@ -57,7 +57,7 @@ private:
 	glm::mat4 m_ProjectionInv;
 	glm::mat4 m_View;
 	glm::mat4 m_ViewInv;
-	
+
 	glm::vec3 m_Position;
 	glm::vec3 m_Rotation;
 

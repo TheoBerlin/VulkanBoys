@@ -154,7 +154,7 @@ void MeshRendererVK::onWindowResize(uint32_t width, uint32_t height)
 
 void MeshRendererVK::beginFrame(IScene* pScene)
 {
-	UNREFERENCED_PARAMETER(pScene);
+	m_pScene = reinterpret_cast<SceneVK*>(pScene);
 
 	m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 
@@ -276,49 +276,6 @@ void MeshRendererVK::setRayTracingResultImages(ImageViewVK* pRadianceImageView, 
 	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pGlossyImageView, &m_pRTSampler, 1, GLOSSY_BINDING);
 }
 
-void MeshRendererVK::setSceneData(IScene* pScene)
-{
-	SceneVK* pVulkanScene = reinterpret_cast<SceneVK*>(pScene);
-
-	const BufferVK* pMaterialParametersBuffer = pVulkanScene->getMaterialParametersBuffer();
-	const BufferVK* pTransformsBuffer = pVulkanScene->getTransformsBuffer();
-
-	if (m_pMaterialParametersBuffer != pMaterialParametersBuffer)
-	{
-		m_pMaterialParametersBuffer = pMaterialParametersBuffer;
-
-		if (m_pTransformsBuffer != pTransformsBuffer)
-		{
-			//Both Buffers Needs Update
-			m_pTransformsBuffer = pTransformsBuffer;
-
-			for (auto& instance : m_MeshTable)
-			{
-				instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pMaterialParametersBuffer, MATERIAL_PARAMETERS_BINDING);
-				instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pTransformsBuffer, INSTANCE_TRANSFORMS_BINDING);
-			}
-		}
-		else
-		{
-			//Just Materials Buffer Needs Update
-			for (auto& instance : m_MeshTable)
-			{
-				instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pMaterialParametersBuffer, MATERIAL_PARAMETERS_BINDING);
-			}
-		}
-	}
-	else if (m_pTransformsBuffer != pTransformsBuffer)
-	{
-		//Just Transforms Buffer Needs Update
-		m_pTransformsBuffer = pTransformsBuffer;
-
-		for (auto& instance : m_MeshTable)
-		{
-			instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pTransformsBuffer, INSTANCE_TRANSFORMS_BINDING);
-		}
-	}
-}
-
 void MeshRendererVK::submitMesh(const MeshVK* pMesh, const Material* pMaterial, uint32_t materialIndex, uint32_t transformsIndex)
 {
 	ASSERT(pMesh != nullptr);
@@ -331,7 +288,7 @@ void MeshRendererVK::submitMesh(const MeshVK* pMesh, const Material* pMaterial, 
 	BufferVK* pIndexBuffer = reinterpret_cast<BufferVK*>(pMesh->getIndexBuffer());
 	m_ppGeometryPassBuffers[m_CurrentFrame]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-	DescriptorSetVK* pDescriptorSet = getDescriptorSetFromMeshAndMaterial(pMesh, pMaterial);
+	DescriptorSetVK* pDescriptorSet = m_pScene->getDescriptorSetFromMeshAndMaterial(pMesh, pMaterial);
 	m_ppGeometryPassBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pGeometryPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
 
 	//m_pGPassProfiler->beginTimestamp(&m_TimestampDrawIndexed);
@@ -646,50 +603,6 @@ bool MeshRendererVK::createPipelines()
 
 bool MeshRendererVK::createPipelineLayouts()
 {
-	//Descriptorpool
-	DescriptorCounts descriptorCounts = {};
-	descriptorCounts.m_SampledImages	= 4096;
-	descriptorCounts.m_StorageImages	= 1024;
-	descriptorCounts.m_StorageBuffers	= 2048;
-	descriptorCounts.m_UniformBuffers	= 1024;
-
-	m_pDescriptorPool = DBG_NEW DescriptorPoolVK(m_pContext->getDevice());
-	if (!m_pDescriptorPool->init(descriptorCounts, 512))
-	{
-		return false;
-	}
-
-	//GeometryPass
-	m_pGeometryDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(m_pContext->getDevice());
-	m_pGeometryDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, CAMERA_BUFFER_BINDING, 1);
-	m_pGeometryDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, VERTEX_BUFFER_BINDING, 1);
-	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ALBEDO_MAP_BINDING, 1);
-	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, NORMAL_MAP_BINDING, 1);
-	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, AO_MAP_BINDING, 1);
-	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, METALLIC_MAP_BINDING, 1);
-	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ROUGHNESS_MAP_BINDING, 1);
-	m_pGeometryDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, MATERIAL_PARAMETERS_BINDING, 1);
-	m_pGeometryDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, INSTANCE_TRANSFORMS_BINDING, 1);
-
-	if (!m_pGeometryDescriptorSetLayout->finalize())
-	{
-		return false;
-	}
-
-	//Transform and Color
-	VkPushConstantRange pushConstantRange = {};
-	pushConstantRange.size			= sizeof(glm::mat4) + sizeof(glm::vec4) + sizeof(glm::vec3);
-	pushConstantRange.stageFlags	= VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-	pushConstantRange.offset		= 0;
-	std::vector<VkPushConstantRange> pushConstantRanges = { pushConstantRange };
-	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { m_pGeometryDescriptorSetLayout };
-
-	m_pGeometryPipelineLayout = DBG_NEW PipelineLayoutVK(m_pContext->getDevice());
-	if (!m_pGeometryPipelineLayout->init(descriptorSetLayouts, pushConstantRanges))
-	{
-		return false;
-	}
-
 	//Lightpass
 	m_pLightDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(m_pContext->getDevice());
 	m_pLightDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, LIGHT_BUFFER_BINDING, 1);
@@ -818,103 +731,6 @@ bool MeshRendererVK::createSamplers()
 	}
 
 	return true;
-}
-
-DescriptorSetVK* MeshRendererVK::getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial)
-{
-	MeshFilter filter = {};
-	filter.pMesh		= pMesh;
-	filter.pMaterial	= pMaterial;
-
-	if (m_MeshTable.count(filter) == 0)
-	{
-		DescriptorSetVK* pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pGeometryDescriptorSetLayout);
-		pDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer, CAMERA_BUFFER_BINDING);
-
-		BufferVK* pVertBuffer = reinterpret_cast<BufferVK*>(pMesh->getVertexBuffer());
-		pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer, VERTEX_BUFFER_BINDING);
-
-		SamplerVK* pSampler = reinterpret_cast<SamplerVK*>(pMaterial->getSampler());
-
-		Texture2DVK* pAlbedo = nullptr;
-		if (pMaterial->hasAlbedoMap())
-		{
-			pAlbedo = reinterpret_cast<Texture2DVK*>(pMaterial->getAlbedoMap());
-		}
-		else
-		{
-			pAlbedo = m_pDefaultTexture;
-		}
-		ImageViewVK* pAlbedoView = pAlbedo->getImageView();
-		pDescriptorSet->writeCombinedImageDescriptors(&pAlbedoView, &pSampler, 1, ALBEDO_MAP_BINDING);
-
-		Texture2DVK* pNormal = nullptr;
-		if (pMaterial->hasNormalMap())
-		{
-			pNormal = reinterpret_cast<Texture2DVK*>(pMaterial->getNormalMap());
-		}
-		else
-		{
-			pNormal = m_pDefaultNormal;
-		}
-
-		ImageViewVK* pNormalView = pNormal->getImageView();
-		pDescriptorSet->writeCombinedImageDescriptors(&pNormalView, &pSampler, 1, NORMAL_MAP_BINDING);
-
-		Texture2DVK* pAO = nullptr;
-		if (pMaterial->hasAmbientOcclusionMap())
-		{
-			pAO = reinterpret_cast<Texture2DVK*>(pMaterial->getAmbientOcclusionMap());
-		}
-		else
-		{
-			pAO = m_pDefaultTexture;
-		}
-
-		ImageViewVK* pAOView = pAO->getImageView();
-		pDescriptorSet->writeCombinedImageDescriptors(&pAOView, &pSampler, 1, AO_MAP_BINDING);
-
-		Texture2DVK* pMetallic = nullptr;
-		if (pMaterial->hasMetallicMap())
-		{
-			pMetallic = reinterpret_cast<Texture2DVK*>(pMaterial->getMetallicMap());
-		}
-		else
-		{
-			pMetallic = m_pDefaultTexture;
-		}
-
-		ImageViewVK* pMetallicView = pMetallic->getImageView();
-		pDescriptorSet->writeCombinedImageDescriptors(&pMetallicView, &pSampler, 1, METALLIC_MAP_BINDING);
-
-		Texture2DVK* pRoughness = nullptr;
-		if (pMaterial->hasRoughnessMap())
-		{
-			pRoughness = reinterpret_cast<Texture2DVK*>(pMaterial->getRoughnessMap());
-		}
-		else
-		{
-			pRoughness = m_pDefaultTexture;
-		}
-
-		ImageViewVK* pRoughnessView = pRoughness->getImageView();
-		pDescriptorSet->writeCombinedImageDescriptors(&pRoughnessView, &pSampler, 1, ROUGHNESS_MAP_BINDING);
-
-		if (m_pMaterialParametersBuffer != nullptr)
-			pDescriptorSet->writeStorageBufferDescriptor(m_pMaterialParametersBuffer, MATERIAL_PARAMETERS_BINDING);
-
-		if (m_pTransformsBuffer!= nullptr)
-			pDescriptorSet->writeStorageBufferDescriptor(m_pTransformsBuffer, INSTANCE_TRANSFORMS_BINDING);
-
-		MeshPipeline meshPipeline = {};
-		meshPipeline.pDescriptorSets = pDescriptorSet;
-
-		m_MeshTable.insert(std::make_pair(filter, meshPipeline));
-		return pDescriptorSet;
-	}
-
-	MeshPipeline meshPipeline = m_MeshTable[filter];
-	return meshPipeline.pDescriptorSets;
 }
 
 void MeshRendererVK::createProfiler()
