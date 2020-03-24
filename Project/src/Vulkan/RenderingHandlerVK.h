@@ -25,6 +25,12 @@ class SceneVK;
 class ImageVK;
 class ImageViewVK;
 
+struct RenderBuffers
+{
+    BufferVK* ppCameraBuffersCompute[2];
+    BufferVK* ppCameraBuffersGraphics[2];
+};
+
 class RenderingHandlerVK : public RenderingHandler
 {
 public:

@@ -100,32 +100,29 @@ public:
 
 	virtual uint32_t submitGraphicsObject(const IMesh* pMesh, const Material* pMaterial, const glm::mat4& transform = glm::mat4(1.0f), uint8_t customMask = 0x80) override;
 	virtual void updateGraphicsObjectTransform(uint32_t index, const glm::mat4& transform) override;
+	
+	virtual void renderUI() override;
+	virtual void updateDebugParameters() override;
 
 	virtual LightSetup& getLightSetup() override { return m_LightSetup; }
 
 	const Camera&							getCamera() const			{ return m_Camera; }
 	const std::vector<GraphicsObjectVK>&	getGraphicsObjects() const	{ return m_GraphicsObjects; }
 
-	BufferVK* getCombinedVertexBuffer()		{ return m_pCombinedVertexBuffer; }
-	BufferVK* getCombinedIndexBuffer()		{ return m_pCombinedIndexBuffer; }
-	BufferVK* getMeshIndexBuffer()			{ return m_pMeshIndexBuffer; }
+	FORCEINLINE BufferVK*	getCombinedVertexBuffer()		{ return m_pCombinedVertexBuffer; }
+	FORCEINLINE BufferVK*	getCombinedIndexBuffer()		{ return m_pCombinedIndexBuffer; }
+	FORCEINLINE BufferVK*	getMeshIndexBuffer()			{ return m_pMeshIndexBuffer; }
+	FORCEINLINE ProfilerVK* getProfiler()					{ return m_pProfiler; }
 
-	const std::vector<const ImageViewVK*>& getAlbedoMaps()			{ return m_AlbedoMaps; }
-	const std::vector<const ImageViewVK*>& getNormalMaps()			{ return m_NormalMaps; }
-	const std::vector<const ImageViewVK*>& getAOMaps()				{ return m_AOMaps; }
-	const std::vector<const ImageViewVK*>& getMetallicMaps()		{ return m_MetallicMaps; }
-	const std::vector<const ImageViewVK*>& getRoughnessMaps()		{ return m_RoughnessMaps; }
-	const std::vector<const SamplerVK*>& getSamplers()				{ return m_Samplers; }
-	const BufferVK* getMaterialParametersBuffer()					{ return m_pMaterialParametersBuffer; }
-	const BufferVK* getTransformsBuffer()							{ return m_pTransformsBuffer; }
-
-	const TopLevelAccelerationStructure& getTLAS() { return m_TopLevelAccelerationStructure; }
-
-	ProfilerVK* getProfiler() { return m_pProfiler; }
-
-	//Debug
-	virtual void renderUI() override;
-	virtual void updateDebugParameters() override;
+	FORCEINLINE const std::vector<const ImageViewVK*>&	getAlbedoMaps() const				{ return m_AlbedoMaps; }
+	FORCEINLINE const std::vector<const ImageViewVK*>&	getNormalMaps() const				{ return m_NormalMaps; }
+	FORCEINLINE const std::vector<const ImageViewVK*>&	getAOMaps() const					{ return m_AOMaps; }
+	FORCEINLINE const std::vector<const ImageViewVK*>&	getMetallicMaps() const				{ return m_MetallicMaps; }
+	FORCEINLINE const std::vector<const ImageViewVK*>&	getRoughnessMaps() const			{ return m_RoughnessMaps; }
+	FORCEINLINE const std::vector<const SamplerVK*>&	getSamplers() const					{ return m_Samplers; }
+	FORCEINLINE const BufferVK*							getMaterialParametersBuffer() const	{ return m_pMaterialParametersBuffer; }
+	FORCEINLINE const BufferVK*							getTransformsBuffer() const			{ return m_pTransformsBuffer; }
+	FORCEINLINE const TopLevelAccelerationStructure&	getTLAS() const						{ return m_TopLevelAccelerationStructure; }
 
 private:
 	bool createDefaultTexturesAndSamplers();
