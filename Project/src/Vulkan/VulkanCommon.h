@@ -19,13 +19,13 @@ inline VkImageMemoryBarrier createVkImageMemoryBarrier(VkImage image, VkAccessFl
     barrier.dstAccessMask = dstAccessMask;
     barrier.srcQueueFamilyIndex = srcQueueFamilyIndex;
     barrier.dstQueueFamilyIndex = dstQueueFamilyIndex;
-    barrier.oldLayout = oldLayout;
-    barrier.newLayout = newLayout;
-    barrier.subresourceRange.aspectMask = aspectMask;
-    barrier.subresourceRange.baseArrayLayer = baseLayer;
-    barrier.subresourceRange.layerCount = layerCount;
-    barrier.subresourceRange.baseMipLevel = baseMiplevel;
-    barrier.subresourceRange.levelCount = miplevelCount;
+    barrier.oldLayout                           = oldLayout;
+    barrier.newLayout                           = newLayout;
+    barrier.subresourceRange.aspectMask         = aspectMask;
+    barrier.subresourceRange.baseArrayLayer     = baseLayer;
+    barrier.subresourceRange.layerCount         = layerCount;
+    barrier.subresourceRange.baseMipLevel       = baseMiplevel;
+    barrier.subresourceRange.levelCount         = miplevelCount;
     return barrier;
 }
 

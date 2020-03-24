@@ -634,8 +634,8 @@ void SceneVK::updateGraphicsObjectTransform(uint32_t index, const glm::mat4& tra
 	}
 
 	GraphicsObjectTransforms& transforms = m_SceneTransforms[index];
-	transforms.PrevTransform = transforms.Transform;
-	transforms.Transform = transform;
+	transforms.PrevTransform	= transforms.Transform;
+	transforms.Transform		= transform;
 }
 
 bool SceneVK::createDefaultTexturesAndSamplers()

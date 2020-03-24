@@ -101,11 +101,10 @@ public:
 	virtual uint32_t submitGraphicsObject(const IMesh* pMesh, const Material* pMaterial, const glm::mat4& transform = glm::mat4(1.0f), uint8_t customMask = 0x80) override;
 	virtual void updateGraphicsObjectTransform(uint32_t index, const glm::mat4& transform) override;
 
-	const Camera& getCamera() { return m_Camera; }
-
 	virtual LightSetup& getLightSetup() override { return m_LightSetup; }
 
-	const std::vector<GraphicsObjectVK>& getGraphicsObjects() { return m_GraphicsObjects; }
+	const Camera&							getCamera() const			{ return m_Camera; }
+	const std::vector<GraphicsObjectVK>&	getGraphicsObjects() const	{ return m_GraphicsObjects; }
 
 	BufferVK* getCombinedVertexBuffer()		{ return m_pCombinedVertexBuffer; }
 	BufferVK* getCombinedIndexBuffer()		{ return m_pCombinedIndexBuffer; }

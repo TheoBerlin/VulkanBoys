@@ -56,12 +56,10 @@ public:
 	virtual void onKeyPressed(EKey key) override;
 	virtual void onMouseMove(uint32_t x, uint32_t y) override;
 
-	FORCEINLINE IWindow* getWindow() const { return m_pWindow; }
-
+	FORCEINLINE IWindow*	getWindow() const { return m_pWindow; }
+	FORCEINLINE IScene*		getScene() const  { return m_pScene; }
+	
 	static Application* get();
-
-	//Temp
-	IScene* getScene() { return m_pScene; }
 
 private:
 	void update(double dt);
@@ -115,6 +113,10 @@ private:
 	ApplicationParameters m_ApplicationParameters;
 	TestParameters m_TestParameters;
 	bool m_KeyInputEnabled;
+
+	uint32_t m_GraphicsIndex0;
+	uint32_t m_GraphicsIndex1;
+	uint32_t m_GraphicsIndex2;
 
 	static Application* s_pInstance;
 };

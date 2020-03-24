@@ -141,7 +141,6 @@ private:
 
 	DescriptorSetVK* getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial);
 
-private:
 	std::unordered_map<MeshFilter, MeshPipeline> m_MeshTable;
 
 	VkClearValue	m_ClearColor;

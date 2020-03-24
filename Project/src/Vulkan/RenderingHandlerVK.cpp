@@ -373,9 +373,9 @@ void RenderingHandlerVK::render(IScene* pScene)
 		const uint32_t waitCount = firstFrame ? 0 : 2;
 		firstFrame = false;
 
-		VkSemaphore				transferWaitSemphores[] = { m_TransferStartSemaphore, m_ComputeFinishedTransferSemaphore };
-		VkPipelineStageFlags	transferWaitStages[] = { VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
-		VkSemaphore				transferSignalSemaphores[] = { m_TransferFinishedGraphicsSemaphore, m_TransferFinishedComputeSemaphore };
+		VkSemaphore				transferWaitSemphores[]		= { m_TransferStartSemaphore, m_ComputeFinishedTransferSemaphore };
+		VkPipelineStageFlags	transferWaitStages[]		= { VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
+		VkSemaphore				transferSignalSemaphores[]	= { m_TransferFinishedGraphicsSemaphore, m_TransferFinishedComputeSemaphore };
 
 		pDevice->executeTransfer(m_ppTransferCommandBuffers[m_CurrentFrame], transferWaitSemphores, transferWaitStages, waitCount, transferSignalSemaphores, 2);
 	}

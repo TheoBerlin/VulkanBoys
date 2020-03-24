@@ -43,8 +43,8 @@
 
 Application* Application::s_pInstance = nullptr;
 
-constexpr bool FORCE_RAY_TRACING_OFF	= false;
-constexpr bool HIGH_RESOLUTION_SPHERE	= false;
+constexpr bool	FORCE_RAY_TRACING_OFF	= false;
+constexpr bool	HIGH_RESOLUTION_SPHERE	= false;
 constexpr float CAMERA_PAN_LENGTH		= 10.0f;
 
 Application::Application()
@@ -193,14 +193,14 @@ void Application::init()
 	}
 
 	ParticleEmitterInfo emitterInfo = {};
-	emitterInfo.position = glm::vec3(8.0f, 0.0f, 0.0f);
-	emitterInfo.direction = glm::normalize(glm::vec3(0.0f, 0.9f, 0.1f));
-	emitterInfo.particleSize = glm::vec2(0.2f, 0.2f);
-	emitterInfo.initialSpeed = 5.5f;
-	emitterInfo.particleDuration = 3.0f;
-	emitterInfo.particlesPerSecond = 200.0f;
-	emitterInfo.spread = glm::quarter_pi<float>() / 1.3f;
-	emitterInfo.pTexture = m_pParticleTexture;
+	emitterInfo.position			= glm::vec3(6.0f, 0.0f, 0.0f);
+	emitterInfo.direction			= glm::normalize(glm::vec3(0.0f, 0.9f, 0.1f));
+	emitterInfo.particleSize		= glm::vec2(0.2f, 0.2f);
+	emitterInfo.initialSpeed		= 5.5f;
+	emitterInfo.particleDuration	= 3.0f;
+	emitterInfo.particlesPerSecond	= 200.0f;
+	emitterInfo.spread				= glm::quarter_pi<float>() / 1.3f;
+	emitterInfo.pTexture			= m_pParticleTexture;
 	m_pParticleEmitterHandler->createEmitter(emitterInfo);
 
 	// Second emitter
@@ -253,6 +253,11 @@ void Application::init()
 	m_Camera.update();
 
 	TaskDispatcher::waitForTasks();
+	
+	glm::mat4 scale = glm::scale(glm::vec3(0.75f));
+	m_GraphicsIndex0 = m_pScene->submitGraphicsObject(m_pGunMesh, &m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3( 0.0f, 1.0f, 0.1f)) * scale);
+	m_GraphicsIndex1 = m_pScene->submitGraphicsObject(m_pGunMesh, &m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3( 1.5f, 1.0f, 0.1f)) * scale);
+	m_GraphicsIndex2 = m_pScene->submitGraphicsObject(m_pGunMesh, &m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3(-1.5f, 1.0f, 0.1f)) * scale);
 
 	m_pRenderingHandler->setSkybox(m_pSkybox);
 	m_pWindow->show();
@@ -461,7 +466,6 @@ static glm::vec4 g_Color = glm::vec4(1.0f);
 
 void Application::update(double dt)
 {
-	//TODO: Is float enough precision on fast systems?
 	Profiler::progressTimer((float)dt);
 
 	if (!m_TestParameters.Running)
@@ -563,23 +567,20 @@ void Application::update(double dt)
 		Input::setMousePosition(m_pWindow, glm::vec2(m_pWindow->getClientWidth() / 2.0f, m_pWindow->getClientHeight() / 2.0f));
 	}
 
-	//TODO: Is float enough precision on fast systems?
-	//m_pParticleEmitterHandler->update((float)dt);
+	m_pParticleEmitterHandler->update((float)dt);
 
-	//Set sphere color
-	//static glm::mat4 rotation = glm::mat4(1.0f);
-	//rotation = glm::rotate(rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
-	//m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex0, glm::mat4(1.0f) * rotation);
-	//m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex1, glm::translate(glm::mat4(1.0f), glm::vec3(1.5f, 0.0f, 0.0f)));
-	//m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex2, glm::translate(glm::mat4(1.0f), glm::vec3(-1.5f, 0.0f, 0.0f)));
+	static glm::mat4 rotation = glm::mat4(1.0f);
+	rotation = glm::rotate(rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
 
-	//for (uint32_t i = 0; i < SPHERE_COUNT_DIMENSION * SPHERE_COUNT_DIMENSION; i++)
-	//{
-	//	m_SphereMaterials[i].setAlbedo(g_Color);
-	//}
+	const glm::mat4 scale = glm::scale(glm::vec3(0.75f));
+	m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex0, glm::translate(glm::mat4(1.0f), glm::vec3( 0.0f, 1.0f, 0.1f)) * rotation * scale);
 
 	m_pScene->updateCamera(m_Camera);
 	m_pScene->updateDebugParameters();
+
+	m_pScene->updateMeshesAndGraphicsObjects();
+	
+	m_pRenderingHandler->onSceneUpdated(m_pScene);
 }
 
 void Application::renderUI(double dt)

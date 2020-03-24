@@ -424,14 +424,17 @@ void RayTracingRendererVK::setSceneData(IScene* pScene)
 	const BufferVK* pMaterialParametersBuffer = pVulkanScene->getMaterialParametersBuffer();
 
 	m_pRayTracingDescriptorSet->writeAccelerationStructureDescriptor(pVulkanScene->getTLAS().AccelerationStructure, RT_TLAS_BINDING);
+	
 	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pVulkanScene->getCombinedVertexBuffer(), RT_COMBINED_VERTEX_BINDING);
 	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pVulkanScene->getCombinedIndexBuffer(), RT_COMBINED_INDEX_BINDING);
 	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pVulkanScene->getMeshIndexBuffer(), RT_MESH_INDEX_BINDING);
+
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(albedoMaps.data(), samplers.data(), MAX_NUM_UNIQUE_MATERIALS, RT_COMBINED_ALBEDO_BINDING);
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(normalMaps.data(), samplers.data(), MAX_NUM_UNIQUE_MATERIALS, RT_COMBINED_NORMAL_BINDING);
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(aoMaps.data(), samplers.data(), MAX_NUM_UNIQUE_MATERIALS, RT_COMBINED_AO_BINDING);
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(metallicMaps.data(), samplers.data(), MAX_NUM_UNIQUE_MATERIALS, RT_COMBINED_METALLIC_BINDING);
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(roughnessMaps.data(), samplers.data(), MAX_NUM_UNIQUE_MATERIALS, RT_COMBINED_ROUGHNESS_BINDING);
+	
 	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pMaterialParametersBuffer, RT_COMBINED_MATERIAL_PARAMETERS_BINDING);
 }
 

@@ -28,8 +28,6 @@ public:
 
 	void generateMips(ImageVK* pImage);
 
-	//void waitForResources();
-
 private:
 	CommandBufferVK* getNextTransferBuffer();
 	CommandBufferVK* getNextGraphicsBuffer();

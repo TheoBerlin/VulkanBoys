@@ -263,8 +263,8 @@ void MeshRendererVK::setSceneData(IScene* pScene)
 {
 	SceneVK* pVulkanScene = reinterpret_cast<SceneVK*>(pScene);
 
-	const BufferVK* pMaterialParametersBuffer = pVulkanScene->getMaterialParametersBuffer();
-	const BufferVK* pTransformsBuffer = pVulkanScene->getTransformsBuffer();
+	const BufferVK* pTransformsBuffer			= pVulkanScene->getTransformsBuffer();
+	const BufferVK* pMaterialParametersBuffer	= pVulkanScene->getMaterialParametersBuffer();
 
 	if (m_pMaterialParametersBuffer != pMaterialParametersBuffer)
 	{
@@ -869,10 +869,14 @@ DescriptorSetVK* MeshRendererVK::getDescriptorSetFromMeshAndMaterial(const MeshV
 		pDescriptorSet->writeCombinedImageDescriptors(&pRoughnessView, &pSampler, 1, ROUGHNESS_MAP_BINDING);
 
 		if (m_pMaterialParametersBuffer != nullptr)
+		{
 			pDescriptorSet->writeStorageBufferDescriptor(m_pMaterialParametersBuffer, MATERIAL_PARAMETERS_BINDING);
+		}
 
-		if (m_pTransformsBuffer!= nullptr)
+		if (m_pTransformsBuffer != nullptr)
+		{
 			pDescriptorSet->writeStorageBufferDescriptor(m_pTransformsBuffer, INSTANCE_TRANSFORMS_BINDING);
+		}
 
 		MeshPipeline meshPipeline = {};
 		meshPipeline.pDescriptorSets = pDescriptorSet;
