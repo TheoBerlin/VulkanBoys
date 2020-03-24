@@ -147,7 +147,7 @@ SceneVK::~SceneVK()
 	m_SceneMeshes.clear();
 }
 
-bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
+bool SceneVK::loadFromFile(const std::string& dir, const std::string& fileName)
 {
 	tinyobj::attrib_t attributes;
 	std::vector<tinyobj::shape_t> shapes;
@@ -357,6 +357,17 @@ bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
 	return true;
 }
 
+bool SceneVK::init()
+{
+	if (!createGeometryPipelineLayout()) {
+		LOG("--- SceneVK: Failed to create geometry pipeline layout");
+		return false;
+	}
+
+	createProfiler();
+	initBuffers();
+}
+
 bool SceneVK::finalize()
 {
 	m_pTempCommandPool = DBG_NEW CommandPoolVK(m_pContext->getDevice(), m_pContext->getInstance(), m_pContext->getDevice()->getQueueFamilyIndices().computeFamily.value());
@@ -364,7 +375,6 @@ bool SceneVK::finalize()
 
 	m_pTempCommandBuffer = m_pTempCommandPool->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-	createProfiler();
 
 	if (!createDefaultTexturesAndSamplers())
 	{
@@ -372,7 +382,6 @@ bool SceneVK::finalize()
 		return false;
 	}
 
-	initBuffers();
 
 	if (m_RayTracingEnabled)
 	{
@@ -837,6 +846,8 @@ bool SceneVK::createGeometryPipelineLayout()
 	{
 		return false;
 	}
+
+	return true;
 }
 
 void SceneVK::initAccelerationStructureBuffers()

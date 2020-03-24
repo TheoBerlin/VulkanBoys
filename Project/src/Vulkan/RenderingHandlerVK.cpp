@@ -531,7 +531,7 @@ void RenderingHandlerVK::onSceneUpdated(IScene* pScene)
 	m_pGraphicsContext->getDevice()->wait();
 
 	SceneVK* pSceneVK = reinterpret_cast<SceneVK*>(pScene);
-	pSceneVK->setSceneData();
+	pSceneVK->UpdateSceneData();
 
 	if (m_pRayTracer)
 	{

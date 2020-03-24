@@ -9,27 +9,26 @@
 #include <unordered_map>
 
 class BufferVK;
+class CommandBufferVK;
+class CommandPoolVK;
+class DescriptorSetLayoutVK;
+class DescriptorSetVK;
+class DescriptorPoolVK;
+class FrameBufferVK;
 class GBufferVK;
 class SamplerVK;
 class PipelineVK;
 class Texture2DVK;
 class RenderPassVK;
-class FrameBufferVK;
-class CommandPoolVK;
 class TextureCubeVK;
-class CommandBufferVK;
-class DescriptorPoolVK;
 class PipelineLayoutVK;
 class SkyboxRendererVK;
-class GraphicsContextVK;
-class DescriptorSetLayoutVK;
-class DescriptorSetVK;
-class FrameBufferVK;
 class GraphicsContextVK;
 class PipelineLayoutVK;
 class PipelineVK;
 class RenderingHandlerVK;
 class RenderPassVK;
+class SceneVK;
 class ImageViewVK;
 
 //Light pass
@@ -131,8 +130,6 @@ private:
 	DescriptorSetLayoutVK* m_pSkyboxDescriptorSetLayout;
 
 	PipelineVK* m_pGeometryPipeline;
-	PipelineLayoutVK* m_pGeometryPipelineLayout;
-	DescriptorSetLayoutVK* m_pGeometryDescriptorSetLayout;
 
 	Texture2DVK* m_pIntegrationLUT;
 	TextureCubeVK* m_pSkybox;

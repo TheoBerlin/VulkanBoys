@@ -85,8 +85,6 @@ MeshRendererVK::~MeshRendererVK()
 	SAFEDELETE(m_pSkyboxPipelineLayout);
 	SAFEDELETE(m_pSkyboxPipeline);
 	SAFEDELETE(m_pGeometryPipeline);
-	SAFEDELETE(m_pGeometryPipelineLayout);
-	SAFEDELETE(m_pGeometryDescriptorSetLayout);
 	SAFEDELETE(m_pLightPipeline);
 	SAFEDELETE(m_pLightPipelineLayout);
 	SAFEDELETE(m_pDescriptorPool);
@@ -282,18 +280,18 @@ void MeshRendererVK::submitMesh(const MeshVK* pMesh, const Material* pMaterial, 
 
 	m_ppGeometryPassBuffers[m_CurrentFrame]->bindPipeline(m_pGeometryPipeline);
 
+	PipelineLayoutVK* pGeometryPassLayout = m_pScene->getGeometryPipelineLayout();
+
 	uint32_t pushConstants[2] = { materialIndex, transformsIndex };
-	m_ppGeometryPassBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t) * 2, &pushConstants);
+	m_ppGeometryPassBuffers[m_CurrentFrame]->pushConstants(pGeometryPassLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t) * 2, &pushConstants);
 
 	BufferVK* pIndexBuffer = reinterpret_cast<BufferVK*>(pMesh->getIndexBuffer());
 	m_ppGeometryPassBuffers[m_CurrentFrame]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
 	DescriptorSetVK* pDescriptorSet = m_pScene->getDescriptorSetFromMeshAndMaterial(pMesh, pMaterial);
-	m_ppGeometryPassBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pGeometryPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
+	m_ppGeometryPassBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, pGeometryPassLayout, 0, 1, &pDescriptorSet, 0, nullptr);
 
-	//m_pGPassProfiler->beginTimestamp(&m_TimestampDrawIndexed);
 	m_ppGeometryPassBuffers[m_CurrentFrame]->drawIndexInstanced(pMesh->getIndexCount(), 1, 0, 0, 0);
-	//m_pGPassProfiler->endTimestamp(&m_TimestampDrawIndexed);
 }
 
 void MeshRendererVK::buildLightPass(RenderPassVK* pRenderPass, FrameBufferVK* pFramebuffer)
@@ -503,8 +501,10 @@ bool MeshRendererVK::createPipelines()
 	depthStencilState.stencilTestEnable = VK_FALSE;
 	m_pGeometryPipeline->setDepthStencilState(depthStencilState);
 
+	SceneVK* pScene = reinterpret_cast<SceneVK*>(m_pRenderingHandler->getScene());
+
 	std::vector<const IShader*> shaders = { pVertexShader, pPixelShader };
-	if (!m_pGeometryPipeline->finalizeGraphics(shaders, pGeometryRenderPass, m_pGeometryPipelineLayout))
+	if (!m_pGeometryPipeline->finalizeGraphics(shaders, pGeometryRenderPass, pScene->getGeometryPipelineLayout()))
 	{
 		return false;
 	}
@@ -603,6 +603,19 @@ bool MeshRendererVK::createPipelines()
 
 bool MeshRendererVK::createPipelineLayouts()
 {
+	//Descriptorpool
+	DescriptorCounts descriptorCounts = {};
+	descriptorCounts.m_SampledImages	= 4096;
+	descriptorCounts.m_StorageImages	= 1024;
+	descriptorCounts.m_StorageBuffers	= 2048;
+	descriptorCounts.m_UniformBuffers	= 1024;
+
+	m_pDescriptorPool = DBG_NEW DescriptorPoolVK(m_pContext->getDevice());
+	if (!m_pDescriptorPool->init(descriptorCounts, 512))
+	{
+		return false;
+	}
+
 	//Lightpass
 	m_pLightDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(m_pContext->getDevice());
 	m_pLightDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, LIGHT_BUFFER_BINDING, 1);
@@ -621,8 +634,8 @@ bool MeshRendererVK::createPipelineLayouts()
 		return false;
 	}
 
-	pushConstantRanges = { };
-	descriptorSetLayouts = { m_pLightDescriptorSetLayout };
+	std::vector<VkPushConstantRange> pushConstantRanges = { };
+	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { m_pLightDescriptorSetLayout };
 
 	m_pLightPipelineLayout = DBG_NEW PipelineLayoutVK(m_pContext->getDevice());
 	if (!m_pLightPipelineLayout->init(descriptorSetLayouts, pushConstantRanges))

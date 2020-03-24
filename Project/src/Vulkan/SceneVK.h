@@ -1,24 +1,27 @@
 #pragma once
 #include "Common/IScene.h"
 
-#include "Vulkan/VulkanCommon.h"
+#include "Core/Material.h"
+#include "Vulkan/MeshVK.h"
 #include "Vulkan/ProfilerVK.h"
 #include "Vulkan/Texture2DVK.h"
+#include "Vulkan/VulkanCommon.h"
 
 #include <vector>
 #include <map>
 
-class IGraphicsContext;
-class GraphicsContextVK;
-class DeviceVK;
-
-class IMesh;
-class Material;
-class ITexture2D;
 class BufferVK;
-class MeshVK;
-class Texture2DVK;
+class DescriptorPoolVK;
+class DescriptorSetLayoutVK;
+class DescriptorSetVK;
+class DeviceVK;
+class GraphicsContextVK;
+class IGraphicsContext;
+class ITexture2D;
+class PipelineLayoutVK;
+class RenderingHandlerVK;
 class SamplerVK;
+class Texture2DVK;
 
 //Todo: Remove these
 class CommandPoolVK;
@@ -135,8 +138,9 @@ public:
 	SceneVK(IGraphicsContext* pContext, const RenderingHandlerVK* pRenderingHandler);
 	~SceneVK();
 
-	virtual bool initFromFile(const std::string& dir, const std::string& fileName) override;
+	virtual bool loadFromFile(const std::string& dir, const std::string& fileName) override;
 
+	virtual bool init() override;
 	virtual bool finalize() override;
 	virtual void updateMeshesAndGraphicsObjects() override;
 	virtual void updateMaterials() override;
@@ -209,7 +213,6 @@ private:
 	uint32_t registerMaterial(const Material* pMaterial);
 
 private:
-
 	GraphicsContextVK* m_pContext;
 	DeviceVK* m_pDevice;
 	ProfilerVK* m_pProfiler;

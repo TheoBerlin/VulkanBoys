@@ -12,8 +12,9 @@ class IScene
 public:
 	DECL_INTERFACE(IScene);
 
-	virtual bool initFromFile(const std::string& dir, const std::string& fileName) = 0;
+	virtual bool loadFromFile(const std::string& dir, const std::string& fileName) = 0;
 
+	virtual bool init() = 0;
 	virtual bool finalize() = 0;
 
 	virtual void updateMeshesAndGraphicsObjects() = 0;
