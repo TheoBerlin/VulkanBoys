@@ -163,10 +163,10 @@ public:
 	const std::vector<GraphicsObjectVK>&	getGraphicsObjects() const			{ return m_GraphicsObjects; }
 	PipelineLayoutVK*						getGeometryPipelineLayout() const	{ return m_pGeometryPipelineLayout; }
 
-	FORCEINLINE BufferVK*	getCombinedVertexBuffer()		{ return m_pCombinedVertexBuffer; }
-	FORCEINLINE BufferVK*	getCombinedIndexBuffer()		{ return m_pCombinedIndexBuffer; }
-	FORCEINLINE BufferVK*	getMeshIndexBuffer()			{ return m_pMeshIndexBuffer; }
-	FORCEINLINE ProfilerVK* getProfiler()					{ return m_pProfiler; }
+	FORCEINLINE BufferVK*	getCombinedVertexBuffer() { return m_pCombinedVertexBuffer; }
+	FORCEINLINE BufferVK*	getCombinedIndexBuffer()  { return m_pCombinedIndexBuffer; }
+	FORCEINLINE BufferVK*	getMeshIndexBuffer()	  { return m_pMeshIndexBuffer; }
+	FORCEINLINE ProfilerVK* getProfiler()			  { return m_pProfiler; }
 
 	FORCEINLINE const std::vector<const ImageViewVK*>&	getAlbedoMaps() const				{ return m_AlbedoMaps; }
 	FORCEINLINE const std::vector<const ImageViewVK*>&	getNormalMaps() const				{ return m_NormalMaps; }
@@ -247,7 +247,7 @@ private:
 	std::vector<const ImageViewVK*> m_AOMaps;
 	std::vector<const ImageViewVK*> m_MetallicMaps;
 	std::vector<const ImageViewVK*> m_RoughnessMaps;
-	std::vector<const SamplerVK*> m_Samplers;
+	std::vector<const SamplerVK*>	m_Samplers;
 
 	std::vector<MaterialParameters> m_MaterialParameters;
 	BufferVK* m_pMaterialParametersBuffer;

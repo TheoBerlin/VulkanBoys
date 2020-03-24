@@ -729,10 +729,17 @@ void SceneVK::copySceneData(CommandBufferVK* pTransferBuffer)
 
 void SceneVK::updateSceneData()
 {
-	for (auto& instance : m_MeshTable)
+	if (m_pGarbageTransformsBufferGraphics || m_MaterialDataIsDirty)
 	{
-		instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pMaterialParametersBuffer, MATERIAL_PARAMETERS_BINDING);
-		instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pTransformsBufferGraphics, INSTANCE_TRANSFORMS_BINDING);
+		m_pDevice->wait();
+
+		for (auto& instance : m_MeshTable)
+		{
+			instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pMaterialParametersBuffer, MATERIAL_PARAMETERS_BINDING);
+			instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pTransformsBufferGraphics, INSTANCE_TRANSFORMS_BINDING);
+		}
+
+		cleanGarbage();
 	}
 }
 
@@ -1370,7 +1377,8 @@ void SceneVK::updateInstanceBuffer()
 
 void SceneVK::updateTransformBuffer()
 {
-	if (m_pTransformsBufferGraphics->getSizeInBytes() < sizeof(GraphicsObjectTransforms) * m_SceneTransforms.size())
+	const uint32_t sizeInBytes = sizeof(GraphicsObjectTransforms) * uint32_t(m_SceneTransforms.size());
+	if (m_pTransformsBufferGraphics->getSizeInBytes() < sizeInBytes)
 	{
 		m_pGarbageTransformsBufferGraphics	= m_pTransformsBufferGraphics;
 		m_pGarbageTransformsBufferCompute	= m_pTransformsBufferCompute;
@@ -1378,7 +1386,7 @@ void SceneVK::updateTransformBuffer()
 		BufferParams transformBufferParams = {};
 		transformBufferParams.Usage				= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 		transformBufferParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-		transformBufferParams.SizeInBytes		= sizeof(GraphicsObjectTransforms) * m_SceneTransforms.size();
+		transformBufferParams.SizeInBytes		= sizeInBytes;
 		transformBufferParams.IsExclusive		= true;
 
 		m_pTransformsBufferGraphics = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());

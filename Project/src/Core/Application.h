@@ -56,8 +56,8 @@ public:
 	virtual void onKeyPressed(EKey key) override;
 	virtual void onMouseMove(uint32_t x, uint32_t y) override;
 
-	FORCEINLINE IWindow*	getWindow() const { return m_pWindow; }
-	FORCEINLINE IScene*		getScene() const  { return m_pScene; }
+	FORCEINLINE IWindow* getWindow() const { return m_pWindow; }
+	FORCEINLINE IScene*	 getScene() const  { return m_pScene; }
 	
 	static Application* get();
 
