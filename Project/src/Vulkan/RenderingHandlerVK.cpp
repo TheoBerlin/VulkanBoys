@@ -251,63 +251,6 @@ void RenderingHandlerVK::render(IScene* pScene)
 	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
 	m_ppTransferCommandBuffers[m_CurrentFrame]->end();
 	
-	{
-		static bool firstFrame = true;
-		
-		const uint32_t waitCount = firstFrame ? 0 : 2;
-		firstFrame = false;
-
-		VkSemaphore				transferWaitSemphores[]		= { m_TransferStartSemaphore, m_ComputeFinishedTransferSemaphore };
-		VkPipelineStageFlags	transferWaitStages[]		= { VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
-		VkSemaphore				transferSignalSemaphores[]	= { m_TransferFinishedGraphicsSemaphore, m_TransferFinishedComputeSemaphore };
-
-		pDevice->executeTransfer(m_ppTransferCommandBuffers[m_CurrentFrame], transferWaitSemphores, transferWaitStages, waitCount, transferSignalSemaphores, 2);
-	}
-
-	if (m_pParticleRenderer)
-	{
-		m_pParticleRenderer->getProfiler()->reset(m_CurrentFrame, m_ppGraphicsCommandBuffers[m_CurrentFrame]);
-#if MULTITHREADED
-		m_pParticleRenderer->beginFrame(pVulkanScene);
-		TaskDispatcher::execute([pVulkanScene, this]
-			{
-				submitParticles();
-				m_pParticleRenderer->endFrame(pVulkanScene);
-			});
-#else
-		m_pParticleRenderer->beginFrame(pVulkanScene);
-		submitParticles();
-		m_pParticleRenderer->endFrame(pVulkanScene);
-#endif
-	}
-
-	// Submit the rendering handler's command buffer
-	if (m_pParticleEmitterHandler)
-	{
-#if MULTITHREADED
-		TaskDispatcher::execute([&, this]
-			{
-				ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
-				if (pEmitterHandler->gpuComputed())
-				{
-					for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters())
-					{
-						pEmitterHandler->releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
-					}
-				}
-			});
-#else
-		ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
-		if (pEmitterHandler->gpuComputed())
-		{
-			for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters())
-			{
-				pEmitterHandler->releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
-			}
-		}
-#endif
-	}
-
 	//Render all the meshes
 	FrameBufferVK*		pBackbuffer				= getCurrentBackBuffer();
 	FrameBufferVK*		pBackbufferWithDepth	= getCurrentBackBufferWithDepth();
@@ -352,7 +295,6 @@ void RenderingHandlerVK::render(IScene* pScene)
 				pSecondaryCommandBuffer->end();
 			});
 	}
-	TaskDispatcher::waitForTasks();
 #else
 	m_pMeshRenderer->beginFrame(pVulkanScene);
 	
@@ -381,17 +323,79 @@ void RenderingHandlerVK::render(IScene* pScene)
 	pSecondaryCommandBuffer->end();
 #endif
 
+	// Submit the rendering handler's command buffer
+	if (m_pParticleEmitterHandler)
+	{
+#if MULTITHREADED
+		TaskDispatcher::execute([&, this]
+			{
+				ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
+				if (pEmitterHandler->gpuComputed())
+				{
+					for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters())
+					{
+						pEmitterHandler->releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
+					}
+				}
+			});
+#else
+		ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
+		if (pEmitterHandler->gpuComputed())
+		{
+			for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters())
+			{
+				pEmitterHandler->releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
+			}
+		}
+#endif
+	}
+
+	if (m_pParticleRenderer)
+	{
+		m_pParticleRenderer->getProfiler()->reset(m_CurrentFrame, m_ppGraphicsCommandBuffers[m_CurrentFrame]);
+#if MULTITHREADED
+		m_pParticleRenderer->beginFrame(pVulkanScene);
+		TaskDispatcher::execute([pVulkanScene, this]
+			{
+				submitParticles();
+				m_pParticleRenderer->endFrame(pVulkanScene);
+			});
+#else
+		m_pParticleRenderer->beginFrame(pVulkanScene);
+		submitParticles();
+		m_pParticleRenderer->endFrame(pVulkanScene);
+#endif
+	}
+
+	{
+		static bool firstFrame = true;
+
+		const uint32_t waitCount = firstFrame ? 0 : 2;
+		firstFrame = false;
+
+		VkSemaphore				transferWaitSemphores[] = { m_TransferStartSemaphore, m_ComputeFinishedTransferSemaphore };
+		VkPipelineStageFlags	transferWaitStages[] = { VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
+		VkSemaphore				transferSignalSemaphores[] = { m_TransferFinishedGraphicsSemaphore, m_TransferFinishedComputeSemaphore };
+
+		pDevice->executeTransfer(m_ppTransferCommandBuffers[m_CurrentFrame], transferWaitSemphores, transferWaitStages, waitCount, transferSignalSemaphores, 2);
+	}
+
 	//Start renderpass
 	VkClearValue clearValues[] = { m_ClearColor, m_ClearColor, m_ClearColor, m_ClearDepth };
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pGeometryRenderPass, m_pGBuffer->getFrameBuffer(), (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 4, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+
+#if MULTITHREADED
+	TaskDispatcher::waitForTasks();
+#endif
+
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pMeshRenderer->getGeometryCommandBuffer());
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
 
-	uint32_t computeQueueIndex	= pDevice->getQueueFamilyIndices().computeFamily.value();
-	uint32_t graphicsQueueIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
-
 	if (m_pRayTracer)
 	{
+		uint32_t computeQueueIndex	= pDevice->getQueueFamilyIndices().computeFamily.value();
+		uint32_t graphicsQueueIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
+
 		constexpr uint32_t IMAGE_BARRIER_COUNT = 6;
 		VkImageMemoryBarrier imageBarriers[IMAGE_BARRIER_COUNT] =
 		{
@@ -408,24 +412,21 @@ void RenderingHandlerVK::render(IScene* pScene)
 			createVkImageMemoryBarrier(m_pGlossyImage->getImage(), VK_ACCESS_MEMORY_READ_BIT, 0, graphicsQueueIndex, computeQueueIndex,
 				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,  VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1, 1),
 		};
+
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->imageMemoryBarrier(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, IMAGE_BARRIER_COUNT, imageBarriers);
-	}
-	m_ppGraphicsCommandBuffers[m_CurrentFrame]->end();
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->end();
 
-	{
-		VkSemaphore geometryWaitSemphores[]			= { m_TransferFinishedGraphicsSemaphore };
-		VkPipelineStageFlags geometryWaitStages[]	= { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT };
-		
-		VkSemaphore signalSemaphores[]	= { m_GeometryFinishedSemaphore, m_TransferStartSemaphore };
-		pDevice->executeGraphics(m_ppGraphicsCommandBuffers[m_CurrentFrame], geometryWaitSemphores, geometryWaitStages, 1, signalSemaphores, 2);
-	}
+		{
+			VkSemaphore geometryWaitSemphores[] = { m_TransferFinishedGraphicsSemaphore };
+			VkPipelineStageFlags geometryWaitStages[] = { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT };
 
-	//Prepare seconds graphics commandbuffer
-	m_ppGraphicsCommandBuffers2[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+			VkSemaphore signalSemaphores[] = { m_GeometryFinishedSemaphore, m_TransferStartSemaphore };
+			pDevice->executeGraphics(m_ppGraphicsCommandBuffers[m_CurrentFrame], geometryWaitSemphores, geometryWaitStages, 1, signalSemaphores, 2);
+		}
 
-	//Ray Tracing
-	if (m_pRayTracer)
-	{
+		//Prepare seconds graphics commandbuffer
+		m_ppGraphicsCommandBuffers2[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
 		{
 			constexpr uint32_t IMAGE_BARRIER_COUNT = 6;
 			VkImageMemoryBarrier imageBarriers[IMAGE_BARRIER_COUNT] =
@@ -488,6 +489,18 @@ void RenderingHandlerVK::render(IScene* pScene)
 			};
 			m_ppGraphicsCommandBuffers2[m_CurrentFrame]->imageMemoryBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, IMAGE_BARRIER_COUNT, imageBarriers);
 		}
+	}
+	else
+	{
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->end();
+		{
+			VkSemaphore geometryWaitSemphores[] = { m_TransferFinishedGraphicsSemaphore };
+			VkPipelineStageFlags geometryWaitStages[] = { VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT };
+
+			VkSemaphore signalSemaphores[] = { m_GeometryFinishedSemaphore, m_TransferStartSemaphore };
+			pDevice->executeGraphics(m_ppGraphicsCommandBuffers[m_CurrentFrame], geometryWaitSemphores, geometryWaitStages, 1, signalSemaphores, 2);
+		}
+		m_ppGraphicsCommandBuffers2[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	}
 
 	//TODO: Combine these into one renderpass

@@ -8,6 +8,43 @@
 
 #include <vulkan/vulkan.h>
 
+inline VkImageMemoryBarrier createVkImageMemoryBarrier(VkImage image, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, uint32_t srcQueueFamilyIndex,
+    uint32_t dstQueueFamilyIndex, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectMask, uint32_t baseLayer, uint32_t baseMiplevel, uint32_t layerCount, uint32_t miplevelCount)
+{
+    VkImageMemoryBarrier barrier = {};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.pNext = nullptr;
+    barrier.image = image;
+    barrier.srcAccessMask = srcAccessMask;
+    barrier.dstAccessMask = dstAccessMask;
+    barrier.srcQueueFamilyIndex = srcQueueFamilyIndex;
+    barrier.dstQueueFamilyIndex = dstQueueFamilyIndex;
+    barrier.oldLayout = oldLayout;
+    barrier.newLayout = newLayout;
+    barrier.subresourceRange.aspectMask = aspectMask;
+    barrier.subresourceRange.baseArrayLayer = baseLayer;
+    barrier.subresourceRange.layerCount = layerCount;
+    barrier.subresourceRange.baseMipLevel = baseMiplevel;
+    barrier.subresourceRange.levelCount = miplevelCount;
+    return barrier;
+}
+
+inline VkBufferMemoryBarrier createVkBufferMemoryBarrier(VkBuffer buffer, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, uint32_t srcQueueFamilyIndex,
+    uint32_t dstQueueFamilyIndex, VkDeviceSize offset, VkDeviceSize size)
+{
+    VkBufferMemoryBarrier barrier = {};
+    barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    barrier.pNext = nullptr;
+    barrier.buffer = buffer;
+    barrier.size = size;
+    barrier.offset = offset;
+    barrier.srcAccessMask = srcAccessMask;
+    barrier.dstAccessMask = dstAccessMask;
+    barrier.srcQueueFamilyIndex = srcQueueFamilyIndex;
+    barrier.dstQueueFamilyIndex = dstQueueFamilyIndex;
+    return barrier;
+}
+
 inline uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties)
 {
     VkPhysicalDeviceMemoryProperties memProperties = {};
@@ -22,43 +59,6 @@ inline uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFil
     }
 
     return UINT32_MAX;
-}
-
-inline VkImageMemoryBarrier createVkImageMemoryBarrier(VkImage image, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, uint32_t srcQueueFamilyIndex, 
-    uint32_t dstQueueFamilyIndex, VkImageLayout oldLayout, VkImageLayout newLayout, VkImageAspectFlags aspectMask, uint32_t baseLayer, uint32_t baseMiplevel, uint32_t layerCount, uint32_t miplevelCount)
-{
-    VkImageMemoryBarrier barrier = {};
-    barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.pNext                           = nullptr;
-    barrier.image                           = image;
-    barrier.srcAccessMask                   = srcAccessMask;
-    barrier.dstAccessMask                   = dstAccessMask;
-    barrier.srcQueueFamilyIndex             = srcQueueFamilyIndex;
-    barrier.dstQueueFamilyIndex             = dstQueueFamilyIndex;
-    barrier.oldLayout                       = oldLayout;
-    barrier.newLayout                       = newLayout;
-    barrier.subresourceRange.aspectMask     = aspectMask;
-    barrier.subresourceRange.baseArrayLayer = baseLayer;
-    barrier.subresourceRange.layerCount     = layerCount;
-    barrier.subresourceRange.baseMipLevel   = baseMiplevel;
-    barrier.subresourceRange.levelCount     = miplevelCount;
-    return barrier;
-}
-
-inline VkBufferMemoryBarrier createVkBufferMemoryBarrier(VkBuffer buffer, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask, uint32_t srcQueueFamilyIndex,
-    uint32_t dstQueueFamilyIndex, VkDeviceSize offset, VkDeviceSize size)
-{
-    VkBufferMemoryBarrier barrier = {};
-    barrier.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-    barrier.pNext               = nullptr;
-    barrier.buffer              = buffer;
-    barrier.size                = size;
-    barrier.offset              = offset;
-    barrier.srcAccessMask       = srcAccessMask;
-    barrier.dstAccessMask       = dstAccessMask;
-    barrier.srcQueueFamilyIndex = srcQueueFamilyIndex;
-    barrier.dstQueueFamilyIndex = dstQueueFamilyIndex;
-    return barrier;
 }
 
 inline VkShaderStageFlagBits convertShaderType(EShader shader)

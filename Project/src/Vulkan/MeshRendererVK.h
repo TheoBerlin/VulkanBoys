@@ -104,8 +104,6 @@ public:
 
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
 	
-	void setupFrame(CommandBufferVK* pPrimaryBuffer);
-
 	void setClearColor(float r, float g, float b);
 	void setClearColor(const glm::vec3& color);
 	void setSkybox(TextureCubeVK* pSkybox, TextureCubeVK* pIrradiance, TextureCubeVK* pEnvironmentMap);
@@ -117,6 +115,12 @@ public:
 	void buildLightPass(RenderPassVK* pRenderPass, FrameBufferVK* pFramebuffer);
 
 	void onWindowResize(uint32_t width, uint32_t height);
+
+	FORCEINLINE void setupFrame(CommandBufferVK* pPrimaryBuffer)
+	{
+		m_pGPassProfiler->reset(uint32_t(m_CurrentFrame), pPrimaryBuffer);
+		m_pLightPassProfiler->reset(uint32_t(m_CurrentFrame), pPrimaryBuffer);
+	}
 
 	FORCEINLINE Texture2DVK*		getBRDFLookUp() const				{ return m_pIntegrationLUT; }
 	FORCEINLINE ProfilerVK*			getLightProfiler() const			{ return m_pLightPassProfiler; }

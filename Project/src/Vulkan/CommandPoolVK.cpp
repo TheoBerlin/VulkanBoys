@@ -92,11 +92,6 @@ void CommandPoolVK::freeCommandBuffer(CommandBufferVK** ppCommandBuffer)
 	SAFEDELETE(*ppCommandBuffer);
 }
 
-void CommandPoolVK::reset()
-{
-	VK_CHECK_RESULT(vkResetCommandPool(m_pDevice->getDevice(), m_CommandPool, 0), "Reset CommandPool Failed");
-}
-
 void CommandPoolVK::setName(const char* pName)
 {
 	m_pDevice->setVulkanObjectName(pName, (uint64_t)m_CommandPool, VK_OBJECT_TYPE_COMMAND_POOL);

@@ -1,10 +1,9 @@
 #pragma once
 #include "VulkanCommon.h"
+#include "DeviceVK.h"
 
 #include <vector>
 
-class DeviceVK;
-class InstanceVK;
 class CommandBufferVK;
 
 class CommandPoolVK
@@ -19,9 +18,13 @@ public:
 
 	CommandBufferVK* allocateCommandBuffer(VkCommandBufferLevel bufferLevel);
 	void freeCommandBuffer(CommandBufferVK** ppCommandBuffer);
-	void reset();
 
 	void setName(const char* pName);
+
+	FORCEINLINE void reset()
+	{
+		vkResetCommandPool(m_pDevice->getDevice(), m_CommandPool, 0);
+	}
 
 private:
 	DeviceVK* m_pDevice;

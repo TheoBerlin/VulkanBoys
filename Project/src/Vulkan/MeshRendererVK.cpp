@@ -213,12 +213,6 @@ void MeshRendererVK::setViewport(float width, float height, float minDepth, floa
 	m_ScissorRect.offset.y		= 0;
 }
 
-void MeshRendererVK::setupFrame(CommandBufferVK* pPrimaryBuffer)
-{
-	m_pGPassProfiler->reset(uint32_t(m_CurrentFrame), pPrimaryBuffer);
-	m_pLightPassProfiler->reset(uint32_t(m_CurrentFrame), pPrimaryBuffer);
-}
-
 void MeshRendererVK::updateGBufferDescriptors()
 {
 	GBufferVK* pGBuffer				= m_pRenderingHandler->getGBuffer();
