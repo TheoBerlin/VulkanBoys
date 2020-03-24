@@ -35,12 +35,12 @@ public:
 	virtual ParticleEmitterHandler* createParticleEmitterHandler() = 0;
 	virtual IImgui* createImgui() = 0;
 
-	virtual IScene* createScene() = 0;
+	virtual IScene* createScene(const RenderingHandler* pRenderingHandler) = 0;
 
 	virtual IShader* createShader() = 0;
-	
+
     virtual IMesh* createMesh() = 0;
-    
+
 	virtual IBuffer* createBuffer() = 0;
 	virtual void updateBuffer(IBuffer* pDestination, uint64_t destinationOffset, const void* pSource, uint64_t sizeInBytes) = 0;
 	virtual IFrameBuffer* createFrameBuffer() = 0;
@@ -54,7 +54,7 @@ public:
 
 	virtual bool setRayTracingEnabled(bool enabled) = 0;
 	virtual bool isRayTracingEnabled() const = 0;
-	
+
 public:
 	static IGraphicsContext* create(IWindow* pWindow, API api);
 };

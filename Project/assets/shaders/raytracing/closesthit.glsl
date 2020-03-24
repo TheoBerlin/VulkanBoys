@@ -188,7 +188,6 @@ void main()
 	{
 		vec3 shadowRaysOrigin = hitPos + normal * u_PushConstants.ShadowRayBias;
 
-		vec3 L0 = vec3(0.0f);
 		for (int i = 0; i < MAX_POINT_LIGHTS; i++)
 		{
 			vec3 lightPosition 	= u_Lights.lights[i].Position.xyz;
@@ -235,6 +234,39 @@ void main()
 
 		vec2 envBRDF 	= texture(u_BrdfLUT, vec2(NdotV, roughness)).rg;
 		specular		= rayPayload.Radiance * (f * envBRDF.x + envBRDF.y);		
+	}
+	else
+	{
+		for (int i = 0; i < MAX_POINT_LIGHTS; i++)
+		{
+			vec3 lightPosition 	= u_Lights.lights[i].Position.xyz;
+			vec3 lightColor 	= u_Lights.lights[i].Color.rgb;
+
+			vec3 lightVector 	= (lightPosition - hitPos);
+			vec3 lightDir 		= normalize(lightVector);
+
+			float lightDistance	= length(lightVector);
+			float attenuation 	= 1.0f / max((lightDistance * lightDistance), 0.0001f);
+
+			vec3 halfVector = normalize(viewDir + lightDir);
+
+			vec3 radiance = lightColor * attenuation;
+
+			float HdotV = max(dot(halfVector, viewDir), 0.0f);
+			float NdotL = max(dot(normal, lightDir), 0.0f);
+
+			vec3 f 		= Fresnel(f0, HdotV);
+			float ndf 	= Distribution(normal, halfVector, roughness);
+			float g 	= GeometryOpt(NdotV, NdotL, roughness);
+
+			float denom 	= 4.0f * NdotV * NdotL + 0.0001f;
+			vec3 specular   = (ndf * g * f) / denom;
+
+			//Take 1.0f minus the incoming radiance to get the diffuse (Energy conservation)
+			vec3 diffuse = (vec3(1.0f) - f) * metallicFactor;
+
+			L0 += ((diffuse * (albedo / PI)) + specular) * radiance * NdotL;
+		}	
 	}
 
 	vec3 ambient 	= ((kDiffuse * diffuse) + specular) * ao; //Approximate diffuse with albedo * vec3(0.03f)

@@ -111,6 +111,32 @@ void Application::init()
 	m_pRenderingHandler->setClearColor(0.0f, 0.0f, 0.0f);
 	m_pRenderingHandler->setViewport((float)m_pWindow->getWidth(), (float)m_pWindow->getHeight(), 0.0f, 1.0f, 0.0f, 0.0f);
 
+	//Create Scene
+	m_pScene = m_pContext->createScene(m_pRenderingHandler);
+	m_pScene->init();
+
+	m_pRenderingHandler->setScene(m_pScene);
+
+	TaskDispatcher::execute([this]
+		{
+			m_pScene->loadFromFile("assets/sponza/", "sponza.obj");
+		});
+
+	//Setup lights
+	LightSetup& lightSetup = m_pScene->getLightSetup();
+	lightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
+	lightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
+	lightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
+	lightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
+
+	VolumetricLightSettings volumetricLightSettings = {
+		0.8f, 	// Scatter amount
+		0.2f 	// Particle G
+	};
+	glm::vec3 sunDirection = glm::normalize(glm::vec3(-1.0f, -1.0f, 0.0f));
+	lightSetup.setDirectionalLight(DirectionalLight(volumetricLightSettings, sunDirection, {0.6f, 0.45f, 0.2f, 1.0f}));
+
+
 	// Setup renderers
 	m_pMeshRenderer = m_pContext->createMeshRenderer(m_pRenderingHandler);
 	m_pMeshRenderer->init();
@@ -225,27 +251,6 @@ void Application::init()
 
 	m_GunMaterial.createSampler(m_pContext, samplerParams);
 
-	//Create Scene
-	m_pScene = m_pContext->createScene();
-	TaskDispatcher::execute([this]
-		{
-			m_pScene->initFromFile("assets/sponza/", "sponza.obj");
-		});
-
-	//Setup lights
-	LightSetup& lightSetup = m_pScene->getLightSetup();
-	lightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
-	lightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
-	lightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
-	lightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
-
-	VolumetricLightSettings volumetricLightSettings = {
-		0.8f, 	// Scatter amount
-		0.2f 	// Particle G
-	};
-	glm::vec3 sunDirection = glm::normalize(glm::vec3(-1.0f, -1.0f, 0.0f));
-	lightSetup.setDirectionalLight(DirectionalLight(volumetricLightSettings, sunDirection, {0.6f, 0.45f, 0.2f, 1.0f}));
-
 	//Setup camera
 	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
 	m_Camera.setPosition(glm::vec3(0.0f, 1.0f, -3.0f));
@@ -265,7 +270,6 @@ void Application::init()
 	SAFEDELETE(pPanorama);
 
 	m_pScene->finalize();
-
 	m_pRenderingHandler->onSceneUpdated(m_pScene);
 
 	std::vector<glm::vec3> positionControlPoints
@@ -573,14 +577,14 @@ void Application::update(double dt)
 	rotation = glm::rotate(rotation, glm::radians(30.0f * float(dt)), glm::vec3(0.0f, 1.0f, 0.0f));
 
 	const glm::mat4 scale = glm::scale(glm::vec3(0.75f));
-	m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex0, glm::translate(glm::mat4(1.0f), glm::vec3( 0.0f, 1.0f, 0.1f)) * rotation * scale);
+	//m_pScene->updateGraphicsObjectTransform(m_GraphicsIndex0, glm::translate(glm::mat4(1.0f), glm::vec3( 0.0f, 1.0f, 0.1f)) * rotation * scale);
 
 	m_pScene->updateCamera(m_Camera);
 	m_pScene->updateDebugParameters();
 
-	m_pScene->updateMeshesAndGraphicsObjects();
+	//m_pScene->updateMeshesAndGraphicsObjects();
 	
-	m_pRenderingHandler->onSceneUpdated(m_pScene);
+	//m_pRenderingHandler->onSceneUpdated(m_pScene);
 }
 
 void Application::renderUI(double dt)

@@ -99,19 +99,19 @@ RenderingHandlerVK::~RenderingHandlerVK()
 
 	SAFEDELETE(m_pLightBufferCompute);
 	SAFEDELETE(m_pLightBufferGraphics);
-	
+
 	SAFEDELETE(m_pGeometryRenderPass);
 	SAFEDELETE(m_pBackBufferRenderPass);
 	SAFEDELETE(m_pParticleRenderPass);
 	SAFEDELETE(m_pUIRenderPass);
 
 	SAFEDELETE(m_pSkyboxRenderer);
-    
+
 	SAFEDELETE(m_pRadianceImage);
 	SAFEDELETE(m_pRadianceImageView);
 	SAFEDELETE(m_pGlossyImage);
 	SAFEDELETE(m_pGlossyImageView);
-    
+
 	SAFEDELETE(m_pGBuffer);
 	releaseBackBuffers();
 
@@ -250,7 +250,7 @@ void RenderingHandlerVK::render(IScene* pScene)
 
 	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
 	m_ppTransferCommandBuffers[m_CurrentFrame]->end();
-	
+
 	//Render all the meshes
 	FrameBufferVK*		pBackbuffer				= getCurrentBackBuffer();
 	FrameBufferVK*		pBackbufferWithDepth	= getCurrentBackBufferWithDepth();
@@ -297,7 +297,7 @@ void RenderingHandlerVK::render(IScene* pScene)
 	}
 #else
 	m_pMeshRenderer->beginFrame(pVulkanScene);
-	
+
 	auto& graphicsObjects = pVulkanScene->getGraphicsObjects();
 	for (uint32_t i = 0; i < graphicsObjects.size(); i++)
 	{
@@ -446,7 +446,7 @@ void RenderingHandlerVK::render(IScene* pScene)
 			};
 			m_ppComputeCommandBuffers[m_CurrentFrame]->imageMemoryBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV, IMAGE_BARRIER_COUNT, imageBarriers);
 		}
-	
+
 		m_pRayTracer->render(pScene);
 		m_ppComputeCommandBuffers[m_CurrentFrame]->executeSecondary(m_pRayTracer->getComputeCommandBuffer());
 
@@ -531,7 +531,7 @@ void RenderingHandlerVK::render(IScene* pScene)
 		VkSemaphore graphicsSignalSemaphores[]		= { m_pRenderFinishedSemaphores[m_CurrentFrame] };
 		VkSemaphore graphicsWaitSemaphores[]		= { m_pImageAvailableSemaphores[m_CurrentFrame], m_ComputeFinishedGraphicsSemaphore };
 		VkPipelineStageFlags graphicswaitStages[]	= { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT , VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT };
-		
+
 		VkSemaphore computeSignalSemaphores[]		= { m_ComputeFinishedGraphicsSemaphore, m_ComputeFinishedTransferSemaphore };
 		VkSemaphore computeWaitSemaphores[]			= { m_GeometryFinishedSemaphore, m_TransferFinishedComputeSemaphore };
 		VkPipelineStageFlags computeWaitStages[]	= { VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV };
@@ -574,10 +574,8 @@ void RenderingHandlerVK::onSceneUpdated(IScene* pScene)
 {
 	m_pGraphicsContext->getDevice()->wait();
 
-	if (m_pMeshRenderer)
-	{
-		m_pMeshRenderer->setSceneData(pScene);
-	}
+	SceneVK* pSceneVK = reinterpret_cast<SceneVK*>(pScene);
+	pSceneVK->UpdateSceneData();
 
 	if (m_pRayTracer)
 	{
@@ -614,18 +612,18 @@ void RenderingHandlerVK::swapBuffers()
 
 void RenderingHandlerVK::drawProfilerUI()
 {
-	if (m_pMeshRenderer) 
+	if (m_pMeshRenderer)
 	{
 		m_pMeshRenderer->getGeometryProfiler()->drawResults();
 		m_pMeshRenderer->getLightProfiler()->drawResults();
 	}
 
-	if (m_pParticleRenderer) 
+	if (m_pParticleRenderer)
 	{
 		m_pParticleRenderer->getProfiler()->drawResults();
 	}
 
-	if (m_pRayTracer) 
+	if (m_pRayTracer)
 	{
 		m_pRayTracer->getProfiler()->drawResults();
 	}
@@ -920,7 +918,7 @@ bool RenderingHandlerVK::createRenderPasses()
 	description.finalLayout		= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	m_pGeometryRenderPass->addAttachment(description);
 
-	//Normals + Metallic + Roughness 
+	//Normals + Metallic + Roughness
 	description.format			= VK_FORMAT_R16G16B16A16_SFLOAT;
 	description.samples			= VK_SAMPLE_COUNT_1_BIT;
 	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -1048,7 +1046,7 @@ void RenderingHandlerVK::updateBuffers(const Camera& camera, const LightSetup& l
 
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->bufferMemoryBarrier(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 2, barriers);
 		m_ppComputeCommandBuffers[m_CurrentFrame]->bufferMemoryBarrier(VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 2, &barriers[2]);
-	
+
 		for (uint32_t i = 0; i < barrierCount; i++)
 		{
 			barriers[i].srcAccessMask = 0;
@@ -1132,7 +1130,7 @@ bool RenderingHandlerVK::createBuffers()
 	cameraBufferParams.IsExclusive		= true;
 
 	m_pCameraBufferGraphics = DBG_NEW BufferVK(m_pGraphicsContext->getDevice());
-	if (!m_pCameraBufferGraphics->init(cameraBufferParams)) 
+	if (!m_pCameraBufferGraphics->init(cameraBufferParams))
 	{
 		LOG("Failed to create CameraBuffer for Graphics");
 		return false;

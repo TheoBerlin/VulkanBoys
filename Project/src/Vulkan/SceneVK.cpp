@@ -2,12 +2,15 @@
 
 #include "Core/Material.h"
 
-#include "Vulkan/GraphicsContextVK.h"
-#include "Vulkan/DeviceVK.h"
 #include "Vulkan/BufferVK.h"
+#include "Vulkan/DescriptorPoolVK.h"
+#include "Vulkan/DeviceVK.h"
+#include "Vulkan/GraphicsContextVK.h"
 #include "Vulkan/MeshVK.h"
-#include "Vulkan/Texture2DVK.h"
+#include "Vulkan/PipelineLayoutVK.h"
+#include "Vulkan/RenderingHandlerVK.h"
 #include "Vulkan/SamplerVK.h"
+#include "Vulkan/Texture2DVK.h"
 
 #include "Vulkan/CommandPoolVK.h"
 #include "Vulkan/CommandBufferVK.h"
@@ -22,8 +25,9 @@
     #undef max
 #endif
 
-SceneVK::SceneVK(IGraphicsContext* pContext) :
+SceneVK::SceneVK(IGraphicsContext* pContext, const RenderingHandlerVK* pRenderingHandler) :
 	m_pContext(reinterpret_cast<GraphicsContextVK*>(pContext)),
+	m_pCameraBuffer(pRenderingHandler->getCameraBufferGraphics()),
 	m_pScratchBuffer(nullptr),
 	m_pInstanceBuffer(nullptr),
 	m_pGarbageScratchBuffer(nullptr),
@@ -46,7 +50,10 @@ SceneVK::SceneVK(IGraphicsContext* pContext) :
 	m_pGarbageTransformsBuffer(nullptr),
 	m_DebugParametersDirty(false),
 	m_pProfiler(nullptr),
-	m_RayTracingEnabled(pContext->isRayTracingEnabled())
+	m_RayTracingEnabled(pContext->isRayTracingEnabled()),
+	m_pDescriptorPool(nullptr),
+	m_pGeometryPipelineLayout(nullptr),
+	m_pGeometryDescriptorSetLayout(nullptr)
 {
 	m_pDevice = reinterpret_cast<DeviceVK*>(m_pContext->getDevice());
 }
@@ -60,6 +67,10 @@ SceneVK::~SceneVK()
 		m_pTempCommandPool->freeCommandBuffer(&m_pTempCommandBuffer);
 		m_pTempCommandBuffer = nullptr;
 	}
+
+	SAFEDELETE(m_pDescriptorPool);
+	SAFEDELETE(m_pGeometryDescriptorSetLayout);
+	SAFEDELETE(m_pGeometryPipelineLayout);
 
 	SAFEDELETE(m_pTempCommandPool);
 	SAFEDELETE(m_pScratchBuffer);
@@ -136,7 +147,7 @@ SceneVK::~SceneVK()
 	m_SceneMeshes.clear();
 }
 
-bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
+bool SceneVK::loadFromFile(const std::string& dir, const std::string& fileName)
 {
 	tinyobj::attrib_t attributes;
 	std::vector<tinyobj::shape_t> shapes;
@@ -346,6 +357,17 @@ bool SceneVK::initFromFile(const std::string& dir, const std::string& fileName)
 	return true;
 }
 
+bool SceneVK::init()
+{
+	if (!createGeometryPipelineLayout()) {
+		LOG("--- SceneVK: Failed to create geometry pipeline layout");
+		return false;
+	}
+
+	createProfiler();
+	initBuffers();
+}
+
 bool SceneVK::finalize()
 {
 	m_pTempCommandPool = DBG_NEW CommandPoolVK(m_pContext->getDevice(), m_pContext->getDevice()->getQueueFamilyIndices().computeFamily.value());
@@ -353,7 +375,6 @@ bool SceneVK::finalize()
 
 	m_pTempCommandBuffer = m_pTempCommandPool->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
-	createProfiler();
 
 	if (!createDefaultTexturesAndSamplers())
 	{
@@ -361,7 +382,6 @@ bool SceneVK::finalize()
 		return false;
 	}
 
-	initBuffers();
 
 	if (m_RayTracingEnabled)
 	{
@@ -471,12 +491,12 @@ void SceneVK::updateMaterials()
 			}
 		}
 
-		constexpr uint32_t SIZE_IN_BYTES = MAX_NUM_UNIQUE_MATERIALS * sizeof(MaterialParameters);
+		
 
-		void* pDest;
+		/*void* pDest;
 		m_pMaterialParametersBuffer->map(&pDest);
 		memcpy(pDest, m_MaterialParameters.data(), SIZE_IN_BYTES);
-		m_pMaterialParametersBuffer->unmap();
+		m_pMaterialParametersBuffer->unmap();*/
 	}
 	else
 	{
@@ -507,13 +527,22 @@ void SceneVK::updateMaterials()
 			}
 		}
 
-		constexpr uint32_t SIZE_IN_BYTES = MAX_NUM_UNIQUE_MATERIALS * sizeof(MaterialParameters);
-
-		void* pDest;
-		m_pMaterialParametersBuffer->map(&pDest);
-		memcpy(pDest, m_MaterialParameters.data(), SIZE_IN_BYTES);
-		m_pMaterialParametersBuffer->unmap();
+		//void* pDest;
+		//m_pMaterialParametersBuffer->map(&pDest);
+		//memcpy(pDest, m_MaterialParameters.data(), SIZE_IN_BYTES);
+		//m_pMaterialParametersBuffer->unmap();
 	}
+
+	constexpr uint32_t SIZE_IN_BYTES = MAX_NUM_UNIQUE_MATERIALS * sizeof(MaterialParameters);
+
+	m_pTempCommandBuffer->reset(true);
+	m_pTempCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+	m_pTempCommandBuffer->updateBuffer(m_pMaterialParametersBuffer, 0, m_MaterialParameters.data(), SIZE_IN_BYTES);
+
+	m_pTempCommandBuffer->end();
+
+	m_pDevice->executeCompute(m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 }
 
 void SceneVK::updateCamera(const Camera& camera)
@@ -638,6 +667,90 @@ void SceneVK::updateGraphicsObjectTransform(uint32_t index, const glm::mat4& tra
 	transforms.Transform		= transform;
 }
 
+void SceneVK::UpdateSceneData()
+{
+	for (auto& instance : m_MeshTable)
+	{
+		instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pMaterialParametersBuffer, MATERIAL_PARAMETERS_BINDING);
+		instance.second.pDescriptorSets->writeStorageBufferDescriptor(m_pTransformsBuffer, INSTANCE_TRANSFORMS_BINDING);
+	}
+}
+
+DescriptorSetVK* SceneVK::getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial)
+{
+	MeshFilter filter = {};
+	filter.pMesh		= pMesh;
+	filter.pMaterial	= pMaterial;
+
+	if (m_MeshTable.count(filter) == 0)
+	{
+		DescriptorSetVK* pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pGeometryDescriptorSetLayout);
+		pDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer, CAMERA_BUFFER_BINDING);
+
+		BufferVK* pVertBuffer = reinterpret_cast<BufferVK*>(pMesh->getVertexBuffer());
+		pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer, VERTEX_BUFFER_BINDING);
+
+		SamplerVK* pSampler = reinterpret_cast<SamplerVK*>(pMaterial->getSampler());
+
+		Texture2DVK* pAlbedo = m_pDefaultTexture;
+		if (pMaterial->hasAlbedoMap())
+		{
+			pAlbedo = reinterpret_cast<Texture2DVK*>(pMaterial->getAlbedoMap());
+		}
+
+		ImageViewVK* pAlbedoView = pAlbedo->getImageView();
+		pDescriptorSet->writeCombinedImageDescriptors(&pAlbedoView, &pSampler, 1, ALBEDO_MAP_BINDING);
+
+		Texture2DVK* pNormal = m_pDefaultNormal;
+		if (pMaterial->hasNormalMap())
+		{
+			pNormal = reinterpret_cast<Texture2DVK*>(pMaterial->getNormalMap());
+		}
+
+		ImageViewVK* pNormalView = pNormal->getImageView();
+		pDescriptorSet->writeCombinedImageDescriptors(&pNormalView, &pSampler, 1, NORMAL_MAP_BINDING);
+
+		Texture2DVK* pAO = m_pDefaultTexture;
+		if (pMaterial->hasAmbientOcclusionMap())
+		{
+			pAO = reinterpret_cast<Texture2DVK*>(pMaterial->getAmbientOcclusionMap());
+		}
+
+		ImageViewVK* pAOView = pAO->getImageView();
+		pDescriptorSet->writeCombinedImageDescriptors(&pAOView, &pSampler, 1, AO_MAP_BINDING);
+
+		Texture2DVK* pMetallic = m_pDefaultTexture;
+		if (pMaterial->hasMetallicMap())
+		{
+			pMetallic = reinterpret_cast<Texture2DVK*>(pMaterial->getMetallicMap());
+		}
+
+		ImageViewVK* pMetallicView = pMetallic->getImageView();
+		pDescriptorSet->writeCombinedImageDescriptors(&pMetallicView, &pSampler, 1, METALLIC_MAP_BINDING);
+
+		Texture2DVK* pRoughness = m_pDefaultTexture;
+		if (pMaterial->hasRoughnessMap())
+		{
+			pRoughness = reinterpret_cast<Texture2DVK*>(pMaterial->getRoughnessMap());
+		}
+
+		ImageViewVK* pRoughnessView = pRoughness->getImageView();
+		pDescriptorSet->writeCombinedImageDescriptors(&pRoughnessView, &pSampler, 1, ROUGHNESS_MAP_BINDING);
+
+		pDescriptorSet->writeStorageBufferDescriptor(m_pMaterialParametersBuffer, MATERIAL_PARAMETERS_BINDING);
+		pDescriptorSet->writeStorageBufferDescriptor(m_pTransformsBuffer, INSTANCE_TRANSFORMS_BINDING);
+
+		MeshPipeline meshPipeline = {};
+		meshPipeline.pDescriptorSets = pDescriptorSet;
+
+		m_MeshTable.insert(std::make_pair(filter, meshPipeline));
+		return pDescriptorSet;
+	}
+
+	MeshPipeline meshPipeline = m_MeshTable[filter];
+	return meshPipeline.pDescriptorSets;
+}
+
 bool SceneVK::createDefaultTexturesAndSamplers()
 {
 	uint8_t whitePixels[] = { 255, 255, 255, 255 };
@@ -681,20 +794,69 @@ bool SceneVK::createDefaultTexturesAndSamplers()
 void SceneVK::initBuffers()
 {
 	BufferParams materialParametersBufferParams = {};
-	materialParametersBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-	materialParametersBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	materialParametersBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	materialParametersBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	materialParametersBufferParams.SizeInBytes = sizeof(MaterialParameters) * MAX_NUM_UNIQUE_MATERIALS;
 
 	m_pMaterialParametersBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
 	m_pMaterialParametersBuffer->init(materialParametersBufferParams);
 
 	BufferParams transformBufferParams = {};
-	transformBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-	transformBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	transformBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	transformBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	transformBufferParams.SizeInBytes = sizeof(GraphicsObjectTransforms) * NUM_INITIAL_GRAPHICS_OBJECTS;
 
 	m_pTransformsBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
 	m_pTransformsBuffer->init(transformBufferParams);
+}
+
+bool SceneVK::createGeometryPipelineLayout()
+{
+	//Descriptorpool
+	DescriptorCounts descriptorCounts = {};
+	descriptorCounts.m_SampledImages	= 4096;
+	descriptorCounts.m_StorageImages	= 1024;
+	descriptorCounts.m_StorageBuffers	= 2048;
+	descriptorCounts.m_UniformBuffers	= 1024;
+
+	m_pDescriptorPool = DBG_NEW DescriptorPoolVK(m_pContext->getDevice());
+	if (!m_pDescriptorPool->init(descriptorCounts, 512))
+	{
+		return false;
+	}
+
+	//GeometryPass
+	m_pGeometryDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(m_pContext->getDevice());
+	m_pGeometryDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, CAMERA_BUFFER_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, VERTEX_BUFFER_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ALBEDO_MAP_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, NORMAL_MAP_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, AO_MAP_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, METALLIC_MAP_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ROUGHNESS_MAP_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, MATERIAL_PARAMETERS_BINDING, 1);
+	m_pGeometryDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, INSTANCE_TRANSFORMS_BINDING, 1);
+
+	if (!m_pGeometryDescriptorSetLayout->finalize())
+	{
+		return false;
+	}
+
+	//Transform and Color
+	VkPushConstantRange pushConstantRange = {};
+	pushConstantRange.size			= sizeof(glm::mat4) + sizeof(glm::vec4) + sizeof(glm::vec3);
+	pushConstantRange.stageFlags	= VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+	pushConstantRange.offset		= 0;
+	std::vector<VkPushConstantRange> pushConstantRanges = { pushConstantRange };
+	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { m_pGeometryDescriptorSetLayout };
+
+	m_pGeometryPipelineLayout = DBG_NEW PipelineLayoutVK(m_pContext->getDevice());
+	if (!m_pGeometryPipelineLayout->init(descriptorSetLayouts, pushConstantRanges))
+	{
+		return false;
+	}
+
+	return true;
 }
 
 void SceneVK::initAccelerationStructureBuffers()
@@ -717,8 +879,8 @@ void SceneVK::initAccelerationStructureBuffers()
 	m_pScratchBuffer->init(scratchBufferParams);
 
 	BufferParams instanceBufferParams = {};
-	instanceBufferParams.Usage = VK_BUFFER_USAGE_RAY_TRACING_BIT_NV;
-	instanceBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	instanceBufferParams.Usage = VK_BUFFER_USAGE_RAY_TRACING_BIT_NV | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	instanceBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	instanceBufferParams.SizeInBytes = sizeof(GeometryInstance) * m_GeometryInstances.size();
 
 	m_pInstanceBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
@@ -903,10 +1065,7 @@ bool SceneVK::createTLAS()
 
 bool SceneVK::buildTLAS()
 {
-	void* pData;
-	m_pInstanceBuffer->map(&pData);
-	memcpy(pData, m_GeometryInstances.data(), sizeof(GeometryInstance) * m_GeometryInstances.size());
-	m_pInstanceBuffer->unmap();
+	updateInstanceBuffer();
 
 	VkAccelerationStructureInfoNV buildInfo = {};
 	buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV;
@@ -961,11 +1120,6 @@ bool SceneVK::updateTLAS()
 		cleanGarbage();
 		updateScratchBufferForTLAS();
 		updateInstanceBuffer();
-
-		void* pData;
-		m_pInstanceBuffer->map(&pData);
-		memcpy(pData, m_GeometryInstances.data(), sizeof(GeometryInstance) * m_GeometryInstances.size());
-		m_pInstanceBuffer->unmap();
 
 		VkAccelerationStructureInfoNV buildInfo = {};
 		buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV;
@@ -1127,18 +1281,27 @@ void SceneVK::updateInstanceBuffer()
 		m_pGarbageInstanceBuffer = m_pInstanceBuffer;
 
 		BufferParams instanceBufferParmas = {};
-		instanceBufferParmas.Usage = VK_BUFFER_USAGE_RAY_TRACING_BIT_NV;
-		instanceBufferParmas.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+		instanceBufferParmas.Usage = VK_BUFFER_USAGE_RAY_TRACING_BIT_NV | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		instanceBufferParmas.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 		instanceBufferParmas.SizeInBytes = sizeof(GeometryInstance) * m_GeometryInstances.size();
 
 		m_pInstanceBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
 		m_pInstanceBuffer->init(instanceBufferParmas);
 	}
 
-	void* pData;
-	m_pInstanceBuffer->map(&pData);
-	memcpy(pData, m_GeometryInstances.data(), sizeof(GeometryInstance) * m_GeometryInstances.size());
-	m_pInstanceBuffer->unmap();
+	//void* pData;
+	//m_pInstanceBuffer->map(&pData);
+	//memcpy(pData, m_GeometryInstances.data(), sizeof(GeometryInstance) * m_GeometryInstances.size());
+	//m_pInstanceBuffer->unmap();
+
+	m_pTempCommandBuffer->reset(true);
+	m_pTempCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+	m_pTempCommandBuffer->updateBuffer(m_pInstanceBuffer, 0, m_GeometryInstances.data(), m_GeometryInstances.size() * sizeof(GeometryInstance));
+
+	m_pTempCommandBuffer->end();
+	m_pDevice->executeCompute(m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+
 }
 
 void SceneVK::updateTransformBuffer()
@@ -1148,18 +1311,26 @@ void SceneVK::updateTransformBuffer()
 		m_pGarbageTransformsBuffer = m_pTransformsBuffer;
 
 		BufferParams transformBufferParams = {};
-		transformBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-		transformBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+		transformBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		transformBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 		transformBufferParams.SizeInBytes = sizeof(GraphicsObjectTransforms) * m_SceneTransforms.size();
 
 		m_pTransformsBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
 		m_pTransformsBuffer->init(transformBufferParams);
 	}
 
-	void* pData;
+	/*void* pData;
 	m_pTransformsBuffer->map(&pData);
 	memcpy(pData, m_SceneTransforms.data(), sizeof(GraphicsObjectTransforms) * m_SceneTransforms.size());
-	m_pTransformsBuffer->unmap();
+	m_pTransformsBuffer->unmap();*/
+
+	m_pTempCommandBuffer->reset(true);
+	m_pTempCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+	m_pTempCommandBuffer->updateBuffer(m_pTransformsBuffer, 0, m_SceneTransforms.data(), m_SceneTransforms.size() * sizeof(GraphicsObjectTransforms));
+
+	m_pTempCommandBuffer->end();
+	m_pDevice->executeCompute(m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 }
 
 bool SceneVK::createCombinedGraphicsObjectData()
@@ -1191,7 +1362,7 @@ bool SceneVK::createCombinedGraphicsObjectData()
 	BufferParams meshIndexBufferParams = {};
 	meshIndexBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	meshIndexBufferParams.SizeInBytes = sizeof(uint32_t) * 3 * m_NumBottomLevelAccelerationStructures;
-	meshIndexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	meshIndexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
 	m_pCombinedVertexBuffer->init(vertexBufferParams);
 	m_pCombinedIndexBuffer->init(indexBufferParams);
@@ -1204,9 +1375,6 @@ bool SceneVK::createCombinedGraphicsObjectData()
 	uint32_t indexBufferOffset = 0;
 	uint64_t meshIndexBufferOffset = 0;
 	uint32_t currentCustomInstanceIndexNV = 0;
-
-	void* pMeshIndexBufferMapped;
-	m_pMeshIndexBuffer->map(&pMeshIndexBufferMapped);
 
 	for (auto& pMesh : m_AllMeshes)
 	{
@@ -1228,9 +1396,11 @@ bool SceneVK::createCombinedGraphicsObjectData()
 				}
 			}
 
-			memcpy((void*)((size_t)pMeshIndexBufferMapped +  meshIndexBufferOffset		* sizeof(uint32_t)), &vertexBufferOffset, sizeof(uint32_t));
+			uint32_t meshIndices[3] = { vertexBufferOffset, indexBufferOffset, bottomLevelAccelerationStructure.second.MaterialIndex };
+			m_pTempCommandBuffer->updateBuffer(m_pMeshIndexBuffer, meshIndexBufferOffset * sizeof(uint32_t), meshIndices, 3 * sizeof(uint32_t));
+			/*memcpy((void*)((size_t)pMeshIndexBufferMapped +  meshIndexBufferOffset		* sizeof(uint32_t)), &vertexBufferOffset, sizeof(uint32_t));
 			memcpy((void*)((size_t)pMeshIndexBufferMapped + (meshIndexBufferOffset + 1) * sizeof(uint32_t)), &indexBufferOffset, sizeof(uint32_t));
-			memcpy((void*)((size_t)pMeshIndexBufferMapped + (meshIndexBufferOffset + 2) * sizeof(uint32_t)), &bottomLevelAccelerationStructure.second.MaterialIndex, sizeof(uint32_t));
+			memcpy((void*)((size_t)pMeshIndexBufferMapped + (meshIndexBufferOffset + 2) * sizeof(uint32_t)), &bottomLevelAccelerationStructure.second.MaterialIndex, sizeof(uint32_t));*/
 			meshIndexBufferOffset += 3;
 			currentCustomInstanceIndexNV++;
 		}
@@ -1239,13 +1409,9 @@ bool SceneVK::createCombinedGraphicsObjectData()
 		indexBufferOffset += numIndices;
 	}
 
-	uint32_t test[8];
-	memcpy(test, pMeshIndexBufferMapped, sizeof(uint32_t) * 6);
-	m_pMeshIndexBuffer->unmap();
-
 	m_pTempCommandBuffer->end();
 	m_pDevice->executeCompute(m_pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
-	m_pDevice->wait(); //Todo: Remove?
+	//m_pDevice->wait(); //Todo: Remove?
 
 	return true;
 }
@@ -1255,8 +1421,8 @@ VkDeviceSize SceneVK::findMaxMemReqBLAS()
 	VkDeviceSize maxSize = 0;
 
 	VkAccelerationStructureMemoryRequirementsInfoNV memoryRequirementsInfo = {};
-	memoryRequirementsInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV;
-	memoryRequirementsInfo.type = VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_BUILD_SCRATCH_NV;
+	memoryRequirementsInfo.sType	= VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV;
+	memoryRequirementsInfo.type		= VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_BUILD_SCRATCH_NV;
 
 	//Todo: Do we need to loop through finalized BLASs here as well?
 	for (auto& bottomLevelAccelerationStructurePerMesh : m_NewBottomLevelAccelerationStructures)
