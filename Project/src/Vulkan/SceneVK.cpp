@@ -366,6 +366,8 @@ bool SceneVK::init()
 
 	createProfiler();
 	initBuffers();
+
+	return true;
 }
 
 bool SceneVK::finalize()

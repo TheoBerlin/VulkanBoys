@@ -1,4 +1,6 @@
 #pragma once
+
+#include "Common/IImageView.h"
 #include "VulkanCommon.h"
 
 class ImageVK;
@@ -14,7 +16,7 @@ struct ImageViewParams
 	uint32_t FirstMipLevel;
 };
 
-class ImageViewVK
+class ImageViewVK : public IImageView
 {
 public:
 	ImageViewVK(DeviceVK* pDevice, ImageVK* pImage);
@@ -32,4 +34,3 @@ private:
 	VkImageView m_ImageView;
 	ImageViewParams m_Params;
 };
-

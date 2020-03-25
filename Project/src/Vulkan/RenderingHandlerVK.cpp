@@ -45,6 +45,7 @@ RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 	m_pGlossyImageView(nullptr),
 	m_pGBuffer(nullptr),
 	m_pGeometryRenderPass(nullptr),
+	m_pShadowMapRenderPass(nullptr),
 	m_pBackBufferRenderPass(nullptr),
 	m_pParticleRenderPass(nullptr),
 	m_pUIRenderPass(nullptr),
@@ -62,8 +63,6 @@ RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 	m_ppGraphicsCommandPools(),
 	m_ppGraphicsCommandBuffers(),
 	m_ppGraphicsCommandBuffers2(),
-	m_RayTracingImageViews(),
-	m_RayTracingImages(),
 	m_pImageAvailableSemaphores(),
 	m_pRenderFinishedSemaphores(),
 	m_ComputeFinishedGraphicsSemaphore(VK_NULL_HANDLE),
@@ -101,6 +100,7 @@ RenderingHandlerVK::~RenderingHandlerVK()
 	SAFEDELETE(m_pLightBufferGraphics);
 
 	SAFEDELETE(m_pGeometryRenderPass);
+	SAFEDELETE(m_pShadowMapRenderPass);
 	SAFEDELETE(m_pBackBufferRenderPass);
 	SAFEDELETE(m_pParticleRenderPass);
 	SAFEDELETE(m_pUIRenderPass);
@@ -984,7 +984,29 @@ bool RenderingHandlerVK::createRenderPasses()
 	dependency.dstAccessMask	= VK_ACCESS_MEMORY_READ_BIT;
 	m_pGeometryRenderPass->addSubpassDependency(dependency);
 
-	return m_pGeometryRenderPass->finalize();
+	if (!m_pGeometryRenderPass->finalize()) {
+		return false;
+	}
+
+	// Shadow map pass
+	m_pShadowMapRenderPass = DBG_NEW RenderPassVK(m_pGraphicsContext->getDevice());
+
+	// Depth, shadow map
+	description.format			= VK_FORMAT_D32_SFLOAT;
+	description.samples			= VK_SAMPLE_COUNT_1_BIT;
+	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
+	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
+	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
+	description.finalLayout		= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	m_pGeometryRenderPass->addAttachment(description);
+
+	depthStencilAttachmentRef.attachment	= 0;
+	depthStencilAttachmentRef.layout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	m_pGeometryRenderPass->addSubpass(nullptr, 0, &depthStencilAttachmentRef);
+
+	return m_pShadowMapRenderPass->finalize();
 }
 
 bool RenderingHandlerVK::createSemaphores()

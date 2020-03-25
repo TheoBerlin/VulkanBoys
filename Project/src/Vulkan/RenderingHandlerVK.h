@@ -65,6 +65,7 @@ public:
     uint32_t                getCurrentFrameIndex() const                { return m_CurrentFrame; }
     FrameBufferVK* const*   getBackBuffers() const                      { return m_ppBackbuffers; }
 	RenderPassVK*			getGeometryRenderPass() const				{ return m_pGeometryRenderPass; }
+	RenderPassVK*			getShadowMapRenderPass() const				{ return m_pShadowMapRenderPass; }
     RenderPassVK*           getBackBufferRenderPass() const             { return m_pBackBufferRenderPass; }
     RenderPassVK*           getParticleRenderPass() const               { return m_pParticleRenderPass; }
     BufferVK*               getCameraBufferCompute() const              { return m_pCameraBufferCompute; }
@@ -93,7 +94,7 @@ private:
 
 private:
     CameraBuffer m_CameraBuffer;
-    
+
     GraphicsContextVK* m_pGraphicsContext;
 
     SkyboxRendererVK*       m_pSkyboxRenderer;
@@ -124,6 +125,7 @@ private:
 	CommandBufferVK*    m_ppCommandBuffersSecondary[MAX_FRAMES_IN_FLIGHT];
 
 	RenderPassVK*   m_pGeometryRenderPass;
+	RenderPassVK*   m_pShadowMapRenderPass;
     RenderPassVK*   m_pBackBufferRenderPass;
     RenderPassVK*   m_pParticleRenderPass;
     RenderPassVK*   m_pUIRenderPass;
