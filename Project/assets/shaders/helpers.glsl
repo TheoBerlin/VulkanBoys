@@ -143,6 +143,40 @@ vec4 blur(sampler2D image, vec4 centerColor, vec2 texCoords, vec2 direction, flo
     //return centerColor;
 }
 
+float normpdf(in float x, in float sigma)
+{
+	return 0.39894f * exp(-0.5f * x * x / (sigma * sigma)) / sigma;
+}
+
+float normpdf3(in vec3 v, in float sigma)
+{
+	return 0.39894f * exp(-0.5f * dot(v, v) / (sigma * sigma)) / sigma;
+}
+
+vec4 bilateralBlur(sampler2D image, vec4 centerColor, vec2 texCoords, vec2 normalizedDirection)
+{
+    //0.24196 0.39894 0.24196
+    //BZ = 3.9894
+    const float SIGMA = 10.0f;
+    const float BSIGMA = 0.1f;
+
+    const float centerWeight = normpdf(0.0f, SIGMA);
+    const float neighborWeight = normpdf(1.0f, SIGMA);
+    const float bZ = normpdf(0.0f, BSIGMA);
+
+    vec4 negSample = texture(image, texCoords - normalizedDirection);
+    vec4 posSample = texture(image, texCoords + normalizedDirection);
+
+    float centerFactor = pow(centerWeight, 3) * bZ;
+    float negFactor = normpdf3(negSample.rgb - centerColor.rgb, SIGMA) * bZ * neighborWeight * neighborWeight;
+    float posFactor = normpdf3(posSample.rgb - centerColor.rgb, SIGMA) * bZ * neighborWeight * neighborWeight;
+
+    float Z = negFactor + centerFactor + posFactor;
+
+    vec3 finalColor = negSample.rgb * negFactor + centerColor.rgb * centerFactor + posSample.rgb * posFactor;
+    return vec4(finalColor / Z, centerColor.a);
+}
+
 float LinearizeDepth(float depth, float near, float far)
 {
     float z = depth * 2.0 - 1.0;
@@ -219,68 +253,26 @@ float gold_noise3(vec3 x, float seed, float min, float max)
     return mix(min, max, fract(tan(distance(x * (seed + GOLD_PHI), vec3(GOLD_PHI, GOLD_PI, GOLD_E))) * GOLD_SQ2) * 0.5f + 0.5f);
 }
 
-
 void CreateCoordinateSystem(in vec3 N, out vec3 Nt, out vec3 Nb) 
 { 
     if (abs(N.x) > abs(N.y)) 
-        Nt = vec3(N.z, 0.0f, -N.x) / sqrt(N.x * N.x + N.z * N.z); 
+        Nt = vec3(N.z, 0, -N.x) / sqrt(N.x * N.x + N.z * N.z); 
     else 
-        Nt = vec3(0.0f, -N.z, N.y) / sqrt(N.y * N.y + N.z * N.z); 
-    Nb = cross(N, Nt); 
-}
-
-vec3 ReflectanceDirection(vec3 seed, vec3 reflDir, float roughness)
-{
-    const float goldseed = 0.0f;
-    const vec3 offset1 = vec3(1.0f, 2.0f, 3.0f);
-    const vec3 offset2 = vec3(-3.0f, -2.0f, -1.0f);
-
-    float theta = roughness * PI / 2.0f;
-    float z = gold_noise3(seed + offset1, goldseed, cos(theta), 1.0f);
-    float phi = gold_noise3(seed + offset2, goldseed, 0.0f, 2 * PI);
-    float sinTheta = sqrt(1.0f - z * z);
-
-    vec3 coneVector = vec3(sinTheta * cos(phi), sinTheta * sin(phi), z);
-    
-    float c = dot(coneVector, reflDir);
-
-    // if (1.0f - abs(c) < EPSILON)
-    //     return mix(reflDir, coneVector, roughness);
-
-    vec3 v = cross(coneVector, reflDir);
-    float s = length(v);
-
-    mat3 Vx =  mat3(vec3( 0.0f,  -v.z,    v.y),
-                    vec3( v.z,    0.0f,  -v.x),
-                    vec3(-v.y,    v.x,    0.0f));
-    mat3 R = mat3(1.0f) + Vx + Vx * Vx / (1.0f + c);
-
-    vec3 result = R * coneVector;
-    
-
-    return vec3(-result.x, -result.y, result.z);
-}
-
-void createCoordinateSystem(in vec3 N, out vec3 Nt, out vec3 Nb) 
-{ 
-    // if (abs(N.x) > abs(N.y)) 
-    //     Nt = vec3(N.z, 0, -N.x) / sqrt(N.x * N.x + N.z * N.z); 
-    // else 
-    //     Nt = vec3(0, -N.z, N.y) / sqrt(N.y * N.y + N.z * N.z); 
-    Nt = vec3(N.z, 0, -N.x) / sqrt(N.x * N.x + N.z * N.z); 
+        Nt = vec3(0, -N.z, N.y) / sqrt(N.y * N.y + N.z * N.z); 
+    //Nt = vec3(N.z, 0, -N.x) / sqrt(N.x * N.x + N.z * N.z); 
     Nb = cross(N, Nt); 
 } 
 
-vec3 ReflectanceDirection2(vec3 reflDir, vec3 Rt, vec3 Rb, float roughness, vec2 uniformRandom)
+vec3 ReflectanceDirection(vec3 reflDir, vec3 Rt, vec3 Rb, float roughness, vec2 uniformRandom)
 {
     float specularExponent = 2.0f / (pow(roughness, 4.0f)) - 2.0f;
 
-    //if (specularExponent > 2048.0f)
-        //return reflDir;
+    if (specularExponent > 2048.0f)
+        return reflDir;
 
     float cosTheta = pow(0.244f, 1.0f / (specularExponent + 1.0f));
     float z = mix(cosTheta, 1.0f, uniformRandom.x);
-    float phi = mix(0.0f, 2.0f * PI, uniformRandom.y);
+    float phi = mix(-2.0f * PI, 2.0f * PI, uniformRandom.y);
     float sinTheta = sqrt(1.0f - z * z);
 
     vec3 coneVector = vec3(sinTheta * cos(phi), z, sinTheta * sin(phi));
@@ -288,22 +280,4 @@ vec3 ReflectanceDirection2(vec3 reflDir, vec3 Rt, vec3 Rb, float roughness, vec2
         coneVector.x * Rb.x + coneVector.y * reflDir.x + coneVector.z * Rt.x, 
         coneVector.x * Rb.y + coneVector.y * reflDir.y + coneVector.z * Rt.y, 
         coneVector.x * Rb.z + coneVector.y * reflDir.z + coneVector.z * Rt.z); 
-    
-    // float c = dot(coneVector, reflDir);
-
-    // // if (1.0f - abs(c) < EPSILON)
-    // //     return mix(reflDir, coneVector, roughness);
-
-    // vec3 v = cross(coneVector, reflDir);
-    // float s = length(v);
-
-    // mat3 Vx =  mat3(vec3( 0.0f,  -v.z,    v.y),
-    //                 vec3( v.z,    0.0f,  -v.x),
-    //                 vec3(-v.y,    v.x,    0.0f));
-    // mat3 R = mat3(1.0f) + Vx + Vx * Vx / (1.0f + c);
-
-    // vec3 result = R * coneVector;
-    
-
-    // return vec3(-result.x, -result.y, result.z);
 }

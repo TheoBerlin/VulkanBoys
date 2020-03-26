@@ -283,11 +283,10 @@ void VolumetricLightRendererVK::renderUI()
 bool VolumetricLightRendererVK::createCommandPoolAndBuffers()
 {
 	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
-	InstanceVK* pInstance = m_pGraphicsContext->getInstance();
 
 	const uint32_t graphicsQueueIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, pInstance, graphicsQueueIndex);
+		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, graphicsQueueIndex);
 
 		if (!m_ppCommandPools[i]->init()) {
 			return false;
@@ -539,7 +538,7 @@ bool VolumetricLightRendererVK::createRenderResources(VolumetricPointLight& poin
     DescriptorSetVK* pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
 	pDescriptorSet->writeStorageBufferDescriptor(pVertexBuffer, VERTEX_BINDING);
 	pDescriptorSet->writeUniformBufferDescriptor(pLightBuffer, VOLUMETRIC_LIGHT_BINDING);
-	pDescriptorSet->writeUniformBufferDescriptor(m_pRenderingHandler->getCameraBuffer(), CAMERA_BINDING);
+	pDescriptorSet->writeUniformBufferDescriptor(m_pRenderingHandler->getCameraBufferGraphics(), CAMERA_BINDING);
 	pDescriptorSet->writeCombinedImageDescriptors(&pDepthImageView, &m_pSampler, 1, DEPTH_BUFFER_BINDING);
     pointLight.setVolumetricLightDescriptorSet(pDescriptorSet);
 

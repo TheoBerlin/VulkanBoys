@@ -21,5 +21,7 @@ public:
 	virtual void map(void** ppMemory) = 0;
 	virtual void unmap() = 0;
 
+	virtual void setName(const char* pName) = 0;
+
 	virtual uint64_t getSizeInBytes() const = 0;
 };

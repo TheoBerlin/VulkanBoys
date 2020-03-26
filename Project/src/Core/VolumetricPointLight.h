@@ -2,15 +2,12 @@
 
 #include "Core.h"
 #include "Core/PointLight.h"
+#include "Core/VolumetricLight.h"
 
 class IBuffer;
 class IDescriptorSet;
 class IImage;
 class IImageView;
-
-struct VolumetricLightSettings {
-	float m_ScatterAmount, m_ParticleG;
-};
 
 struct VolumetricPointLightBuffer {
 	glm::mat4 worldMatrix;

@@ -1,28 +1,40 @@
 #pragma once
 #include "Common/IScene.h"
 
-#include "Vulkan/VulkanCommon.h"
+#include "Core/Material.h"
+#include "Vulkan/MeshVK.h"
 #include "Vulkan/ProfilerVK.h"
 #include "Vulkan/Texture2DVK.h"
+#include "Vulkan/VulkanCommon.h"
 
 #include <vector>
 #include <map>
 
-class IGraphicsContext;
-class GraphicsContextVK;
-class DeviceVK;
-
-class IMesh;
-class Material;
-class ITexture2D;
 class BufferVK;
-class MeshVK;
-class Texture2DVK;
+class DescriptorPoolVK;
+class DescriptorSetLayoutVK;
+class DescriptorSetVK;
+class DeviceVK;
+class GraphicsContextVK;
+class IGraphicsContext;
+class ITexture2D;
+class PipelineLayoutVK;
+class RenderingHandlerVK;
 class SamplerVK;
-
-//Todo: Remove these
+class Texture2DVK;
 class CommandPoolVK;
 class CommandBufferVK;
+
+//Geometry pass
+#define CAMERA_BUFFER_BINDING		0
+#define VERTEX_BUFFER_BINDING		1
+#define ALBEDO_MAP_BINDING			2
+#define NORMAL_MAP_BINDING			3
+#define AO_MAP_BINDING				4
+#define METALLIC_MAP_BINDING		5
+#define ROUGHNESS_MAP_BINDING		6
+#define MATERIAL_PARAMETERS_BINDING	7
+#define INSTANCE_TRANSFORMS_BINDING	8
 
 constexpr uint32_t NUM_INITIAL_GRAPHICS_OBJECTS = 10;
 
@@ -32,6 +44,40 @@ struct GraphicsObjectVK
 	const Material* pMaterial = nullptr;
 	uint32_t MaterialParametersIndex = 0;
 };
+
+//Meshfilter is key, returns a meshpipeline -> gets descriptorset with correct vertexbuffer, textures, etc.
+struct MeshPipeline
+{
+	DescriptorSetVK* pDescriptorSets;
+};
+
+struct MeshFilter
+{
+	const MeshVK*	pMesh		= nullptr;
+	const Material* pMaterial	= nullptr;
+
+	FORCEINLINE bool operator==(const MeshFilter& other) const
+	{
+		ASSERT(pMesh		&& other.pMesh);
+		ASSERT(pMaterial	&& other.pMaterial);
+
+		return (pMesh->getMeshID() == other.pMesh->getMeshID()) && (pMaterial->getMaterialID() == other.pMaterial->getMaterialID());
+	}
+};
+
+namespace std
+{
+	template<> struct hash<MeshFilter>
+	{
+		FORCEINLINE size_t operator()(const MeshFilter& filter) const
+		{
+			ASSERT(filter.pMesh);
+			ASSERT(filter.pMaterial);
+
+			return ((hash<uint32_t>()(filter.pMesh->getMeshID()) ^ (hash<uint32_t>()(filter.pMaterial->getMaterialID()) << 1)) >> 1);
+		}
+	};
+}
 
 class SceneVK : public IScene
 {
@@ -85,52 +131,64 @@ class SceneVK : public IScene
 	};
 
 public:
-	DECL_NO_COPY(SceneVK);
-
-	SceneVK(IGraphicsContext* pContext);
+	SceneVK(IGraphicsContext* pContext, const RenderingHandlerVK* pRenderingHandler);
 	~SceneVK();
 
-	virtual bool initFromFile(const std::string& dir, const std::string& fileName) override;
+	DECL_NO_COPY(SceneVK);
 
+	virtual bool loadFromFile(const std::string& dir, const std::string& fileName) override;
+
+	virtual bool init() override;
 	virtual bool finalize() override;
 	virtual void updateMeshesAndGraphicsObjects() override;
 	virtual void updateMaterials() override;
 
 	virtual void updateCamera(const Camera& camera) override;
-	virtual void updateLightSetup(const LightSetup& lightsetup) override;
 
 	virtual uint32_t submitGraphicsObject(const IMesh* pMesh, const Material* pMaterial, const glm::mat4& transform = glm::mat4(1.0f), uint8_t customMask = 0x80) override;
 	virtual void updateGraphicsObjectTransform(uint32_t index, const glm::mat4& transform) override;
 
+	// Used for geometry rendering
+	void UpdateSceneData();
+	DescriptorSetVK* getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial);
+
+	FORCEINLINE PipelineLayoutVK* getGeometryPipelineLayout() 			{ return m_pGeometryPipelineLayout; }
+	FORCEINLINE DescriptorSetLayoutVK* getGeometryDescriptorSetLayout() { return m_pGeometryDescriptorSetLayout; }
+
 	const Camera& getCamera() { return m_Camera; }
 
-	const LightSetup& getLightSetup() { return m_LightSetup; }
-
-	const std::vector<GraphicsObjectVK>& getGraphicsObjects() { return m_GraphicsObjects; }
-
-	BufferVK* getCombinedVertexBuffer()		{ return m_pCombinedVertexBuffer; }
-	BufferVK* getCombinedIndexBuffer()		{ return m_pCombinedIndexBuffer; }
-	BufferVK* getMeshIndexBuffer()			{ return m_pMeshIndexBuffer; }
-
-	const std::vector<const ImageViewVK*>& getAlbedoMaps()			{ return m_AlbedoMaps; }
-	const std::vector<const ImageViewVK*>& getNormalMaps()			{ return m_NormalMaps; }
-	const std::vector<const ImageViewVK*>& getAOMaps()				{ return m_AOMaps; }
-	const std::vector<const ImageViewVK*>& getMetallicMaps()		{ return m_MetallicMaps; }
-	const std::vector<const ImageViewVK*>& getRoughnessMaps()		{ return m_RoughnessMaps; }
-	const std::vector<const SamplerVK*>& getSamplers()				{ return m_Samplers; }
-	const BufferVK* getMaterialParametersBuffer()					{ return m_pMaterialParametersBuffer; }
-	const BufferVK* getTransformsBuffer()							{ return m_pTransformsBuffer; }
-
-	const TopLevelAccelerationStructure& getTLAS() { return m_TopLevelAccelerationStructure; }
-
-	ProfilerVK* getProfiler() { return m_pProfiler; }
-
-	//Debug
 	virtual void renderUI() override;
 	virtual void updateDebugParameters() override;
 
+	virtual LightSetup& getLightSetup() override { return m_LightSetup; }
+
+	// Used for geometry rendering
+	bool updateSceneData();
+	void copySceneData(CommandBufferVK* pTransferBuffer);
+
+	const Camera&							getCamera() const					{ return m_Camera; }
+	const std::vector<GraphicsObjectVK>&	getGraphicsObjects() const			{ return m_GraphicsObjects; }
+	PipelineLayoutVK*						getGeometryPipelineLayout() const	{ return m_pGeometryPipelineLayout; }
+
+	FORCEINLINE BufferVK*	getCombinedVertexBuffer() { return m_pCombinedVertexBuffer; }
+	FORCEINLINE BufferVK*	getCombinedIndexBuffer()  { return m_pCombinedIndexBuffer; }
+	FORCEINLINE BufferVK*	getMeshIndexBuffer()	  { return m_pMeshIndexBuffer; }
+	FORCEINLINE ProfilerVK* getProfiler()			  { return m_pProfiler; }
+
+	FORCEINLINE const std::vector<const ImageViewVK*>&	getAlbedoMaps() const				{ return m_AlbedoMaps; }
+	FORCEINLINE const std::vector<const ImageViewVK*>&	getNormalMaps() const				{ return m_NormalMaps; }
+	FORCEINLINE const std::vector<const ImageViewVK*>&	getAOMaps() const					{ return m_AOMaps; }
+	FORCEINLINE const std::vector<const ImageViewVK*>&	getMetallicMaps() const				{ return m_MetallicMaps; }
+	FORCEINLINE const std::vector<const ImageViewVK*>&	getRoughnessMaps() const			{ return m_RoughnessMaps; }
+	FORCEINLINE const std::vector<const SamplerVK*>&	getSamplers() const					{ return m_Samplers; }
+	FORCEINLINE const BufferVK*							getMaterialParametersBuffer() const	{ return m_pMaterialParametersBuffer; }
+	FORCEINLINE const BufferVK*							getTransformsBuffer() const			{ return m_pTransformsBufferGraphics; }
+	FORCEINLINE const TopLevelAccelerationStructure&	getTLAS() const						{ return m_TopLevelAccelerationStructure; }
+
 private:
 	bool createDefaultTexturesAndSamplers();
+	bool createGeometryPipelineLayout();
+	bool createCombinedGraphicsObjectData();
 
 	void initBuffers();
 	void initAccelerationStructureBuffers();
@@ -143,33 +201,42 @@ private:
 	bool updateTLAS();
 
 	void createProfiler();
-
 	void cleanGarbage();
+
 	void updateScratchBufferForBLAS();
 	void updateScratchBufferForTLAS();
 	void updateInstanceBuffer();
 	void updateTransformBuffer();
-	bool createCombinedGraphicsObjectData();
+
 	VkDeviceSize findMaxMemReqBLAS();
 	VkDeviceSize findMaxMemReqTLAS();
 
 	uint32_t registerMaterial(const Material* pMaterial);
 
 private:
+	SceneParameters m_SceneParameters;
+	Camera m_Camera;
+	LightSetup m_LightSetup;
+	Timestamp m_TimestampBuildAccelStruct; //Todo: create more of these
+
 	GraphicsContextVK* m_pContext;
 	DeviceVK* m_pDevice;
 	ProfilerVK* m_pProfiler;
-	Timestamp m_TimestampBuildAccelStruct; //Todo: create more of these
+	CommandPoolVK* m_pTempCommandPool;
+	CommandBufferVK* m_pTempCommandBuffer;
 
 	std::vector<MeshVK*> m_SceneMeshes;
+	std::unordered_map<std::string, ITexture2D*> m_SceneTextures;
 	std::vector<Material*> m_SceneMaterials;
-
-	Camera m_Camera;
-	LightSetup m_LightSetup;
-
 	std::vector<GraphicsObjectVK> m_GraphicsObjects;
-
 	std::vector<GeometryInstance> m_GeometryInstances;
+
+	// Geometry pass resources
+	std::unordered_map<MeshFilter, MeshPipeline> m_MeshTable;
+	BufferVK* m_pCameraBuffer;
+	DescriptorPoolVK* m_pDescriptorPool;
+	PipelineLayoutVK* m_pGeometryPipelineLayout;
+	DescriptorSetLayoutVK* m_pGeometryDescriptorSetLayout;
 
 	std::vector<const MeshVK*> m_AllMeshes;
 	uint32_t m_TotalNumberOfVertices;
@@ -187,12 +254,14 @@ private:
 	std::vector<const ImageViewVK*> m_AOMaps;
 	std::vector<const ImageViewVK*> m_MetallicMaps;
 	std::vector<const ImageViewVK*> m_RoughnessMaps;
-	std::vector<const SamplerVK*> m_Samplers;
+	std::vector<const SamplerVK*>	m_Samplers;
+
 	std::vector<MaterialParameters> m_MaterialParameters;
 	BufferVK* m_pMaterialParametersBuffer;
 
 	std::vector<GraphicsObjectTransforms> m_SceneTransforms;
-	BufferVK* m_pTransformsBuffer;
+	BufferVK* m_pTransformsBufferGraphics;
+	BufferVK* m_pTransformsBufferCompute;
 
 	TopLevelAccelerationStructure m_OldTopLevelAccelerationStructure;
 	TopLevelAccelerationStructure m_TopLevelAccelerationStructure;
@@ -202,24 +271,21 @@ private:
 
 	BufferVK* m_pScratchBuffer;
 	BufferVK* m_pInstanceBuffer;
+
 	BufferVK* m_pGarbageScratchBuffer;
 	BufferVK* m_pGarbageInstanceBuffer;
-	BufferVK* m_pGarbageTransformsBuffer;
-
-	bool m_BottomLevelIsDirty;
-	bool m_TopLevelIsDirty;
+	BufferVK* m_pGarbageTransformsBufferGraphics;
+	BufferVK* m_pGarbageTransformsBufferCompute;
 
 	Texture2DVK* m_pDefaultTexture;
 	Texture2DVK* m_pDefaultNormal;
 	SamplerVK* m_pDefaultSampler;
 
+	bool m_BottomLevelIsDirty;
+	bool m_TopLevelIsDirty;
+	bool m_TransformDataIsDirty;
+	bool m_MaterialDataIsDirty;
+	bool m_MeshDataIsDirty;
 	bool m_RayTracingEnabled;
-
-	//Temp / Debug
-	CommandPoolVK* m_pTempCommandPool;
-	CommandBufferVK* m_pTempCommandBuffer;
-
-	SceneParameters m_SceneParameters;
-
 	bool m_DebugParametersDirty;
 };

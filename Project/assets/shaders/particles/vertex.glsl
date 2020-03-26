@@ -14,15 +14,24 @@ layout(binding = 0) buffer vertexBuffer
 
 layout (binding = 1) uniform CameraMatrices
 {
-	mat4 View;
+	//mat4 View;
+	//mat4 Projection;
 	mat4 Projection;
+	mat4 View;
+	mat4 LastProjection;
+	mat4 LastView;
+	mat4 InvView;
+	mat4 InvProjection;
+	vec4 Position;
+	vec4 Right;
+	vec4 Up;
 } g_CameraMatrices;
 
-layout(binding = 2) uniform CameraDirections
+/*layout(binding = 2) uniform CameraDirections
 {
 	vec4 up;
 	vec4 right;
-} g_CameraDirections;
+} g_CameraDirections;*/
 
 layout (binding = 3) uniform EmitterProperties
 {
@@ -45,8 +54,8 @@ void main()
 	vec2 vertexPosition = vertex.Position.xy;
 
 	vec4 worldPosition = g_ParticlePositions.positions[gl_InstanceIndex] +
-		g_CameraDirections.right 	* vertexPosition.x * g_EmitterProperties.particleSize.x +
-		g_CameraDirections.up 		* vertexPosition.y * g_EmitterProperties.particleSize.y;
+		g_CameraMatrices.Right 	* vertexPosition.x * g_EmitterProperties.particleSize.x +
+		g_CameraMatrices.Up 	* vertexPosition.y * g_EmitterProperties.particleSize.y;
 
 	out_TexCoords = vertex.TexCoord;
 	gl_Position = g_CameraMatrices.Projection * g_CameraMatrices.View * worldPosition;

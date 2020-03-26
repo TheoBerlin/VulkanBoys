@@ -35,27 +35,21 @@ public:
 
 	void release();
 
-	ITexture2D* getAlbedoMap() const { return m_pAlbedoMap; }
-	ITexture2D* getNormalMap() const { return m_pNormalMap; }
-	ITexture2D* getAmbientOcclusionMap() const { return m_pAmbientOcclusionMap; }
-	ITexture2D* getMetallicMap() const { return m_pMetallicMap; }
-	ITexture2D* getRoughnessMap() const { return m_pRoughnessMap; }
-	ISampler* getSampler() const { assert(m_pSampler != nullptr); return m_pSampler; };
-	const glm::vec4& getAlbedo() const { return m_Albedo; }
-	uint32_t getMaterialID() const { return m_ID; }
-	float getAmbientOcclusion() const { return m_Ambient; }
-	float getRoughness() const { return m_Roughness; }
-	float getMetallic() const { return m_Metallic; }
-	const glm::vec3& getMaterialProperties() const { return m_MaterialProperties; }
+	FORCEINLINE ITexture2D*			getAlbedoMap() const			{ return m_pAlbedoMap; }
+	FORCEINLINE ITexture2D*			getNormalMap() const			{ return m_pNormalMap; }
+	FORCEINLINE ITexture2D*			getAmbientOcclusionMap() const	{ return m_pAmbientOcclusionMap; }
+	FORCEINLINE ITexture2D*			getMetallicMap() const			{ return m_pMetallicMap; }
+	FORCEINLINE ITexture2D*			getRoughnessMap() const			{ return m_pRoughnessMap; }
+	FORCEINLINE ISampler*			getSampler() const				{ ASSERT(m_pSampler != nullptr); return m_pSampler; };
+	FORCEINLINE const glm::vec4&	getAlbedo() const				{ return m_Albedo; }
+	FORCEINLINE uint32_t			getMaterialID() const			{ return m_ID; }
+	FORCEINLINE float				getAmbientOcclusion() const		{ return m_Ambient; }
+	FORCEINLINE float				getRoughness() const			{ return m_Roughness; }
+	FORCEINLINE float				getMetallic() const				{ return m_Metallic; }
+	FORCEINLINE const glm::vec3&	getMaterialProperties() const	{ return m_MaterialProperties; }
 
 private:
 	//Resources should not be owned by the material?
-	ITexture2D* m_pAlbedoMap;
-	ITexture2D* m_pNormalMap;
-	ITexture2D* m_pAmbientOcclusionMap;
-	ITexture2D* m_pMetallicMap;
-	ITexture2D* m_pRoughnessMap;
-	ISampler* m_pSampler;
 	glm::vec4 m_Albedo;
 	union
 	{
@@ -68,6 +62,13 @@ private:
 
 		glm::vec3 m_MaterialProperties;
 	};
+
+	ITexture2D* m_pAlbedoMap;
+	ITexture2D* m_pNormalMap;
+	ITexture2D* m_pAmbientOcclusionMap;
+	ITexture2D* m_pMetallicMap;
+	ITexture2D* m_pRoughnessMap;
+	ISampler*	m_pSampler;
 	
 	const uint32_t m_ID;
 

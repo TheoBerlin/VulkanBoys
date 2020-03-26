@@ -4,7 +4,8 @@
 
 RenderingHandler::RenderingHandler()
     : m_pGraphicsContext(nullptr),
-    m_pParticleEmitterHandler(nullptr)
+    m_pParticleEmitterHandler(nullptr),
+    m_pScene(nullptr)
 {
 }
 

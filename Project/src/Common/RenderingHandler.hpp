@@ -34,6 +34,9 @@ public:
 
     virtual void swapBuffers() = 0;
 
+    IScene* getScene() { return m_pScene; }
+
+    void setScene(IScene* pScene) { m_pScene = pScene; };
     virtual void setClearColor(float r, float g, float b) = 0;
 	virtual void setClearColor(const glm::vec3& color) = 0;
     virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) = 0;
@@ -41,6 +44,7 @@ public:
 
     // Setting a renderer to nullptr will disable it
     virtual void setMeshRenderer(IRenderer* pMeshRenderer) = 0;
+    virtual void setShadowMapRenderer(IRenderer* pShadowMapRenderer) = 0;
     virtual void setRayTracer(IRenderer* pRayTracer) = 0;
     virtual void setParticleRenderer(IRenderer* pParticleRenderer) = 0;
     virtual void setVolumetricLightRenderer(IRenderer* pVolumetricLightRenderer) = 0;
@@ -50,9 +54,13 @@ public:
     virtual void onWindowResize(uint32_t width, uint32_t height) = 0;
 	virtual void onSceneUpdated(IScene* pScene) = 0;
 
+	//Test Parameters
+	virtual void setRayTracingResolutionDenominator(uint32_t denom) = 0;
+
     void setParticleEmitterHandler(ParticleEmitterHandler* pParticleEmitterHandler) { m_pParticleEmitterHandler = pParticleEmitterHandler; }
 
 protected:
     IGraphicsContext* m_pGraphicsContext;
+    IScene* m_pScene;
     ParticleEmitterHandler* m_pParticleEmitterHandler;
 };

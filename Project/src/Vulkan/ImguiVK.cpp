@@ -161,10 +161,14 @@ ImguiVK::~ImguiVK()
 	SAFEDELETE(m_pPipelineLayout);
 	SAFEDELETE(m_pPipeline);
 	SAFEDELETE(m_pFontTexture);
-	SAFEDELETE(m_pVertexBuffer);
-	SAFEDELETE(m_pIndexBuffer);
 	SAFEDELETE(m_pDescriptorPool);
 	SAFEDELETE(m_pDescriptorSetLayout);
+
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		SAFEDELETE(m_ppIndexBuffers[i]);
+		SAFEDELETE(m_ppVertexBuffers[i]);
+	}
 }
 
 bool ImguiVK::init()
@@ -195,15 +199,10 @@ bool ImguiVK::init()
 	}
 
 	//TODO: Fix resizeable buffers
-	if (!createBuffers(MB(16), MB(16)))
+	if (!createBuffers(MB(8), MB(8)))
 	{
 		return false;
 	}
-
-	//if (!createBuffers(sizeof(ImDrawVert) * 1024, sizeof(ImDrawIdx) * 1024))
-	//{
-	//	return false;
-	//}
 
 	//Write to descriptor sets
 	Texture2DVK* pTexture			= reinterpret_cast<Texture2DVK*>(m_pFontTexture);
@@ -233,11 +232,14 @@ void ImguiVK::end()
 	ImGui::Render();
 }
 
-void ImguiVK::render(CommandBufferVK* pCommandBuffer)
+void ImguiVK::render(CommandBufferVK* pCommandBuffer, uint32_t currentFrame)
 {
 	//Start drawing
 	ImGuiIO& io = ImGui::GetIO();
 	ImDrawData* pDrawData = ImGui::GetDrawData();
+
+	BufferVK* pCurrentVertexBuffer	= m_ppVertexBuffers[currentFrame];
+	BufferVK* pCurrentIndexBuffer	= m_ppIndexBuffers[currentFrame];
 
 	//uint64 vertexSize	= pDrawData->TotalVtxCount * sizeof(ImDrawVert);
 	//uint64 indexSize	= pDrawData->TotalIdxCount * sizeof(ImDrawIdx);
@@ -246,8 +248,8 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 		ImDrawVert* pVtxDst = nullptr;
 		ImDrawIdx* pIdxDst = nullptr;
 
-		m_pVertexBuffer->map(reinterpret_cast<void**>(&pVtxDst));
-		m_pIndexBuffer->map(reinterpret_cast<void**>(&pIdxDst));
+		pCurrentVertexBuffer->map(reinterpret_cast<void**>(&pVtxDst));
+		pCurrentIndexBuffer->map(reinterpret_cast<void**>(&pIdxDst));
 
 		for (int n = 0; n < pDrawData->CmdListsCount; n++)
 		{
@@ -258,8 +260,8 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 			pIdxDst += pCmdList->IdxBuffer.Size;
 		}
 
-		m_pVertexBuffer->unmap();
-		m_pIndexBuffer->unmap();
+		pCurrentVertexBuffer->unmap();
+		pCurrentIndexBuffer->unmap();
 	}
 
 	//Setup pipelinestate
@@ -269,8 +271,8 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 
 	//Setup vertex and indexbuffer
 	VkDeviceSize offset = 0;
-	pCommandBuffer->bindVertexBuffers(&m_pVertexBuffer, 1, &offset);
-	pCommandBuffer->bindIndexBuffer(m_pIndexBuffer, 0, (sizeof(ImDrawIdx) == 2) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+	pCommandBuffer->bindVertexBuffers(&pCurrentVertexBuffer, 1, &offset);
+	pCommandBuffer->bindIndexBuffer(pCurrentIndexBuffer, 0, (sizeof(ImDrawIdx) == 2) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
 
 	//Setup viewport
 	VkViewport viewport = {};
@@ -650,22 +652,27 @@ bool ImguiVK::createBuffers(uint32_t vertexBufferSize, uint32_t indexBufferSize)
 	vertexBufferparams.Usage			= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 	vertexBufferparams.MemoryProperty	= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 	vertexBufferparams.SizeInBytes		= vertexBufferSize;
-
-	m_pVertexBuffer = DBG_NEW BufferVK(m_pContext->getDevice());
-	if (!m_pVertexBuffer->init(vertexBufferparams))
-	{
-		return false;
-	}
+	vertexBufferparams.IsExclusive		= true;
 
 	BufferParams indexBufferparams = {};
 	indexBufferparams.Usage				= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 	indexBufferparams.MemoryProperty	= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 	indexBufferparams.SizeInBytes		= indexBufferSize;
+	indexBufferparams.IsExclusive		= true;
 
-	m_pIndexBuffer = DBG_NEW BufferVK(m_pContext->getDevice());
-	if (!m_pIndexBuffer->init(indexBufferparams))
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		return false;
+		m_ppVertexBuffers[i] = DBG_NEW BufferVK(m_pContext->getDevice());
+		if (!m_ppVertexBuffers[i]->init(vertexBufferparams))
+		{
+			return false;
+		}
+
+		m_ppIndexBuffers[i] = DBG_NEW BufferVK(m_pContext->getDevice());
+		if (!m_ppIndexBuffers[i]->init(indexBufferparams))
+		{
+			return false;
+		}
 	}
 
 	return true;

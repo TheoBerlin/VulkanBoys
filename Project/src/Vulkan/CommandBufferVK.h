@@ -58,6 +58,11 @@ public:
 		vkCmdPipelineBarrier(m_CommandBuffer, srcStage, dstStage, 0, 0, nullptr, 0, nullptr, imageMemoryBarrierCount, pImageMemoryBarriers);
 	}
 
+	FORCEINLINE void bufferMemoryBarrier(VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage, uint32_t bufferMemoryBarrierCount, const VkBufferMemoryBarrier* pBufferMemoryBarriers)
+	{
+		vkCmdPipelineBarrier(m_CommandBuffer, srcStage, dstStage, 0, 0, nullptr, bufferMemoryBarrierCount, pBufferMemoryBarriers, 0, nullptr);
+	}
+
 	FORCEINLINE void begin(VkCommandBufferInheritanceInfo* pInheritaneInfo, VkCommandBufferUsageFlags flags)
 	{
 		VkCommandBufferBeginInfo beginInfo = {};
@@ -171,7 +176,7 @@ public:
 	FORCEINLINE VkCommandBuffer getCommandBuffer() const	{ return m_CommandBuffer; }
 
 private:
-	CommandBufferVK(DeviceVK* pDevice, InstanceVK* pInstance, VkCommandBuffer commandBuffer);
+	CommandBufferVK(DeviceVK* pDevice, VkCommandBuffer commandBuffer);
 	~CommandBufferVK();
 
 	bool finalize();
@@ -180,9 +185,7 @@ private:
 	std::vector<VkBuffer> m_VertexBuffers;
 	std::vector<VkDescriptorSet> m_DescriptorSets;
 	DeviceVK* m_pDevice;
-	InstanceVK* m_pInstance;
 	StagingBufferVK* m_pStagingBuffer;
-	StagingBufferVK* m_pStagingTexture;
 	VkFence m_Fence;
 	VkCommandBuffer m_CommandBuffer;
 };

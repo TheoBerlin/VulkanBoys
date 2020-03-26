@@ -1,21 +1,24 @@
 #include "GraphicsContextVK.h"
+
 #include "BufferVK.h"
 #include "CopyHandlerVK.h"
 #include "ImguiVK.h"
-#include "SceneVK.h"
+#include "MeshRendererVK.h"
 #include "MeshVK.h"
-#include "ShaderVK.h"
+#include "RenderingHandlerVK.h"
 #include "SamplerVK.h"
+#include "SceneVK.h"
+#include "ShaderVK.h"
+#include "ShadowMapRendererVK.h"
 #include "SwapChainVK.h"
 #include "Texture2DVK.h"
-#include "MeshRendererVK.h"
-#include "RenderingHandlerVK.h"
-#include "VolumetricLight/VolumetricLightRendererVK.h"
 
 #include "Particles/ParticleRendererVK.h"
 #include "Particles/ParticleEmitterHandlerVK.h"
 
 #include "Ray Tracing/RayTracingRendererVK.h"
+
+#include "VolumetricLight/VolumetricLightRendererVK.h"
 
 #include "Core/GLFWWindow.h"
 
@@ -83,6 +86,11 @@ IRenderer* GraphicsContextVK::createMeshRenderer(RenderingHandler* pRenderingHan
 	return DBG_NEW MeshRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler));
 }
 
+IRenderer* GraphicsContextVK::createShadowMapRenderer(RenderingHandler* pRenderingHandler)
+{
+	return DBG_NEW ShadowMapRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler));
+}
+
 IRenderer* GraphicsContextVK::createParticleRenderer(RenderingHandler* pRenderingHandler)
 {
 	return DBG_NEW ParticleRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler));
@@ -108,9 +116,9 @@ IImgui* GraphicsContextVK::createImgui()
 	return DBG_NEW ImguiVK(this);
 }
 
-IScene* GraphicsContextVK::createScene()
+IScene* GraphicsContextVK::createScene(const RenderingHandler* pRenderingHandler)
 {
-	return DBG_NEW SceneVK(this);
+	return DBG_NEW SceneVK(this, reinterpret_cast<const RenderingHandlerVK*>(pRenderingHandler));
 }
 
 IMesh* GraphicsContextVK::createMesh()

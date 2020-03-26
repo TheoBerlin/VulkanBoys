@@ -31,12 +31,13 @@
 
 #include "Core/Application.h"
 
-constexpr uint32_t MAX_RECURSIONS = 1;
+constexpr uint32_t MAX_RECURSIONS = 0;
 
 RayTracingRendererVK::RayTracingRendererVK(GraphicsContextVK* pContext, RenderingHandlerVK* pRenderingHandler) :
 	m_pContext(pContext),
 	m_pRenderingHandler(pRenderingHandler),
 	m_pRayTracingPipeline(nullptr),
+	m_pRayTracingPipelineLayout(nullptr),
 	m_pRayTracingDescriptorSet(nullptr),
 	m_pRayTracingDescriptorPool(nullptr),
 	m_pRayTracingDescriptorSetLayout(nullptr),
@@ -49,6 +50,8 @@ RayTracingRendererVK::RayTracingRendererVK(GraphicsContextVK* pContext, Renderin
 	m_pBlueNoise(nullptr),
 	m_pCameraBuffer(nullptr),
 	m_pLightsBuffer(nullptr),
+	m_pReflectionFinalImage(nullptr),
+	m_pReflectionFinalImageView(nullptr),
 	m_pReflectionIntermediateImage(nullptr),
 	m_pReflectionIntermediateImageView(nullptr),
 	m_pReflectionTemporalAccumulationImage(nullptr),
@@ -57,7 +60,14 @@ RayTracingRendererVK::RayTracingRendererVK(GraphicsContextVK* pContext, Renderin
 	m_pLinearSampler(nullptr),
 	m_RaysWidth(0),
 	m_RaysHeight(0),
-	m_NumBlurImagePixels(0)
+	m_NumBlurImagePixels(0),
+	m_WorkGroupSize(),
+	m_pHorizontalExtraBlurPassDescriptorSet(nullptr),
+	m_pHorizontalInitialBlurPassDescriptorSet(nullptr),
+	m_pVerticalBlurPassDescriptorSet(nullptr),
+	m_ppComputeCommandBuffers(),
+	m_ppComputeCommandPools(),
+	m_pProfiler(nullptr)
 {
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
@@ -85,8 +95,8 @@ RayTracingRendererVK::~RayTracingRendererVK()
 	SAFEDELETE(m_pBlurPassDescriptorPool);
 	SAFEDELETE(m_pBlurPassDescriptorSetLayout);
 
-	SAFEDELETE(m_pCameraBuffer);
-	SAFEDELETE(m_pLightsBuffer);
+	//SAFEDELETE(m_pCameraBuffer);
+	//SAFEDELETE(m_pLightsBuffer);
 
 	SAFEDELETE(m_pNearestSampler);
 	SAFEDELETE(m_pLinearSampler);
@@ -137,11 +147,11 @@ bool RayTracingRendererVK::init()
 	return true;
 }
 
-void RayTracingRendererVK::beginFrame(IScene* pScene)
+void RayTracingRendererVK::beginFrame(IScene*)
 {
 }
 
-void RayTracingRendererVK::endFrame(IScene* pScene)
+void RayTracingRendererVK::endFrame(IScene*)
 {
 }
 
@@ -234,7 +244,7 @@ void RayTracingRendererVK::render(IScene* pScene)
 		if (m_CPURayTracingParameters.NumBlurPasses > 1)
 		{
 
-			for (uint32_t blurPass = 1; blurPass < m_CPURayTracingParameters.NumBlurPasses; blurPass++)
+			for (uint32_t blurPass = 1; blurPass < (uint32_t)m_CPURayTracingParameters.NumBlurPasses; blurPass++)
 			{
 				//Horizontal Blur
 				{
@@ -282,12 +292,12 @@ void RayTracingRendererVK::renderUI()
 	ImGui::SliderInt("Num Spatial Filter Passes", &m_CPURayTracingParameters.NumBlurPasses, 1, 16);
 }
 
-void RayTracingRendererVK::setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY)
+void RayTracingRendererVK::setViewport(float, float, float, float, float, float)
 {
 	
 }
 
-void RayTracingRendererVK::setResolution(uint32_t width, uint32_t height)
+void RayTracingRendererVK::onWindowResize(uint32_t width, uint32_t height)
 {
 	if (m_RaysWidth != width || m_RaysHeight != height)
 	{
@@ -355,11 +365,7 @@ void RayTracingRendererVK::setResolution(uint32_t width, uint32_t height)
 	}
 }
 
-void RayTracingRendererVK::onWindowResize(uint32_t width, uint32_t height)
-{
-}
-
-void RayTracingRendererVK::setRayTracingResultTextures(ImageVK* pRadianceImage, ImageViewVK* pRadianceImageView, ImageVK* pGlossyImage, ImageViewVK* pGlossyImageView, uint32_t width, uint32_t height)
+void RayTracingRendererVK::setRayTracingResultTextures(ImageVK*, ImageViewVK* pRadianceImageView, ImageVK* pGlossyImage, ImageViewVK* pGlossyImageView, uint32_t width, uint32_t height)
 {
 	m_NumBlurImagePixels = width * height;
 	m_pRayTracingDescriptorSet->writeStorageImageDescriptor(pRadianceImageView, RT_RADIANCE_IMAGE_BINDING);
@@ -418,14 +424,17 @@ void RayTracingRendererVK::setSceneData(IScene* pScene)
 	const BufferVK* pMaterialParametersBuffer = pVulkanScene->getMaterialParametersBuffer();
 
 	m_pRayTracingDescriptorSet->writeAccelerationStructureDescriptor(pVulkanScene->getTLAS().AccelerationStructure, RT_TLAS_BINDING);
+	
 	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pVulkanScene->getCombinedVertexBuffer(), RT_COMBINED_VERTEX_BINDING);
 	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pVulkanScene->getCombinedIndexBuffer(), RT_COMBINED_INDEX_BINDING);
 	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pVulkanScene->getMeshIndexBuffer(), RT_MESH_INDEX_BINDING);
+
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(albedoMaps.data(), samplers.data(), MAX_NUM_UNIQUE_MATERIALS, RT_COMBINED_ALBEDO_BINDING);
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(normalMaps.data(), samplers.data(), MAX_NUM_UNIQUE_MATERIALS, RT_COMBINED_NORMAL_BINDING);
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(aoMaps.data(), samplers.data(), MAX_NUM_UNIQUE_MATERIALS, RT_COMBINED_AO_BINDING);
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(metallicMaps.data(), samplers.data(), MAX_NUM_UNIQUE_MATERIALS, RT_COMBINED_METALLIC_BINDING);
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(roughnessMaps.data(), samplers.data(), MAX_NUM_UNIQUE_MATERIALS, RT_COMBINED_ROUGHNESS_BINDING);
+	
 	m_pRayTracingDescriptorSet->writeStorageBufferDescriptor(pMaterialParametersBuffer, RT_COMBINED_MATERIAL_PARAMETERS_BINDING);
 }
 
@@ -444,13 +453,12 @@ CommandBufferVK* RayTracingRendererVK::getComputeCommandBuffer() const
 
 bool RayTracingRendererVK::createCommandPoolAndBuffers()
 {
-	DeviceVK* pDevice		= m_pContext->getDevice();
-	InstanceVK* pInstance	= m_pContext->getInstance();
-
+	DeviceVK* pDevice = m_pContext->getDevice();
+	
 	const uint32_t computeQueueFamilyIndex = pDevice->getQueueFamilyIndices().computeFamily.value();
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		m_ppComputeCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, pInstance, computeQueueFamilyIndex);
+		m_ppComputeCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, computeQueueFamilyIndex);
 
 		if (!m_ppComputeCommandPools[i]->init())
 		{
@@ -676,21 +684,21 @@ bool RayTracingRendererVK::createPipelines()
 bool RayTracingRendererVK::createUniformBuffers()
 {
 	BufferParams cameraBufferParams = {};
-	cameraBufferParams.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	cameraBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	cameraBufferParams.SizeInBytes = sizeof(CameraMatricesBuffer);
+	//cameraBufferParams.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	//cameraBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	//cameraBufferParams.SizeInBytes = sizeof(CameraMatricesBuffer);
 
-	m_pCameraBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
-	m_pCameraBuffer->init(cameraBufferParams);
+	m_pCameraBuffer = m_pRenderingHandler->getCameraBufferCompute();//reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
+	//m_pCameraBuffer->init(cameraBufferParams);
 	m_pRayTracingDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer, RT_CAMERA_BUFFER_BINDING);
 
-	BufferParams lightsBufferParams = {};
-	lightsBufferParams.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	lightsBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-	lightsBufferParams.SizeInBytes = sizeof(PointLight) * MAX_POINTLIGHTS;
+	//BufferParams lightsBufferParams = {};
+	//lightsBufferParams.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	//lightsBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	//lightsBufferParams.SizeInBytes = sizeof(PointLight) * MAX_POINTLIGHTS;
 
-	m_pLightsBuffer = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
-	m_pLightsBuffer->init(lightsBufferParams);
+	m_pLightsBuffer = m_pRenderingHandler->getLightBufferCompute();// reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
+	//m_pLightsBuffer->init(lightsBufferParams);
 	m_pRayTracingDescriptorSet->writeUniformBufferDescriptor(m_pLightsBuffer, RT_LIGHT_BUFFER_BINDING);
 
 	return true;
@@ -725,7 +733,7 @@ bool RayTracingRendererVK::createTextures()
 {
 	bool result = true;
 	m_pBlueNoise = DBG_NEW Texture2DVK(m_pContext->getDevice());
-	result = m_pBlueNoise->initFromFile("assets/textures/blue_noise/512_512/LDR_RG01_0.png", ETextureFormat::FORMAT_R32G32B32A32_FLOAT, false);
+	result = m_pBlueNoise->initFromFile("assets/textures/blue_noise/512_512/LDR_RG01_0.png", ETextureFormat::FORMAT_R8G8B8A8_UNORM, false);
 
 	ImageViewVK* pBlueNoiseImageView = m_pBlueNoise->getImageView();
 	m_pRayTracingDescriptorSet->writeCombinedImageDescriptors(&pBlueNoiseImageView, &m_pLinearSampler, 1, RT_BLUE_NOISE_LOOKUP_BINDING);
@@ -744,12 +752,12 @@ void RayTracingRendererVK::createProfiler()
 void RayTracingRendererVK::updateBuffers(SceneVK* pScene, CommandBufferVK* pCommandBuffer)
 {
 	//Update Camera
-	CameraMatricesBuffer cameraMatricesBuffer = {};
-	cameraMatricesBuffer.ProjectionInv = pScene->getCamera().getProjectionInvMat();
-	cameraMatricesBuffer.ViewInv = pScene->getCamera().getViewInvMat();
-	pCommandBuffer->updateBuffer(m_pCameraBuffer, 0, (const void*)&cameraMatricesBuffer, sizeof(CameraMatricesBuffer));
+	//CameraMatricesBuffer cameraMatricesBuffer = {};
+	//cameraMatricesBuffer.ProjectionInv = pScene->getCamera().getProjectionInvMat();
+	//cameraMatricesBuffer.ViewInv = pScene->getCamera().getViewInvMat();
+	//pCommandBuffer->updateBuffer(m_pCameraBuffer, 0, (const void*)&cameraMatricesBuffer, sizeof(CameraMatricesBuffer));
 
 	//Update Lights
-	const uint32_t numPointLights = pScene->getLightSetup().getPointLightCount();
-	pCommandBuffer->updateBuffer(m_pLightsBuffer, 0, (const void*)pScene->getLightSetup().getPointLights(), sizeof(PointLight) * numPointLights);
+	//const uint32_t numPointLights = pScene->getLightSetup().getPointLightCount();
+	//pCommandBuffer->updateBuffer(m_pLightsBuffer, 0, (const void*)pScene->getLightSetup().getPointLights(), sizeof(PointLight) * numPointLights);
 }

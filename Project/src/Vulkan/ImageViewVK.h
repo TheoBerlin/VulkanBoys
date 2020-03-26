@@ -34,4 +34,3 @@ private:
 	VkImageView m_ImageView;
 	ImageViewParams m_Params;
 };
-

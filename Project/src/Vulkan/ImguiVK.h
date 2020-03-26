@@ -29,7 +29,7 @@ public:
 	virtual void begin(double deltatime) override;
 	virtual void end() override;
 
-	virtual void render(CommandBufferVK* pCommandBuffer) override;
+	virtual void render(CommandBufferVK* pCommandBuffer, uint32_t currentFrame) override;
 
 	ImTextureID addTexture(ImageViewVK* pImageView);
 
@@ -60,6 +60,6 @@ private:
 	DescriptorSetLayoutVK* m_pDescriptorSetLayout;
 	PipelineLayoutVK* m_pPipelineLayout;
 	ITexture2D* m_pFontTexture;
-	BufferVK* m_pVertexBuffer;
-	BufferVK* m_pIndexBuffer;
+	BufferVK* m_ppVertexBuffers[MAX_FRAMES_IN_FLIGHT];
+	BufferVK* m_ppIndexBuffers[MAX_FRAMES_IN_FLIGHT];
 };

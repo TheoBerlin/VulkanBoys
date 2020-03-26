@@ -8,8 +8,8 @@
 #include "VulkanCommon.h"
 
 class InstanceVK;
-class CommandBufferVK;
 class CopyHandlerVK;
+class CommandBufferVK;
 
 struct QueueFamilyIndices
 {
@@ -45,10 +45,12 @@ public:
 	void executeTransfer(CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages,
 		uint32_t waitSemaphoreCount, const VkSemaphore* pSignalSemaphores, uint32_t signalSemaphoreCount);
 
-	void waitCompute();
 	void waitGraphics();
+	void waitCompute();
 	void waitTransfer();
 	void wait();
+
+	void setVulkanObjectName(const char* pName, uint64_t objectHandle, VkObjectType type);
 
 	VkPhysicalDevice	getPhysicalDevice()	const	{ return m_PhysicalDevice; };
 	VkDevice			getDevice() const			{ return m_Device; }
@@ -65,8 +67,8 @@ public:
 	bool supportsRayTracing() const { return m_ExtensionsStatus.at(VK_NV_RAY_TRACING_EXTENSION_NAME); }
 
 private:
-	bool initPhysicalDevice(InstanceVK* pInstance);
-	bool initLogicalDevice(InstanceVK* pInstance);
+	bool initPhysicalDevice();
+	bool initLogicalDevice();
 
 	int32_t rateDevice(VkPhysicalDevice physicalDevice);
 	void checkExtensionsSupport(VkPhysicalDevice physicalDevice, bool& requiredExtensionsSupported, uint32_t& numOfOptionalExtensionsSupported);
@@ -102,6 +104,7 @@ private:
 	std::unordered_map<std::string, bool> m_ExtensionsStatus;
 	std::vector<VkExtensionProperties> m_AvailabeExtensions;
 
+	InstanceVK* m_pInstance;
 	CopyHandlerVK* m_pCopyHandler;
 
 	VkPhysicalDeviceLimits m_DeviceLimits;
