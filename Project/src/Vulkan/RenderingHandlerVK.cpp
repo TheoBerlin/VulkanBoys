@@ -248,7 +248,7 @@ void RenderingHandlerVK::render(IScene* pScene)
 
 	const Camera& camera			= pVulkanScene->getCamera();
 	LightSetup& lightsetup	= pVulkanScene->getLightSetup();
-	updateBuffers(camera, lightsetup);
+	updateBuffers(pVulkanScene, camera, lightsetup);
 
 	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
 	m_ppTransferCommandBuffers[m_CurrentFrame]->end();
@@ -442,7 +442,6 @@ void RenderingHandlerVK::render(IScene* pScene)
 		m_ppGraphicsCommandBuffers2[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 		{
-			constexpr uint32_t IMAGE_BARRIER_COUNT = 6;
 			VkImageMemoryBarrier imageBarriers[IMAGE_BARRIER_COUNT] =
 			{
 				createVkImageMemoryBarrier(m_pGBuffer->getDepthImage()->getImage(), 0, VK_ACCESS_MEMORY_READ_BIT, graphicsQueueIndex, computeQueueIndex,
@@ -465,7 +464,6 @@ void RenderingHandlerVK::render(IScene* pScene)
 		m_ppComputeCommandBuffers[m_CurrentFrame]->executeSecondary(m_pRayTracer->getComputeCommandBuffer());
 
 		{
-			constexpr uint32_t IMAGE_BARRIER_COUNT = 6;
 			VkImageMemoryBarrier imageBarriers[IMAGE_BARRIER_COUNT] =
 			{
 				createVkImageMemoryBarrier(m_pGBuffer->getDepthImage()->getImage(), VK_ACCESS_MEMORY_READ_BIT, 0, computeQueueIndex, graphicsQueueIndex,
@@ -485,7 +483,6 @@ void RenderingHandlerVK::render(IScene* pScene)
 		}
 
 		{
-			constexpr uint32_t IMAGE_BARRIER_COUNT = 6;
 			VkImageMemoryBarrier imageBarriers[IMAGE_BARRIER_COUNT] =
 			{
 				createVkImageMemoryBarrier(m_pGBuffer->getDepthImage()->getImage(), 0, VK_ACCESS_MEMORY_READ_BIT, computeQueueIndex, graphicsQueueIndex,
@@ -586,14 +583,15 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 
 void RenderingHandlerVK::onSceneUpdated(IScene* pScene)
 {
-	m_pGraphicsContext->getDevice()->wait();
-
 	SceneVK* pSceneVK = reinterpret_cast<SceneVK*>(pScene);
-	pSceneVK->UpdateSceneData();
+	bool update = pSceneVK->updateSceneData();
 
 	if (m_pRayTracer)
 	{
-		m_pRayTracer->setSceneData(pScene);
+		if (update)
+		{
+			m_pRayTracer->setSceneData(pScene);
+		}
 	}
 }
 
@@ -1065,7 +1063,7 @@ void RenderingHandlerVK::releaseBackBuffers()
 	}
 }
 
-void RenderingHandlerVK::updateBuffers(const Camera& camera, const LightSetup& lightSetup)
+void RenderingHandlerVK::updateBuffers(SceneVK* pScene, const Camera& camera, const LightSetup& lightSetup)
 {
 	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
 	const uint32_t graphicsQueueFamilyIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
@@ -1115,6 +1113,8 @@ void RenderingHandlerVK::updateBuffers(const Camera& camera, const LightSetup& l
 	const uint32_t lightBufferSize = sizeof(PointLight) * lightSetup.getPointLightCount();
 	m_ppTransferCommandBuffers[m_CurrentFrame]->updateBuffer(m_pLightBufferGraphics, 0, (const void*)lightSetup.getPointLights(), lightBufferSize);
 	m_ppTransferCommandBuffers[m_CurrentFrame]->updateBuffer(m_pLightBufferCompute, 0, (const void*)lightSetup.getPointLights(), lightBufferSize);
+
+	pScene->copySceneData(m_ppTransferCommandBuffers[m_CurrentFrame]);
 
 	//Transfer back from transfer queue
 	{

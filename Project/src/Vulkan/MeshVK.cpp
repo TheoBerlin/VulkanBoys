@@ -111,9 +111,10 @@ bool MeshVK::initFromFile(const std::string& filepath)
 bool MeshVK::initFromMemory(const void* pVertices, size_t vertexSize, uint32_t vertexCount, const uint32_t* pIndices, uint32_t indexCount)
 {
 	BufferParams vertexBufferParams = {};
-	vertexBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	vertexBufferParams.SizeInBytes = vertexSize * vertexCount;
-	vertexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	vertexBufferParams.Usage			= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	vertexBufferParams.SizeInBytes		= vertexSize * vertexCount;
+	vertexBufferParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	vertexBufferParams.IsExclusive		= true;
 
 	m_pVertexBuffer = DBG_NEW BufferVK(m_pDevice);
 	if (!m_pVertexBuffer->init(vertexBufferParams))
@@ -122,9 +123,10 @@ bool MeshVK::initFromMemory(const void* pVertices, size_t vertexSize, uint32_t v
 	}
 
 	BufferParams indexBufferParams = {};
-	indexBufferParams.Usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	indexBufferParams.SizeInBytes = sizeof(uint32_t) * indexCount;
-	indexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	indexBufferParams.Usage				= VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	indexBufferParams.SizeInBytes		= sizeof(uint32_t) * indexCount;
+	indexBufferParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	indexBufferParams.IsExclusive		= true;
 
 	m_pIndexBuffer = DBG_NEW BufferVK(m_pDevice);
 	if (!m_pIndexBuffer->init(indexBufferParams))

@@ -636,11 +636,13 @@ bool ImguiVK::createBuffers(uint32_t vertexBufferSize, uint32_t indexBufferSize)
 	vertexBufferparams.Usage			= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 	vertexBufferparams.MemoryProperty	= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 	vertexBufferparams.SizeInBytes		= vertexBufferSize;
+	vertexBufferparams.IsExclusive		= true;
 
 	BufferParams indexBufferparams = {};
 	indexBufferparams.Usage				= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 	indexBufferparams.MemoryProperty	= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 	indexBufferparams.SizeInBytes		= indexBufferSize;
+	indexBufferparams.IsExclusive		= true;
 
 	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{

@@ -24,11 +24,11 @@ public:
 	VkResult present(VkSemaphore renderSemaphore);
 	void resize(uint32_t width, uint32_t height);
 
-	ImageVK*		getImage(uint32_t index) const		{ return m_Images[index]; }
-	ImageViewVK*	getImageView(uint32_t index) const	{ return m_ImageViews[index]; }
-	uint32_t		getImageIndex() const				{ return m_ImageIndex; }
-	VkFormat		getFormat() const					{ return m_Format.format; }
-	VkExtent2D		getExtent() const					{ return m_Extent; }
+	FORCEINLINE ImageVK*		getImage(uint32_t index) const		{ return m_Images[index]; }
+	FORCEINLINE ImageViewVK*	getImageView(uint32_t index) const	{ return m_ImageViews[index]; }
+	FORCEINLINE uint32_t		getImageIndex() const				{ return m_ImageIndex; }
+	FORCEINLINE VkFormat		getFormat() const					{ return m_Format.format; }
+	FORCEINLINE VkExtent2D		getExtent() const					{ return m_Extent; }
 
 private:
 	void createSurface(IWindow* pWindow);
