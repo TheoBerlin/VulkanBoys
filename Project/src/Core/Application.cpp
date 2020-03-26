@@ -298,7 +298,7 @@ void Application::init()
 		0.2f	// Particle G constant
 	};
 
-	m_LightSetup.addVolumetricPointLight(VolumetricPointLight(volumetricLightSettings, {0.0f, 7.7f, -1.9f}, {0.6f, 0.45f, 0.2f, 1.0f}, 2.0f));
+	//m_LightSetup.addVolumetricPointLight(VolumetricPointLight(volumetricLightSettings, {0.0f, 7.7f, -1.9f}, {0.6f, 0.45f, 0.2f, 1.0f}, 2.0f));
 
 	//Setup camera
 	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));

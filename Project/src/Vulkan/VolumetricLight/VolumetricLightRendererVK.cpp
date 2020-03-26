@@ -252,29 +252,29 @@ void VolumetricLightRendererVK::renderUI()
 	// Display light buffer
 	if (ImGui::Begin("Volumetric Light", NULL, ImGuiWindowFlags_NoResize)) {
 		// Settings tweaking
-		std::vector<VolumetricPointLight>& volumetricPointLights = m_pLightSetup->getVolumetricPointLights();
+		// std::vector<VolumetricPointLight>& volumetricPointLights = m_pLightSetup->getVolumetricPointLights();
 
-		ImGui::SliderInt("Light selection", &m_CurrentIndex, 0, int(volumetricPointLights.size() - 1));
+		// ImGui::SliderInt("Light selection", &m_CurrentIndex, 0, int(volumetricPointLights.size() - 1));
 
-		VolumetricPointLight& currentLight = volumetricPointLights[(size_t)m_CurrentIndex];
-		float particleG = currentLight.getParticleG();
-		float scatterAmount = currentLight.getScatterAmount();
-		float radius = currentLight.getRadius();
+		// VolumetricPointLight& currentLight = volumetricPointLights[(size_t)m_CurrentIndex];
+		// float particleG = currentLight.getParticleG();
+		// float scatterAmount = currentLight.getScatterAmount();
+		// float radius = currentLight.getRadius();
 
-		if (ImGui::SliderFloat("Particle G", &particleG, 0.0f, 1.0f)) {
-			currentLight.setParticleG(particleG);
-		}
+		// if (ImGui::SliderFloat("Particle G", &particleG, 0.0f, 1.0f)) {
+		// 	currentLight.setParticleG(particleG);
+		// }
 
-		if (ImGui::SliderFloat("Scatter Amount", &scatterAmount, 0.0f, 1.0f)) {
-			currentLight.setScatterAmount(scatterAmount);
-		}
+		// if (ImGui::SliderFloat("Scatter Amount", &scatterAmount, 0.0f, 1.0f)) {
+		// 	currentLight.setScatterAmount(scatterAmount);
+		// }
 
-		if (ImGui::SliderFloat("Radius", &radius, 0.0f, 8.0f)) {
-			currentLight.setRadius(radius);
-		}
+		// if (ImGui::SliderFloat("Radius", &radius, 0.0f, 8.0f)) {
+		// 	currentLight.setRadius(radius);
+		// }
 
-		// Display lightbuffer
-		ImGui::Image(m_LightBufferImID, {m_Viewport.width * 0.25f, m_Viewport.height * 0.25f});
+		// // Display lightbuffer
+		// ImGui::Image(m_LightBufferImID, {m_Viewport.width * 0.25f, m_Viewport.height * 0.25f});
 	}
 
 	ImGui::End();
