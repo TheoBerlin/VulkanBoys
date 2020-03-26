@@ -155,7 +155,7 @@ bool ParticleRendererVK::createCommandPoolAndBuffers()
 	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
 
 	const uint32_t graphicsQueueIndex = pDevice->getQueueFamilyIndices().graphicsFamily.value();
-	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) 
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
 		m_ppCommandPools[i] = DBG_NEW CommandPoolVK(pDevice, graphicsQueueIndex);
 
@@ -309,7 +309,7 @@ bool ParticleRendererVK::createQuadMesh()
 
 void ParticleRendererVK::createProfiler()
 {
-	m_pProfiler = DBG_NEW ProfilerVK("Particles Render", m_pGraphicsContext->getDevice());
+	m_pProfiler = DBG_NEW ProfilerVK("Particles Renderer", m_pGraphicsContext->getDevice());
 	m_pProfiler->initTimestamp(&m_TimestampDraw, "Draw Instanced");
 }
 

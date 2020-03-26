@@ -7,23 +7,24 @@
 #include "Core/PointLight.h"
 #include "Core/TaskDispatcher.h"
 
-#include "RenderingHandlerVK.h"
 #include "BufferVK.h"
 #include "CommandBufferVK.h"
 #include "CommandPoolVK.h"
 #include "FrameBufferVK.h"
+#include "GBufferVK.h"
 #include "GraphicsContextVK.h"
+#include "ImageViewVK.h"
+#include "ImageVK.h"
+#include "ImguiVK.h"
 #include "MeshRendererVK.h"
 #include "PipelineVK.h"
+#include "RenderingHandlerVK.h"
 #include "RenderPassVK.h"
+#include "SceneVK.h"
+#include "ShadowMapRendererVK.h"
+#include "SkyboxRendererVK.h"
 #include "SwapChainVK.h"
 #include "TextureCubeVK.h"
-#include "SkyboxRendererVK.h"
-#include "ImguiVK.h"
-#include "GBufferVK.h"
-#include "SceneVK.h"
-#include "ImageVK.h"
-#include "ImageViewVK.h"
 
 #include "Particles/ParticleEmitterHandlerVK.h"
 #include "Particles/ParticleRendererVK.h"
@@ -35,6 +36,7 @@
 RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 	:m_pGraphicsContext(pGraphicsContext),
 	m_pMeshRenderer(nullptr),
+	m_pShadowMapRenderer(nullptr),
 	m_pRayTracer(nullptr),
 	m_pParticleRenderer(nullptr),
 	m_pImGuiRenderer(nullptr),
@@ -45,6 +47,7 @@ RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 	m_pGlossyImageView(nullptr),
 	m_pGBuffer(nullptr),
 	m_pGeometryRenderPass(nullptr),
+	m_pShadowMapRenderPass(nullptr),
 	m_pBackBufferRenderPass(nullptr),
 	m_pParticleRenderPass(nullptr),
 	m_pUIRenderPass(nullptr),
@@ -62,8 +65,6 @@ RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 	m_ppGraphicsCommandPools(),
 	m_ppGraphicsCommandBuffers(),
 	m_ppGraphicsCommandBuffers2(),
-	m_RayTracingImageViews(),
-	m_RayTracingImages(),
 	m_pImageAvailableSemaphores(),
 	m_pRenderFinishedSemaphores(),
 	m_ComputeFinishedGraphicsSemaphore(VK_NULL_HANDLE),
@@ -101,6 +102,7 @@ RenderingHandlerVK::~RenderingHandlerVK()
 	SAFEDELETE(m_pLightBufferGraphics);
 
 	SAFEDELETE(m_pGeometryRenderPass);
+	SAFEDELETE(m_pShadowMapRenderPass);
 	SAFEDELETE(m_pBackBufferRenderPass);
 	SAFEDELETE(m_pParticleRenderPass);
 	SAFEDELETE(m_pUIRenderPass);
@@ -245,7 +247,7 @@ void RenderingHandlerVK::render(IScene* pScene)
 	m_ppTransferCommandBuffers[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 	const Camera& camera			= pVulkanScene->getCamera();
-	const LightSetup& lightsetup	= pVulkanScene->getLightSetup();
+	LightSetup& lightsetup	= pVulkanScene->getLightSetup();
 	updateBuffers(pVulkanScene, camera, lightsetup);
 
 	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
@@ -260,6 +262,7 @@ void RenderingHandlerVK::render(IScene* pScene)
 	m_pMeshRenderer->setupFrame(m_ppGraphicsCommandBuffers[m_CurrentFrame]);
 #if MULTITHREADED
 	m_pMeshRenderer->beginFrame(pVulkanScene);
+	m_pShadowMapRenderer->beginFrame(pVulkanScene);
 
 	TaskDispatcher::execute([pVulkanScene, this]
 		{
@@ -268,8 +271,10 @@ void RenderingHandlerVK::render(IScene* pScene)
 			{
 				const GraphicsObjectVK& graphicsObject = graphicsObjects[i];
 				m_pMeshRenderer->submitMesh(graphicsObject.pMesh, graphicsObject.pMaterial, graphicsObject.MaterialParametersIndex, i);
+				m_pShadowMapRenderer->submitMesh(graphicsObject.pMesh, graphicsObject.pMaterial, i);
 			}
 			m_pMeshRenderer->endFrame(pVulkanScene);
+			m_pShadowMapRenderer->endFrame(pVulkanScene);
 		});
 	TaskDispatcher::execute([this]
 		{
@@ -390,6 +395,15 @@ void RenderingHandlerVK::render(IScene* pScene)
 
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pMeshRenderer->getGeometryCommandBuffer());
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
+
+	if (lightsetup.hasDirectionalLight()) {
+		FrameBufferVK* pFrameBuffer = reinterpret_cast<FrameBufferVK*>(lightsetup.getDirectionalLight()->getFrameBuffer());
+		const VkViewport& viewport = m_pShadowMapRenderer->getViewport();
+
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pShadowMapRenderPass, pFrameBuffer, (uint32_t)viewport.width, (uint32_t)viewport.height, &m_ClearDepth, 1, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pShadowMapRenderer->getCommandBuffer(m_CurrentFrame));
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
+	}
 
 	if (m_pRayTracer)
 	{
@@ -616,6 +630,10 @@ void RenderingHandlerVK::drawProfilerUI()
 		m_pMeshRenderer->getLightProfiler()->drawResults();
 	}
 
+	if (m_pShadowMapRenderer) {
+		m_pShadowMapRenderer->getProfiler()->drawResults();
+	}
+
 	if (m_pParticleRenderer)
 	{
 		m_pParticleRenderer->getProfiler()->drawResults();
@@ -662,6 +680,10 @@ void RenderingHandlerVK::setViewport(float width, float height, float minDepth, 
 	if (m_pParticleRenderer)
 	{
 		m_pParticleRenderer->setViewport(width, height, minDepth, maxDepth, topX, topY);
+	}
+
+	if (m_pShadowMapRenderer) {
+		m_pShadowMapRenderer->setViewport(width, height, minDepth, maxDepth, topX, topY);
 	}
 }
 
@@ -982,7 +1004,29 @@ bool RenderingHandlerVK::createRenderPasses()
 	dependency.dstAccessMask	= VK_ACCESS_MEMORY_READ_BIT;
 	m_pGeometryRenderPass->addSubpassDependency(dependency);
 
-	return m_pGeometryRenderPass->finalize();
+	if (!m_pGeometryRenderPass->finalize()) {
+		return false;
+	}
+
+	// Shadow map pass
+	m_pShadowMapRenderPass = DBG_NEW RenderPassVK(m_pGraphicsContext->getDevice());
+
+	// Depth, shadow map
+	description.format			= VK_FORMAT_D32_SFLOAT;
+	description.samples			= VK_SAMPLE_COUNT_1_BIT;
+	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
+	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
+	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
+	description.finalLayout		= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	m_pShadowMapRenderPass->addAttachment(description);
+
+	depthStencilAttachmentRef.attachment	= 0;
+	depthStencilAttachmentRef.layout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	m_pShadowMapRenderPass->addSubpass(nullptr, 0, &depthStencilAttachmentRef);
+
+	return m_pShadowMapRenderPass->finalize();
 }
 
 bool RenderingHandlerVK::createSemaphores()
@@ -1101,6 +1145,10 @@ void RenderingHandlerVK::updateBuffers(SceneVK* pScene, const Camera& camera, co
 	if (m_pParticleEmitterHandler)
 	{
 		m_pParticleEmitterHandler->updateRenderingBuffers(this);
+	}
+
+	if (m_pShadowMapRenderer) {
+		m_pShadowMapRenderer->updateBuffers(reinterpret_cast<SceneVK*>(m_pScene));
 	}
 }
 

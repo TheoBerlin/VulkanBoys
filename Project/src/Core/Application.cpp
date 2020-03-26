@@ -52,6 +52,7 @@ Application::Application()
 	m_pContext(nullptr),
 	m_pRenderingHandler(nullptr),
 	m_pMeshRenderer(nullptr),
+	m_pShadowMapRenderer(nullptr),
 	m_pRayTracingRenderer(nullptr),
 	m_pImgui(nullptr),
 	m_pScene(nullptr),
@@ -133,13 +134,15 @@ void Application::init()
 		0.8f, 	// Scatter amount
 		0.2f 	// Particle G
 	};
-	glm::vec3 sunDirection = glm::normalize(glm::vec3(-1.0f, -1.0f, 0.0f));
+	glm::vec3 sunDirection = glm::normalize(glm::vec3(0.6f, 0.78f, 0.14f));
 	lightSetup.setDirectionalLight(DirectionalLight(volumetricLightSettings, sunDirection, {0.6f, 0.45f, 0.2f, 1.0f}));
-
 
 	// Setup renderers
 	m_pMeshRenderer = m_pContext->createMeshRenderer(m_pRenderingHandler);
 	m_pMeshRenderer->init();
+
+	m_pShadowMapRenderer = m_pContext->createShadowMapRenderer(m_pRenderingHandler);
+	m_pShadowMapRenderer->init();
 
 	m_pParticleRenderer = m_pContext->createParticleRenderer(m_pRenderingHandler);
 	m_pParticleRenderer->init();
@@ -161,6 +164,7 @@ void Application::init()
 
 	//Set renderers to renderhandler
 	m_pRenderingHandler->setMeshRenderer(m_pMeshRenderer);
+	m_pRenderingHandler->setShadowMapRenderer(m_pShadowMapRenderer);
 	m_pRenderingHandler->setParticleEmitterHandler(m_pParticleEmitterHandler);
 	m_pRenderingHandler->setParticleRenderer(m_pParticleRenderer);
 	m_pRenderingHandler->setImguiRenderer(m_pImgui);
@@ -258,7 +262,7 @@ void Application::init()
 	m_Camera.update();
 
 	TaskDispatcher::waitForTasks();
-	
+
 	glm::mat4 scale = glm::scale(glm::vec3(0.75f));
 	m_GraphicsIndex0 = m_pScene->submitGraphicsObject(m_pGunMesh, &m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3( 0.0f, 1.0f, 0.1f)) * scale);
 	m_GraphicsIndex1 = m_pScene->submitGraphicsObject(m_pGunMesh, &m_GunMaterial, glm::translate(glm::mat4(1.0f), glm::vec3( 1.5f, 1.0f, 0.1f)) * scale);
@@ -368,6 +372,7 @@ void Application::release()
 	SAFEDELETE(m_pGunMesh);
 	SAFEDELETE(m_pRenderingHandler);
 	SAFEDELETE(m_pMeshRenderer);
+	SAFEDELETE(m_pShadowMapRenderer);
 	SAFEDELETE(m_pRayTracingRenderer);
 	SAFEDELETE(m_pParticleRenderer);
 	SAFEDELETE(m_pParticleTexture);
@@ -583,7 +588,7 @@ void Application::update(double dt)
 	m_pScene->updateDebugParameters();
 
 	m_pScene->updateMeshesAndGraphicsObjects();
-	
+
 	m_pRenderingHandler->onSceneUpdated(m_pScene);
 }
 

@@ -44,6 +44,7 @@ public:
 
     // Setting a renderer to nullptr will disable it
     virtual void setMeshRenderer(IRenderer* pMeshRenderer) = 0;
+    virtual void setShadowMapRenderer(IRenderer* pShadowMapRenderer) = 0;
     virtual void setRayTracer(IRenderer* pRayTracer) = 0;
     virtual void setParticleRenderer(IRenderer* pParticleRenderer) = 0;
     virtual void setImguiRenderer(IImgui* pImGui) = 0;
@@ -55,7 +56,6 @@ public:
 	virtual void setRayTracingResolutionDenominator(uint32_t denom) = 0;
 
     void setParticleEmitterHandler(ParticleEmitterHandler* pParticleEmitterHandler) { m_pParticleEmitterHandler = pParticleEmitterHandler; }
-
 
 protected:
     IGraphicsContext* m_pGraphicsContext;

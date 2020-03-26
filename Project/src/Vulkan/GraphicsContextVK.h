@@ -21,6 +21,7 @@ public:
 
 	virtual RenderingHandler* createRenderingHandler() override;
 	virtual IRenderer* createMeshRenderer(RenderingHandler* pRenderingHandler) override;
+	virtual IRenderer* createShadowMapRenderer(RenderingHandler* pRenderingHandler) override;
 	virtual IRenderer* createParticleRenderer(RenderingHandler* pRenderingHandler) override;
 	virtual IRenderer* createRayTracingRenderer(RenderingHandler* pRenderingHandler) override;
 	virtual ParticleEmitterHandler* createParticleEmitterHandler() override;

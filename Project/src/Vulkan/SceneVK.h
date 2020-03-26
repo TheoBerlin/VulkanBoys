@@ -133,7 +133,7 @@ class SceneVK : public IScene
 public:
 	SceneVK(IGraphicsContext* pContext, const RenderingHandlerVK* pRenderingHandler);
 	~SceneVK();
-	
+
 	DECL_NO_COPY(SceneVK);
 
 	virtual bool loadFromFile(const std::string& dir, const std::string& fileName) override;
@@ -148,16 +148,23 @@ public:
 	virtual uint32_t submitGraphicsObject(const IMesh* pMesh, const Material* pMaterial, const glm::mat4& transform = glm::mat4(1.0f), uint8_t customMask = 0x80) override;
 	virtual void updateGraphicsObjectTransform(uint32_t index, const glm::mat4& transform) override;
 
+	// Used for geometry rendering
+	void UpdateSceneData();
+	DescriptorSetVK* getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial);
+
+	FORCEINLINE PipelineLayoutVK* getGeometryPipelineLayout() 			{ return m_pGeometryPipelineLayout; }
+	FORCEINLINE DescriptorSetLayoutVK* getGeometryDescriptorSetLayout() { return m_pGeometryDescriptorSetLayout; }
+
+	const Camera& getCamera() { return m_Camera; }
+
 	virtual void renderUI() override;
 	virtual void updateDebugParameters() override;
 
 	virtual LightSetup& getLightSetup() override { return m_LightSetup; }
-	
+
 	// Used for geometry rendering
 	bool updateSceneData();
 	void copySceneData(CommandBufferVK* pTransferBuffer);
-	
-	DescriptorSetVK* getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial);
 
 	const Camera&							getCamera() const					{ return m_Camera; }
 	const std::vector<GraphicsObjectVK>&	getGraphicsObjects() const			{ return m_GraphicsObjects; }
