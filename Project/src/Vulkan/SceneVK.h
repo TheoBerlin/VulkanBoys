@@ -155,6 +155,7 @@ public:
 	DescriptorSetVK* getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial);
 
 	PipelineLayoutVK* getGeometryPipelineLayout() { return m_pGeometryPipelineLayout; }
+	DescriptorSetLayoutVK* getGeometryDescriptorSetLayout() { return m_pGeometryDescriptorSetLayout; }
 
 	const Camera& getCamera() { return m_Camera; }
 

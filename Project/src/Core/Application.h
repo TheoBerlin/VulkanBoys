@@ -58,7 +58,7 @@ public:
 
 	FORCEINLINE IWindow*	getWindow() const { return m_pWindow; }
 	FORCEINLINE IScene*		getScene() const  { return m_pScene; }
-	
+
 	static Application* get();
 
 private:
@@ -75,6 +75,7 @@ private:
 	IGraphicsContext* m_pContext;
 	RenderingHandler* m_pRenderingHandler;
 	IRenderer* m_pMeshRenderer;
+	IRenderer* m_pShadowMapRenderer;
 	IRenderer* m_pParticleRenderer;
 	IRenderer* m_pRayTracingRenderer;
 	IImgui* m_pImgui;

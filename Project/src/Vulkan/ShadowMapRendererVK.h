@@ -32,6 +32,9 @@ public:
 
 	virtual void renderUI() override;
 
+	void updateBuffers(SceneVK* pScene);
+
+	const VkViewport& getViewport() const { return m_Viewport; }
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
 
 	void submitMesh(const MeshVK* pMesh, const Material* pMaterial, uint32_t transformIndex);
@@ -41,6 +44,7 @@ public:
 
 private:
 	bool createCommandPoolAndBuffers();
+	bool createPipelineLayout();
 	bool createPipeline();
 	void createProfiler();
 
@@ -54,8 +58,10 @@ private:
 	CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
 	CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];
 
-	RenderPassVK* m_pRenderPass;
+	DescriptorSetLayoutVK* m_pDescriptorSetLayout;
+	DescriptorPoolVK* m_pDescriptorPool;
 
+	PipelineLayoutVK* m_pPipelineLayout;
 	PipelineVK* m_pPipeline;
 
 	VkViewport m_Viewport;

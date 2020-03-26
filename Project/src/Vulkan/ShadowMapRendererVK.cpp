@@ -25,11 +25,16 @@
 
 #include <array>
 
+#define LIGHT_TRANSFORMS_BINDING 9
+
 ShadowMapRendererVK::ShadowMapRendererVK(GraphicsContextVK* pGraphicsContext, RenderingHandlerVK* pRenderingHandler)
 	:m_pGraphicsContext(pGraphicsContext),
 	m_pRenderingHandler(pRenderingHandler),
 	m_pProfiler(nullptr),
-	m_pPipeline(nullptr)
+	m_pPipeline(nullptr),
+	m_pDescriptorSetLayout(nullptr),
+	m_pDescriptorPool(nullptr),
+	m_pPipelineLayout(nullptr)
 {
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		m_ppCommandPools[i] = nullptr;
@@ -45,12 +50,20 @@ ShadowMapRendererVK::~ShadowMapRendererVK()
 		SAFEDELETE(m_ppCommandPools[i]);
 	}
 
+	SAFEDELETE(m_pDescriptorSetLayout);
+	SAFEDELETE(m_pDescriptorPool);
+	SAFEDELETE(m_pPipelineLayout);
+
 	SAFEDELETE(m_pPipeline);
 }
 
 bool ShadowMapRendererVK::init()
 {
 	if (!createCommandPoolAndBuffers()) {
+		return false;
+	}
+
+	if (!createPipelineLayout()) {
 		return false;
 	}
 
@@ -69,14 +82,19 @@ void ShadowMapRendererVK::beginFrame(IScene* pScene)
 
 	DirectionalLight* pDirectionalLight = pScene->getLightSetup().getDirectionalLight();
 	FrameBufferVK* pFrameBuffer = reinterpret_cast<FrameBufferVK*>(pDirectionalLight->getFrameBuffer());
-	if (!pFrameBuffer && !createShadowMapResources(pDirectionalLight)) {
-		LOG("Failed to create shadow map resources for directional light");
-		return;
+	if (!pFrameBuffer) {
+		if (!createShadowMapResources(pDirectionalLight)) {
+			LOG("Failed to create shadow map resources for directional light");
+			return;
+		}
+
+		pFrameBuffer = reinterpret_cast<FrameBufferVK*>(pDirectionalLight->getFrameBuffer());
 	}
 
 	// Prepare for frame
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
 
+	m_pProfiler->reset(frameIndex, m_pRenderingHandler->getCurrentGraphicsCommandBuffer());
 	m_ppCommandBuffers[frameIndex]->reset(false);
 	m_ppCommandPools[frameIndex]->reset();
 
@@ -84,7 +102,7 @@ void ShadowMapRendererVK::beginFrame(IScene* pScene)
 	VkCommandBufferInheritanceInfo inheritanceInfo = {};
 	inheritanceInfo.sType		= VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
 	inheritanceInfo.pNext		= nullptr;
-	inheritanceInfo.renderPass	= m_pRenderingHandler->getParticleRenderPass()->getRenderPass();
+	inheritanceInfo.renderPass	= m_pRenderingHandler->getShadowMapRenderPass()->getRenderPass();
 	inheritanceInfo.subpass		= 0;
 	inheritanceInfo.framebuffer = pFrameBuffer->getFrameBuffer();
 
@@ -95,6 +113,10 @@ void ShadowMapRendererVK::beginFrame(IScene* pScene)
 	m_ppCommandBuffers[frameIndex]->setScissorRects(&m_ScissorRect, 1);
 
 	m_ppCommandBuffers[frameIndex]->bindPipeline(m_pPipeline);
+
+	// Bind the directional light's descriptor set
+	DescriptorSetVK* pDescriptorSet = reinterpret_cast<DescriptorSetVK*>(pDirectionalLight->getDescriptorSet());
+	m_ppCommandBuffers[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 1, 1, &pDescriptorSet, 0, nullptr);
 }
 
 void ShadowMapRendererVK::endFrame(IScene* pScene)
@@ -110,18 +132,58 @@ void ShadowMapRendererVK::endFrame(IScene* pScene)
 void ShadowMapRendererVK::renderUI()
 {}
 
+void ShadowMapRendererVK::updateBuffers(SceneVK* pScene)
+{
+	LightSetup& lightSetup = pScene->getLightSetup();
+
+	if (lightSetup.hasDirectionalLight()) {
+		DirectionalLight* pDirectionalLight = lightSetup.getDirectionalLight();
+
+		if (!pDirectionalLight->getTransformBuffer()) {
+			// Create transform buffer and descriptor set
+			BufferVK* pBuffer = DBG_NEW BufferVK(m_pGraphicsContext->getDevice());
+
+			BufferParams bufferParams = {};
+			bufferParams.IsExclusive = true;
+			bufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+			bufferParams.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+			bufferParams.SizeInBytes = sizeof(LightTransformBuffer);
+
+			pBuffer->init(bufferParams);
+
+			DescriptorSetVK* pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
+			pDescriptorSet->writeUniformBufferDescriptor(pBuffer, LIGHT_TRANSFORMS_BINDING);
+
+			pDirectionalLight->setTransformBuffer(pBuffer);
+			pDirectionalLight->setDescriptorSet(pDescriptorSet);
+		}
+
+		if (pDirectionalLight->m_IsUpdated) {
+			BufferVK* pBuffer = reinterpret_cast<BufferVK*>(pDirectionalLight->getTransformBuffer());
+			CommandBufferVK* pCommandBuffer = m_pRenderingHandler->getCurrentGraphicsCommandBuffer();
+
+			LightTransformBuffer transformBufferData = {};
+			pDirectionalLight->createLightTransformBuffer(transformBufferData, {m_Viewport.width, m_Viewport.height});
+
+			pCommandBuffer->updateBuffer(pBuffer, 0, &transformBufferData, sizeof(LightTransformBuffer));
+
+			pDirectionalLight->m_IsUpdated = false;
+		}
+	}
+}
+
 void ShadowMapRendererVK::submitMesh(const MeshVK* pMesh, const Material* pMaterial, uint32_t transformIndex)
 {
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
 
 	SceneVK* pScene = reinterpret_cast<SceneVK*>(m_pRenderingHandler->getScene());
-	m_ppCommandBuffers[frameIndex]->pushConstants(pScene->getGeometryPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(uint32_t), &transformIndex);
+	m_ppCommandBuffers[frameIndex]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(uint32_t), &transformIndex);
 
 	BufferVK* pIndexBuffer = reinterpret_cast<BufferVK*>(pMesh->getIndexBuffer());
 	m_ppCommandBuffers[frameIndex]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
 	DescriptorSetVK* pDescriptorSet = m_pScene->getDescriptorSetFromMeshAndMaterial(pMesh, pMaterial);
-	m_ppCommandBuffers[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pScene->getGeometryPipelineLayout(), 0, 1, &pDescriptorSet, 0, nullptr);
+	m_ppCommandBuffers[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
 
 	m_ppCommandBuffers[frameIndex]->drawIndexInstanced(pMesh->getIndexCount(), 1, 0, 0, 0);
 }
@@ -162,6 +224,43 @@ bool ShadowMapRendererVK::createCommandPoolAndBuffers()
 	return true;
 }
 
+bool ShadowMapRendererVK::createPipelineLayout()
+{
+	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
+
+	// Pipeline contains two descriptor set layouts; one for general mesh rendering,
+	// and one specific for shadow map rendering
+	SceneVK* pScene = reinterpret_cast<SceneVK*>(m_pRenderingHandler->getScene());
+
+	DescriptorSetLayoutVK* pMeshDescriptorSetLayout = pScene->getGeometryDescriptorSetLayout();
+
+	m_pDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(pDevice);
+	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, LIGHT_TRANSFORMS_BINDING, 1);
+	if (!m_pDescriptorSetLayout->finalize()) {
+		return false;
+	}
+
+	// Descriptor pool
+	DescriptorCounts descriptorCounts	= {};
+	descriptorCounts.m_SampledImages	= 128;
+	descriptorCounts.m_StorageBuffers	= 128;
+	descriptorCounts.m_UniformBuffers	= 128;
+
+	m_pDescriptorPool = DBG_NEW DescriptorPoolVK(pDevice);
+	if (!m_pDescriptorPool->init(descriptorCounts, 256)) {
+		LOG("Failed to initialize descriptor pool");
+		return false;
+	}
+
+	VkPushConstantRange pushConstantRange = {};
+	pushConstantRange.size			= sizeof(uint32_t);
+	pushConstantRange.stageFlags	= VK_SHADER_STAGE_VERTEX_BIT;
+	pushConstantRange.offset		= 0;
+
+	m_pPipelineLayout = DBG_NEW PipelineLayoutVK(pDevice);
+	return m_pPipelineLayout->init({pMeshDescriptorSetLayout, m_pDescriptorSetLayout}, {pushConstantRange});
+}
+
 bool ShadowMapRendererVK::createPipeline()
 {
 	// Create pipeline state
@@ -175,7 +274,7 @@ bool ShadowMapRendererVK::createPipeline()
 	m_pPipeline = DBG_NEW PipelineVK(m_pGraphicsContext->getDevice());
 
 	VkPipelineRasterizationStateCreateInfo rasterizerState = {};
-	rasterizerState.cullMode	= VK_CULL_MODE_NONE;
+	rasterizerState.cullMode	= VK_CULL_MODE_FRONT_BIT;
 	rasterizerState.frontFace	= VK_FRONT_FACE_CLOCKWISE;
 	rasterizerState.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizerState.lineWidth	= 1.0f;
@@ -188,8 +287,11 @@ bool ShadowMapRendererVK::createPipeline()
 	depthStencilState.stencilTestEnable	= VK_FALSE;
 	m_pPipeline->setDepthStencilState(depthStencilState);
 
-	SceneVK* pScene = reinterpret_cast<SceneVK*>(m_pRenderingHandler->getScene());
-	m_pPipeline->finalizeGraphics({pVertexShader}, m_pRenderingHandler->getParticleRenderPass(), pScene->getGeometryPipelineLayout());
+	VkPipelineColorBlendAttachmentState blendAttachment = {};
+	blendAttachment.blendEnable			= VK_FALSE;
+	m_pPipeline->addColorBlendAttachment(blendAttachment);
+
+	m_pPipeline->finalizeGraphics({pVertexShader}, m_pRenderingHandler->getShadowMapRenderPass(), m_pPipelineLayout);
 	SAFEDELETE(pVertexShader);
 
 	return true;
@@ -197,7 +299,7 @@ bool ShadowMapRendererVK::createPipeline()
 
 void ShadowMapRendererVK::createProfiler()
 {
-	m_pProfiler = DBG_NEW ProfilerVK("Shadowmap Render", m_pGraphicsContext->getDevice());
+	m_pProfiler = DBG_NEW ProfilerVK("Shadow-Map Renderer", m_pGraphicsContext->getDevice());
 }
 
 bool ShadowMapRendererVK::createShadowMapResources(DirectionalLight* directionalLight)
@@ -240,7 +342,10 @@ bool ShadowMapRendererVK::createShadowMapResources(DirectionalLight* directional
 
 	// Create framebuffer
 	pFrameBuffer = DBG_NEW FrameBufferVK(m_pGraphicsContext->getDevice());
-	pFrameBuffer->addColorAttachment(pImageView);
+	pFrameBuffer->setDepthStencilAttachment(pImageView);
+	if (!pFrameBuffer->finalize(m_pRenderingHandler->getShadowMapRenderPass(), (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height)) {
+		return false;
+	}
 
 	directionalLight->setFrameBuffer(pFrameBuffer);
 	directionalLight->setDepthImage(pImage);

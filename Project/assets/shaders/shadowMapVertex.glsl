@@ -43,7 +43,7 @@ layout(binding = 8, set = 0) buffer CombinedInstanceTransforms
 	InstanceTransforms t[];
 } u_Transforms;
 
-layout(binding = 9, set = 1) buffer LightTransforms
+layout(binding = 9, set = 1) uniform LightTransforms
 {
 	mat4 viewProj;
     mat4 invViewProj;

@@ -30,6 +30,7 @@ public:
 
 	virtual RenderingHandler* createRenderingHandler() = 0;
 	virtual IRenderer* createMeshRenderer(RenderingHandler* pRenderingHandler) = 0;
+	virtual IRenderer* createShadowMapRenderer(RenderingHandler* pRenderingHandler) = 0;
 	virtual IRenderer* createParticleRenderer(RenderingHandler* pRenderingHandler) = 0;
 	virtual IRenderer* createRayTracingRenderer(RenderingHandler* pRenderingHandler) = 0;
 	virtual ParticleEmitterHandler* createParticleEmitterHandler() = 0;
