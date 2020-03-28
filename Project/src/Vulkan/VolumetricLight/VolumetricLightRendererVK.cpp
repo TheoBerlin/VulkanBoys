@@ -36,9 +36,12 @@ VolumetricLightRendererVK::VolumetricLightRendererVK(GraphicsContextVK* pGraphic
     m_pRenderingHandler(pRenderingHandler),
     m_pProfiler(nullptr),
     m_pDescriptorPool(nullptr),
-    m_pDescriptorSetLayout(nullptr),
+    m_pDescriptorSetLayoutCommon(nullptr),
+    m_pDescriptorSetLayoutPerLight(nullptr),
+	m_pDescriptorSetCommon(nullptr),
     m_pPipelineLayout(nullptr),
-    m_pPipeline(nullptr),
+    m_pPipelinePointLight(nullptr),
+	m_pPipelineDirectionalLight(nullptr),
     m_pSampler(nullptr),
 	m_LightBufferImID(nullptr),
 	m_CurrentIndex(0)
@@ -71,10 +74,12 @@ VolumetricLightRendererVK::~VolumetricLightRendererVK()
 	SAFEDELETE(m_pLightBufferImageView);
 	SAFEDELETE(m_pLightBufferImage);
 	SAFEDELETE(m_pLightFrameBuffer);
-	SAFEDELETE(m_pDescriptorSetLayout);
+	SAFEDELETE(m_pDescriptorSetLayoutCommon);
+	SAFEDELETE(m_pDescriptorSetLayoutPerLight);
 	SAFEDELETE(m_pDescriptorPool);
 	SAFEDELETE(m_pPipelineLayout);
-	SAFEDELETE(m_pPipeline);
+	SAFEDELETE(m_pPipelinePointLight);
+	SAFEDELETE(m_pPipelineDirectionalLight);
 	SAFEDELETE(m_pSphereMesh);
 	SAFEDELETE(m_pSampler);
 }
@@ -101,7 +106,7 @@ bool VolumetricLightRendererVK::init()
 		return false;
 	}
 
-	if (!createPipeline()) {
+	if (!createPipelines()) {
 		return false;
 	}
 
@@ -160,12 +165,6 @@ void VolumetricLightRendererVK::beginFrame(IScene* pScene)
 
 	m_ppCommandBuffers[frameIndex]->setViewports(&m_Viewport, 1);
 	m_ppCommandBuffers[frameIndex]->setScissorRects(&m_ScissorRect, 1);
-
-	// Bind sphere mesh
-	BufferVK* pIndexBuffer = reinterpret_cast<BufferVK*>(m_pSphereMesh->getIndexBuffer());
-	m_ppCommandBuffers[frameIndex]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-	m_ppCommandBuffers[frameIndex]->bindPipeline(m_pPipeline);
 }
 
 void VolumetricLightRendererVK::endFrame(IScene* pScene)
@@ -188,17 +187,54 @@ void VolumetricLightRendererVK::renderLightBuffer()
 	pushConstants.viewportExtent = {m_Viewport.width, m_Viewport.height};
 	m_ppCommandBuffers[frameIndex]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &pushConstants);
 
-	std::vector<VolumetricPointLight>& volumetricPointLights = m_pLightSetup->getVolumetricPointLights();
-	for (VolumetricPointLight& pointLight : volumetricPointLights) {
-		bindDescriptorSet(pointLight);
+	m_ppCommandBuffers[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSetCommon, 0, nullptr);
 
+	renderPointLights();
+	renderDirectionalLight();
+}
+
+void VolumetricLightRendererVK::renderPointLights()
+{
+	std::vector<VolumetricPointLight>& volumetricPointLights = m_pLightSetup->getVolumetricPointLights();
+	if (volumetricPointLights.empty()) {
+		return;
+	}
+
+	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
+
+	// Bind sphere mesh
+	BufferVK* pIndexBuffer = reinterpret_cast<BufferVK*>(m_pSphereMesh->getIndexBuffer());
+	m_ppCommandBuffers[frameIndex]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+	m_ppCommandBuffers[frameIndex]->bindPipeline(m_pPipelinePointLight);
+
+	for (VolumetricPointLight& pointLight : volumetricPointLights) {
 		DescriptorSetVK* pDescriptorSet = reinterpret_cast<DescriptorSetVK*>(pointLight.getVolumetricLightDescriptorSet());
-		m_ppCommandBuffers[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
+		m_ppCommandBuffers[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 1, 1, &pDescriptorSet, 0, nullptr);
 
 		m_pProfiler->beginTimestamp(&m_TimestampDraw);
 		m_ppCommandBuffers[frameIndex]->drawIndexInstanced(m_pSphereMesh->getIndexCount(), 1, 0, 0, 0);
 		m_pProfiler->endTimestamp(&m_TimestampDraw);
 	}
+}
+
+void VolumetricLightRendererVK::renderDirectionalLight()
+{
+	if (!m_pLightSetup->hasDirectionalLight()) {
+		return;
+	}
+
+	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
+
+	m_ppCommandBuffers[frameIndex]->bindPipeline(m_pPipelineDirectionalLight);
+
+	DirectionalLight* pDirectionalLight = m_pLightSetup->getDirectionalLight();
+	DescriptorSetVK* pDescriptorSet = reinterpret_cast<DescriptorSetVK*>(pDirectionalLight->getDescriptorSet());
+	m_ppCommandBuffers[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 1, 1, &pDescriptorSet, 0, nullptr);
+
+	m_pProfiler->beginTimestamp(&m_TimestampDraw);
+	m_ppCommandBuffers[frameIndex]->drawInstanced(3, 1, 0, 0);
+	m_pProfiler->endTimestamp(&m_TimestampDraw);
 }
 
 void VolumetricLightRendererVK::setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY)
@@ -243,6 +279,12 @@ void VolumetricLightRendererVK::onWindowResize(uint32_t width, uint32_t height)
 
 	m_Viewport.width = (float)width;
 	m_Viewport.height = (float)height;
+
+	// Refresh depth buffer descriptor
+	GBufferVK* pGBuffer = m_pRenderingHandler->getGBuffer();
+	ImageViewVK* pDepthImageView = pGBuffer->getDepthAttachment();
+
+	m_pDescriptorSetCommon->writeCombinedImageDescriptors(&pDepthImageView, &m_pSampler, 1, DEPTH_BUFFER_BINDING);
 }
 
 void VolumetricLightRendererVK::renderUI()
@@ -251,30 +293,51 @@ void VolumetricLightRendererVK::renderUI()
 
 	// Display light buffer
 	if (ImGui::Begin("Volumetric Light", NULL, ImGuiWindowFlags_NoResize)) {
-		// Settings tweaking
-		// std::vector<VolumetricPointLight>& volumetricPointLights = m_pLightSetup->getVolumetricPointLights();
+		// Point lights UI
+		std::vector<VolumetricPointLight>& volumetricPointLights = m_pLightSetup->getVolumetricPointLights();
+		if (!volumetricPointLights.empty()) {
+			ImGui::Text("Point lights");
+			ImGui::SliderInt("Light selection", &m_CurrentIndex, 0, int(volumetricPointLights.size() - 1));
 
-		// ImGui::SliderInt("Light selection", &m_CurrentIndex, 0, int(volumetricPointLights.size() - 1));
+			VolumetricPointLight& currentLight = volumetricPointLights[(size_t)m_CurrentIndex];
+			float particleG = currentLight.getParticleG();
+			float scatterAmount = currentLight.getScatterAmount();
+			float radius = currentLight.getRadius();
 
-		// VolumetricPointLight& currentLight = volumetricPointLights[(size_t)m_CurrentIndex];
-		// float particleG = currentLight.getParticleG();
-		// float scatterAmount = currentLight.getScatterAmount();
-		// float radius = currentLight.getRadius();
+			if (ImGui::SliderFloat("Particle G", &particleG, 0.0f, 1.0f)) {
+				currentLight.setParticleG(particleG);
+			}
 
-		// if (ImGui::SliderFloat("Particle G", &particleG, 0.0f, 1.0f)) {
-		// 	currentLight.setParticleG(particleG);
-		// }
+			if (ImGui::SliderFloat("Scatter Amount", &scatterAmount, 0.0f, 1.0f)) {
+				currentLight.setScatterAmount(scatterAmount);
+			}
 
-		// if (ImGui::SliderFloat("Scatter Amount", &scatterAmount, 0.0f, 1.0f)) {
-		// 	currentLight.setScatterAmount(scatterAmount);
-		// }
+			if (ImGui::SliderFloat("Radius", &radius, 0.0f, 8.0f)) {
+				currentLight.setRadius(radius);
+			}
 
-		// if (ImGui::SliderFloat("Radius", &radius, 0.0f, 8.0f)) {
-		// 	currentLight.setRadius(radius);
-		// }
+		}
 
-		// // Display lightbuffer
-		// ImGui::Image(m_LightBufferImID, {m_Viewport.width * 0.25f, m_Viewport.height * 0.25f});
+		if (m_pLightSetup->hasDirectionalLight()) {
+			ImGui::Text("Directional light");
+
+			DirectionalLight* pDirectionalLight = m_pLightSetup->getDirectionalLight();
+			float particleG = pDirectionalLight->getParticleG();
+			float scatterAmount = pDirectionalLight->getScatterAmount();
+
+			if (ImGui::SliderFloat("Particle G", &particleG, 0.0f, 1.0f)) {
+				pDirectionalLight->setParticleG(particleG);
+			}
+
+			if (ImGui::SliderFloat("Scatter Amount", &scatterAmount, 0.0f, 1.0f)) {
+				pDirectionalLight->setScatterAmount(scatterAmount);
+			}
+		}
+
+		if (m_LightBufferImID) {
+			// Display lightbuffer
+			ImGui::Image(m_LightBufferImID, {m_Viewport.width * 0.25f, m_Viewport.height * 0.25f});
+		}
 	}
 
 	ImGui::End();
@@ -403,24 +466,26 @@ bool VolumetricLightRendererVK::createPipelineLayout()
 	VkSampler sampler = m_pSampler->getSampler();
 
 	// Descriptor Set Layout
-	m_pDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(pDevice);
+	m_pDescriptorSetLayoutCommon = DBG_NEW DescriptorSetLayoutVK(pDevice);
+	m_pDescriptorSetLayoutPerLight = DBG_NEW DescriptorSetLayoutVK(pDevice);
 
 	VkPushConstantRange pushConstantRange = {};
 	pushConstantRange.size = sizeof(PushConstants);
 	pushConstantRange.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 	pushConstantRange.offset = 0;
 
-	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, VERTEX_BINDING, 1);
-	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, VOLUMETRIC_LIGHT_BINDING, 1);
-	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, CAMERA_BINDING, 1);
-	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, &sampler, DEPTH_BUFFER_BINDING, 1);
+	m_pDescriptorSetLayoutCommon->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, VERTEX_BINDING, 1);
+	m_pDescriptorSetLayoutCommon->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, CAMERA_BINDING, 1);
+	m_pDescriptorSetLayoutCommon->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, &sampler, DEPTH_BUFFER_BINDING, 1);
+	m_pDescriptorSetLayoutPerLight->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, LIGHT_BUFFER_BINDING, 1);
+	m_pDescriptorSetLayoutPerLight->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, &sampler, SHADOW_MAP_BINDING, 1);
 
-	if (!m_pDescriptorSetLayout->finalize()) {
+	if (!m_pDescriptorSetLayoutCommon->finalize() || !m_pDescriptorSetLayoutPerLight->finalize()) {
 		LOG("Failed to finalize descriptor set layout");
 		return false;
 	}
 
-	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { m_pDescriptorSetLayout };
+	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { m_pDescriptorSetLayoutCommon, m_pDescriptorSetLayoutPerLight };
 
 	// Descriptor pool
 	DescriptorCounts descriptorCounts	= {};
@@ -434,49 +499,93 @@ bool VolumetricLightRendererVK::createPipelineLayout()
 		return false;
 	}
 
+	// Create common descriptor set
+	GBufferVK* pGBuffer = m_pRenderingHandler->getGBuffer();
+	ImageViewVK* pDepthImageView = pGBuffer->getDepthAttachment();
+
+	BufferVK* pVertexBuffer = reinterpret_cast<BufferVK*>(m_pSphereMesh->getVertexBuffer());
+
+	m_pDescriptorSetCommon = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayoutCommon);
+	m_pDescriptorSetCommon->writeStorageBufferDescriptor(pVertexBuffer, VERTEX_BINDING);
+	m_pDescriptorSetCommon->writeUniformBufferDescriptor(m_pRenderingHandler->getCameraBufferGraphics(), CAMERA_BINDING);
+	m_pDescriptorSetCommon->writeCombinedImageDescriptors(&pDepthImageView, &m_pSampler, 1, DEPTH_BUFFER_BINDING);
+
 	m_pPipelineLayout = DBG_NEW PipelineLayoutVK(pDevice);
 	return m_pPipelineLayout->init(descriptorSetLayouts, {pushConstantRange});
 }
 
-bool VolumetricLightRendererVK::createPipeline()
+bool VolumetricLightRendererVK::createPipelines()
 {
-	// Create pipeline state
+	// Create pipeline state for point lights
 	IShader* pVertexShader = m_pGraphicsContext->createShader();
-	pVertexShader->initFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/volumetricLight/volumetricVertex.spv");
+	pVertexShader->initFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/volumetricLight/volumetricPointVertex.spv");
 	if (!pVertexShader->finalize()) {
-        LOG("Failed to create vertex shader for volumetric light renderer");
+        LOG("Failed to create vertex shader for volumetric point lights");
 		return false;
 	}
 
 	IShader* pPixelShader = m_pGraphicsContext->createShader();
-	pPixelShader->initFromFile(EShader::PIXEL_SHADER, "main", "assets/shaders/volumetricLight/volumetricFragment.spv");
+	pPixelShader->initFromFile(EShader::PIXEL_SHADER, "main", "assets/shaders/volumetricLight/volumetricPointFragment.spv");
 	if (!pPixelShader->finalize()) {
-		LOG("Failed to create pixel shader for volumetric light renderer");
+		LOG("Failed to create pixel shader for volumetric point lights");
 		return false;
 	}
 
 	std::vector<const IShader*> shaders = { pVertexShader, pPixelShader };
-	m_pPipeline = DBG_NEW PipelineVK(m_pGraphicsContext->getDevice());
+	m_pPipelinePointLight = DBG_NEW PipelineVK(m_pGraphicsContext->getDevice());
 
 	VkPipelineColorBlendAttachmentState blendAttachment = {};
 	blendAttachment.blendEnable			= VK_FALSE;
 	blendAttachment.colorWriteMask		= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	m_pPipeline->addColorBlendAttachment(blendAttachment);
+	m_pPipelinePointLight->addColorBlendAttachment(blendAttachment);
 
 	VkPipelineRasterizationStateCreateInfo rasterizerState = {};
 	rasterizerState.cullMode	= VK_CULL_MODE_FRONT_BIT;
 	rasterizerState.frontFace	= VK_FRONT_FACE_CLOCKWISE;
 	rasterizerState.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizerState.lineWidth	= 1.0f;
-	m_pPipeline->setRasterizerState(rasterizerState);
+	m_pPipelinePointLight->setRasterizerState(rasterizerState);
 
 	VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
 	depthStencilState.depthTestEnable	= VK_FALSE;
 	depthStencilState.depthWriteEnable	= VK_FALSE;
-	m_pPipeline->setDepthStencilState(depthStencilState);
+	m_pPipelinePointLight->setDepthStencilState(depthStencilState);
 
-	if (!m_pPipeline->finalizeGraphics(shaders, m_pLightBufferPass, m_pPipelineLayout)) {
-		LOG("Failed to create volumetric lighting pipeline");
+	if (!m_pPipelinePointLight->finalizeGraphics(shaders, m_pLightBufferPass, m_pPipelineLayout)) {
+		LOG("Failed to create volumetric point light pipeline");
+		return false;
+	}
+
+	SAFEDELETE(pVertexShader);
+	SAFEDELETE(pPixelShader);
+
+	// Create pipeline state for directional light
+	pVertexShader = m_pGraphicsContext->createShader();
+	pVertexShader->initFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/fullscreenVertex.spv");
+	if (!pVertexShader->finalize()) {
+        LOG("Failed to create vertex shader for volumetric directional light");
+		return false;
+	}
+
+	pPixelShader = m_pGraphicsContext->createShader();
+	pPixelShader->initFromFile(EShader::PIXEL_SHADER, "main", "assets/shaders/volumetricLight/volumetricDirectionalFragment.spv");
+	if (!pPixelShader->finalize()) {
+		LOG("Failed to create pixel shader for volumetric directional light");
+		return false;
+	}
+
+	shaders = { pVertexShader, pPixelShader };
+	m_pPipelineDirectionalLight = DBG_NEW PipelineVK(m_pGraphicsContext->getDevice());
+
+	m_pPipelineDirectionalLight->addColorBlendAttachment(blendAttachment);
+
+	rasterizerState.cullMode = VK_CULL_MODE_NONE;
+	m_pPipelineDirectionalLight->setRasterizerState(rasterizerState);
+
+	m_pPipelineDirectionalLight->setDepthStencilState(depthStencilState);
+
+	if (!m_pPipelineDirectionalLight->finalizeGraphics(shaders, m_pLightBufferPass, m_pPipelineLayout)) {
+		LOG("Failed to create volumetric directional light pipeline");
 		return false;
 	}
 
@@ -496,15 +605,6 @@ void VolumetricLightRendererVK::createProfiler()
 {
 	m_pProfiler = DBG_NEW ProfilerVK("Volumetric Light Renderer", m_pGraphicsContext->getDevice());
 	m_pProfiler->initTimestamp(&m_TimestampDraw, "Draw");
-}
-
-void VolumetricLightRendererVK::bindDescriptorSet(VolumetricPointLight& pointLight)
-{
-    // Bind descriptor set
-	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
-
-	DescriptorSetVK* pDescriptorSet = reinterpret_cast<DescriptorSetVK*>(pointLight.getVolumetricLightDescriptorSet());
-	m_ppCommandBuffers[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
 }
 
 bool VolumetricLightRendererVK::createRenderResources(VolumetricPointLight& pointLight)
@@ -530,16 +630,8 @@ bool VolumetricLightRendererVK::createRenderResources(VolumetricPointLight& poin
 	pCommandBuffer->updateBuffer(pLightBuffer, 0, &buffer, sizeof(VolumetricPointLightBuffer));
 
     // Create descriptor set
-	BufferVK* pVertexBuffer = reinterpret_cast<BufferVK*>(m_pSphereMesh->getVertexBuffer());
-
-	GBufferVK* pGBuffer = m_pRenderingHandler->getGBuffer();
-	ImageViewVK* pDepthImageView = pGBuffer->getDepthAttachment();
-
-    DescriptorSetVK* pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
-	pDescriptorSet->writeStorageBufferDescriptor(pVertexBuffer, VERTEX_BINDING);
+    DescriptorSetVK* pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayoutPerLight);
 	pDescriptorSet->writeUniformBufferDescriptor(pLightBuffer, VOLUMETRIC_LIGHT_BINDING);
-	pDescriptorSet->writeUniformBufferDescriptor(m_pRenderingHandler->getCameraBufferGraphics(), CAMERA_BINDING);
-	pDescriptorSet->writeCombinedImageDescriptors(&pDepthImageView, &m_pSampler, 1, DEPTH_BUFFER_BINDING);
     pointLight.setVolumetricLightDescriptorSet(pDescriptorSet);
 
 	pointLight.setVolumetricLightBuffer(pLightBuffer);

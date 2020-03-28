@@ -413,18 +413,8 @@ void RenderingHandlerVK::render(IScene* pScene)
 
 		m_pVolumetricLightRenderer->updateBuffers();
 
-		RenderPassVK* pLightBufferPass = m_pVolumetricLightRenderer->getLightBufferPass();
-		FrameBufferVK* pLightFrameBuffer = m_pVolumetricLightRenderer->getLightFrameBuffer();
-		const VkViewport& viewport = m_pVolumetricLightRenderer->getViewport();
-		VkClearValue clearValue = m_pVolumetricLightRenderer->getLightBufferClearColor();
-
 		m_pVolumetricLightRenderer->renderLightBuffer();
 		m_pVolumetricLightRenderer->endFrame(pScene);
-
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(pLightBufferPass, pLightFrameBuffer, (uint32_t)viewport.width, (uint32_t)viewport.height, &clearValue, 1, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pVolumetricLightRenderer->getCommandBuffer(m_CurrentFrame));
-
-		m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
 	}
 
 	if (m_pRayTracer)
@@ -534,6 +524,18 @@ void RenderingHandlerVK::render(IScene* pScene)
 			pDevice->executeGraphics(m_ppGraphicsCommandBuffers[m_CurrentFrame], geometryWaitSemphores, geometryWaitStages, 1, signalSemaphores, 2);
 		}
 		m_ppGraphicsCommandBuffers2[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+	}
+
+	if (m_pVolumetricLightRenderer) {
+		RenderPassVK* pLightBufferPass = m_pVolumetricLightRenderer->getLightBufferPass();
+		FrameBufferVK* pLightFrameBuffer = m_pVolumetricLightRenderer->getLightFrameBuffer();
+		const VkViewport& viewport = m_pVolumetricLightRenderer->getViewport();
+		VkClearValue clearValue = m_pVolumetricLightRenderer->getLightBufferClearColor();
+
+		m_ppGraphicsCommandBuffers2[m_CurrentFrame]->beginRenderPass(pLightBufferPass, pLightFrameBuffer, (uint32_t)viewport.width, (uint32_t)viewport.height, &clearValue, 1, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+		m_ppGraphicsCommandBuffers2[m_CurrentFrame]->executeSecondary(m_pVolumetricLightRenderer->getCommandBuffer(m_CurrentFrame));
+
+		m_ppGraphicsCommandBuffers2[m_CurrentFrame]->endRenderPass();
 	}
 
 	//TODO: Combine these into one renderpass

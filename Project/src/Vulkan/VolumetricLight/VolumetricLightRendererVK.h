@@ -61,15 +61,17 @@ private:
         uint32_t raymarchSteps;
     };
 
+    void renderPointLights();
+    void renderDirectionalLight();
+
     bool createCommandPoolAndBuffers();
     bool createRenderPass();
     bool createFrameBuffer();
 	bool createPipelineLayout();
-	bool createPipeline();
+	bool createPipelines();
 	bool createSphereMesh();
 	void createProfiler();
 
-    void bindDescriptorSet(VolumetricPointLight& pointLight);
     bool createRenderResources(VolumetricPointLight& pointLight);
 
 private:
@@ -94,10 +96,14 @@ private:
 	CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];
 
 	DescriptorPoolVK* m_pDescriptorPool;
-    DescriptorSetLayoutVK* m_pDescriptorSetLayout;
+    DescriptorSetLayoutVK* m_pDescriptorSetLayoutCommon;
+    DescriptorSetLayoutVK* m_pDescriptorSetLayoutPerLight;
+    DescriptorSetVK* m_pDescriptorSetCommon;
 
     PipelineLayoutVK* m_pPipelineLayout;
-	PipelineVK* m_pPipeline;
+
+	PipelineVK* m_pPipelinePointLight;
+	PipelineVK* m_pPipelineDirectionalLight;
 
     VkViewport m_Viewport;
 	VkRect2D m_ScissorRect;

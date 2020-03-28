@@ -9,19 +9,7 @@ layout (push_constant) uniform PushConstants
 	uint raymarchSteps;
 } g_PushConstants;
 
-layout (binding = 1) uniform VolumetricPointLight
-{
-	mat4 worldMatrix;
-
-	// Light data
-	vec4 position, color;
-	float radius, scatterAmount;
-
-	// Determines the portion of forward scattered light
-	float particleG;
-} g_Light;
-
-layout (binding = 2) uniform CameraMatrices
+layout (binding = 2, set = 0) uniform CameraMatrices
 {
 	mat4 Projection;
 	mat4 View;
@@ -32,7 +20,19 @@ layout (binding = 2) uniform CameraMatrices
 	vec4 Position;
 } g_Camera;
 
-layout(binding = 3) uniform sampler2D u_DepthBuffer;
+layout(binding = 3, set = 0) uniform sampler2D u_DepthBuffer;
+
+layout (binding = 9, set = 1) uniform VolumetricPointLight
+{
+	mat4 worldMatrix;
+
+	// Light data
+	vec4 position, color;
+	float radius, scatterAmount;
+
+	// Determines the portion of forward scattered light
+	float particleG;
+} g_Light;
 
 layout(location = 0) in vec3 in_WorldPosition;
 

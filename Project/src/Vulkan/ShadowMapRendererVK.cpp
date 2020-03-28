@@ -25,8 +25,6 @@
 
 #include <array>
 
-#define LIGHT_TRANSFORMS_BINDING 9
-
 ShadowMapRendererVK::ShadowMapRendererVK(GraphicsContextVK* pGraphicsContext, RenderingHandlerVK* pRenderingHandler)
 	:m_pGraphicsContext(pGraphicsContext),
 	m_pRenderingHandler(pRenderingHandler),
@@ -34,7 +32,9 @@ ShadowMapRendererVK::ShadowMapRendererVK(GraphicsContextVK* pGraphicsContext, Re
 	m_pPipeline(nullptr),
 	m_pDescriptorSetLayout(nullptr),
 	m_pDescriptorPool(nullptr),
-	m_pPipelineLayout(nullptr)
+	m_pPipelineLayout(nullptr),
+	m_pScene(nullptr),
+	m_pShadowMapSampler(nullptr)
 {
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		m_ppCommandPools[i] = nullptr;
@@ -53,13 +53,18 @@ ShadowMapRendererVK::~ShadowMapRendererVK()
 	SAFEDELETE(m_pDescriptorSetLayout);
 	SAFEDELETE(m_pDescriptorPool);
 	SAFEDELETE(m_pPipelineLayout);
-
 	SAFEDELETE(m_pPipeline);
+
+	SAFEDELETE(m_pShadowMapSampler);
 }
 
 bool ShadowMapRendererVK::init()
 {
 	if (!createCommandPoolAndBuffers()) {
+		return false;
+	}
+
+	if (!createSampler()) {
 		return false;
 	}
 
@@ -82,14 +87,6 @@ void ShadowMapRendererVK::beginFrame(IScene* pScene)
 
 	DirectionalLight* pDirectionalLight = pScene->getLightSetup().getDirectionalLight();
 	FrameBufferVK* pFrameBuffer = reinterpret_cast<FrameBufferVK*>(pDirectionalLight->getFrameBuffer());
-	if (!pFrameBuffer) {
-		if (!createShadowMapResources(pDirectionalLight)) {
-			LOG("Failed to create shadow map resources for directional light");
-			return;
-		}
-
-		pFrameBuffer = reinterpret_cast<FrameBufferVK*>(pDirectionalLight->getFrameBuffer());
-	}
 
 	// Prepare for frame
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
@@ -140,32 +137,17 @@ void ShadowMapRendererVK::updateBuffers(SceneVK* pScene)
 		DirectionalLight* pDirectionalLight = lightSetup.getDirectionalLight();
 
 		if (!pDirectionalLight->getTransformBuffer()) {
-			// Create transform buffer and descriptor set
-			BufferVK* pBuffer = DBG_NEW BufferVK(m_pGraphicsContext->getDevice());
-
-			BufferParams bufferParams = {};
-			bufferParams.IsExclusive = true;
-			bufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-			bufferParams.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-			bufferParams.SizeInBytes = sizeof(LightTransformBuffer);
-
-			pBuffer->init(bufferParams);
-
-			DescriptorSetVK* pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
-			pDescriptorSet->writeUniformBufferDescriptor(pBuffer, LIGHT_TRANSFORMS_BINDING);
-
-			pDirectionalLight->setTransformBuffer(pBuffer);
-			pDirectionalLight->setDescriptorSet(pDescriptorSet);
+			createShadowMapResources(pDirectionalLight);
 		}
 
 		if (pDirectionalLight->m_IsUpdated) {
 			BufferVK* pBuffer = reinterpret_cast<BufferVK*>(pDirectionalLight->getTransformBuffer());
 			CommandBufferVK* pCommandBuffer = m_pRenderingHandler->getCurrentGraphicsCommandBuffer();
 
-			LightTransformBuffer transformBufferData = {};
+			DirectionalLightBuffer transformBufferData = {};
 			pDirectionalLight->createLightTransformBuffer(transformBufferData, {m_Viewport.width, m_Viewport.height});
 
-			pCommandBuffer->updateBuffer(pBuffer, 0, &transformBufferData, sizeof(LightTransformBuffer));
+			pCommandBuffer->updateBuffer(pBuffer, 0, &transformBufferData, sizeof(DirectionalLightBuffer));
 
 			pDirectionalLight->m_IsUpdated = false;
 		}
@@ -176,7 +158,6 @@ void ShadowMapRendererVK::submitMesh(const MeshVK* pMesh, const Material* pMater
 {
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
 
-	SceneVK* pScene = reinterpret_cast<SceneVK*>(m_pRenderingHandler->getScene());
 	m_ppCommandBuffers[frameIndex]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(uint32_t), &transformIndex);
 
 	BufferVK* pIndexBuffer = reinterpret_cast<BufferVK*>(pMesh->getIndexBuffer());
@@ -233,9 +214,11 @@ bool ShadowMapRendererVK::createPipelineLayout()
 	SceneVK* pScene = reinterpret_cast<SceneVK*>(m_pRenderingHandler->getScene());
 
 	DescriptorSetLayoutVK* pMeshDescriptorSetLayout = pScene->getGeometryDescriptorSetLayout();
+	VkSampler sampler = m_pShadowMapSampler->getSampler();
 
 	m_pDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(pDevice);
-	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, LIGHT_TRANSFORMS_BINDING, 1);
+	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, LIGHT_BUFFER_BINDING, 1);
+	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, &sampler, SHADOW_MAP_BINDING, 1);
 	if (!m_pDescriptorSetLayout->finalize()) {
 		return false;
 	}
@@ -297,12 +280,25 @@ bool ShadowMapRendererVK::createPipeline()
 	return true;
 }
 
+bool ShadowMapRendererVK::createSampler()
+{
+	m_pShadowMapSampler = DBG_NEW SamplerVK(m_pGraphicsContext->getDevice());
+	SamplerParams samplerParams = {};
+	samplerParams.MinFilter = VK_FILTER_NEAREST;
+	samplerParams.MagFilter = VK_FILTER_NEAREST;
+
+	samplerParams.WrapModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	samplerParams.WrapModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+	return m_pShadowMapSampler->init(samplerParams);
+}
+
 void ShadowMapRendererVK::createProfiler()
 {
 	m_pProfiler = DBG_NEW ProfilerVK("Shadow-Map Renderer", m_pGraphicsContext->getDevice());
 }
 
-bool ShadowMapRendererVK::createShadowMapResources(DirectionalLight* directionalLight)
+bool ShadowMapRendererVK::createShadowMapResources(DirectionalLight* pDirectionalLight)
 {
 	FrameBufferVK* pFrameBuffer = nullptr;
 	ImageVK* pImage = nullptr;
@@ -347,9 +343,27 @@ bool ShadowMapRendererVK::createShadowMapResources(DirectionalLight* directional
 		return false;
 	}
 
-	directionalLight->setFrameBuffer(pFrameBuffer);
-	directionalLight->setDepthImage(pImage);
-	directionalLight->setDepthImageView(pImageView);
+	pDirectionalLight->setFrameBuffer(pFrameBuffer);
+	pDirectionalLight->setDepthImage(pImage);
+	pDirectionalLight->setDepthImageView(pImageView);
+
+	// Create transform buffer and descriptor set
+	BufferVK* pBuffer = DBG_NEW BufferVK(m_pGraphicsContext->getDevice());
+
+	BufferParams bufferParams = {};
+	bufferParams.IsExclusive = true;
+	bufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	bufferParams.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	bufferParams.SizeInBytes = sizeof(DirectionalLightBuffer);
+
+	pBuffer->init(bufferParams);
+
+	DescriptorSetVK* pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
+	pDescriptorSet->writeUniformBufferDescriptor(pBuffer, LIGHT_BUFFER_BINDING);
+	pDescriptorSet->writeCombinedImageDescriptors(&pImageView, &m_pShadowMapSampler, 1, SHADOW_MAP_BINDING);
+
+	pDirectionalLight->setTransformBuffer(pBuffer);
+	pDirectionalLight->setDescriptorSet(pDescriptorSet);
 
 	return true;
 }

@@ -37,7 +37,9 @@
 "tools/glslc.exe" -O -fshader-stage=vertex assets/shaders/shadowMapVertex.glsl -o assets/shaders/shadowMapVertex.spv
 
 :: Volumetric lighting
-"tools/glslc.exe" -fshader-stage=vertex assets/shaders/volumetricLight/volumetricVertex.glsl -o assets/shaders/volumetricLight/volumetricVertex.spv
-"tools/glslc.exe" -fshader-stage=fragment assets/shaders/volumetricLight/volumetricFragment.glsl -o assets/shaders/volumetricLight/volumetricFragment.spv
+"tools/glslc.exe" -fshader-stage=vertex assets/shaders/volumetricLight/volumetricPointVertex.glsl -o assets/shaders/volumetricLight/volumetricPointVertex.spv
+"tools/glslc.exe" -fshader-stage=fragment assets/shaders/volumetricLight/volumetricPointFragment.glsl -o assets/shaders/volumetricLight/volumetricPointFragment.spv
+
+"tools/glslc.exe" -fshader-stage=fragment assets/shaders/volumetricLight/volumetricDirectionalFragment.glsl -o assets/shaders/volumetricLight/volumetricDirectionalFragment.spv
 
 pause

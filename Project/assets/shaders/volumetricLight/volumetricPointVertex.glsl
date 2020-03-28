@@ -9,12 +9,21 @@ struct Vertex
 	vec4 TexCoord;
 };
 
-layout(binding = 0) buffer vertexBuffer
+layout(binding = 0, set = 0) buffer vertexBuffer
 {
 	Vertex vertices[];
 };
 
-layout (binding = 1) uniform VolumetricPointLight
+layout (binding = 2, set = 0) uniform CameraMatrices
+{
+	mat4 Projection;
+	mat4 View;
+	mat4 InvView;
+	mat4 InvProjection;
+	vec4 Position;
+} g_CameraMatrices;
+
+layout (binding = 9, set = 1) uniform VolumetricPointLight
 {
 	mat4 worldMatrix;
 
@@ -25,15 +34,6 @@ layout (binding = 1) uniform VolumetricPointLight
 	// Determines the portion of forward scattered light
 	float particleG;
 } g_Light;
-
-layout (binding = 2) uniform CameraMatrices
-{
-	mat4 Projection;
-	mat4 View;
-	mat4 InvView;
-	mat4 InvProjection;
-	vec4 Position;
-} g_CameraMatrices;
 
 layout(location = 0) out vec3 out_WorldPosition;
 
