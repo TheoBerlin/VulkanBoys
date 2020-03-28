@@ -24,10 +24,11 @@ bool ShaderBindingTableVK::init(RayTracingPipelineVK* pRayTracingPipeline)
 	uint32_t sbtSize = shaderGroupHandleSize * pRayTracingPipeline->getNumTotalShaderGroups();
 	
 	BufferParams sbtParams = {};
-	sbtParams.Usage = VK_BUFFER_USAGE_RAY_TRACING_BIT_NV;
-	sbtParams.MemoryProperty = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-	sbtParams.SizeInBytes = sbtSize;
-	
+	sbtParams.Usage				= VK_BUFFER_USAGE_RAY_TRACING_BIT_NV;
+	sbtParams.MemoryProperty	= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	sbtParams.SizeInBytes		= sbtSize;
+	sbtParams.IsExclusive		= true;
+
 	m_pSBT = reinterpret_cast<BufferVK*>(m_pContext->createBuffer());
 	m_pSBT->init(sbtParams);
 

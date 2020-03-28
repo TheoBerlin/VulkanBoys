@@ -34,18 +34,18 @@ layout (binding = 3) uniform EmitterProperties
     float particleDuration, initialSpeed, spread, particleCount;
 } g_EmitterProperties;
 
-layout (binding = 4) uniform Camera
+layout (binding = 4) uniform CameraMatrices
 {
 	mat4 Projection;
 	mat4 View;
-    vec4 Position;
-} g_Cam;
-
-layout (binding = 5) uniform CameraMatrices
-{
-	mat4 ViewInv;
-	mat4 ProjectionInv;
-} g_CamMatrices;
+	mat4 LastProjection;
+	mat4 LastView;
+	mat4 InvView;
+	mat4 InvProjection;
+	vec4 Position;
+	vec4 Right;
+	vec4 Up;
+} g_Camera;
 
 layout(binding = 6) uniform sampler2D g_DepthBuffer;
 layout(binding = 7) uniform sampler2D g_NormalMap;
@@ -97,7 +97,7 @@ void collide(uint particleIdx)
 {
     // Translate particle's world coordinates into screen coordinates
     vec4 worldPos = g_Positions.positions[particleIdx];
-    vec4 clipSpace = g_Cam.Projection * g_Cam.View * worldPos;
+    vec4 clipSpace = g_Camera.Projection * g_Camera.View * worldPos;
 
     vec2 ndc = clipSpace.xy / clipSpace.w;
 
@@ -111,9 +111,9 @@ void collide(uint particleIdx)
     float depthVal = texture(g_DepthBuffer, screenCoords).r;
 
     // World position of geometry behind the particle
-    vec4 geometryViewPos = g_CamMatrices.ProjectionInv * vec4(ndc, depthVal, 1.0);
+    vec4 geometryViewPos = g_Camera.InvProjection * vec4(ndc, depthVal, 1.0);
     geometryViewPos /= geometryViewPos.w;
-    vec4 geometryWorldPos = g_CamMatrices.ViewInv * geometryViewPos;
+    vec4 geometryWorldPos = g_Camera.InvView * geometryViewPos;
 
     float distToGeometry = length(geometryWorldPos.xyz - worldPos.xyz);
 

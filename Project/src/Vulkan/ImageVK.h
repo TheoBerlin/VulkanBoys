@@ -1,4 +1,6 @@
 #pragma once
+
+#include "Common/IImage.h"
 #include "VulkanCommon.h"
 
 class DeviceVK;
@@ -16,7 +18,7 @@ struct ImageParams
 	uint32_t				ArrayLayers;
 };
 
-class ImageVK
+class ImageVK : public IImage
 {
 public:
 	ImageVK(VkImage image, VkFormat format);

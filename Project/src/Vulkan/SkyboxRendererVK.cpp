@@ -81,6 +81,7 @@ bool SkyboxRendererVK::init()
 	cubeFilterBufferParams.Usage			= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	cubeFilterBufferParams.SizeInBytes		= sizeof(glm::mat4);
 	cubeFilterBufferParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	cubeFilterBufferParams.IsExclusive		= true;
 
 	m_pCubeFilterBuffer = DBG_NEW BufferVK(m_pDevice);
 	if (!m_pCubeFilterBuffer->init(cubeFilterBufferParams))
@@ -183,8 +184,8 @@ void SkyboxRendererVK::generateCubemapFromPanorama(TextureCubeVK* pCubemap, Text
 	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(pCubemap->getImage(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, pCubemap->getMiplevels(), 0, 6);
 	m_ppCommandBuffers[m_CurrentFrame]->end();
 
-	m_pDevice->executeCommandBuffer(m_pDevice->getGraphicsQueue(), m_ppCommandBuffers[m_CurrentFrame], nullptr, 0, 0, nullptr, 0);
-	m_pDevice->wait();
+	m_pDevice->executeGraphics(m_ppCommandBuffers[m_CurrentFrame], nullptr, 0, 0, nullptr, 0);
+	m_pDevice->waitGraphics();
 
 	SAFEDELETE(pReflectionProbe);
 }
@@ -261,8 +262,8 @@ void SkyboxRendererVK::generateIrradiance(TextureCubeVK* pCubemap, TextureCubeVK
 	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(pIrradianceMap->getImage(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, pIrradianceMap->getMiplevels(), 0, 6);
 	m_ppCommandBuffers[m_CurrentFrame]->end();
 
-	m_pDevice->executeCommandBuffer(m_pDevice->getGraphicsQueue(), m_ppCommandBuffers[m_CurrentFrame], nullptr, 0, 0, nullptr, 0);
-	m_pDevice->wait();
+	m_pDevice->executeGraphics(m_ppCommandBuffers[m_CurrentFrame], nullptr, 0, 0, nullptr, 0);
+	m_pDevice->waitGraphics();
 
 	SAFEDELETE(pReflectionProbe);
 }
@@ -350,8 +351,8 @@ void SkyboxRendererVK::prefilterEnvironmentMap(TextureCubeVK* pCubemap, TextureC
 	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(pEnvironmentMap->getImage(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, pEnvironmentMap->getMiplevels(), 0, 6);
 	m_ppCommandBuffers[m_CurrentFrame]->end();
 
-	m_pDevice->executeCommandBuffer(m_pDevice->getGraphicsQueue(), m_ppCommandBuffers[m_CurrentFrame], nullptr, 0, 0, nullptr, 0);
-	m_pDevice->wait();
+	m_pDevice->executeGraphics(m_ppCommandBuffers[m_CurrentFrame], nullptr, 0, 0, nullptr, 0);
+	m_pDevice->waitGraphics();
 
 	SAFEDELETE(pReflectionProbe);
 }

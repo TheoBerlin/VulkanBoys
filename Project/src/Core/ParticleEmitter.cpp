@@ -144,11 +144,19 @@ bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
         LOG("Failed to create particle positions buffer");
         return false;
     }
+    else
+    {
+        m_pPositionsBuffer->setName("Position Buffer");
+    }
 
     m_pVelocitiesBuffer = pGraphicsContext->createBuffer();
     if (!m_pVelocitiesBuffer->init(bufferParams)) {
         LOG("Failed to create particle velocities buffer");
         return false;
+    }
+    else
+    {
+        m_pVelocitiesBuffer->setName("Velocity Buffer");
     }
 
     bufferParams.SizeInBytes = particleCount * sizeof(float);
@@ -157,6 +165,10 @@ bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
     if (!m_pAgesBuffer->init(bufferParams)) {
         LOG("Failed to create particle ages buffer");
         return false;
+    }
+    else
+    {
+        m_pAgesBuffer->setName("Age Buffer");
     }
 
     // Create emitter buffer
@@ -167,6 +179,10 @@ bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
     if (!m_pEmitterBuffer->init(bufferParams)) {
         LOG("Failed to create emitter buffer");
         return false;
+    }
+    else
+    {
+        m_pEmitterBuffer->setName("Emitter Buffer");
     }
 
     // Put initial data into emitter buffer

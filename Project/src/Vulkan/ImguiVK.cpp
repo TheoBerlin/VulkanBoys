@@ -21,7 +21,6 @@
 	#define GLFW_EXPOSE_NATIVE_WIN32
 	#include <glfw/glfw3native.h>
 #endif
-#include <imgui/imgui.h>
 
 // glsl_shader.vert, compiled with:
 // # glslangValidator -V -x -o glsl_shader.vert.u32 glsl_shader.vert
@@ -162,10 +161,14 @@ ImguiVK::~ImguiVK()
 	SAFEDELETE(m_pPipelineLayout);
 	SAFEDELETE(m_pPipeline);
 	SAFEDELETE(m_pFontTexture);
-	SAFEDELETE(m_pVertexBuffer);
-	SAFEDELETE(m_pIndexBuffer);
 	SAFEDELETE(m_pDescriptorPool);
 	SAFEDELETE(m_pDescriptorSetLayout);
+
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		SAFEDELETE(m_ppIndexBuffers[i]);
+		SAFEDELETE(m_ppVertexBuffers[i]);
+	}
 }
 
 bool ImguiVK::init()
@@ -196,15 +199,10 @@ bool ImguiVK::init()
 	}
 
 	//TODO: Fix resizeable buffers
-	if (!createBuffers(MB(16), MB(16)))
+	if (!createBuffers(MB(8), MB(8)))
 	{
 		return false;
 	}
-
-	//if (!createBuffers(sizeof(ImDrawVert) * 1024, sizeof(ImDrawIdx) * 1024))
-	//{
-	//	return false;
-	//}
 
 	//Write to descriptor sets
 	Texture2DVK* pTexture			= reinterpret_cast<Texture2DVK*>(m_pFontTexture);
@@ -234,11 +232,14 @@ void ImguiVK::end()
 	ImGui::Render();
 }
 
-void ImguiVK::render(CommandBufferVK* pCommandBuffer)
+void ImguiVK::render(CommandBufferVK* pCommandBuffer, uint32_t currentFrame)
 {
 	//Start drawing
 	ImGuiIO& io = ImGui::GetIO();
 	ImDrawData* pDrawData = ImGui::GetDrawData();
+
+	BufferVK* pCurrentVertexBuffer	= m_ppVertexBuffers[currentFrame];
+	BufferVK* pCurrentIndexBuffer	= m_ppIndexBuffers[currentFrame];
 
 	//uint64 vertexSize	= pDrawData->TotalVtxCount * sizeof(ImDrawVert);
 	//uint64 indexSize	= pDrawData->TotalIdxCount * sizeof(ImDrawIdx);
@@ -247,8 +248,8 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 		ImDrawVert* pVtxDst = nullptr;
 		ImDrawIdx* pIdxDst = nullptr;
 
-		m_pVertexBuffer->map(reinterpret_cast<void**>(&pVtxDst));
-		m_pIndexBuffer->map(reinterpret_cast<void**>(&pIdxDst));
+		pCurrentVertexBuffer->map(reinterpret_cast<void**>(&pVtxDst));
+		pCurrentIndexBuffer->map(reinterpret_cast<void**>(&pIdxDst));
 
 		for (int n = 0; n < pDrawData->CmdListsCount; n++)
 		{
@@ -259,8 +260,8 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 			pIdxDst += pCmdList->IdxBuffer.Size;
 		}
 
-		m_pVertexBuffer->unmap();
-		m_pIndexBuffer->unmap();
+		pCurrentVertexBuffer->unmap();
+		pCurrentIndexBuffer->unmap();
 	}
 
 	//Setup pipelinestate
@@ -270,8 +271,8 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 
 	//Setup vertex and indexbuffer
 	VkDeviceSize offset = 0;
-	pCommandBuffer->bindVertexBuffers(&m_pVertexBuffer, 1, &offset);
-	pCommandBuffer->bindIndexBuffer(m_pIndexBuffer, 0, (sizeof(ImDrawIdx) == 2) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+	pCommandBuffer->bindVertexBuffers(&pCurrentVertexBuffer, 1, &offset);
+	pCommandBuffer->bindIndexBuffer(pCurrentIndexBuffer, 0, (sizeof(ImDrawIdx) == 2) ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
 
 	//Setup viewport
 	VkViewport viewport = {};
@@ -326,13 +327,22 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 				if (clipRect.y < 0.0f)
 					clipRect.y = 0.0f;
 
-				// Apply scissor/clipping rectangle	
+				// Apply scissor/clipping rectangle
 				VkRect2D scissor = {};
 				scissor.offset.x		= (int32_t)clipRect.x;
 				scissor.offset.y		= (int32_t)clipRect.y;
 				scissor.extent.width	= uint32_t(clipRect.z - clipRect.x);
 				scissor.extent.height	= uint32_t(clipRect.w - clipRect.y);
 				pCommandBuffer->setScissorRects(&scissor, 1);
+
+				if (pCmd->TextureId) {
+					// Bind custom texture
+					DescriptorSetVK* pDescriptorSet = reinterpret_cast<DescriptorSetVK*>(pCmd->TextureId);
+					pCommandBuffer->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
+				} else {
+					// Bind font texture
+					pCommandBuffer->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSet, 0, nullptr);
+				}
 
 				// Draw
 				pCommandBuffer->drawIndexInstanced(pCmd->ElemCount, 1, pCmd->IdxOffset + globalIdxOffset, pCmd->VtxOffset + globalVtxOffset, 0);
@@ -341,6 +351,14 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer)
 		globalIdxOffset += pCmdList->IdxBuffer.Size;
 		globalVtxOffset += pCmdList->VtxBuffer.Size;
 	}
+}
+
+ImTextureID ImguiVK::addTexture(ImageViewVK* pImageView)
+{
+	DescriptorSetVK* pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
+	pDescriptorSet->writeCombinedImageDescriptors(&pImageView, &m_pSampler, 1, 0);
+
+	return (ImTextureID)pDescriptorSet;
 }
 
 void ImguiVK::onMouseMove(uint32_t x, uint32_t y)
@@ -434,7 +452,7 @@ bool ImguiVK::initImgui()
 #if defined(_WIN32)
 	io.ImeWindowHandle = (void*)glfwGetWin32Window(pNativeWindow);
 #endif
-	
+
 	//TODO: Not based on glfw
 	io.SetClipboardTextFn	= ImGuiSetClipboardText;
 	io.GetClipboardTextFn	= ImGuiGetClipboardText;
@@ -478,32 +496,33 @@ bool ImguiVK::createRenderPass()
 	VkAttachmentDescription description = {};
 	description.format			= VK_FORMAT_B8G8R8A8_UNORM;
 	description.samples			= VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;				
-	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;				
-	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;	
-	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;	
-	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;			
-	description.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;		
+	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
+	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
+	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
+	description.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	m_pRenderPass->addAttachment(description);
 
-	description.format			= VK_FORMAT_D32_SFLOAT;//VK_FORMAT_D24_UNORM_S8_UINT;
-	description.samples			= VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
-	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;	
-	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;	
-	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;	
-	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;	
-	description.finalLayout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	m_pRenderPass->addAttachment(description);
+	//description.format			= VK_FORMAT_D32_SFLOAT;//VK_FORMAT_D24_UNORM_S8_UINT;
+	//description.samples			= VK_SAMPLE_COUNT_1_BIT;
+	//description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
+	//description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
+	//description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	//description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	//description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
+	//description.finalLayout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	//m_pRenderPass->addAttachment(description);
 
 	VkAttachmentReference colorAttachmentRef = {};
 	colorAttachmentRef.attachment	= 0;
 	colorAttachmentRef.layout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-	VkAttachmentReference depthStencilAttachmentRef = {};
-	depthStencilAttachmentRef.attachment	= 1;
-	depthStencilAttachmentRef.layout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	m_pRenderPass->addSubpass(&colorAttachmentRef, 1, &depthStencilAttachmentRef);
+	//VkAttachmentReference depthStencilAttachmentRef = {};
+	//depthStencilAttachmentRef.attachment	= 1;
+	//depthStencilAttachmentRef.layout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	//m_pRenderPass->addSubpass(&colorAttachmentRef, 1, &depthStencilAttachmentRef);
+	m_pRenderPass->addSubpass(&colorAttachmentRef, 1, nullptr);
 
 	VkSubpassDependency dependency = {};
 	dependency.dependencyFlags	= VK_DEPENDENCY_BY_REGION_BIT;
@@ -514,9 +533,7 @@ bool ImguiVK::createRenderPass()
 	dependency.srcAccessMask	= 0;
 	dependency.dstAccessMask	= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 	m_pRenderPass->addSubpassDependency(dependency);
-	m_pRenderPass->finalize();
-
-	return true;
+	return m_pRenderPass->finalize();
 }
 
 bool ImguiVK::createPipeline()
@@ -542,7 +559,7 @@ bool ImguiVK::createPipeline()
 	m_pPipeline->addVertexAttribute(0, VK_FORMAT_R8G8B8A8_UNORM, 2, IM_OFFSETOF(ImDrawVert, col));
 
 	m_pPipeline->addVertexBinding(0, VK_VERTEX_INPUT_RATE_VERTEX, sizeof(ImDrawVert));
-	
+
 	VkPipelineColorBlendAttachmentState blendAttachment = {};
 	blendAttachment.blendEnable			= VK_TRUE;
 	blendAttachment.colorWriteMask		= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -553,7 +570,7 @@ bool ImguiVK::createPipeline()
 	blendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	blendAttachment.alphaBlendOp		= VK_BLEND_OP_ADD;
 	m_pPipeline->addColorBlendAttachment(blendAttachment);
-	
+
 	VkPipelineRasterizationStateCreateInfo rasterizerState = {};
 	rasterizerState.cullMode				= VK_CULL_MODE_NONE;
 	rasterizerState.frontFace				= VK_FRONT_FACE_CLOCKWISE;
@@ -603,14 +620,14 @@ bool ImguiVK::createPipelineLayout()
 	m_pPipelineLayout->init(descriptorSetLayouts, pushConstantRanges);
 
 	DescriptorCounts counts;
-	counts.m_SampledImages			= 1;
+	counts.m_SampledImages			= 64;
 	counts.m_StorageBuffers			= 1;
 	counts.m_UniformBuffers			= 1;
 	counts.m_StorageImages			= 1;
 	counts.m_AccelerationStructures = 1;
 
 	m_pDescriptorPool = DBG_NEW DescriptorPoolVK(m_pContext->getDevice());
-	m_pDescriptorPool->init(counts, 1);
+	m_pDescriptorPool->init(counts, 64);
 	m_pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
 
 	return true;
@@ -635,22 +652,27 @@ bool ImguiVK::createBuffers(uint32_t vertexBufferSize, uint32_t indexBufferSize)
 	vertexBufferparams.Usage			= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 	vertexBufferparams.MemoryProperty	= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 	vertexBufferparams.SizeInBytes		= vertexBufferSize;
-
-	m_pVertexBuffer = DBG_NEW BufferVK(m_pContext->getDevice());
-	if (!m_pVertexBuffer->init(vertexBufferparams))
-	{
-		return false;
-	}
+	vertexBufferparams.IsExclusive		= true;
 
 	BufferParams indexBufferparams = {};
 	indexBufferparams.Usage				= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 	indexBufferparams.MemoryProperty	= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 	indexBufferparams.SizeInBytes		= indexBufferSize;
+	indexBufferparams.IsExclusive		= true;
 
-	m_pIndexBuffer = DBG_NEW BufferVK(m_pContext->getDevice());
-	if (!m_pIndexBuffer->init(indexBufferparams))
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 	{
-		return false;
+		m_ppVertexBuffers[i] = DBG_NEW BufferVK(m_pContext->getDevice());
+		if (!m_ppVertexBuffers[i]->init(vertexBufferparams))
+		{
+			return false;
+		}
+
+		m_ppIndexBuffers[i] = DBG_NEW BufferVK(m_pContext->getDevice());
+		if (!m_ppIndexBuffers[i]->init(indexBufferparams))
+		{
+			return false;
+		}
 	}
 
 	return true;

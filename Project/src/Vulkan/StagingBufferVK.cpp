@@ -26,6 +26,7 @@ bool StagingBufferVK::init(VkDeviceSize initalSizeInBytes)
 	params.Usage			= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	params.MemoryProperty	= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 	params.SizeInBytes		= initalSizeInBytes;
+	params.IsExclusive		= true;
 
 	m_pBuffer = DBG_NEW BufferVK(m_pDevice);
 	if (m_pBuffer->init(params))
@@ -40,31 +41,27 @@ bool StagingBufferVK::init(VkDeviceSize initalSizeInBytes)
 
 void* StagingBufferVK::allocate(VkDeviceSize sizeInBytes)
 {
+	VkDeviceSize oldBufferOffset = m_BufferOffset;
+	m_BufferOffset = m_BufferOffset + sizeInBytes;
+	if (m_BufferOffset <= m_pBuffer->getSizeInBytes())
 	{
-		//TODO: We need to fix better thread saftey this is just a quick fix to avoid crashes
-		std::scoped_lock lock(m_Lock);
-
-		VkDeviceSize oldBufferOffset = m_BufferOffset;
-		m_BufferOffset = m_BufferOffset + sizeInBytes;
-		if (m_BufferOffset <= m_pBuffer->getSizeInBytes())
-		{
-			return (void*)(m_pHostMemory + oldBufferOffset);
-		}
-
-		//Do not reallocate more than once for now
-		ASSERT(m_pOldBuffer == nullptr);
-		m_pOldBuffer = m_pBuffer;
-
-		D_LOG("Reallocating StagingBuffer");
-
-		m_pBuffer = DBG_NEW BufferVK(m_pDevice);
+		return (void*)(m_pHostMemory + oldBufferOffset);
 	}
+
+	//Do not reallocate more than once for now
+	ASSERT(m_pOldBuffer == nullptr);
+	m_pOldBuffer = m_pBuffer;
+
+	D_LOG("Reallocating StagingBuffer");
+
+	m_pBuffer = DBG_NEW BufferVK(m_pDevice);
 
 	BufferParams params = {};
 	params.Usage			= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	params.MemoryProperty	= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 	params.SizeInBytes		= m_pBuffer->getSizeInBytes() + sizeInBytes + MB(1); 
-	
+	params.IsExclusive		= true;
+
 	if (m_pBuffer->init(params))
 	{
 		m_pBuffer->map((void**)&m_pHostMemory);
@@ -78,9 +75,6 @@ void* StagingBufferVK::allocate(VkDeviceSize sizeInBytes)
 
 void StagingBufferVK::reset()
 {
-	//TODO: We need to fix better thread saftey this is just a quick fix to avoid crashes
-	std::scoped_lock lock(m_Lock);
-
 	SAFEDELETE(m_pOldBuffer);
 	m_BufferOffset = 0;
 }

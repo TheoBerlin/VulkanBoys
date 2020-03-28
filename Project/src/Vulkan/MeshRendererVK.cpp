@@ -25,6 +25,7 @@
 #include "SkyboxRendererVK.h"
 #include "GraphicsContextVK.h"
 #include "RenderingHandlerVK.h"
+#include "SceneVK.h"
 
 #include <glm/gtc/type_ptr.hpp>
 
@@ -36,14 +37,16 @@ MeshRendererVK::MeshRendererVK(GraphicsContextVK* pContext, RenderingHandlerVK* 
 	m_pSkyboxPipeline(nullptr),
 	m_pLightDescriptorSet(nullptr),
 	m_pGBufferSampler(nullptr),
+	m_pRTSampler(nullptr),
 	m_pSkyboxPipelineLayout(nullptr),
 	m_pDescriptorPool(nullptr),
 	m_pLightDescriptorSetLayout(nullptr),
-	m_pCameraBuffer(nullptr),
-	m_pLightBuffer(nullptr),
+	m_pMaterialParametersBuffer(nullptr),
+	m_pTransformsBuffer(nullptr),
 	m_pEnvironmentMap(nullptr),
 	m_pIntegrationLUT(nullptr),
-	m_pProfiler(nullptr),
+	m_pGPassProfiler(nullptr),
+	m_pLightPassProfiler(nullptr),
 	m_ClearColor(),
 	m_ClearDepth(),
 	m_Viewport(),
@@ -64,7 +67,9 @@ MeshRendererVK::~MeshRendererVK()
 		SAFEDELETE(m_ppLightPassPools[i]);
 	}
 
-	SAFEDELETE(m_pProfiler);
+	SAFEDELETE(m_pGPassProfiler);
+	SAFEDELETE(m_pLightPassProfiler);
+
 	SAFEDELETE(m_pBRDFSampler);
 	SAFEDELETE(m_pIntegrationLUT);
 	SAFEDELETE(m_pEnvironmentMap);
@@ -74,17 +79,14 @@ MeshRendererVK::~MeshRendererVK()
 	SAFEDELETE(m_pSkyboxPipelineLayout);
 	SAFEDELETE(m_pSkyboxDescriptorSetLayout);
 	SAFEDELETE(m_pGBufferSampler);
-	SAFEDELETE(m_pBackBufferRenderPass);
+	SAFEDELETE(m_pRTSampler);
 	SAFEDELETE(m_pSkyboxPipelineLayout);
 	SAFEDELETE(m_pSkyboxPipeline);
 	SAFEDELETE(m_pGeometryPipeline);
-	SAFEDELETE(m_pGeometryPipelineLayout);
-	SAFEDELETE(m_pGeometryDescriptorSetLayout);
 	SAFEDELETE(m_pLightPipeline);
 	SAFEDELETE(m_pLightPipelineLayout);
 	SAFEDELETE(m_pDescriptorPool);
 	SAFEDELETE(m_pLightDescriptorSetLayout);
-	SAFEDELETE(m_pLightBuffer);
 	SAFEDELETE(m_pDefaultTexture);
 	SAFEDELETE(m_pDefaultNormal);
 
@@ -96,11 +98,6 @@ bool MeshRendererVK::init()
 	createProfiler();
 
 	if (!createSamplers())
-	{
-		return false;
-	}
-
-	if (!createRenderPass())
 	{
 		return false;
 	}
@@ -120,7 +117,7 @@ bool MeshRendererVK::init()
 		return false;
 	}
 
-	if (!createBuffersAndTextures())
+	if (!createTextures())
 	{
 		return false;
 	}
@@ -130,38 +127,32 @@ bool MeshRendererVK::init()
 		return false;
 	}
 
-	GBufferVK* pGBuffer = m_pRenderingHandler->getGBuffer();
-	ImageViewVK* pAttachment0 = pGBuffer->getColorAttachment(0);
-	ImageViewVK* pAttachment1 = pGBuffer->getColorAttachment(1);
-	ImageViewVK* pAttachment2 = pGBuffer->getColorAttachment(2);
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment0, &m_pGBufferSampler, 1, GBUFFER_ALBEDO_BINDING);
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment1, &m_pGBufferSampler, 1, GBUFFER_NORMAL_BINDING);
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment2, &m_pGBufferSampler, 1, GBUFFER_POSITION_BINDING);
-	m_pLightDescriptorSet->writeUniformBufferDescriptor(m_pLightBuffer, LIGHT_BUFFER_BINDING);
-	m_pLightDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer, CAMERA_BUFFER_BINDING);
+	updateGBufferDescriptors();
+
+	const BufferVK* pLightBuffer	= m_pRenderingHandler->getLightBufferGraphics();
+	const BufferVK* pCameraBuffer	= m_pRenderingHandler->getCameraBufferGraphics();
+	m_pLightDescriptorSet->writeUniformBufferDescriptor(pLightBuffer,	LP_LIGHT_BUFFER_BINDING);
+	m_pLightDescriptorSet->writeUniformBufferDescriptor(pCameraBuffer,	CAMERA_BUFFER_BINDING);
 
 	ImageViewVK* pIntegrationLUT = m_pIntegrationLUT->getImageView();
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pIntegrationLUT, &m_pBRDFSampler, 1, BRDF_LUT_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pIntegrationLUT, &m_pBRDFSampler, 1, LP_BRDF_LUT_BINDING);
 
-	m_pSkyboxDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer, 0);
+	m_pSkyboxDescriptorSet->writeUniformBufferDescriptor(pCameraBuffer, 0);
 
 	return true;
 }
 
 void MeshRendererVK::onWindowResize(uint32_t width, uint32_t height)
 {
-	GBufferVK* pGBuffer = m_pRenderingHandler->getGBuffer();
-	ImageViewVK* pAttachment0 = pGBuffer->getColorAttachment(0);
-	ImageViewVK* pAttachment1 = pGBuffer->getColorAttachment(1);
-	ImageViewVK* pAttachment2 = pGBuffer->getColorAttachment(2);
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment0, &m_pGBufferSampler, 1, GBUFFER_ALBEDO_BINDING);
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment1, &m_pGBufferSampler, 1, GBUFFER_NORMAL_BINDING);
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment2, &m_pGBufferSampler, 1, GBUFFER_POSITION_BINDING);
+	UNREFERENCED_PARAMETER(width);
+	UNREFERENCED_PARAMETER(height);
+
+	updateGBufferDescriptors();
 }
 
 void MeshRendererVK::beginFrame(IScene* pScene)
 {
-	UNREFERENCED_PARAMETER(pScene);
+	m_pScene = reinterpret_cast<SceneVK*>(pScene);
 
 	m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 
@@ -169,7 +160,8 @@ void MeshRendererVK::beginFrame(IScene* pScene)
 	m_ppGeometryPassPools[m_CurrentFrame]->reset();
 
 	// Needed to begin a secondary buffer
-	RenderPassVK* pGeometryRenderPass = m_pRenderingHandler->getGeometryRenderPass();
+	RenderPassVK*	pGeometryRenderPass	= m_pRenderingHandler->getGeometryRenderPass();
+	FrameBufferVK*	pFramebuffer		= m_pRenderingHandler->getGBuffer()->getFrameBuffer();
 
 	VkCommandBufferInheritanceInfo inheritanceInfo = {};
 	inheritanceInfo.sType		= VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
@@ -177,10 +169,10 @@ void MeshRendererVK::beginFrame(IScene* pScene)
 	inheritanceInfo.renderPass	= pGeometryRenderPass->getRenderPass();
 	//TODO: Not use subpass zero all the time?
 	inheritanceInfo.subpass		= 0;
-	inheritanceInfo.framebuffer = m_pRenderingHandler->getGBuffer()->getFrameBuffer()->getFrameBuffer();
+	inheritanceInfo.framebuffer = pFramebuffer->getFrameBuffer();
 
 	m_ppGeometryPassBuffers[m_CurrentFrame]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
-	m_pProfiler->beginFrame(m_ppGeometryPassBuffers[m_CurrentFrame]);
+	m_pGPassProfiler->beginFrame(m_ppGeometryPassBuffers[m_CurrentFrame]);
 
 	// Begin geometrypass
 	m_ppGeometryPassBuffers[m_CurrentFrame]->setViewports(&m_Viewport, 1);
@@ -189,13 +181,19 @@ void MeshRendererVK::beginFrame(IScene* pScene)
 
 void MeshRendererVK::endFrame(IScene* pScene)
 {
-	m_pProfiler->endFrame();
+	UNREFERENCED_PARAMETER(pScene);
+
+	m_pGPassProfiler->endFrame();
 
 	m_ppGeometryPassBuffers[m_CurrentFrame]->bindPipeline(m_pSkyboxPipeline);
 	m_ppGeometryPassBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pSkyboxPipelineLayout, 0, 1, &m_pSkyboxDescriptorSet, 0, nullptr);
 	m_ppGeometryPassBuffers[m_CurrentFrame]->drawInstanced(36, 1, 0, 0);
 
 	m_ppGeometryPassBuffers[m_CurrentFrame]->end();
+}
+
+void MeshRendererVK::renderUI()
+{
 }
 
 void MeshRendererVK::setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY)
@@ -213,18 +211,17 @@ void MeshRendererVK::setViewport(float width, float height, float minDepth, floa
 	m_ScissorRect.offset.y		= 0;
 }
 
-void MeshRendererVK::setupFrame(CommandBufferVK* pPrimaryBuffer, const Camera& camera, const LightSetup& lightsetup)
+void MeshRendererVK::updateGBufferDescriptors()
 {
-	m_pProfiler->reset(m_CurrentFrame, pPrimaryBuffer);
-
-	updateBuffers(pPrimaryBuffer, camera, lightsetup);
-}
-
-void MeshRendererVK::updateBuffers(CommandBufferVK* pPrimaryBuffer, const Camera& camera, const LightSetup& lightSetup)
-{
-	//Update lights
-	const uint32_t numPointLights = lightSetup.getPointLightCount();
-	pPrimaryBuffer->updateBuffer(m_pLightBuffer, 0, (const void*)lightSetup.getPointLights(), sizeof(PointLight) * numPointLights);
+	GBufferVK* pGBuffer				= m_pRenderingHandler->getGBuffer();
+	ImageViewVK* pAttachment0		= pGBuffer->getColorAttachment(0);
+	ImageViewVK* pAttachment1		= pGBuffer->getColorAttachment(1);
+	ImageViewVK* pAttachment2		= pGBuffer->getColorAttachment(2);
+	ImageViewVK* pDepthAttachment	= pGBuffer->getDepthAttachment();
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment0, &m_pGBufferSampler, 1, LP_GBUFFER_ALBEDO_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment1, &m_pGBufferSampler, 1, LP_GBUFFER_NORMAL_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment2, &m_pGBufferSampler, 1, LP_GBUFFER_VELOCITY_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pDepthAttachment, &m_pGBufferSampler, 1, LP_GBUFFER_DEPTH_BINDING);
 }
 
 void MeshRendererVK::setClearColor(float r, float g, float b)
@@ -249,35 +246,35 @@ void MeshRendererVK::setSkybox(TextureCubeVK* pSkybox, TextureCubeVK* pIrradianc
 	ImageViewVK* pSkyboxView = m_pSkybox->getImageView();
 	m_pSkyboxDescriptorSet->writeCombinedImageDescriptors(&pSkyboxView, &m_pSkyboxSampler, 1, 1);
 	ImageViewVK* pIrradianceMapView = m_pIrradianceMap->getImageView();
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pIrradianceMapView, &m_pSkyboxSampler, 1, IRRADIANCE_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pIrradianceMapView, &m_pSkyboxSampler, 1, LP_IRRADIANCE_BINDING);
 	ImageViewVK* pEnvironmentMapView = m_pEnvironmentMap->getImageView();
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pEnvironmentMapView, &m_pSkyboxSampler, 1, ENVIRONMENT_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pEnvironmentMapView, &m_pSkyboxSampler, 1, LP_ENVIRONMENT_BINDING);
 }
 
-void MeshRendererVK::setRayTracingResult(ImageViewVK* pRayTracingResultImageView)
+void MeshRendererVK::setRayTracingResultImages(ImageViewVK* pRadianceImageView, ImageViewVK* pGlossyImageView)
 {
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pRayTracingResultImageView, &m_pGBufferSampler, 1, RAY_TRACING_RESULT_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pRadianceImageView, &m_pRTSampler, 1, LP_RADIANCE_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pGlossyImageView, &m_pRTSampler, 1, LP_GLOSSY_BINDING);
 }
 
-void MeshRendererVK::submitMesh(const MeshVK* pMesh, const Material* pMaterial, const glm::mat4& transform)
+void MeshRendererVK::submitMesh(const MeshVK* pMesh, const Material* pMaterial, uint32_t materialIndex, uint32_t transformsIndex)
 {
 	ASSERT(pMesh != nullptr);
 
 	m_ppGeometryPassBuffers[m_CurrentFrame]->bindPipeline(m_pGeometryPipeline);
 
-	m_ppGeometryPassBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::mat4), (const void*)glm::value_ptr(transform));
-	m_ppGeometryPassBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4), sizeof(glm::vec4), (const void*)glm::value_ptr(pMaterial->getAlbedo()));
-	m_ppGeometryPassBuffers[m_CurrentFrame]->pushConstants(m_pGeometryPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(glm::mat4) + sizeof(glm::vec4), sizeof(glm::vec3), (const void*)glm::value_ptr(pMaterial->getMaterialProperties()));
+	PipelineLayoutVK* pGeometryPassLayout = m_pScene->getGeometryPipelineLayout();
+
+	uint32_t pushConstants[2] = { materialIndex, transformsIndex };
+	m_ppGeometryPassBuffers[m_CurrentFrame]->pushConstants(pGeometryPassLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t) * 2, &pushConstants);
 
 	BufferVK* pIndexBuffer = reinterpret_cast<BufferVK*>(pMesh->getIndexBuffer());
 	m_ppGeometryPassBuffers[m_CurrentFrame]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-	DescriptorSetVK* pDescriptorSet = getDescriptorSetFromMeshAndMaterial(pMesh, pMaterial);
-	m_ppGeometryPassBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pGeometryPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
+	DescriptorSetVK* pDescriptorSet = m_pScene->getDescriptorSetFromMeshAndMaterial(pMesh, pMaterial);
+	m_ppGeometryPassBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, pGeometryPassLayout, 0, 1, &pDescriptorSet, 0, nullptr);
 
-	m_pProfiler->beginTimestamp(&m_TimestampDrawIndexed);
 	m_ppGeometryPassBuffers[m_CurrentFrame]->drawIndexInstanced(pMesh->getIndexCount(), 1, 0, 0, 0);
-	m_pProfiler->endTimestamp(&m_TimestampDrawIndexed);
 }
 
 void MeshRendererVK::buildLightPass(RenderPassVK* pRenderPass, FrameBufferVK* pFramebuffer)
@@ -295,6 +292,8 @@ void MeshRendererVK::buildLightPass(RenderPassVK* pRenderPass, FrameBufferVK* pF
 	inheritanceInfo.framebuffer = pFramebuffer->getFrameBuffer();
 	m_ppLightPassBuffers[m_CurrentFrame]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
 
+	m_pLightPassProfiler->beginFrame(m_ppLightPassBuffers[m_CurrentFrame]);
+
 	m_ppLightPassBuffers[m_CurrentFrame]->bindPipeline(m_pLightPipeline);
 	m_ppLightPassBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pLightPipelineLayout, 0, 1, &m_pLightDescriptorSet, 0, nullptr);
 
@@ -302,6 +301,9 @@ void MeshRendererVK::buildLightPass(RenderPassVK* pRenderPass, FrameBufferVK* pF
 	m_ppLightPassBuffers[m_CurrentFrame]->setScissorRects(&m_ScissorRect, 1);
 
 	m_ppLightPassBuffers[m_CurrentFrame]->drawInstanced(3, 1, 0, 0);
+
+	m_pLightPassProfiler->endFrame();
+
 	m_ppLightPassBuffers[m_CurrentFrame]->end();
 }
 
@@ -310,81 +312,39 @@ bool MeshRendererVK::generateBRDFLookUp()
 	constexpr uint32_t size = 512;
 
 	m_pIntegrationLUT = DBG_NEW Texture2DVK(m_pContext->getDevice());
-	if (!m_pIntegrationLUT->initFromMemory(nullptr, size, size, ETextureFormat::FORMAT_R16G16B16A16_FLOAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false))
+	if (!m_pIntegrationLUT->initFromMemory(nullptr, size, size, ETextureFormat::FORMAT_R16G16B16A16_FLOAT, VK_IMAGE_USAGE_STORAGE_BIT, false))
 	{
 		return false;
 	}
 
-	RenderPassVK* pRenderPass = DBG_NEW RenderPassVK(m_pContext->getDevice());
+	ImageViewVK* pImageView = m_pIntegrationLUT->getImageView();
 
-	VkAttachmentDescription attachment = {};
-	attachment.flags			= 0;
-	attachment.format			= VK_FORMAT_R16G16B16A16_SFLOAT;
-	attachment.samples			= VK_SAMPLE_COUNT_1_BIT;
-	attachment.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
-	attachment.finalLayout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	attachment.loadOp			= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	attachment.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
-	attachment.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	attachment.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	pRenderPass->addAttachment(attachment);
-
-	VkAttachmentReference attachmentRef = {};
-	attachmentRef.attachment	= 0;
-	attachmentRef.layout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	pRenderPass->addSubpass(&attachmentRef, 1, nullptr);
-
-	VkSubpassDependency dependency = {};
-	dependency.srcSubpass		= VK_SUBPASS_EXTERNAL;
-	dependency.dstSubpass		= 0;
-	dependency.dependencyFlags	= VK_DEPENDENCY_BY_REGION_BIT;
-	dependency.srcAccessMask	= 0;
-	dependency.dstAccessMask	= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	dependency.srcStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.dstStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	pRenderPass->addSubpassDependency(dependency);
-	if (!pRenderPass->finalize())
+	IShader* pComputeShader = m_pContext->createShader();
+	pComputeShader->initFromFile(EShader::COMPUTE_SHADER, "main", "assets/shaders/genIntegrationLUTCompute.spv");
+	if (!pComputeShader->finalize())
 	{
 		return false;
 	}
 
-	ImageViewParams imageViewParams = {};
-	imageViewParams.Type			= VK_IMAGE_VIEW_TYPE_2D;
-	imageViewParams.FirstLayer		= 0;
-	imageViewParams.LayerCount		= 1;
-	imageViewParams.FirstMipLevel	= 0;
-	imageViewParams.MipLevels		= 1;
-	imageViewParams.AspectFlags		= VK_IMAGE_ASPECT_COLOR_BIT;
-
-	ImageViewVK* pImageView = DBG_NEW ImageViewVK(m_pContext->getDevice(), m_pIntegrationLUT->getImage());
-	if (!pImageView->init(imageViewParams))
+	DescriptorSetLayoutVK* pDescriptorLayout = DBG_NEW DescriptorSetLayoutVK(m_pContext->getDevice());
+	pDescriptorLayout->addBindingStorageImage(VK_SHADER_STAGE_COMPUTE_BIT, 0, 1);
+	if (!pDescriptorLayout->finalize())
 	{
 		return false;
 	}
 
-	FrameBufferVK* pFrameBuffer = DBG_NEW FrameBufferVK(m_pContext->getDevice());
-	pFrameBuffer->addColorAttachment(pImageView);
-	if (!pFrameBuffer->finalize(pRenderPass, size, size))
+	DescriptorSetVK* pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(pDescriptorLayout);
+	if (pDescriptorSet)
 	{
-		return false;
+		pDescriptorSet->writeStorageImageDescriptor(pImageView, 0);
 	}
-
-	IShader* pVertexShader = m_pContext->createShader();
-	pVertexShader->initFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/fullscreenVertex.spv");
-	if (!pVertexShader->finalize())
-	{
-		return false;
-	}
-
-	IShader* pPixelShader = m_pContext->createShader();
-	pPixelShader->initFromFile(EShader::PIXEL_SHADER, "main", "assets/shaders/genIntegrationMap.spv");
-	if (!pPixelShader->finalize())
+	else
 	{
 		return false;
 	}
 
 	std::vector<VkPushConstantRange> pushConstantRanges = {};
-	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = {};
+	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { pDescriptorLayout };
 
 	PipelineLayoutVK* pPipelineLayout = DBG_NEW PipelineLayoutVK(m_pContext->getDevice());
 	if (!pPipelineLayout->init(descriptorSetLayouts, pushConstantRanges))
@@ -393,32 +353,13 @@ bool MeshRendererVK::generateBRDFLookUp()
 	}
 
 	PipelineVK* pPipeline = DBG_NEW PipelineVK(m_pContext->getDevice());
-
-	VkPipelineColorBlendAttachmentState blendstate = {};
-	blendstate.blendEnable		= VK_FALSE;
-	blendstate.colorWriteMask	= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	pPipeline->addColorBlendAttachment(blendstate);
-
-	VkPipelineDepthStencilStateCreateInfo depthState = {};
-	depthState.depthTestEnable		= VK_FALSE;
-	depthState.depthWriteEnable		= VK_FALSE;
-	depthState.stencilTestEnable	= VK_FALSE;
-	pPipeline->setDepthStencilState(depthState);
-
-	VkPipelineRasterizationStateCreateInfo rasterizerState = {};
-	rasterizerState.cullMode	= VK_CULL_MODE_NONE;
-	rasterizerState.lineWidth	= 1.0f;
-	rasterizerState.frontFace	= VK_FRONT_FACE_CLOCKWISE;
-	pPipeline->setRasterizerState(rasterizerState);
-
-	std::vector<const IShader*> shaders = { pVertexShader, pPixelShader };
-	if (!pPipeline->finalizeGraphics(shaders, pRenderPass, pPipelineLayout))
+	if (!pPipeline->finalizeCompute(pComputeShader, pPipelineLayout))
 	{
 		return false;
 	}
 
 	DeviceVK* pDevice = m_pContext->getDevice();
-	CommandPoolVK* pCommandPool = DBG_NEW CommandPoolVK(pDevice, pDevice->getQueueFamilyIndices().graphicsFamily.value());
+	CommandPoolVK* pCommandPool = DBG_NEW CommandPoolVK(pDevice, pDevice->getQueueFamilyIndices().computeFamily.value());
 	if (!pCommandPool->init())
 	{
 		return false;
@@ -434,45 +375,26 @@ bool MeshRendererVK::generateBRDFLookUp()
 	pCommandPool->reset();
 
 	pCommandBuffer->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	pCommandBuffer->transitionImageLayout(m_pIntegrationLUT->getImage(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, 0, 1, 0, 1);
-
-	pCommandBuffer->beginRenderPass(pRenderPass, pFrameBuffer, size, size, nullptr, 0, VK_SUBPASS_CONTENTS_INLINE);
+	pCommandBuffer->transitionImageLayout(m_pIntegrationLUT->getImage(), VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 1);
 
 	pCommandBuffer->bindPipeline(pPipeline);
+	pCommandBuffer->bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, pPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
 
-	VkViewport viewport = {};
-	viewport.width		= float(size);
-	viewport.height		= float(size);
-	viewport.minDepth	= 0.0f;
-	viewport.maxDepth	= 1.0f;
-	viewport.x			= 0.0f;
-	viewport.y			= 0.0f;
-	pCommandBuffer->setViewports(&viewport, 1);
+	pCommandBuffer->dispatch(size, size, 1);
 
-	VkRect2D scissorRect = {};
-	scissorRect.offset = { 0, 0 };
-	scissorRect.extent = { size, size };
-	pCommandBuffer->setScissorRects(&scissorRect, 1);
-
-	pCommandBuffer->drawInstanced(3, 1, 0, 0);
-
-	pCommandBuffer->endRenderPass();
-
-	pCommandBuffer->transitionImageLayout(m_pIntegrationLUT->getImage(), VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1);
+	pCommandBuffer->transitionImageLayout(m_pIntegrationLUT->getImage(), VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1);
 	pCommandBuffer->end();
 
-	pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+	pDevice->executeCompute(pCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 	pDevice->wait();
 
 	SAFEDELETE(pCommandPool);
 	SAFEDELETE(pPipeline);
-	SAFEDELETE(pPipeline);
 	SAFEDELETE(pPipelineLayout);
-	SAFEDELETE(pVertexShader);
-	SAFEDELETE(pPixelShader);
-	SAFEDELETE(pRenderPass);
-	SAFEDELETE(pImageView);
-	SAFEDELETE(pFrameBuffer);
+	SAFEDELETE(pComputeShader);
+	SAFEDELETE(pDescriptorLayout);
+
+	m_pDescriptorPool->deallocateDescriptorSet(pDescriptorSet);
 
 	return true;
 }
@@ -495,6 +417,8 @@ bool MeshRendererVK::createCommandPoolAndBuffers()
 		{
 			return false;
 		}
+		std::string name = "GeometryPass CommandBuffer[" + std::to_string(i) + "]";
+		m_ppGeometryPassBuffers[i]->setName(name.c_str());
 
 		m_ppLightPassPools[i] = DBG_NEW CommandPoolVK(pDevice, graphicsQueueIndex);
 		if (!m_ppLightPassPools[i]->init())
@@ -507,65 +431,17 @@ bool MeshRendererVK::createCommandPoolAndBuffers()
 		{
 			return false;
 		}
+		name = "LightPass CommandBuffer[" + std::to_string(i) + "]";
+		m_ppLightPassBuffers[i]->setName(name.c_str());
 	}
 
 	return true;
 }
 
-bool MeshRendererVK::createRenderPass()
-{
-	//Create renderpass
-	m_pBackBufferRenderPass = DBG_NEW RenderPassVK(m_pContext->getDevice());
-
-	VkAttachmentDescription description = {};
-	description.format			= VK_FORMAT_B8G8R8A8_UNORM;
-	description.samples			= VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
-	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
-	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
-	description.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	m_pBackBufferRenderPass->addAttachment(description);
-
-	description.format			= VK_FORMAT_D32_SFLOAT;//VK_FORMAT_D24_UNORM_S8_UINT;
-	description.samples			= VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
-	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
-	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
-	description.finalLayout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	m_pBackBufferRenderPass->addAttachment(description);
-
-	VkAttachmentReference colorAttachmentRef = {};
-	colorAttachmentRef.attachment	= 0;
-	colorAttachmentRef.layout		= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentReference depthStencilAttachmentRef = {};
-	depthStencilAttachmentRef.attachment	= 1;
-	depthStencilAttachmentRef.layout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	m_pBackBufferRenderPass->addSubpass(&colorAttachmentRef, 1, &depthStencilAttachmentRef);
-
-	VkSubpassDependency dependency = {};
-	dependency.dependencyFlags	= VK_DEPENDENCY_BY_REGION_BIT;
-	dependency.srcSubpass		= VK_SUBPASS_EXTERNAL;
-	dependency.dstSubpass		= 0;
-	dependency.srcStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.dstStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.srcAccessMask	= 0;
-	dependency.dstAccessMask	= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-	m_pBackBufferRenderPass->addSubpassDependency(dependency);
-	if (!m_pBackBufferRenderPass->finalize())
-	{
-		return false;
-	}
-}
-
 bool MeshRendererVK::createPipelines()
 {
-	RenderPassVK* pGeometryRenderPass = m_pRenderingHandler->getGeometryRenderPass();
+	RenderPassVK* pGeometryRenderPass	= m_pRenderingHandler->getGeometryRenderPass();
+	RenderPassVK* pBackbufferRenderPass = m_pRenderingHandler->getBackBufferRenderPass();
 
 	//Geometry Pass
 	IShader* pVertexShader = m_pContext->createShader();
@@ -592,10 +468,11 @@ bool MeshRendererVK::createPipelines()
 	m_pGeometryPipeline->addColorBlendAttachment(blendAttachment);
 
 	VkPipelineRasterizationStateCreateInfo rasterizerState = {};
-	rasterizerState.cullMode		= VK_CULL_MODE_BACK_BIT;
-	rasterizerState.frontFace		= VK_FRONT_FACE_CLOCKWISE;
-	rasterizerState.polygonMode		= VK_POLYGON_MODE_FILL;
-	rasterizerState.lineWidth		= 1.0f;
+	rasterizerState.cullMode				= VK_CULL_MODE_BACK_BIT;
+	rasterizerState.frontFace				= VK_FRONT_FACE_CLOCKWISE;
+	rasterizerState.polygonMode				= VK_POLYGON_MODE_FILL;
+	rasterizerState.rasterizerDiscardEnable = VK_FALSE;
+	rasterizerState.lineWidth				= 1.0f;
 	m_pGeometryPipeline->setRasterizerState(rasterizerState);
 
 	VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
@@ -605,8 +482,10 @@ bool MeshRendererVK::createPipelines()
 	depthStencilState.stencilTestEnable = VK_FALSE;
 	m_pGeometryPipeline->setDepthStencilState(depthStencilState);
 
+	SceneVK* pScene = reinterpret_cast<SceneVK*>(m_pRenderingHandler->getScene());
+
 	std::vector<const IShader*> shaders = { pVertexShader, pPixelShader };
-	if (!m_pGeometryPipeline->finalizeGraphics(shaders, pGeometryRenderPass, m_pGeometryPipelineLayout))
+	if (!m_pGeometryPipeline->finalizeGraphics(shaders, pGeometryRenderPass, pScene->getGeometryPipelineLayout()))
 	{
 		return false;
 	}
@@ -637,8 +516,9 @@ bool MeshRendererVK::createPipelines()
 	blendAttachment.colorWriteMask	= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	m_pLightPipeline->addColorBlendAttachment(blendAttachment);
 
-	rasterizerState.cullMode	= VK_CULL_MODE_NONE;
-	rasterizerState.lineWidth	= 1.0f;
+	rasterizerState.cullMode				= VK_CULL_MODE_NONE;
+	rasterizerState.lineWidth				= 1.0f;
+	rasterizerState.rasterizerDiscardEnable = VK_FALSE;
 	m_pLightPipeline->setRasterizerState(rasterizerState);
 
 	depthStencilState.depthTestEnable	= VK_FALSE;
@@ -646,7 +526,7 @@ bool MeshRendererVK::createPipelines()
 	depthStencilState.depthCompareOp	= VK_COMPARE_OP_LESS;
 	depthStencilState.stencilTestEnable = VK_FALSE;
 	m_pLightPipeline->setDepthStencilState(depthStencilState);
-	if (!m_pLightPipeline->finalizeGraphics(shaders, m_pBackBufferRenderPass, m_pLightPipelineLayout))
+	if (!m_pLightPipeline->finalizeGraphics(shaders, pBackbufferRenderPass, m_pLightPipelineLayout))
 	{
 		return false;
 	}
@@ -672,16 +552,17 @@ bool MeshRendererVK::createPipelines()
 	shaders = { pVertexShader, pPixelShader };
 	m_pSkyboxPipeline = DBG_NEW PipelineVK(m_pContext->getDevice());
 
-	blendAttachment.blendEnable = VK_FALSE;
-	blendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	blendAttachment.blendEnable		= VK_FALSE;
+	blendAttachment.colorWriteMask	= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	m_pSkyboxPipeline->addColorBlendAttachment(blendAttachment);
 	m_pSkyboxPipeline->addColorBlendAttachment(blendAttachment);
 	m_pSkyboxPipeline->addColorBlendAttachment(blendAttachment);
 
-	rasterizerState.cullMode	= VK_CULL_MODE_BACK_BIT;
-	rasterizerState.frontFace	= VK_FRONT_FACE_CLOCKWISE;
-	rasterizerState.polygonMode = VK_POLYGON_MODE_FILL;
-	rasterizerState.lineWidth	= 1.0f;
+	rasterizerState.cullMode				= VK_CULL_MODE_BACK_BIT;
+	rasterizerState.frontFace				= VK_FRONT_FACE_CLOCKWISE;
+	rasterizerState.polygonMode				= VK_POLYGON_MODE_FILL;
+	rasterizerState.lineWidth				= 1.0f;
+	rasterizerState.rasterizerDiscardEnable = VK_FALSE;
 	m_pSkyboxPipeline->setRasterizerState(rasterizerState);
 
 	depthStencilState.depthTestEnable	= VK_TRUE;
@@ -705,63 +586,37 @@ bool MeshRendererVK::createPipelineLayouts()
 {
 	//Descriptorpool
 	DescriptorCounts descriptorCounts = {};
-	descriptorCounts.m_SampledImages = 1024;
-	descriptorCounts.m_StorageBuffers = 256;
-	descriptorCounts.m_UniformBuffers = 256;
+	descriptorCounts.m_SampledImages	= 4096;
+	descriptorCounts.m_StorageImages	= 1024;
+	descriptorCounts.m_StorageBuffers	= 2048;
+	descriptorCounts.m_UniformBuffers	= 1024;
 
 	m_pDescriptorPool = DBG_NEW DescriptorPoolVK(m_pContext->getDevice());
-	if (!m_pDescriptorPool->init(descriptorCounts, 256))
-	{
-		return false;
-	}
-
-	//GeometryPass
-	m_pGeometryDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(m_pContext->getDevice());
-	m_pGeometryDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, CAMERA_BUFFER_BINDING, 1);
-	m_pGeometryDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, VERTEX_BUFFER_BINDING, 1);
-	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ALBEDO_MAP_BINDING, 1);
-	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, NORMAL_MAP_BINDING, 1);
-	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, AO_MAP_BINDING, 1);
-	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, METALLIC_MAP_BINDING, 1);
-	m_pGeometryDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ROUGHNESS_MAP_BINDING, 1);
-
-	if (!m_pGeometryDescriptorSetLayout->finalize())
-	{
-		return false;
-	}
-
-	//Transform and Color
-	VkPushConstantRange pushConstantRange = {};
-	pushConstantRange.size = sizeof(glm::mat4) + sizeof(glm::vec4) + sizeof(glm::vec3);
-	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-	pushConstantRange.offset = 0;
-	std::vector<VkPushConstantRange> pushConstantRanges = { pushConstantRange };
-	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { m_pGeometryDescriptorSetLayout };
-
-	m_pGeometryPipelineLayout = DBG_NEW PipelineLayoutVK(m_pContext->getDevice());
-	if (!m_pGeometryPipelineLayout->init(descriptorSetLayouts, pushConstantRanges))
+	if (!m_pDescriptorPool->init(descriptorCounts, 512))
 	{
 		return false;
 	}
 
 	//Lightpass
 	m_pLightDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(m_pContext->getDevice());
-	m_pLightDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, LIGHT_BUFFER_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, LP_LIGHT_BUFFER_BINDING, 1);
 	m_pLightDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, CAMERA_BUFFER_BINDING, 1);
-	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_ALBEDO_BINDING, 1);
-	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_NORMAL_BINDING, 1);
-	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_POSITION_BINDING, 1);
-	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, IRRADIANCE_BINDING, 1);
-	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ENVIRONMENT_BINDING, 1);
-	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, BRDF_LUT_BINDING, 1);
-	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, RAY_TRACING_RESULT_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, LP_GBUFFER_ALBEDO_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, LP_GBUFFER_NORMAL_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, LP_GBUFFER_VELOCITY_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, LP_GBUFFER_DEPTH_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, LP_IRRADIANCE_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, LP_ENVIRONMENT_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, LP_BRDF_LUT_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, LP_RADIANCE_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, LP_GLOSSY_BINDING, 1);
 	if (!m_pLightDescriptorSetLayout->finalize())
 	{
 		return false;
 	}
 
-	pushConstantRanges = { };
-	descriptorSetLayouts = { m_pLightDescriptorSetLayout };
+	std::vector<VkPushConstantRange> pushConstantRanges = { };
+	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { m_pLightDescriptorSetLayout };
 
 	m_pLightPipelineLayout = DBG_NEW PipelineLayoutVK(m_pContext->getDevice());
 	if (!m_pLightPipelineLayout->init(descriptorSetLayouts, pushConstantRanges))
@@ -802,21 +657,8 @@ bool MeshRendererVK::createPipelineLayouts()
 	return true;
 }
 
-bool MeshRendererVK::createBuffersAndTextures()
+bool MeshRendererVK::createTextures()
 {
-	m_pCameraBuffer = m_pRenderingHandler->getCameraBuffer();
-
-	BufferParams lightBufferParams = {};
-	lightBufferParams.Usage				= VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-	lightBufferParams.SizeInBytes		= sizeof(PointLight) * MAX_POINTLIGHTS;
-	lightBufferParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-	m_pLightBuffer = DBG_NEW BufferVK(m_pContext->getDevice());
-	if (!m_pLightBuffer->init(lightBufferParams))
-	{
-		return false;
-	}
-
 	uint8_t whitePixels[] = { 255, 255, 255, 255 };
 	m_pDefaultTexture = DBG_NEW Texture2DVK(m_pContext->getDevice());
 	if (!m_pDefaultTexture->initFromMemory(whitePixels, 1, 1, ETextureFormat::FORMAT_R8G8B8A8_UNORM, 0, false))
@@ -856,102 +698,25 @@ bool MeshRendererVK::createSamplers()
 		return false;
 	}
 
-	return true;
-}
+	SamplerParams rtParams = {};
+	rtParams.MagFilter = VK_FILTER_LINEAR;
+	rtParams.MinFilter = VK_FILTER_LINEAR;
+	rtParams.WrapModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	rtParams.WrapModeV = params.WrapModeU;
+	rtParams.WrapModeW = params.WrapModeU;
 
-DescriptorSetVK* MeshRendererVK::getDescriptorSetFromMeshAndMaterial(const MeshVK* pMesh, const Material* pMaterial)
-{
-	MeshFilter filter = {};
-	filter.pMesh		= pMesh;
-	filter.pMaterial	= pMaterial;
-
-	if (m_MeshTable.count(filter) == 0)
+	m_pRTSampler = DBG_NEW SamplerVK(m_pContext->getDevice());
+	if (!m_pRTSampler->init(rtParams))
 	{
-		DescriptorSetVK* pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pGeometryDescriptorSetLayout);
-		pDescriptorSet->writeUniformBufferDescriptor(m_pCameraBuffer, CAMERA_BUFFER_BINDING);
-
-		BufferVK* pVertBuffer = reinterpret_cast<BufferVK*>(pMesh->getVertexBuffer());
-		pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer, VERTEX_BUFFER_BINDING);
-
-		SamplerVK* pSampler = reinterpret_cast<SamplerVK*>(pMaterial->getSampler());
-
-		Texture2DVK* pAlbedo = nullptr;
-		if (pMaterial->hasAlbedoMap())
-		{
-			pAlbedo = reinterpret_cast<Texture2DVK*>(pMaterial->getAlbedoMap());
-		}
-		else
-		{
-			pAlbedo = m_pDefaultTexture;
-		}
-		ImageViewVK* pAlbedoView = pAlbedo->getImageView();
-		pDescriptorSet->writeCombinedImageDescriptors(&pAlbedoView, &pSampler, 1, ALBEDO_MAP_BINDING);
-
-		Texture2DVK* pNormal = nullptr;
-		if (pMaterial->hasNormalMap())
-		{
-			pNormal = reinterpret_cast<Texture2DVK*>(pMaterial->getNormalMap());
-		}
-		else
-		{
-			pNormal = m_pDefaultNormal;
-		}
-
-		ImageViewVK* pNormalView = pNormal->getImageView();
-		pDescriptorSet->writeCombinedImageDescriptors(&pNormalView, &pSampler, 1, NORMAL_MAP_BINDING);
-
-		Texture2DVK* pAO = nullptr;
-		if (pMaterial->hasAmbientOcclusionMap())
-		{
-			pAO = reinterpret_cast<Texture2DVK*>(pMaterial->getAmbientOcclusionMap());
-		}
-		else
-		{
-			pAO = m_pDefaultTexture;
-		}
-
-		ImageViewVK* pAOView = pAO->getImageView();
-		pDescriptorSet->writeCombinedImageDescriptors(&pAOView, &pSampler, 1, AO_MAP_BINDING);
-
-		Texture2DVK* pMetallic = nullptr;
-		if (pMaterial->hasMetallicMap())
-		{
-			pMetallic = reinterpret_cast<Texture2DVK*>(pMaterial->getMetallicMap());
-		}
-		else
-		{
-			pMetallic = m_pDefaultTexture;
-		}
-
-		ImageViewVK* pMetallicView = pMetallic->getImageView();
-		pDescriptorSet->writeCombinedImageDescriptors(&pMetallicView, &pSampler, 1, METALLIC_MAP_BINDING);
-
-		Texture2DVK* pRoughness = nullptr;
-		if (pMaterial->hasRoughnessMap())
-		{
-			pRoughness = reinterpret_cast<Texture2DVK*>(pMaterial->getRoughnessMap());
-		}
-		else
-		{
-			pRoughness = m_pDefaultTexture;
-		}
-
-		ImageViewVK* pRoughnessView = pRoughness->getImageView();
-		pDescriptorSet->writeCombinedImageDescriptors(&pRoughnessView, &pSampler, 1, ROUGHNESS_MAP_BINDING);
-
-		MeshPipeline meshPipeline = {};
-		meshPipeline.pDescriptorSets = pDescriptorSet;
-
-		m_MeshTable.insert(std::make_pair(filter, meshPipeline));
-		return pDescriptorSet;
+		return false;
 	}
 
-	MeshPipeline meshPipeline = m_MeshTable[filter];
-	return meshPipeline.pDescriptorSets;
+	return true;
 }
 
 void MeshRendererVK::createProfiler()
 {
-	m_pProfiler = DBG_NEW ProfilerVK("Mesh Renderer", m_pContext->getDevice());
-	m_pProfiler->initTimestamp(&m_TimestampDrawIndexed, "Draw indexed");
+	m_pGPassProfiler		= DBG_NEW ProfilerVK("Mesh Renderer: Geometry Pass", m_pContext->getDevice());
+	m_pLightPassProfiler	= DBG_NEW ProfilerVK("Mesh Renderer: Light Pass", m_pContext->getDevice());
+	//m_pGPassProfiler->initTimestamp(&m_TimestampGeometry, "Draw indexed");
 }

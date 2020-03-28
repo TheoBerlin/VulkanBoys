@@ -80,20 +80,20 @@ const std::string& ShaderVK::getEntryPoint() const
 
 void ShaderVK::setSpecializationConstant(uint32_t index, void* pData, uint32_t sizeInBytes)
 {
-	uint32_t specializationDataOffset = m_SpecializationData.size();
-	m_SpecializationData.resize(specializationDataOffset + sizeInBytes);
-	memcpy(specializationDataOffset + m_SpecializationData.data(), pData, sizeInBytes);
+	uint32_t specializationDataOffset = uint32_t(m_SpecializationData.size());
+	m_SpecializationData.resize(size_t(specializationDataOffset) + sizeInBytes);
+	memcpy(m_SpecializationData.data() + specializationDataOffset, pData, sizeInBytes);
 
 	VkSpecializationMapEntry specializationEntry = {};
-	specializationEntry.constantID = index;
-	specializationEntry.offset = specializationDataOffset;
-	specializationEntry.size = sizeInBytes;
+	specializationEntry.constantID	= index;
+	specializationEntry.offset		= specializationDataOffset;
+	specializationEntry.size		= sizeInBytes;
 	m_SpecializationEntries.push_back(specializationEntry);
 
-	m_SpecializationInfo.mapEntryCount = m_SpecializationEntries.size();
-	m_SpecializationInfo.pMapEntries = m_SpecializationEntries.data();
-	m_SpecializationInfo.dataSize = m_SpecializationData.size();
-	m_SpecializationInfo.pData = m_SpecializationData.data();
+	m_SpecializationInfo.mapEntryCount	= uint32_t(m_SpecializationEntries.size());
+	m_SpecializationInfo.pMapEntries	= m_SpecializationEntries.data();
+	m_SpecializationInfo.dataSize		= m_SpecializationData.size();
+	m_SpecializationInfo.pData			= m_SpecializationData.data();
 }
 
 EShader ShaderVK::getShaderType() const

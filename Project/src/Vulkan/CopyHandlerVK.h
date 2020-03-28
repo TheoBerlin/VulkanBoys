@@ -6,10 +6,11 @@
 class ImageVK;
 class DeviceVK;
 class BufferVK;
+class InstanceVK;
 class CommandPoolVK;
 class CommandBufferVK;
 
-#define MAX_COMMAND_BUFFERS 6
+#define MAX_COMMAND_BUFFERS 16
 
 class CopyHandlerVK
 {
@@ -27,8 +28,6 @@ public:
 
 	void generateMips(ImageVK* pImage);
 
-	void waitForResources();
-
 private:
 	CommandBufferVK* getNextTransferBuffer();
 	CommandBufferVK* getNextGraphicsBuffer();
@@ -36,16 +35,13 @@ private:
 	void submitGraphicsBuffer(CommandBufferVK* pCommandBuffer);
 
 private:
-	//Should proably be controlled by the device or have a queue wrapper that controlls these
-	Spinlock m_TransferQueueLock;
-	Spinlock m_GraphicsQueueLock;
 	DeviceVK* m_pDevice;
-	CommandPoolVK* m_pTransferPool;
-	CommandPoolVK* m_pGraphicsPool;
+	CommandPoolVK* m_pTransferPool[MAX_COMMAND_BUFFERS];
+	CommandPoolVK* m_pGraphicsPool[MAX_COMMAND_BUFFERS];
 	CommandBufferVK* m_pTransferBuffers[MAX_COMMAND_BUFFERS];
 	CommandBufferVK* m_pGraphicsBuffers[MAX_COMMAND_BUFFERS];
-	VkQueue m_TransferQueue;
-	VkQueue m_GraphicsQueue;
+	Spinlock m_pTransferLocks[MAX_COMMAND_BUFFERS];
+	Spinlock m_pGraphicsLocks[MAX_COMMAND_BUFFERS];
 	uint32_t m_CurrentTransferBuffer;
 	uint32_t m_CurrentGraphicsBuffer;
 };

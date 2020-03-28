@@ -20,6 +20,7 @@ public:
 	virtual bool initFromFile(const std::string& filepath) override;
 	virtual bool initFromMemory(const void* pVertices, size_t vertexSize, uint32_t vertexCount, const uint32_t* pIndices, uint32_t indexCount) override;
 	virtual bool initAsSphere(uint32_t subDivisions) override;
+	virtual bool initAsCube() override;
 
 	virtual IBuffer* getVertexBuffer() const override;
 	virtual IBuffer* getIndexBuffer() const override;
@@ -30,8 +31,6 @@ public:
 	virtual uint32_t getMeshID() const override;
 
 private:
-	glm::vec3 calculateTangent(const Vertex& v0, const Vertex& v1, const Vertex& v2);
-
 	uint32_t vertexForEdge(std::map<std::pair<uint32_t, uint32_t>, uint32_t>& lookup, std::vector<glm::vec3>& vertices, uint32_t first, uint32_t second);
 	std::vector<Triangle> subdivide(std::vector<glm::vec3>& vertices, std::vector<Triangle>& triangles);
 

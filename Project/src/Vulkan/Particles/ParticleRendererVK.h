@@ -33,14 +33,15 @@ public:
 
 	virtual void beginFrame(IScene* pScene) override;
 	virtual void endFrame(IScene* pScene) override;
+
+	virtual void renderUI() override;
 	
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
 
 	void submitParticles(ParticleEmitter* pEmitter);
 
-	FORCEINLINE CommandBufferVK* getCommandBuffer(uint32_t frameindex) const { return m_ppCommandBuffers[frameindex]; }
-
-	ProfilerVK* getProfiler() { return m_pProfiler; }
+	FORCEINLINE CommandBufferVK*	getCommandBuffer(uint32_t frameindex) const { return m_ppCommandBuffers[frameindex]; }
+	FORCEINLINE ProfilerVK*			getProfiler()								{ return m_pProfiler; }
 
 private:
 	bool createCommandPoolAndBuffers();

@@ -17,14 +17,13 @@ public:
 	void* allocate(VkDeviceSize sizeInBytes);
 	void reset();
 
-	BufferVK* getBuffer() const { return m_pBuffer; }
-	VkDeviceSize getCurrentOffset() const { return m_BufferOffset; }
+	FORCEINLINE BufferVK*		getBuffer() const			{ return m_pBuffer; }
+	FORCEINLINE VkDeviceSize	getCurrentOffset() const	{ return m_BufferOffset; }
 
 private:
-	DeviceVK* m_pDevice;
-	BufferVK* m_pBuffer;
-	BufferVK* m_pOldBuffer;
-	uint8_t* m_pHostMemory;
-	VkDeviceSize m_BufferOffset;
-	Spinlock m_Lock; //TODO: We need to fix better thread saftey this is just a quick fix to avoid crashes
+	DeviceVK*		m_pDevice;
+	BufferVK*		m_pBuffer;
+	BufferVK*		m_pOldBuffer;
+	uint8_t*		m_pHostMemory;
+	VkDeviceSize	m_BufferOffset;
 };

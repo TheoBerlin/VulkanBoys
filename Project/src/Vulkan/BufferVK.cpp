@@ -41,18 +41,21 @@ bool BufferVK::init(const BufferParams& params)
 	bufferInfo.size		= params.SizeInBytes;
 	bufferInfo.usage	= params.Usage;
 
-	if (params.IsExclusive || !m_pDevice->hasUniqueQueueFamilyIndices())
+	bool hasUniqueQueues = m_pDevice->hasUniqueQueueFamilyIndices();
+	if (params.IsExclusive || !hasUniqueQueues)
 	{
-		bufferInfo.queueFamilyIndexCount = 0;
-		bufferInfo.pQueueFamilyIndices = nullptr;
-		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		bufferInfo.queueFamilyIndexCount	= 0;
+		bufferInfo.pQueueFamilyIndices		= nullptr;
+		bufferInfo.sharingMode				= VK_SHARING_MODE_EXCLUSIVE;
 	}
 	else
 	{
 		uint32_t queueFamilies[3] = { m_pDevice->getQueueFamilyIndices().graphicsFamily.value(), m_pDevice->getQueueFamilyIndices().computeFamily.value(), m_pDevice->getQueueFamilyIndices().transferFamily.value() };
-		bufferInfo.queueFamilyIndexCount = 3;
-		bufferInfo.pQueueFamilyIndices = queueFamilies;
-		bufferInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+		bufferInfo.queueFamilyIndexCount	= 3;
+		bufferInfo.pQueueFamilyIndices		= queueFamilies;
+		bufferInfo.sharingMode				= VK_SHARING_MODE_CONCURRENT;
+
+		LOG("CONCURRENT BUFFER");
 	}
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateBuffer(m_pDevice->getDevice(), &bufferInfo, nullptr, &m_Buffer), "Failed to create buffer");
@@ -64,8 +67,8 @@ bool BufferVK::init(const BufferParams& params)
 	vkGetBufferMemoryRequirements(m_pDevice->getDevice(), m_Buffer, &memRequirements);
 
 	VkMemoryAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.pNext = nullptr;
+	allocInfo.sType				= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.pNext				= nullptr;
 	allocInfo.allocationSize	= memRequirements.size;
 	allocInfo.memoryTypeIndex	= findMemoryType(m_pDevice->getPhysicalDevice(), memRequirements.memoryTypeBits, params.MemoryProperty);
 
@@ -74,6 +77,10 @@ bool BufferVK::init(const BufferParams& params)
 	vkBindBufferMemory(m_pDevice->getDevice(), m_Buffer, m_Memory, 0);
 	D_LOG("--- Buffer: Vulkan Allocated '%d' bytes for buffer", memRequirements.size);
 
+	static uint32_t num = 0;
+	std::string name = "Buffer " + std::to_string(num++);
+
+	setName(name.c_str());
     return true;
 }
 
@@ -92,6 +99,11 @@ void BufferVK::unmap()
 {
 	vkUnmapMemory(m_pDevice->getDevice(), m_Memory);
 	m_IsMapped = false;
+}
+
+void BufferVK::setName(const char* pName)
+{
+	m_pDevice->setVulkanObjectName(pName, (uint64_t)m_Buffer, VK_OBJECT_TYPE_BUFFER);
 }
 
 uint64_t BufferVK::getSizeInBytes() const

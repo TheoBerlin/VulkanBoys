@@ -3,6 +3,7 @@
 
 class DeviceVK;
 class BufferVK;
+class InstanceVK;
 class SamplerVK;
 class PipelineVK;
 class Texture2DVK;

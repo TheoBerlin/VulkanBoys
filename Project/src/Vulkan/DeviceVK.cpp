@@ -1,16 +1,18 @@
+#include <cstring>
+#include <iostream>
+#include <map>
+#include <set>
+#include <mutex>
+
 #include "DeviceVK.h"
 #include "InstanceVK.h"
 #include "CopyHandlerVK.h"
 #include "CommandBufferVK.h"
 
-#include <cstring>
-#include <iostream>
-#include <map>
-#include <set>
-
 #define GET_DEVICE_PROC_ADDR(device, function_name) if ((function_name = reinterpret_cast<PFN_##function_name>(vkGetDeviceProcAddr(device, #function_name))) == nullptr) { LOG("--- Vulkan: Failed to load DeviceFunction '%s'", #function_name); }
 
-DeviceVK::DeviceVK() :
+DeviceVK::DeviceVK() 
+	: m_pInstance(nullptr),
 	m_PhysicalDevice(VK_NULL_HANDLE),
 	m_Device(VK_NULL_HANDLE),
 	m_GraphicsQueue(VK_NULL_HANDLE),
@@ -19,7 +21,16 @@ DeviceVK::DeviceVK() :
 	m_PresentQueue(VK_NULL_HANDLE),
 	m_DeviceLimits({}),
 	m_RayTracingProperties({}),
-	m_pCopyHandler()
+	m_pCopyHandler(),
+	vkCreateAccelerationStructureNV(),
+	vkDestroyAccelerationStructureNV(),
+	vkBindAccelerationStructureMemoryNV(),
+	vkGetAccelerationStructureHandleNV(),
+	vkGetAccelerationStructureMemoryRequirementsNV(),
+	vkCmdBuildAccelerationStructureNV(),
+	vkCreateRayTracingPipelinesNV(),
+	vkGetRayTracingShaderGroupHandlesNV(),
+	vkCmdTraceRaysNV()
 {
 }
 
@@ -30,10 +41,12 @@ DeviceVK::~DeviceVK()
 
 bool DeviceVK::finalize(InstanceVK* pInstance)
 {
-	if (!initPhysicalDevice(pInstance))
+	m_pInstance = pInstance;
+	
+	if (!initPhysicalDevice())
 		return false;
 
-	if (!initLogicalDevice(pInstance))
+	if (!initLogicalDevice())
 		return false;
 
 	registerExtensionFunctions();
@@ -68,13 +81,49 @@ void DeviceVK::addOptionalExtension(const char* extensionName)
 	m_RequestedOptionalExtensions.push_back(extensionName);
 }
 
+void DeviceVK::executeGraphics(CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages, uint32_t waitSemaphoreCount, const VkSemaphore* pSignalSemaphores, uint32_t signalSemaphoreCount)
+{
+	std::scoped_lock<Spinlock> lock(m_GraphicsLock);
+	executeCommandBuffer(m_GraphicsQueue, pCommandBuffer, pWaitSemaphore, pWaitStages, waitSemaphoreCount, pSignalSemaphores, signalSemaphoreCount);
+}
+
+void DeviceVK::executeCompute(CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages, uint32_t waitSemaphoreCount, const VkSemaphore* pSignalSemaphores, uint32_t signalSemaphoreCount)
+{
+	std::scoped_lock<Spinlock> lock(m_ComputeLock);
+	executeCommandBuffer(m_ComputeQueue, pCommandBuffer, pWaitSemaphore, pWaitStages, waitSemaphoreCount, pSignalSemaphores, signalSemaphoreCount);
+}
+
+void DeviceVK::executeTransfer(CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages, uint32_t waitSemaphoreCount, const VkSemaphore* pSignalSemaphores, uint32_t signalSemaphoreCount)
+{
+	std::scoped_lock<Spinlock> lock(m_TransferLock);
+	executeCommandBuffer(m_TransferQueue, pCommandBuffer, pWaitSemaphore, pWaitStages, waitSemaphoreCount, pSignalSemaphores, signalSemaphoreCount);
+}
+
+void DeviceVK::waitGraphics()
+{
+	std::scoped_lock<Spinlock> lock(m_GraphicsLock);
+	vkQueueWaitIdle(m_GraphicsQueue);
+}
+
+void DeviceVK::waitCompute()
+{
+	std::scoped_lock<Spinlock> lock(m_ComputeLock);
+	vkQueueWaitIdle(m_ComputeQueue);
+}
+
+void DeviceVK::waitTransfer()
+{
+	std::scoped_lock<Spinlock> lock(m_TransferLock);
+	vkQueueWaitIdle(m_TransferQueue);
+}
+
 void DeviceVK::executeCommandBuffer(VkQueue queue, CommandBufferVK* pCommandBuffer, const VkSemaphore* pWaitSemaphore, const VkPipelineStageFlags* pWaitStages,
 	uint32_t waitSemaphoreCount, const VkSemaphore* pSignalSemaphores, uint32_t signalSemaphoreCount)
 {
 	//Submit
 	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.pNext = nullptr;
+	submitInfo.sType				= VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.pNext				= nullptr;
 	submitInfo.waitSemaphoreCount	= waitSemaphoreCount;
 	submitInfo.pWaitSemaphores		= pWaitSemaphore;
 	submitInfo.pWaitDstStageMask	= pWaitStages;
@@ -98,16 +147,32 @@ void DeviceVK::wait()
 	}
 }
 
+void DeviceVK::setVulkanObjectName(const char* pName, uint64_t objectHandle, VkObjectType type)
+{
+	if (pName)
+	{
+		if (m_pInstance->vkSetDebugUtilsObjectNameEXT)
+		{
+			VkDebugUtilsObjectNameInfoEXT info = {};
+			info.sType			= VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+			info.pNext			= nullptr;
+			info.objectType		= type;
+			info.objectHandle	= objectHandle;
+			info.pObjectName	= pName;
+			m_pInstance->vkSetDebugUtilsObjectNameEXT(m_Device, &info);
+		}
+	}
+}
+
 bool DeviceVK::hasUniqueQueueFamilyIndices() const
 {
 	std::set<uint32_t> familyIndices = {
 		m_DeviceQueueFamilyIndices.computeFamily.value(),
 		m_DeviceQueueFamilyIndices.graphicsFamily.value(),
-		m_DeviceQueueFamilyIndices.presentFamily.value(),
 		m_DeviceQueueFamilyIndices.transferFamily.value()
 	};
 
-	return familyIndices.size() == 4;
+	return familyIndices.size() == 3;
 }
 
 void DeviceVK::getMaxComputeWorkGroupSize(uint32_t pWorkGroupSize[3])
@@ -115,10 +180,10 @@ void DeviceVK::getMaxComputeWorkGroupSize(uint32_t pWorkGroupSize[3])
 	std::memcpy(pWorkGroupSize, m_DeviceLimits.maxComputeWorkGroupSize, sizeof(uint32_t) * 3);
 }
 
-bool DeviceVK::initPhysicalDevice(InstanceVK* pInstance)
+bool DeviceVK::initPhysicalDevice()
 {
 	uint32_t deviceCount = 0;
-	vkEnumeratePhysicalDevices(pInstance->getInstance() , &deviceCount, nullptr);
+	vkEnumeratePhysicalDevices(m_pInstance->getInstance() , &deviceCount, nullptr);
 
 	if (deviceCount == 0)
 	{
@@ -127,7 +192,7 @@ bool DeviceVK::initPhysicalDevice(InstanceVK* pInstance)
 	}
 
 	std::vector<VkPhysicalDevice> physicalDevices(deviceCount);
-	vkEnumeratePhysicalDevices(pInstance->getInstance(), &deviceCount, physicalDevices.data());
+	vkEnumeratePhysicalDevices(m_pInstance->getInstance(), &deviceCount, physicalDevices.data());
 
 	std::multimap<int32_t, VkPhysicalDevice> physicalDeviceCandidates;
 
@@ -156,7 +221,7 @@ bool DeviceVK::initPhysicalDevice(InstanceVK* pInstance)
 	return true;
 }
 
-bool DeviceVK::initLogicalDevice(InstanceVK* pInstance)
+bool DeviceVK::initLogicalDevice()
 {
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
 	std::set<uint32_t> uniqueQueueFamilies = 
@@ -181,6 +246,7 @@ bool DeviceVK::initLogicalDevice(InstanceVK* pInstance)
 	VkPhysicalDeviceFeatures deviceFeatures = {};
 	deviceFeatures.fillModeNonSolid = true;
 	deviceFeatures.vertexPipelineStoresAndAtomics = true;
+	deviceFeatures.fragmentStoresAndAtomics = true;
 
 	VkDeviceCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -193,11 +259,11 @@ bool DeviceVK::initLogicalDevice(InstanceVK* pInstance)
 	createInfo.enabledExtensionCount = static_cast<uint32_t>(m_EnabledExtensions.size());
 	createInfo.ppEnabledExtensionNames = m_EnabledExtensions.data();
 
-	if (pInstance->validationLayersEnabled())
+	if (m_pInstance->validationLayersEnabled())
 	{
-		auto& validationLayers = pInstance->getValidationLayers();
-		createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
-		createInfo.ppEnabledLayerNames = validationLayers.data();
+		auto& validationLayers = m_pInstance->getValidationLayers();
+		createInfo.enabledLayerCount	= static_cast<uint32_t>(validationLayers.size());
+		createInfo.ppEnabledLayerNames	= validationLayers.data();
 	}
 	else
 	{
@@ -210,10 +276,16 @@ bool DeviceVK::initLogicalDevice(InstanceVK* pInstance)
 		return false;
 	}
 
+	//Retrive queues
 	vkGetDeviceQueue(m_Device, m_DeviceQueueFamilyIndices.graphicsFamily.value(), 0, &m_GraphicsQueue);
-	vkGetDeviceQueue(m_Device, m_DeviceQueueFamilyIndices.computeFamily.value(), 0, &m_ComputeQueue);
-	vkGetDeviceQueue(m_Device, m_DeviceQueueFamilyIndices.transferFamily.value(), 0, &m_TransferQueue);
 	vkGetDeviceQueue(m_Device, m_DeviceQueueFamilyIndices.presentFamily.value(), 0, &m_PresentQueue);
+	setVulkanObjectName("GraphicsQueue", (uint64_t)m_GraphicsQueue, VK_OBJECT_TYPE_QUEUE);
+	
+	vkGetDeviceQueue(m_Device, m_DeviceQueueFamilyIndices.computeFamily.value(), 0, &m_ComputeQueue);
+	setVulkanObjectName("ComputeQueue", (uint64_t)m_ComputeQueue, VK_OBJECT_TYPE_QUEUE);
+
+	vkGetDeviceQueue(m_Device, m_DeviceQueueFamilyIndices.transferFamily.value(), 0, &m_TransferQueue);
+	setVulkanObjectName("TransferQueue", (uint64_t)m_TransferQueue, VK_OBJECT_TYPE_QUEUE);
 
 	return true;
 }
@@ -267,7 +339,6 @@ void DeviceVK::checkExtensionsSupport(VkPhysicalDevice physicalDevice, bool& req
 void DeviceVK::setEnabledExtensions()
 {
 	m_EnabledExtensions = std::vector<const char*>(m_RequestedRequiredExtensions.begin(), m_RequestedRequiredExtensions.end());
-
 	for (auto& requiredExtensions : m_RequestedRequiredExtensions)
 	{
 		m_ExtensionsStatus[requiredExtensions] = true;
@@ -310,17 +381,17 @@ QueueFamilyIndices DeviceVK::findQueueFamilies(VkPhysicalDevice physicalDevice)
 	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
 	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
 
-	indices.graphicsFamily = getQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT, queueFamilies);
-	indices.computeFamily = getQueueFamilyIndex(VK_QUEUE_COMPUTE_BIT, queueFamilies);
-	indices.transferFamily = getQueueFamilyIndex(VK_QUEUE_TRANSFER_BIT, queueFamilies);
-	indices.presentFamily = indices.graphicsFamily; //Assume present support at this stage
+	indices.graphicsFamily	= getQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT, queueFamilies);
+	indices.computeFamily	= getQueueFamilyIndex(VK_QUEUE_COMPUTE_BIT, queueFamilies);
+	indices.transferFamily	= getQueueFamilyIndex(VK_QUEUE_TRANSFER_BIT, queueFamilies);
+	indices.presentFamily	= indices.graphicsFamily; //Assume present support at this stage
 
 	return indices;
 }
 
 void DeviceVK::registerExtensionFunctions()
 {
-	if (m_ExtensionsStatus["VK_NV_ray_tracing"])
+	if (m_ExtensionsStatus[VK_NV_RAY_TRACING_EXTENSION_NAME])
 	{
 		// Get VK_NV_ray_tracing related function pointers
 		GET_DEVICE_PROC_ADDR(m_Device, vkCreateAccelerationStructureNV);
@@ -338,8 +409,8 @@ void DeviceVK::registerExtensionFunctions()
 		//Query Ray Tracing properties
 		m_RayTracingProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_NV;
 		VkPhysicalDeviceProperties2 deviceProps2 = {};
-		deviceProps2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-		deviceProps2.pNext = &m_RayTracingProperties;
+		deviceProps2.sType	= VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+		deviceProps2.pNext	= &m_RayTracingProperties;
 		vkGetPhysicalDeviceProperties2(m_PhysicalDevice, &deviceProps2);
 	}
 	else

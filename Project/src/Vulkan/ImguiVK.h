@@ -3,17 +3,20 @@
 
 #include "VulkanCommon.h"
 
-class IShader;
+#include <imgui/imgui.h>
+
 class BufferVK;
-class SamplerVK;
-class PipelineVK;
-class ITexture2D;
-class RenderPassVK;
-class DescriptorSetVK;
 class DescriptorPoolVK;
-class PipelineLayoutVK;
-class GraphicsContextVK;
 class DescriptorSetLayoutVK;
+class DescriptorSetVK;
+class GraphicsContextVK;
+class ImageViewVK;
+class IShader;
+class ITexture2D;
+class PipelineVK;
+class PipelineLayoutVK;
+class RenderPassVK;
+class SamplerVK;
 
 class ImguiVK : public IImgui
 {
@@ -22,12 +25,14 @@ public:
 	~ImguiVK();
 
 	virtual bool init() override;
-	
+
 	virtual void begin(double deltatime) override;
 	virtual void end() override;
-	
-	virtual void render(CommandBufferVK* pCommandBuffer) override;
-	
+
+	virtual void render(CommandBufferVK* pCommandBuffer, uint32_t currentFrame) override;
+
+	ImTextureID addTexture(ImageViewVK* pImageView);
+
 	virtual void onMouseMove(uint32_t x, uint32_t y) override;
 	virtual void onMousePressed(int32_t button) override;
 	virtual void onMouseScroll(double x, double y) override;
@@ -55,6 +60,6 @@ private:
 	DescriptorSetLayoutVK* m_pDescriptorSetLayout;
 	PipelineLayoutVK* m_pPipelineLayout;
 	ITexture2D* m_pFontTexture;
-	BufferVK* m_pVertexBuffer;
-	BufferVK* m_pIndexBuffer;
+	BufferVK* m_ppVertexBuffers[MAX_FRAMES_IN_FLIGHT];
+	BufferVK* m_ppIndexBuffers[MAX_FRAMES_IN_FLIGHT];
 };

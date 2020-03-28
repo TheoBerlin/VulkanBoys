@@ -1,6 +1,7 @@
 #include "CommandPoolVK.h"
 #include "CommandBufferVK.h"
 #include "DeviceVK.h"
+#include "InstanceVK.h"
 
 CommandPoolVK::CommandPoolVK(DeviceVK* pDevice, uint32_t queueFamilyIndex)
 	: m_pDevice(pDevice),
@@ -91,7 +92,7 @@ void CommandPoolVK::freeCommandBuffer(CommandBufferVK** ppCommandBuffer)
 	SAFEDELETE(*ppCommandBuffer);
 }
 
-void CommandPoolVK::reset()
+void CommandPoolVK::setName(const char* pName)
 {
-	VK_CHECK_RESULT(vkResetCommandPool(m_pDevice->getDevice(), m_CommandPool, 0), "Reset CommandPool Failed");
+	m_pDevice->setVulkanObjectName(pName, (uint64_t)m_CommandPool, VK_OBJECT_TYPE_COMMAND_POOL);
 }

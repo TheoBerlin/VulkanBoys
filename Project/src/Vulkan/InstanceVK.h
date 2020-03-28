@@ -5,10 +5,11 @@
 
 class InstanceVK
 {
-	DECL_NO_COPY(InstanceVK);
 public:
 	InstanceVK();
 	~InstanceVK();
+
+	DECL_NO_COPY(InstanceVK);
 
 	bool finalize(bool validationLayersEnabled);
 	void release();
@@ -21,9 +22,10 @@ public:
 	void addValidationLayer(const char* layerName);
 	
 	//GETTERS
-	VkInstance getInstance() { return m_Instance; }
-	bool validationLayersEnabled() { return m_ValidationLayersEnabled; }
-	const std::vector<const char*>& getValidationLayers() { return m_ValidationLayers; }
+	bool							validationLayersEnabled()	{ return m_ValidationLayersEnabled; }
+
+	VkInstance						getInstance()				{ return m_Instance; }
+	const std::vector<const char*>& getValidationLayers()		{ return m_ValidationLayers; }
 
 private:
 	bool initInstance();
@@ -36,6 +38,8 @@ private:
 	void retriveAvailableExtensions();
 	void retriveAvailableLayers();
 
+	void registerExtensionFunctions();
+
 private:
 	static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
 		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -46,6 +50,7 @@ private:
 private:
 	VkInstance m_Instance;
 
+	std::unordered_map<std::string, bool> m_ExtensionsStatus;
 	std::vector<const char*> m_RequestedRequiredExtensions;
 	std::vector<const char*> m_RequestedOptionalExtensions;
 	std::vector<const char*> m_EnabledExtensions;
@@ -58,5 +63,10 @@ private:
 	bool m_HasRetrivedLayers;
 
 	VkDebugUtilsMessengerEXT m_DebugMessenger;
+
+public:
+	PFN_vkSetDebugUtilsObjectNameEXT	vkSetDebugUtilsObjectNameEXT;
+	PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
+	PFN_vkCreateDebugUtilsMessengerEXT	vkCreateDebugUtilsMessengerEXT;
 };
 

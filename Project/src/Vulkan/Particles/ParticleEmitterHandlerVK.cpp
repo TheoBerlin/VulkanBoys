@@ -25,9 +25,8 @@
 #define AGES_BINDING        	2
 #define EMITTER_BINDING     	3
 #define CAMERA_BINDING      	4
-#define CAMERA_MATRICES_BINDING	5
-#define DEPTH_BINDING			6
-#define NORMAL_MAP_BINDING  	7
+#define DEPTH_BINDING			5
+#define NORMAL_MAP_BINDING  	6
 
 ParticleEmitterHandlerVK::ParticleEmitterHandlerVK()
 	:m_pDescriptorPool(nullptr),
@@ -146,7 +145,7 @@ void ParticleEmitterHandlerVK::toggleComputationDevice()
 		}
 
 		pTempCommandBuffer->end();
-		pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+		pDevice->executeCompute(pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 
 		// Wait for command buffer to finish executing before deleting it
 		pTempCommandBuffer->reset(true);
@@ -182,7 +181,7 @@ void ParticleEmitterHandlerVK::toggleComputationDevice()
 
 		pTempCmdBufferCompute->end();
 
-		pDevice->executeCommandBuffer(pDevice->getComputeQueue(), pTempCmdBufferCompute, nullptr, nullptr, 0, nullptr, 0);
+		pDevice->executeCompute(pTempCmdBufferCompute, nullptr, nullptr, 0, nullptr, 0);
 
 		// Wait for command buffer to finish executing before deleting it
 		pTempCmdBufferCompute->reset(true);
@@ -284,8 +283,7 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 	pEmitterDescriptorSet->writeStorageBufferDescriptor(pVelocitiesBuffer, VELOCITIES_BINDING);
 	pEmitterDescriptorSet->writeStorageBufferDescriptor(pAgesBuffer, AGES_BINDING);
 	pEmitterDescriptorSet->writeUniformBufferDescriptor(pEmitterBuffer, EMITTER_BINDING);
-	pEmitterDescriptorSet->writeUniformBufferDescriptor(pRenderingHandler->getCameraBuffer(), CAMERA_BINDING);
-	pEmitterDescriptorSet->writeUniformBufferDescriptor(pRenderingHandler->getCameraMatricesBuffer(), CAMERA_MATRICES_BINDING);
+	pEmitterDescriptorSet->writeUniformBufferDescriptor(pRenderingHandler->getCameraBufferCompute(), CAMERA_BINDING);
 	pEmitterDescriptorSet->writeCombinedImageDescriptors(&pNormalMap, &m_pGBufferSampler, 1, NORMAL_MAP_BINDING);
 	pEmitterDescriptorSet->writeCombinedImageDescriptors(&pDepthBuffer, &m_pGBufferSampler, 1, DEPTH_BINDING);
 
@@ -319,10 +317,10 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 		acquireForCompute(pAgesBuffer, pTempCommandBufferCompute);
 
 		pTempCommandBufferGraphics->end();
-		pDevice->executeCommandBuffer(pDevice->getGraphicsQueue(), pTempCommandBufferGraphics, nullptr, nullptr, 0, nullptr, 0);
+		pDevice->executeGraphics(pTempCommandBufferGraphics, nullptr, nullptr, 0, nullptr, 0);
 
 		pTempCommandBufferCompute->end();
-		pDevice->executeCommandBuffer(pDevice->getComputeQueue(), pTempCommandBufferCompute, nullptr, nullptr, 0, nullptr, 0);
+		pDevice->executeCompute(pTempCommandBufferCompute, nullptr, nullptr, 0, nullptr, 0);
 
 		// Wait for command buffers to finish executing before deleting them
 		pTempCommandBufferGraphics->reset(true);
@@ -439,7 +437,7 @@ void ParticleEmitterHandlerVK::endUpdateFrame()
 	GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
     DeviceVK* pDevice = pGraphicsContext->getDevice();
 
-	pDevice->executeCommandBuffer(pDevice->getComputeQueue(), m_ppCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
+	pDevice->executeCompute(m_ppCommandBuffers[m_CurrentFrame], nullptr, nullptr, 0, nullptr, 0);
 
 	m_CurrentFrame = (m_CurrentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
@@ -496,7 +494,6 @@ bool ParticleEmitterHandlerVK::createPipelineLayout()
 	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_COMPUTE_BIT, AGES_BINDING, 1);
 	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_COMPUTE_BIT, EMITTER_BINDING, 1);
 	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_COMPUTE_BIT, CAMERA_BINDING, 1);
-	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_COMPUTE_BIT, CAMERA_MATRICES_BINDING, 1);
 	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_COMPUTE_BIT, nullptr, DEPTH_BINDING, 1);
 	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_COMPUTE_BIT, nullptr, NORMAL_MAP_BINDING, 1);
 

@@ -97,9 +97,9 @@ bool MeshVK::initFromFile(const std::string& filepath)
 		Vertex& v1 = vertices[indices[index + 1]];
 		Vertex& v2 = vertices[indices[index + 2]];
 
-		v0.Tangent = calculateTangent(v0, v1, v2);
-		v1.Tangent = calculateTangent(v1, v2, v0);
-		v2.Tangent = calculateTangent(v2, v0, v1);
+		v0.calculateTangent(v1, v2);
+		v1.calculateTangent(v2, v0);
+		v2.calculateTangent(v0, v1);
 	}
 
 	//TODO: Calculate normals
@@ -111,9 +111,10 @@ bool MeshVK::initFromFile(const std::string& filepath)
 bool MeshVK::initFromMemory(const void* pVertices, size_t vertexSize, uint32_t vertexCount, const uint32_t* pIndices, uint32_t indexCount)
 {
 	BufferParams vertexBufferParams = {};
-	vertexBufferParams.Usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	vertexBufferParams.SizeInBytes = vertexSize * vertexCount;
-	vertexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	vertexBufferParams.Usage			= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	vertexBufferParams.SizeInBytes		= vertexSize * vertexCount;
+	vertexBufferParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	vertexBufferParams.IsExclusive		= true;
 
 	m_pVertexBuffer = DBG_NEW BufferVK(m_pDevice);
 	if (!m_pVertexBuffer->init(vertexBufferParams))
@@ -122,9 +123,10 @@ bool MeshVK::initFromMemory(const void* pVertices, size_t vertexSize, uint32_t v
 	}
 
 	BufferParams indexBufferParams = {};
-	indexBufferParams.Usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	indexBufferParams.SizeInBytes = sizeof(uint32_t) * indexCount;
-	indexBufferParams.MemoryProperty = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	indexBufferParams.Usage				= VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	indexBufferParams.SizeInBytes		= sizeof(uint32_t) * indexCount;
+	indexBufferParams.MemoryProperty	= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	indexBufferParams.IsExclusive		= true;
 
 	m_pIndexBuffer = DBG_NEW BufferVK(m_pDevice);
 	if (!m_pIndexBuffer->init(indexBufferParams))
@@ -187,8 +189,78 @@ bool MeshVK::initAsSphere(uint32_t subDivisions)
 		finalIndices.push_back(triangles[i].indices[0]);
 	}
 
-	initFromMemory(finalVertices.data(), sizeof(Vertex), (uint32_t)finalVertices.size(), finalIndices.data(), (uint32_t)finalIndices.size());
-	return true;
+	return initFromMemory(finalVertices.data(), sizeof(Vertex), (uint32_t)finalVertices.size(), finalIndices.data(), (uint32_t)finalIndices.size());
+}
+
+bool MeshVK::initAsCube()
+{
+	std::vector<Vertex> vertices
+	{
+		// front (Seen from front)
+		{ glm::vec3(-1.0f,  1.0f,  1.0f),	glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(0.0f, 1.0f) },
+		{ glm::vec3(1.0f,  1.0f,  1.0f),	glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(1.0f, 1.0f) },
+		{ glm::vec3(1.0f, -1.0f,  1.0f),	glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(1.0f, 0.0f) },
+		{ glm::vec3(-1.0f, -1.0f,  1.0f),	glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(0.0f, 0.0f) },
+
+		// Top (Seen from above)
+		{ glm::vec3(-1.0f,  1.0f, -1.0f),	glm::vec3(0.0f,  1.0f,  0.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(0.0f, 1.0f) },
+		{ glm::vec3(1.0f,  1.0f, -1.0f),	glm::vec3(0.0f,  1.0f,  0.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(1.0f, 1.0f) },
+		{ glm::vec3(1.0f,  1.0f,  1.0f),	glm::vec3(0.0f,  1.0f,  0.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(1.0f, 0.0f) },
+		{ glm::vec3(-1.0f,  1.0f,  1.0f),	glm::vec3(0.0f,  1.0f,  0.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(0.0f, 0.0f) },
+
+		// Back (Seen from front)
+		{ glm::vec3(-1.0f,  1.0f, -1.0f),	glm::vec3(0.0f,  0.0f, -1.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(0.0f, 1.0f) },
+		{ glm::vec3(1.0f,  1.0f, -1.0f),	glm::vec3(0.0f,  0.0f, -1.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(1.0f, 1.0f) },
+		{ glm::vec3(1.0f, -1.0f, -1.0f),	glm::vec3(0.0f,  0.0f, -1.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(1.0f, 0.0f) },
+		{ glm::vec3(-1.0f, -1.0f, -1.0f),	glm::vec3(0.0f,  0.0f, -1.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(0.0f, 0.0f) },
+
+		// Bottom (Seen from above)
+		{ glm::vec3(-1.0f, -1.0f, -1.0f),	glm::vec3(0.0f, -1.0f,  0.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(0.0f, 1.0f) },
+		{ glm::vec3(1.0f, -1.0f, -1.0f),	glm::vec3(0.0f, -1.0f,  0.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(1.0f, 1.0f) },
+		{ glm::vec3(1.0f, -1.0f,  1.0f),	glm::vec3(0.0f, -1.0f,  0.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(1.0f, 0.0f) },
+		{ glm::vec3(-1.0f, -1.0f,  1.0f),	glm::vec3(0.0f, -1.0f,  0.0f),	 glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec2(0.0f, 0.0f) },
+
+		// Left (Seen from left)
+		{ glm::vec3(-1.0f,  1.0f, -1.0f),	glm::vec3(-1.0f,  0.0f,  0.0f),	 glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec2(0.0f, 1.0f) },
+		{ glm::vec3(-1.0f,  1.0f,  1.0f),	glm::vec3(-1.0f,  0.0f,  0.0f),	 glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec2(1.0f, 1.0f) },
+		{ glm::vec3(-1.0f, -1.0f,  1.0f),	glm::vec3(-1.0f,  0.0f,  0.0f),	 glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec2(1.0f, 0.0f) },
+		{ glm::vec3(-1.0f, -1.0f, -1.0f),	glm::vec3(-1.0f,  0.0f,  0.0f),	 glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec2(0.0f, 0.0f) },
+
+		// Right (Seen from left)
+		{ glm::vec3(1.0f,  1.0f, -1.0f),	glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec2(0.0f, 1.0f) },
+		{ glm::vec3(1.0f,  1.0f,  1.0f),	glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec2(1.0f, 1.0f) },
+		{ glm::vec3(1.0f, -1.0f,  1.0f),	glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec2(1.0f, 0.0f) },
+		{ glm::vec3(1.0f, -1.0f, -1.0f),	glm::vec3(1.0f,  0.0f,  0.0f),	 glm::vec3(0.0f,  0.0f,  1.0f),	 glm::vec2(0.0f, 0.0f) }
+	};
+
+	std::vector<uint32_t> indices
+	{
+		// Front (Seen from front)
+		0, 2, 1,
+		2, 0, 3,
+
+		// Top (Seen from above)
+		4, 6, 5,
+		6, 4, 7,
+
+		// Back (Seen from front)
+		8, 9, 10,
+		10, 11, 8,
+
+		// Bottom (Seen from above)
+		12, 13, 14,
+		14, 15, 12,
+
+		// Left (Seen from left)
+		16, 18, 17,
+		18, 16, 19,
+
+		// Right (Seen from left)
+		20, 21, 22,
+		22, 23, 20
+	};
+
+	return initFromMemory(vertices.data(), sizeof(Vertex), (uint32_t)vertices.size(), indices.data(), (uint32_t)indices.size());
 }
 
 IBuffer* MeshVK::getVertexBuffer() const
@@ -216,36 +288,18 @@ uint32_t MeshVK::getMeshID() const
 	return m_ID;
 }
 
-glm::vec3 MeshVK::calculateTangent(const Vertex& v0, const Vertex& v1, const Vertex& v2)
-{
-	glm::vec3 edge1 = v1.Position - v0.Position;
-	glm::vec3 edge2 = v2.Position - v0.Position;
-	glm::vec2 deltaUV1 = v1.TexCoord - v0.TexCoord;
-	glm::vec2 deltaUV2 = v2.TexCoord - v0.TexCoord;
-
-	float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
-
-	glm::vec3 tangent;
-	tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
-	tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
-	tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
-	tangent = glm::normalize(tangent);
-
-	return tangent;
-}
-
 uint32_t MeshVK::vertexForEdge(std::map<std::pair<uint32_t, uint32_t>, uint32_t>& lookup, std::vector<glm::vec3>& vertices, uint32_t first, uint32_t second)
 {
 	std::map<std::pair<uint32_t, uint32_t>, uint32_t>::key_type key(first, second);
 	if (key.first > key.second)
 		std::swap(key.first, key.second);
 
-	auto inserted = lookup.insert({ key, vertices.size() });
+	auto inserted = lookup.insert({ key, uint32_t(vertices.size()) });
 	if (inserted.second)
 	{
-		auto& edge0 = vertices[first];
-		auto& edge1 = vertices[second];
-		auto point = glm::normalize(edge0 + edge1);
+		glm::vec3& edge0 = vertices[first];
+		glm::vec3& edge1 = vertices[second];
+		glm::vec3 point = glm::normalize(edge0 + edge1);
 		vertices.push_back(point);
 	}
 
