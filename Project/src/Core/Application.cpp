@@ -132,10 +132,10 @@ void Application::init()
 	lightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
 
 	VolumetricLightSettings volumetricLightSettings = {
-		0.8f, 	// Scatter amount
+		1.0f, 	// Scatter amount
 		0.2f 	// Particle G
 	};
-	glm::vec3 sunDirection = glm::normalize(glm::vec3(0.6f, 0.78f, 0.14f));
+	glm::vec3 sunDirection = glm::normalize(glm::vec3(-0.6f, -0.78f, -0.14f));
 	lightSetup.setDirectionalLight(DirectionalLight(volumetricLightSettings, sunDirection, {0.6f, 0.45f, 0.2f, 1.0f}));
 
 	// Setup renderers

@@ -58,8 +58,7 @@ float getShadowFactor(vec3 worldPos)
 	vec2 shadowMapTexCoord = lightClipPos.xy * 0.5 + 0.5;
 	float sampledDepth = texture(u_ShadowMap, shadowMapTexCoord).r;
 
-	return sampledDepth > lightClipPos.z ? 1.0 : 0.0;
-	//return float(sampledDepth > lightClipPos.z);
+	return float(sampledDepth > lightClipPos.z);
 }
 
 float phaseFunction(vec3 rayDir)
@@ -89,25 +88,12 @@ void main()
 	vec3 raymarchStep = rayDir * length(rayDestination - rayOrigin) / g_PushConstants.raymarchSteps;
 
 	vec3 light = vec3(0);
-	//vec3 worldPos = rayOrigin;
-	vec3 worldPos = rayDestination;
+	vec3 worldPos = rayOrigin;
 
 	for (uint stepNr = 0; stepNr < g_PushConstants.raymarchSteps; stepNr++) {
 		light += calculateLight(worldPos, rayDir);
 
-		if (getShadowFactor(worldPos) < 1.0) {
-			vec4 lightClipPos = u_DirectionalLight.viewProj * vec4(worldPos, 1.0);
-			lightClipPos.xyz /= lightClipPos.w;
-
-			vec2 shadowMapTexCoord = lightClipPos.xy * 0.5 + 0.5;
-			float sampledDepth = texture(u_ShadowMap, shadowMapTexCoord).r;
-
-			outColor = vec4(sampledDepth, shadowMapTexCoord.x, lightClipPos.z, 1.0);
-			return;
-		}
-
-		worldPos -= raymarchStep;
-		//worldPos += raymarchStep;
+		worldPos += raymarchStep;
 	}
 
 	light /= g_PushConstants.raymarchSteps;
