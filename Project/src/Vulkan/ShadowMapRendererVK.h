@@ -46,6 +46,7 @@ private:
 	bool createCommandPoolAndBuffers();
 	bool createPipelineLayout();
 	bool createPipeline();
+	bool createSampler();
 	void createProfiler();
 
 	bool createShadowMapResources(DirectionalLight* directionalLight);
@@ -69,4 +70,6 @@ private:
 
 	// Updated each frame
 	SceneVK* m_pScene;
+
+	SamplerVK* m_pShadowMapSampler;
 };

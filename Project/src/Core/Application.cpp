@@ -54,6 +54,7 @@ Application::Application()
 	m_pMeshRenderer(nullptr),
 	m_pShadowMapRenderer(nullptr),
 	m_pRayTracingRenderer(nullptr),
+	m_pVolumetricLightRenderer(nullptr),
 	m_pImgui(nullptr),
 	m_pScene(nullptr),
 	m_pGunMesh(nullptr),
@@ -131,13 +132,18 @@ void Application::init()
 	lightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
 
 	VolumetricLightSettings volumetricLightSettings = {
-		0.8f, 	// Scatter amount
+		10.0f, 	// Scatter amount
 		0.2f 	// Particle G
 	};
-	glm::vec3 sunDirection = glm::normalize(glm::vec3(0.6f, 0.78f, 0.14f));
+	glm::vec3 sunDirection = glm::normalize(glm::vec3(-0.6f, -0.78f, -0.14f));
 	lightSetup.setDirectionalLight(DirectionalLight(volumetricLightSettings, sunDirection, {0.6f, 0.45f, 0.2f, 1.0f}));
 
 	// Setup renderers
+	//Setup Imgui
+	m_pImgui = m_pContext->createImgui();
+	m_pImgui->init();
+	m_pWindow->addEventHandler(m_pImgui);
+
 	m_pMeshRenderer = m_pContext->createMeshRenderer(m_pRenderingHandler);
 	m_pMeshRenderer->init();
 
@@ -157,16 +163,16 @@ void Application::init()
 	m_pParticleEmitterHandler = m_pContext->createParticleEmitterHandler();
 	m_pParticleEmitterHandler->initialize(m_pContext, &m_Camera);
 
-	//Setup Imgui
-	m_pImgui = m_pContext->createImgui();
-	m_pImgui->init();
-	m_pWindow->addEventHandler(m_pImgui);
+	// Create volumetric light renderer
+	m_pVolumetricLightRenderer = m_pContext->createVolumetricLightRenderer(m_pRenderingHandler, &m_pScene->getLightSetup(), m_pImgui);
+	m_pVolumetricLightRenderer->init();
 
 	//Set renderers to renderhandler
 	m_pRenderingHandler->setMeshRenderer(m_pMeshRenderer);
 	m_pRenderingHandler->setShadowMapRenderer(m_pShadowMapRenderer);
 	m_pRenderingHandler->setParticleEmitterHandler(m_pParticleEmitterHandler);
 	m_pRenderingHandler->setParticleRenderer(m_pParticleRenderer);
+	m_pRenderingHandler->setVolumetricLightRenderer(m_pVolumetricLightRenderer);
 	m_pRenderingHandler->setImguiRenderer(m_pImgui);
 
 	if (m_pContext->isRayTracingEnabled())
@@ -257,7 +263,7 @@ void Application::init()
 
 	//Setup camera
 	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
-	m_Camera.setPosition(glm::vec3(0.0f, 1.0f, -3.0f));
+	m_Camera.setPosition(glm::vec3(0.0f, 0.0f, -3.0f));
 	m_Camera.setProjection(90.0f, (float)m_pWindow->getWidth(), (float)m_pWindow->getHeight(), 0.0001f, 50.0f);
 	m_Camera.update();
 
@@ -377,6 +383,7 @@ void Application::release()
 	SAFEDELETE(m_pParticleRenderer);
 	SAFEDELETE(m_pParticleTexture);
 	SAFEDELETE(m_pParticleEmitterHandler);
+	SAFEDELETE(m_pVolumetricLightRenderer);
 	SAFEDELETE(m_pImgui);
 	SAFEDELETE(m_pScene);
 
@@ -736,6 +743,10 @@ void Application::renderUI(double dt)
 			m_pRenderingHandler->drawProfilerUI();
 		}
 		ImGui::End();
+
+		if (m_pVolumetricLightRenderer) {
+			m_pVolumetricLightRenderer->renderUI();
+		}
 
 		if (m_pContext->isRayTracingEnabled())
 		{

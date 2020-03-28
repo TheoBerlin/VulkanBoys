@@ -8,7 +8,7 @@ struct QuadVertex
 };
 
 layout(binding = 0) buffer vertexBuffer
-{ 
+{
 	QuadVertex vertices[];
 };
 
@@ -27,7 +27,7 @@ layout (binding = 1) uniform CameraMatrices
 	vec4 Up;
 } g_CameraMatrices;
 
-/*layout(binding = 2) uniform CameraDirections 
+/*layout(binding = 2) uniform CameraDirections
 {
 	vec4 up;
 	vec4 right;
@@ -53,7 +53,7 @@ void main()
 	QuadVertex vertex = vertices[gl_VertexIndex];
 	vec2 vertexPosition = vertex.Position.xy;
 
-	vec4 worldPosition = g_ParticlePositions.positions[gl_InstanceIndex] + 
+	vec4 worldPosition = g_ParticlePositions.positions[gl_InstanceIndex] +
 		g_CameraMatrices.Right 	* vertexPosition.x * g_EmitterProperties.particleSize.x +
 		g_CameraMatrices.Up 	* vertexPosition.y * g_EmitterProperties.particleSize.y;
 

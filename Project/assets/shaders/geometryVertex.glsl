@@ -51,21 +51,21 @@ layout (binding = 0) uniform PerFrameBuffer
 } g_PerFrame;
 
 layout(binding = 1) buffer vertexBuffer
-{ 
+{
 	Vertex vertices[];
 };
 
-layout(binding = 7, set = 0) buffer CombinedMaterialParameters 
-{ 
-	MaterialParameters mp[]; 
+layout(binding = 7, set = 0) buffer CombinedMaterialParameters
+{
+	MaterialParameters mp[];
 } u_MaterialParameters;
 
-layout(binding = 8, set = 0) buffer CombinedInstanceTransforms 
-{ 
-	InstanceTransforms t[]; 
+layout(binding = 8, set = 0) buffer CombinedInstanceTransforms
+{
+	InstanceTransforms t[];
 } u_Transforms;
 
-void main() 
+void main()
 {
 	mat4 currTransform = u_Transforms.t[constants.TransformsIndex].CurrTransform;
 	mat4 prevTransform = u_Transforms.t[constants.TransformsIndex].PrevTransform;
@@ -75,13 +75,13 @@ void main()
 	vec3 tangent 				= vertices[gl_VertexIndex].Tangent.xyz;
 	vec4 worldPosition 			= currTransform * vec4(position, 1.0);
 	vec4 prevWorldPosition 		= prevTransform * vec4(position, 1.0);
-		
+
 	normal 	= normalize((currTransform * vec4(normal, 0.0)).xyz);
 	tangent = normalize((currTransform * vec4(tangent, 0.0)).xyz);
-	
+
 	vec3 bitangent 	= normalize(cross(normal, tangent));
 	vec2 texCoord 	= vertices[gl_VertexIndex].TexCoord.xy;
-	
+
 	vec4 viewPosition 		= g_PerFrame.View 		* worldPosition;
 	vec4 prevViewPosition 	= g_PerFrame.LastView 	* prevWorldPosition;
 

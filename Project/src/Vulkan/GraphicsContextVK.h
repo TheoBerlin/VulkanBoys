@@ -24,6 +24,7 @@ public:
 	virtual IRenderer* createShadowMapRenderer(RenderingHandler* pRenderingHandler) override;
 	virtual IRenderer* createParticleRenderer(RenderingHandler* pRenderingHandler) override;
 	virtual IRenderer* createRayTracingRenderer(RenderingHandler* pRenderingHandler) override;
+	virtual IRenderer* createVolumetricLightRenderer(RenderingHandler* pRenderingHandler, LightSetup* pLightSetup, IImgui* pImguiRenderer) override;
 	virtual ParticleEmitterHandler* createParticleEmitterHandler() override;
 	virtual IImgui* createImgui() override;
 

@@ -76,7 +76,7 @@ void GBufferVK::releaseBuffers()
 		SAFEDELETE(pImage);
 	}
 	m_ColorImages.clear();
-	
+
 	SAFEDELETE(m_pDepthImage);
 	SAFEDELETE(m_pDepthImageView);
 }
@@ -132,20 +132,13 @@ bool GBufferVK::createImageViews()
 	}
 
 	m_pDepthImageView = DBG_NEW ImageViewVK(m_pDevice, m_pDepthImage);
-	if (m_DepthFormat == VK_FORMAT_D24_UNORM_S8_UINT || m_DepthFormat == VK_FORMAT_D32_SFLOAT_S8_UINT || m_DepthFormat == VK_FORMAT_D32_SFLOAT)
-	{
-		imageViewParams.AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
-	}
-	else
-	{
-		imageViewParams.AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
-	}
+	imageViewParams.AspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
 
 	return m_pDepthImageView->init(imageViewParams);
 }
 
 bool GBufferVK::createFrameBuffer(RenderPassVK* pRenderPass)
-{	
+{
 	m_pFrameBuffer = DBG_NEW FrameBufferVK(m_pDevice);
 	for (ImageViewVK* pImageView : m_ColorImageViews)
 	{

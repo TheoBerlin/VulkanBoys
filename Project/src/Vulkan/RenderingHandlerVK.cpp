@@ -31,6 +31,8 @@
 
 #include "Ray Tracing/RayTracingRendererVK.h"
 
+#include "VolumetricLight/VolumetricLightRendererVK.h"
+
 #define MULTITHREADED 1
 
 RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
@@ -38,6 +40,7 @@ RenderingHandlerVK::RenderingHandlerVK(GraphicsContextVK* pGraphicsContext)
 	m_pMeshRenderer(nullptr),
 	m_pShadowMapRenderer(nullptr),
 	m_pRayTracer(nullptr),
+	m_pVolumetricLightRenderer(nullptr),
 	m_pParticleRenderer(nullptr),
 	m_pImGuiRenderer(nullptr),
 	m_pSkyboxRenderer(nullptr),
@@ -405,6 +408,16 @@ void RenderingHandlerVK::render(IScene* pScene)
 		m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
 	}
 
+	if (m_pVolumetricLightRenderer) {
+		m_pVolumetricLightRenderer->beginFrame(pScene);
+
+		m_pVolumetricLightRenderer->updateBuffers();
+		m_pVolumetricLightRenderer->renderLightBuffer();
+		m_pVolumetricLightRenderer->applyLightBuffer(m_pBackBufferRenderPass, pBackbuffer);
+
+		m_pVolumetricLightRenderer->endFrame(pScene);
+	}
+
 	if (m_pRayTracer)
 	{
 		uint32_t computeQueueIndex	= pDevice->getQueueFamilyIndices().computeFamily.value();
@@ -514,11 +527,28 @@ void RenderingHandlerVK::render(IScene* pScene)
 		m_ppGraphicsCommandBuffers2[m_CurrentFrame]->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 	}
 
+	if (m_pVolumetricLightRenderer) {
+		RenderPassVK* pLightBufferPass = m_pVolumetricLightRenderer->getLightBufferPass();
+		FrameBufferVK* pLightFrameBuffer = m_pVolumetricLightRenderer->getLightFrameBuffer();
+		const VkViewport& viewport = m_pVolumetricLightRenderer->getViewport();
+		VkClearValue clearValue = m_pVolumetricLightRenderer->getLightBufferClearColor();
+
+		m_ppGraphicsCommandBuffers2[m_CurrentFrame]->beginRenderPass(pLightBufferPass, pLightFrameBuffer, (uint32_t)viewport.width, (uint32_t)viewport.height, &clearValue, 1, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+		m_ppGraphicsCommandBuffers2[m_CurrentFrame]->executeSecondary(m_pVolumetricLightRenderer->getCommandBufferBuildPass(m_CurrentFrame));
+		m_ppGraphicsCommandBuffers2[m_CurrentFrame]->endRenderPass();
+	}
+
 	//TODO: Combine these into one renderpass
 
 	//Gather all renderer's data and finalize the frame
 	m_ppGraphicsCommandBuffers2[m_CurrentFrame]->beginRenderPass(m_pBackBufferRenderPass, pBackbuffer, (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, nullptr, 0, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+
 	m_ppGraphicsCommandBuffers2[m_CurrentFrame]->executeSecondary(m_pMeshRenderer->getLightCommandBuffer());
+
+	if (m_pVolumetricLightRenderer) {
+		m_ppGraphicsCommandBuffers2[m_CurrentFrame]->executeSecondary(m_pVolumetricLightRenderer->getCommandBufferApplyPass(m_CurrentFrame));
+	}
+
 	m_ppGraphicsCommandBuffers2[m_CurrentFrame]->endRenderPass();
 
 	//Render particles
@@ -579,6 +609,10 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 	}
 
 	createBackBuffers();
+
+	if (m_pVolumetricLightRenderer) {
+		m_pVolumetricLightRenderer->onWindowResize(width, height);
+	}
 }
 
 void RenderingHandlerVK::onSceneUpdated(IScene* pScene)
@@ -643,6 +677,10 @@ void RenderingHandlerVK::drawProfilerUI()
 	{
 		m_pRayTracer->getProfiler()->drawResults();
 	}
+
+	if (m_pVolumetricLightRenderer) {
+		m_pVolumetricLightRenderer->getProfiler()->drawResults();
+	}
 }
 
 void RenderingHandlerVK::setClearColor(float r, float g, float b)
@@ -684,6 +722,10 @@ void RenderingHandlerVK::setViewport(float width, float height, float minDepth, 
 
 	if (m_pShadowMapRenderer) {
 		m_pShadowMapRenderer->setViewport(width, height, minDepth, maxDepth, topX, topY);
+	}
+
+	if (m_pVolumetricLightRenderer) {
+		m_pVolumetricLightRenderer->setViewport(width, height, minDepth, maxDepth, topX, topY);
 	}
 }
 
@@ -1142,8 +1184,7 @@ void RenderingHandlerVK::updateBuffers(SceneVK* pScene, const Camera& camera, co
 	}
 
 	// Update particle buffers
-	if (m_pParticleEmitterHandler)
-	{
+	if (m_pParticleEmitterHandler) {
 		m_pParticleEmitterHandler->updateRenderingBuffers(this);
 	}
 

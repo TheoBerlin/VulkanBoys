@@ -13,6 +13,6 @@ public:
 
 	virtual void begin(double deltatime) = 0;
 	virtual void end() = 0;
-	
+
 	virtual void render(CommandBufferVK* pCommandBuffer, uint32_t currentFrame) = 0;
 };

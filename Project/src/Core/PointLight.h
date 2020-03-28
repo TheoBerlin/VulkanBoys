@@ -13,7 +13,7 @@ public:
 	const glm::vec4& getColor() const		{ return m_Color; }
 	glm::vec3		 getPosition() const	{ return m_Position; }
 
-private:
+protected:
 	glm::vec4 m_Color;
 	glm::vec4 m_Position;
 };

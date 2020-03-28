@@ -131,11 +131,11 @@ bool MeshRendererVK::init()
 
 	const BufferVK* pLightBuffer	= m_pRenderingHandler->getLightBufferGraphics();
 	const BufferVK* pCameraBuffer	= m_pRenderingHandler->getCameraBufferGraphics();
-	m_pLightDescriptorSet->writeUniformBufferDescriptor(pLightBuffer,	LIGHT_BUFFER_BINDING);
+	m_pLightDescriptorSet->writeUniformBufferDescriptor(pLightBuffer,	LP_LIGHT_BUFFER_BINDING);
 	m_pLightDescriptorSet->writeUniformBufferDescriptor(pCameraBuffer,	CAMERA_BUFFER_BINDING);
 
 	ImageViewVK* pIntegrationLUT = m_pIntegrationLUT->getImageView();
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pIntegrationLUT, &m_pBRDFSampler, 1, BRDF_LUT_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pIntegrationLUT, &m_pBRDFSampler, 1, LP_BRDF_LUT_BINDING);
 
 	m_pSkyboxDescriptorSet->writeUniformBufferDescriptor(pCameraBuffer, 0);
 
@@ -218,10 +218,10 @@ void MeshRendererVK::updateGBufferDescriptors()
 	ImageViewVK* pAttachment1		= pGBuffer->getColorAttachment(1);
 	ImageViewVK* pAttachment2		= pGBuffer->getColorAttachment(2);
 	ImageViewVK* pDepthAttachment	= pGBuffer->getDepthAttachment();
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment0, &m_pGBufferSampler, 1, GBUFFER_ALBEDO_BINDING);
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment1, &m_pGBufferSampler, 1, GBUFFER_NORMAL_BINDING);
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment2, &m_pGBufferSampler, 1, GBUFFER_VELOCITY_BINDING);
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pDepthAttachment, &m_pGBufferSampler, 1, GBUFFER_DEPTH_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment0, &m_pGBufferSampler, 1, LP_GBUFFER_ALBEDO_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment1, &m_pGBufferSampler, 1, LP_GBUFFER_NORMAL_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pAttachment2, &m_pGBufferSampler, 1, LP_GBUFFER_VELOCITY_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pDepthAttachment, &m_pGBufferSampler, 1, LP_GBUFFER_DEPTH_BINDING);
 }
 
 void MeshRendererVK::setClearColor(float r, float g, float b)
@@ -246,15 +246,15 @@ void MeshRendererVK::setSkybox(TextureCubeVK* pSkybox, TextureCubeVK* pIrradianc
 	ImageViewVK* pSkyboxView = m_pSkybox->getImageView();
 	m_pSkyboxDescriptorSet->writeCombinedImageDescriptors(&pSkyboxView, &m_pSkyboxSampler, 1, 1);
 	ImageViewVK* pIrradianceMapView = m_pIrradianceMap->getImageView();
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pIrradianceMapView, &m_pSkyboxSampler, 1, IRRADIANCE_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pIrradianceMapView, &m_pSkyboxSampler, 1, LP_IRRADIANCE_BINDING);
 	ImageViewVK* pEnvironmentMapView = m_pEnvironmentMap->getImageView();
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pEnvironmentMapView, &m_pSkyboxSampler, 1, ENVIRONMENT_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pEnvironmentMapView, &m_pSkyboxSampler, 1, LP_ENVIRONMENT_BINDING);
 }
 
 void MeshRendererVK::setRayTracingResultImages(ImageViewVK* pRadianceImageView, ImageViewVK* pGlossyImageView)
 {
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pRadianceImageView, &m_pRTSampler, 1, RADIANCE_BINDING);
-	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pGlossyImageView, &m_pRTSampler, 1, GLOSSY_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pRadianceImageView, &m_pRTSampler, 1, LP_RADIANCE_BINDING);
+	m_pLightDescriptorSet->writeCombinedImageDescriptors(&pGlossyImageView, &m_pRTSampler, 1, LP_GLOSSY_BINDING);
 }
 
 void MeshRendererVK::submitMesh(const MeshVK* pMesh, const Material* pMaterial, uint32_t materialIndex, uint32_t transformsIndex)
@@ -599,17 +599,17 @@ bool MeshRendererVK::createPipelineLayouts()
 
 	//Lightpass
 	m_pLightDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(m_pContext->getDevice());
-	m_pLightDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, LIGHT_BUFFER_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, LP_LIGHT_BUFFER_BINDING, 1);
 	m_pLightDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, CAMERA_BUFFER_BINDING, 1);
-	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_ALBEDO_BINDING, 1);
-	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_NORMAL_BINDING, 1);
-	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_VELOCITY_BINDING, 1);
-	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GBUFFER_DEPTH_BINDING, 1);
-	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, IRRADIANCE_BINDING, 1);
-	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, ENVIRONMENT_BINDING, 1);
-	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, BRDF_LUT_BINDING, 1);
-	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, RADIANCE_BINDING, 1);
-	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, GLOSSY_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, LP_GBUFFER_ALBEDO_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, LP_GBUFFER_NORMAL_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, LP_GBUFFER_VELOCITY_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, LP_GBUFFER_DEPTH_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, LP_IRRADIANCE_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, LP_ENVIRONMENT_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, LP_BRDF_LUT_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, LP_RADIANCE_BINDING, 1);
+	m_pLightDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr, LP_GLOSSY_BINDING, 1);
 	if (!m_pLightDescriptorSetLayout->finalize())
 	{
 		return false;

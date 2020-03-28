@@ -14,7 +14,7 @@ class Texture2DVK : public ITexture2D
 {
 public:
 	DECL_NO_COPY(Texture2DVK);
-	
+
 	Texture2DVK(DeviceVK* pDevice);
 	~Texture2DVK();
 

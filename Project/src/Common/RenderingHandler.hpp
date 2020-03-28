@@ -47,7 +47,9 @@ public:
     virtual void setShadowMapRenderer(IRenderer* pShadowMapRenderer) = 0;
     virtual void setRayTracer(IRenderer* pRayTracer) = 0;
     virtual void setParticleRenderer(IRenderer* pParticleRenderer) = 0;
+    virtual void setVolumetricLightRenderer(IRenderer* pVolumetricLightRenderer) = 0;
     virtual void setImguiRenderer(IImgui* pImGui) = 0;
+    virtual IImgui* getImguiRenderer() = 0;
 
     virtual void onWindowResize(uint32_t width, uint32_t height) = 0;
 	virtual void onSceneUpdated(IScene* pScene) = 0;

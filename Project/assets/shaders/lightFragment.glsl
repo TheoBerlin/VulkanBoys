@@ -80,7 +80,7 @@ void main()
 	vec3 albedo 		= sampledAlbedo.rgb;
 	vec3 worldPosition 	= WorldPositionFromDepth(texCoord, sampledDepth);
 
-	//Get normal from z = sqrt(1 - (x^2 + y^2))), negative metallic = negative normal.z 
+	//Get normal from z = sqrt(1 - (x^2 + y^2))), negative metallic = negative normal.z
 	vec3 normal;
 	normal.xy 	= sampledNormal.xy;
 	normal.z 	= sqrt(1.0f - dot(normal.xy, normal.xy));
@@ -164,7 +164,7 @@ void main()
 	{
 		prefilteredColor = textureLod(u_EnvironmentMap, reflection, roughness * MAX_REFLECTION_MIPS).rgb;
 	}
-	
+
 	vec2 envBRDF 	= texture(u_BrdfLUT, vec2(max(dot(normal, viewDir), 0.0f), roughness)).rg;
 	vec3 specular	= prefilteredColor * (f * envBRDF.x + envBRDF.y);
 	vec3 ambient 	= ((kDiffuse * diffuse) + specular) * ao;

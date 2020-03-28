@@ -21,7 +21,6 @@
 	#define GLFW_EXPOSE_NATIVE_WIN32
 	#include <glfw/glfw3native.h>
 #endif
-#include <imgui/imgui.h>
 
 // glsl_shader.vert, compiled with:
 // # glslangValidator -V -x -o glsl_shader.vert.u32 glsl_shader.vert
@@ -328,13 +327,22 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer, uint32_t currentFrame)
 				if (clipRect.y < 0.0f)
 					clipRect.y = 0.0f;
 
-				// Apply scissor/clipping rectangle	
+				// Apply scissor/clipping rectangle
 				VkRect2D scissor = {};
 				scissor.offset.x		= (int32_t)clipRect.x;
 				scissor.offset.y		= (int32_t)clipRect.y;
 				scissor.extent.width	= uint32_t(clipRect.z - clipRect.x);
 				scissor.extent.height	= uint32_t(clipRect.w - clipRect.y);
 				pCommandBuffer->setScissorRects(&scissor, 1);
+
+				if (pCmd->TextureId) {
+					// Bind custom texture
+					DescriptorSetVK* pDescriptorSet = reinterpret_cast<DescriptorSetVK*>(pCmd->TextureId);
+					pCommandBuffer->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &pDescriptorSet, 0, nullptr);
+				} else {
+					// Bind font texture
+					pCommandBuffer->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSet, 0, nullptr);
+				}
 
 				// Draw
 				pCommandBuffer->drawIndexInstanced(pCmd->ElemCount, 1, pCmd->IdxOffset + globalIdxOffset, pCmd->VtxOffset + globalVtxOffset, 0);
@@ -343,6 +351,14 @@ void ImguiVK::render(CommandBufferVK* pCommandBuffer, uint32_t currentFrame)
 		globalIdxOffset += pCmdList->IdxBuffer.Size;
 		globalVtxOffset += pCmdList->VtxBuffer.Size;
 	}
+}
+
+ImTextureID ImguiVK::addTexture(ImageViewVK* pImageView)
+{
+	DescriptorSetVK* pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
+	pDescriptorSet->writeCombinedImageDescriptors(&pImageView, &m_pSampler, 1, 0);
+
+	return (ImTextureID)pDescriptorSet;
 }
 
 void ImguiVK::onMouseMove(uint32_t x, uint32_t y)
@@ -436,7 +452,7 @@ bool ImguiVK::initImgui()
 #if defined(_WIN32)
 	io.ImeWindowHandle = (void*)glfwGetWin32Window(pNativeWindow);
 #endif
-	
+
 	//TODO: Not based on glfw
 	io.SetClipboardTextFn	= ImGuiSetClipboardText;
 	io.GetClipboardTextFn	= ImGuiGetClipboardText;
@@ -480,21 +496,21 @@ bool ImguiVK::createRenderPass()
 	VkAttachmentDescription description = {};
 	description.format			= VK_FORMAT_B8G8R8A8_UNORM;
 	description.samples			= VK_SAMPLE_COUNT_1_BIT;
-	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;				
-	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;				
-	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;	
-	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;	
-	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;			
-	description.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;		
+	description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
+	description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
+	description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
+	description.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	m_pRenderPass->addAttachment(description);
 
 	//description.format			= VK_FORMAT_D32_SFLOAT;//VK_FORMAT_D24_UNORM_S8_UINT;
 	//description.samples			= VK_SAMPLE_COUNT_1_BIT;
 	//description.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
-	//description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;	
-	//description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;	
-	//description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;	
-	//description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;	
+	//description.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
+	//description.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	//description.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	//description.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
 	//description.finalLayout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	//m_pRenderPass->addAttachment(description);
 
@@ -543,7 +559,7 @@ bool ImguiVK::createPipeline()
 	m_pPipeline->addVertexAttribute(0, VK_FORMAT_R8G8B8A8_UNORM, 2, IM_OFFSETOF(ImDrawVert, col));
 
 	m_pPipeline->addVertexBinding(0, VK_VERTEX_INPUT_RATE_VERTEX, sizeof(ImDrawVert));
-	
+
 	VkPipelineColorBlendAttachmentState blendAttachment = {};
 	blendAttachment.blendEnable			= VK_TRUE;
 	blendAttachment.colorWriteMask		= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -554,7 +570,7 @@ bool ImguiVK::createPipeline()
 	blendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	blendAttachment.alphaBlendOp		= VK_BLEND_OP_ADD;
 	m_pPipeline->addColorBlendAttachment(blendAttachment);
-	
+
 	VkPipelineRasterizationStateCreateInfo rasterizerState = {};
 	rasterizerState.cullMode				= VK_CULL_MODE_NONE;
 	rasterizerState.frontFace				= VK_FRONT_FACE_CLOCKWISE;
@@ -604,14 +620,14 @@ bool ImguiVK::createPipelineLayout()
 	m_pPipelineLayout->init(descriptorSetLayouts, pushConstantRanges);
 
 	DescriptorCounts counts;
-	counts.m_SampledImages			= 1;
+	counts.m_SampledImages			= 64;
 	counts.m_StorageBuffers			= 1;
 	counts.m_UniformBuffers			= 1;
 	counts.m_StorageImages			= 1;
 	counts.m_AccelerationStructures = 1;
 
 	m_pDescriptorPool = DBG_NEW DescriptorPoolVK(m_pContext->getDevice());
-	m_pDescriptorPool->init(counts, 1);
+	m_pDescriptorPool->init(counts, 64);
 	m_pDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
 
 	return true;

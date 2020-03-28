@@ -18,6 +18,8 @@
 
 #include "Ray Tracing/RayTracingRendererVK.h"
 
+#include "VolumetricLight/VolumetricLightRendererVK.h"
+
 #include "Core/GLFWWindow.h"
 
 GraphicsContextVK::GraphicsContextVK(IWindow* pWindow)
@@ -97,6 +99,11 @@ IRenderer* GraphicsContextVK::createParticleRenderer(RenderingHandler* pRenderin
 IRenderer* GraphicsContextVK::createRayTracingRenderer(RenderingHandler* pRenderingHandler)
 {
 	return DBG_NEW RayTracingRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler));
+}
+
+IRenderer* GraphicsContextVK::createVolumetricLightRenderer(RenderingHandler* pRenderingHandler, LightSetup* pLightSetup, IImgui* pImguiRenderer)
+{
+	return DBG_NEW VolumetricLightRendererVK(this, reinterpret_cast<RenderingHandlerVK*>(pRenderingHandler), pLightSetup, reinterpret_cast<ImguiVK*>(pImguiRenderer));
 }
 
 ParticleEmitterHandler* GraphicsContextVK::createParticleEmitterHandler()

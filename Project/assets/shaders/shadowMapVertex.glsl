@@ -33,21 +33,22 @@ layout (binding = 0) uniform PerFrameBuffer
 	vec4 Up;
 } g_PerFrame;
 
-layout(binding = 1) buffer vertexBuffer
+layout (binding = 1) buffer vertexBuffer
 {
 	Vertex vertices[];
 };
 
-layout(binding = 8, set = 0) buffer CombinedInstanceTransforms
+layout (binding = 8, set = 0) buffer CombinedInstanceTransforms
 {
 	InstanceTransforms t[];
 } u_Transforms;
 
-layout(binding = 9, set = 1) uniform LightTransforms
+layout (binding = 9, set = 1) uniform DirectionalLight
 {
-	mat4 viewProj;
-    mat4 invViewProj;
-} u_LightTransforms;
+	mat4 viewProj, invViewProj;
+	vec4 direction, color;
+    float scatterAmount, particleG;
+} u_DirectionalLight;
 
 void main()
 {
@@ -55,5 +56,5 @@ void main()
 	mat4 currTransform  = u_Transforms.t[constants.TransformsIndex].CurrTransform;
 
 	vec4 worldPosition  = currTransform * vec4(position, 1.0);
-    gl_Position         = u_LightTransforms.viewProj * worldPosition;
+    gl_Position         = u_DirectionalLight.viewProj * worldPosition;
 }

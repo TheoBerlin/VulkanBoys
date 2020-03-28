@@ -2,6 +2,7 @@
 #include "Common/RenderingHandler.hpp"
 #include "Core/Camera.h"
 
+#include "Vulkan/ImguiVK.h"
 #include "Vulkan/VulkanCommon.h"
 
 class BufferVK;
@@ -25,6 +26,7 @@ class RenderPassVK;
 class SceneVK;
 class ShadowMapRendererVK;
 class SkyboxRendererVK;
+class VolumetricLightRendererVK;
 
 class RenderingHandlerVK : public RenderingHandler
 {
@@ -42,11 +44,12 @@ public:
 
     virtual void drawProfilerUI() override;
 
-    virtual void setMeshRenderer(IRenderer* pMeshRenderer) override             { m_pMeshRenderer = reinterpret_cast<MeshRendererVK*>(pMeshRenderer); }
-    virtual void setShadowMapRenderer(IRenderer* pShadowMapRenderer) override   { m_pShadowMapRenderer = reinterpret_cast<ShadowMapRendererVK*>(pShadowMapRenderer); }
-	virtual void setRayTracer(IRenderer* pRayTracer) override				    { m_pRayTracer = reinterpret_cast<RayTracingRendererVK*>(pRayTracer); }
-    virtual void setParticleRenderer(IRenderer* pParticleRenderer) override     { m_pParticleRenderer = reinterpret_cast<ParticleRendererVK*>(pParticleRenderer); }
-    virtual void setImguiRenderer(IImgui* pImGui) override                      { m_pImGuiRenderer = reinterpret_cast<ImguiVK*>(pImGui); }
+    virtual void setImguiRenderer(IImgui* pImGui) override                                  { m_pImGuiRenderer = reinterpret_cast<ImguiVK*>(pImGui); }
+    virtual void setMeshRenderer(IRenderer* pMeshRenderer) override                         { m_pMeshRenderer = reinterpret_cast<MeshRendererVK*>(pMeshRenderer); }
+    virtual void setShadowMapRenderer(IRenderer* pShadowMapRenderer) override               { m_pShadowMapRenderer = reinterpret_cast<ShadowMapRendererVK*>(pShadowMapRenderer); }
+	virtual void setRayTracer(IRenderer* pRayTracer) override				                { m_pRayTracer = reinterpret_cast<RayTracingRendererVK*>(pRayTracer); }
+    virtual void setVolumetricLightRenderer(IRenderer* pVolumetricLightRenderer) override   { m_pVolumetricLightRenderer = reinterpret_cast<VolumetricLightRendererVK*>(pVolumetricLightRenderer); }
+    virtual void setParticleRenderer(IRenderer* pParticleRenderer) override                 { m_pParticleRenderer = reinterpret_cast<ParticleRendererVK*>(pParticleRenderer); }
 
     virtual void setClearColor(float r, float g, float b) override;
     virtual void setClearColor(const glm::vec3& color) override;
@@ -72,6 +75,7 @@ public:
     FORCEINLINE FrameBufferVK*          getCurrentBackBufferWithDepth() const   { return m_ppBackBuffersWithDepth[m_BackBufferIndex]; }
     FORCEINLINE CommandBufferVK*        getCurrentGraphicsCommandBuffer() const { return m_ppGraphicsCommandBuffers[m_CurrentFrame]; }
 	FORCEINLINE GBufferVK*				getGBuffer() const						{ return m_pGBuffer; }
+    FORCEINLINE virtual IImgui* getImguiRenderer() override                     { return m_pImGuiRenderer; }
 
 private:
     bool createBackBuffers();
@@ -98,6 +102,7 @@ private:
     ShadowMapRendererVK*         m_pShadowMapRenderer;
     ParticleRendererVK*     m_pParticleRenderer;
     RayTracingRendererVK*   m_pRayTracer;
+    VolumetricLightRendererVK* m_pVolumetricLightRenderer;
     ImguiVK*                m_pImGuiRenderer;
 
     FrameBufferVK*  m_ppBackbuffers[MAX_FRAMES_IN_FLIGHT];
