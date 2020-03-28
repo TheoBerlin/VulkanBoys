@@ -35,6 +35,8 @@ public:
 
     virtual bool initializeGPUCompute() override;
 
+    virtual void onWindowResize(float width, float height) override;
+
     virtual void toggleComputationDevice() override;
 
     void releaseFromGraphics(BufferVK* pBuffer, CommandBufferVK* pCommandBuffer);
@@ -62,6 +64,8 @@ private:
     bool createPipeline();
     void createProfiler();
 
+    void writeDescriptorSetCommon();
+
 private:
     CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
     CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];
@@ -70,7 +74,9 @@ private:
     CommandPoolVK* m_pCommandPoolGraphics;
 
     DescriptorPoolVK* m_pDescriptorPool;
-    DescriptorSetLayoutVK* m_pDescriptorSetLayout;
+    DescriptorSetLayoutVK* m_pDescriptorSetLayoutPerEmitter;
+    DescriptorSetLayoutVK* m_pDescriptorSetLayoutCommon;
+    DescriptorSetVK* m_pDescriptorSetCommon;
 
     PipelineLayoutVK* m_pPipelineLayout;
     PipelineVK* m_pPipeline;

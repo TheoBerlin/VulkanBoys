@@ -331,33 +331,6 @@ void RenderingHandlerVK::render(IScene* pScene)
 	pSecondaryCommandBuffer->end();
 #endif
 
-	// Submit the rendering handler's command buffer
-	if (m_pParticleEmitterHandler)
-	{
-#if MULTITHREADED
-		TaskDispatcher::execute([&, this]
-			{
-				ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
-				if (pEmitterHandler->gpuComputed())
-				{
-					for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters())
-					{
-						pEmitterHandler->releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
-					}
-				}
-			});
-#else
-		ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
-		if (pEmitterHandler->gpuComputed())
-		{
-			for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters())
-			{
-				pEmitterHandler->releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
-			}
-		}
-#endif
-	}
-
 	if (m_pParticleRenderer)
 	{
 		m_pParticleRenderer->getProfiler()->reset(m_CurrentFrame, m_ppGraphicsCommandBuffers[m_CurrentFrame]);
@@ -388,13 +361,13 @@ void RenderingHandlerVK::render(IScene* pScene)
 		pDevice->executeTransfer(m_ppTransferCommandBuffers[m_CurrentFrame], transferWaitSemphores, transferWaitStages, waitCount, transferSignalSemaphores, 2);
 	}
 
-	//Start renderpass
-	VkClearValue clearValues[] = { m_ClearColor, m_ClearColor, m_ClearColor, m_ClearDepth };
-	m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pGeometryRenderPass, m_pGBuffer->getFrameBuffer(), (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 4, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-
 #if MULTITHREADED
 	TaskDispatcher::waitForTasks();
 #endif
+
+	//Start renderpass
+	VkClearValue clearValues[] = { m_ClearColor, m_ClearColor, m_ClearColor, m_ClearDepth };
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pGeometryRenderPass, m_pGBuffer->getFrameBuffer(), (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 4, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pMeshRenderer->getGeometryCommandBuffer());
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
@@ -609,6 +582,10 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 	}
 
 	createBackBuffers();
+
+	if (m_pParticleEmitterHandler) {
+		m_pParticleEmitterHandler->onWindowResize(width, height);
+	}
 
 	if (m_pShadowMapRenderer) {
 		m_pShadowMapRenderer->onWindowResize(width, height);

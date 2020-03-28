@@ -34,7 +34,7 @@ layout (binding = 3) uniform EmitterProperties
     float particleDuration, initialSpeed, spread, particleCount;
 } g_EmitterProperties;
 
-layout (binding = 4) uniform CameraMatrices
+layout (binding = 4, set = 1) uniform CameraMatrices
 {
 	mat4 Projection;
 	mat4 View;
@@ -47,8 +47,8 @@ layout (binding = 4) uniform CameraMatrices
 	vec4 Up;
 } g_Camera;
 
-layout(binding = 6) uniform sampler2D g_DepthBuffer;
-layout(binding = 7) uniform sampler2D g_NormalMap;
+layout(binding = 5, set = 1) uniform sampler2D g_DepthBuffer;
+layout(binding = 6, set = 1) uniform sampler2D g_NormalMap;
 
 float rand1(float p, float minVal, float maxVal)
 {

@@ -30,7 +30,9 @@
 
 ParticleEmitterHandlerVK::ParticleEmitterHandlerVK()
 	:m_pDescriptorPool(nullptr),
-	m_pDescriptorSetLayout(nullptr),
+	m_pDescriptorSetLayoutPerEmitter(nullptr),
+	m_pDescriptorSetLayoutCommon(nullptr),
+	m_pDescriptorSetCommon(nullptr),
 	m_pPipelineLayout(nullptr),
 	m_pPipeline(nullptr),
 	m_pCommandPoolGraphics(nullptr),
@@ -52,7 +54,8 @@ ParticleEmitterHandlerVK::~ParticleEmitterHandlerVK()
 
 	SAFEDELETE(m_pGBufferSampler);
 	SAFEDELETE(m_pDescriptorPool);
-	SAFEDELETE(m_pDescriptorSetLayout);
+	SAFEDELETE(m_pDescriptorSetLayoutPerEmitter);
+	SAFEDELETE(m_pDescriptorSetLayoutCommon);
 	SAFEDELETE(m_pPipelineLayout);
 	SAFEDELETE(m_pPipeline);
 	SAFEDELETE(m_pCommandPoolGraphics);
@@ -128,6 +131,14 @@ bool ParticleEmitterHandlerVK::initializeGPUCompute()
 	return true;
 }
 
+void ParticleEmitterHandlerVK::onWindowResize(float width, float height)
+{
+	UNREFERENCED_PARAMETER(width);
+	UNREFERENCED_PARAMETER(height);
+
+	writeDescriptorSetCommon();
+}
+
 void ParticleEmitterHandlerVK::toggleComputationDevice()
 {
 	GraphicsContextVK* pGraphicsContext = reinterpret_cast<GraphicsContextVK*>(m_pGraphicsContext);
@@ -145,7 +156,7 @@ void ParticleEmitterHandlerVK::toggleComputationDevice()
 		}
 
 		pTempCommandBuffer->end();
-		pDevice->executeCompute(pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
+		pDevice->executeGraphics(pTempCommandBuffer, nullptr, nullptr, 0, nullptr, 0);
 
 		// Wait for command buffer to finish executing before deleting it
 		pTempCommandBuffer->reset(true);
@@ -260,7 +271,7 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 	pEmitter->initialize(m_pGraphicsContext);
 
 	// Create descriptor set for the emitter
-	DescriptorSetVK* pEmitterDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayout);
+	DescriptorSetVK* pEmitterDescriptorSet = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayoutPerEmitter);
 	if (pEmitterDescriptorSet == nullptr) {
 		LOG("Failed to create descriptor set for particle emitter");
 		return;
@@ -271,21 +282,10 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 	BufferVK* pAgesBuffer = reinterpret_cast<BufferVK*>(pEmitter->getAgesBuffer());
 	BufferVK* pEmitterBuffer = reinterpret_cast<BufferVK*>(pEmitter->getEmitterBuffer());
 
-	// Fetch image views
-	RenderingHandlerVK* pRenderingHandler = reinterpret_cast<RenderingHandlerVK*>(m_pRenderingHandler);
-	GBufferVK* pGBuffer = pRenderingHandler->getGBuffer();
-
-	// TODO: This indexing for color attachments is horrid
-	ImageViewVK* pNormalMap = pGBuffer->getColorAttachment(1);
-	ImageViewVK* pDepthBuffer = pGBuffer->getDepthAttachment();
-
-	pEmitterDescriptorSet->writeStorageBufferDescriptor(pPositionsBuffer, POSITIONS_BINDING);
-	pEmitterDescriptorSet->writeStorageBufferDescriptor(pVelocitiesBuffer, VELOCITIES_BINDING);
-	pEmitterDescriptorSet->writeStorageBufferDescriptor(pAgesBuffer, AGES_BINDING);
-	pEmitterDescriptorSet->writeUniformBufferDescriptor(pEmitterBuffer, EMITTER_BINDING);
-	pEmitterDescriptorSet->writeUniformBufferDescriptor(pRenderingHandler->getCameraBufferCompute(), CAMERA_BINDING);
-	pEmitterDescriptorSet->writeCombinedImageDescriptors(&pNormalMap, &m_pGBufferSampler, 1, NORMAL_MAP_BINDING);
-	pEmitterDescriptorSet->writeCombinedImageDescriptors(&pDepthBuffer, &m_pGBufferSampler, 1, DEPTH_BINDING);
+	pEmitterDescriptorSet->writeStorageBufferDescriptor(pPositionsBuffer, 								POSITIONS_BINDING);
+	pEmitterDescriptorSet->writeStorageBufferDescriptor(pVelocitiesBuffer, 								VELOCITIES_BINDING);
+	pEmitterDescriptorSet->writeStorageBufferDescriptor(pAgesBuffer, 									AGES_BINDING);
+	pEmitterDescriptorSet->writeUniformBufferDescriptor(pEmitterBuffer, 								EMITTER_BINDING);
 
 	pEmitter->setDescriptorSetCompute(pEmitterDescriptorSet);
 
@@ -304,7 +304,7 @@ void ParticleEmitterHandlerVK::initializeEmitter(ParticleEmitter* pEmitter)
 		pTempCommandBufferCompute->begin(nullptr, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
 		if (m_GPUComputed) {
-			// Simulate the synchronization barriers used when updating a buffer
+			// Release the buffer to allow the particle renderer to acquire it
 			acquireForCompute(pPositionsBuffer, pTempCommandBufferCompute);
 			releaseFromCompute(pPositionsBuffer, pTempCommandBufferCompute);
 		}
@@ -360,6 +360,8 @@ void ParticleEmitterHandlerVK::updateGPU(float dt)
 	}
 
 	m_ppCommandBuffers[m_CurrentFrame]->transitionImageLayout(pGBuffer->getDepthImage(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+	m_ppCommandBuffers[m_CurrentFrame]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_COMPUTE, m_pPipelineLayout, 1, 1, &m_pDescriptorSetCommon, 0, nullptr);
 
 	for (ParticleEmitter* pEmitter : m_ParticleEmitters) {
 		pEmitter->updateGPU(dt);
@@ -487,22 +489,23 @@ bool ParticleEmitterHandlerVK::createPipelineLayout()
     DeviceVK* pDevice = pGraphicsContext->getDevice();
 
 	// Descriptor Set Layout
-	m_pDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(pDevice);
+	m_pDescriptorSetLayoutPerEmitter = DBG_NEW DescriptorSetLayoutVK(pDevice);
+	m_pDescriptorSetLayoutCommon = DBG_NEW DescriptorSetLayoutVK(pDevice);
 
-	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_COMPUTE_BIT, POSITIONS_BINDING, 1);
-	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_COMPUTE_BIT, VELOCITIES_BINDING, 1);
-	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_COMPUTE_BIT, AGES_BINDING, 1);
-	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_COMPUTE_BIT, EMITTER_BINDING, 1);
-	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_COMPUTE_BIT, CAMERA_BINDING, 1);
-	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_COMPUTE_BIT, nullptr, DEPTH_BINDING, 1);
-	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_COMPUTE_BIT, nullptr, NORMAL_MAP_BINDING, 1);
+	m_pDescriptorSetLayoutPerEmitter->addBindingStorageBuffer(VK_SHADER_STAGE_COMPUTE_BIT, POSITIONS_BINDING, 1);
+	m_pDescriptorSetLayoutPerEmitter->addBindingStorageBuffer(VK_SHADER_STAGE_COMPUTE_BIT, VELOCITIES_BINDING, 1);
+	m_pDescriptorSetLayoutPerEmitter->addBindingStorageBuffer(VK_SHADER_STAGE_COMPUTE_BIT, AGES_BINDING, 1);
+	m_pDescriptorSetLayoutPerEmitter->addBindingUniformBuffer(VK_SHADER_STAGE_COMPUTE_BIT, EMITTER_BINDING, 1);
+	m_pDescriptorSetLayoutCommon->addBindingUniformBuffer(VK_SHADER_STAGE_COMPUTE_BIT, CAMERA_BINDING, 1);
+	m_pDescriptorSetLayoutCommon->addBindingCombinedImage(VK_SHADER_STAGE_COMPUTE_BIT, nullptr, DEPTH_BINDING, 1);
+	m_pDescriptorSetLayoutCommon->addBindingCombinedImage(VK_SHADER_STAGE_COMPUTE_BIT, nullptr, NORMAL_MAP_BINDING, 1);
 
-	if (!m_pDescriptorSetLayout->finalize()) {
-		LOG("Failed to finalize descriptor set layout");
+	if (!m_pDescriptorSetLayoutPerEmitter->finalize() || !m_pDescriptorSetLayoutCommon->finalize()) {
+		LOG("Failed to finalize particle descriptor set layout");
 		return false;
 	}
 
-	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { m_pDescriptorSetLayout };
+	std::vector<const DescriptorSetLayoutVK*> descriptorSetLayouts = { m_pDescriptorSetLayoutPerEmitter, m_pDescriptorSetLayoutCommon };
 
 	// Descriptor pool
 	DescriptorCounts descriptorCounts	= {};
@@ -517,6 +520,9 @@ bool ParticleEmitterHandlerVK::createPipelineLayout()
 	}
 
 	m_pPipelineLayout = DBG_NEW PipelineLayoutVK(pDevice);
+
+	m_pDescriptorSetCommon = m_pDescriptorPool->allocDescriptorSet(m_pDescriptorSetLayoutCommon);
+	writeDescriptorSetCommon();
 
 	VkPushConstantRange pushConstantRange = {};
 	pushConstantRange.size = sizeof(PushConstant);
@@ -562,4 +568,20 @@ void ParticleEmitterHandlerVK::createProfiler()
 	m_pProfiler = DBG_NEW ProfilerVK("Particles Update", pDevice);
 
 	m_pProfiler->initTimestamp(&m_TimestampDispatch, "Dispatch");
+}
+
+void ParticleEmitterHandlerVK::writeDescriptorSetCommon()
+{
+	// Create common descriptor set
+	// Fetch image views
+	RenderingHandlerVK* pRenderingHandler = reinterpret_cast<RenderingHandlerVK*>(m_pRenderingHandler);
+	GBufferVK* pGBuffer = pRenderingHandler->getGBuffer();
+
+	// TODO: This indexing for color attachments is horrible
+	ImageViewVK* pNormalMap = pGBuffer->getColorAttachment(1);
+	ImageViewVK* pDepthBuffer = pGBuffer->getDepthAttachment();
+
+	m_pDescriptorSetCommon->writeUniformBufferDescriptor(pRenderingHandler->getCameraBufferCompute(),	CAMERA_BINDING);
+	m_pDescriptorSetCommon->writeCombinedImageDescriptors(&pNormalMap, &m_pGBufferSampler, 1, 			NORMAL_MAP_BINDING);
+	m_pDescriptorSetCommon->writeCombinedImageDescriptors(&pDepthBuffer, &m_pGBufferSampler, 1, 		DEPTH_BINDING);
 }
