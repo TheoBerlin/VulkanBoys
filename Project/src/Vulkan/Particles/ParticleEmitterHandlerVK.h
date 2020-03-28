@@ -35,7 +35,7 @@ public:
 
     virtual bool initializeGPUCompute() override;
 
-    virtual void onWindowResize(float width, float height) override;
+    virtual void onWindowResize() override;
 
     virtual void toggleComputationDevice() override;
 

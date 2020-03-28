@@ -131,11 +131,8 @@ bool ParticleEmitterHandlerVK::initializeGPUCompute()
 	return true;
 }
 
-void ParticleEmitterHandlerVK::onWindowResize(float width, float height)
+void ParticleEmitterHandlerVK::onWindowResize()
 {
-	UNREFERENCED_PARAMETER(width);
-	UNREFERENCED_PARAMETER(height);
-
 	writeDescriptorSetCommon();
 }
 

@@ -31,7 +31,8 @@ layout (binding = 3) uniform EmitterProperties
 	mat4 centeringRotMatrix;
 	vec4 position, direction;
     vec2 particleSize;
-    float particleDuration, initialSpeed, spread, particleCount;
+    float particleDuration, initialSpeed, spread;
+    uint particleCount;
 } g_EmitterProperties;
 
 layout (binding = 4, set = 1) uniform CameraMatrices

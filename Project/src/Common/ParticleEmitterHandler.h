@@ -30,7 +30,7 @@ public:
 
     std::vector<ParticleEmitter*>& getParticleEmitters() { return m_ParticleEmitters; }
 
-    virtual void onWindowResize(float width, float height) = 0;
+    virtual void onWindowResize() = 0;
 
     bool gpuComputed() const { return m_GPUComputed; }
     virtual void toggleComputationDevice() = 0;

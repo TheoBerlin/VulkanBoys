@@ -229,7 +229,7 @@ void Application::init()
 	}
 
 	ParticleEmitterInfo emitterInfo = {};
-	emitterInfo.position			= glm::vec3(6.0f, 0.0f, 0.0f);
+	emitterInfo.position			= glm::vec3(6.0f, 0.1f, 0.0f);
 	emitterInfo.direction			= glm::normalize(glm::vec3(0.0f, 0.9f, 0.1f));
 	emitterInfo.particleSize		= glm::vec2(0.1f, 0.1f);
 	emitterInfo.initialSpeed		= 5.5f;

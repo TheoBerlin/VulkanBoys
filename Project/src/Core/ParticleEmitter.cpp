@@ -42,7 +42,7 @@ ParticleEmitter::~ParticleEmitter()
 
 bool ParticleEmitter::initialize(IGraphicsContext* pGraphicsContext)
 {
-    size_t particleCount = m_ParticlesPerSecond * m_ParticleDuration;
+    size_t particleCount = size_t(m_ParticlesPerSecond * m_ParticleDuration);
     resizeParticleStorage(particleCount);
 
     return createBuffers(pGraphicsContext);
@@ -105,7 +105,7 @@ void ParticleEmitter::setInitialSpeed(float initialSpeed)
 
 void ParticleEmitter::setParticlesPerSecond(float particlesPerSecond)
 {
-    size_t newParticleCount = m_ParticlesPerSecond * m_ParticleDuration;
+    size_t newParticleCount = size_t(m_ParticlesPerSecond * m_ParticleDuration);
     resizeParticleStorage(newParticleCount);
 
     m_ParticlesPerSecond = particlesPerSecond;
@@ -114,7 +114,7 @@ void ParticleEmitter::setParticlesPerSecond(float particlesPerSecond)
 
 void ParticleEmitter::setParticleDuration(float particleDuration)
 {
-    size_t newParticleCount = m_ParticlesPerSecond * m_ParticleDuration;
+    size_t newParticleCount = size_t(m_ParticlesPerSecond * m_ParticleDuration);
     resizeParticleStorage(newParticleCount);
 
     m_ParticleDuration = particleDuration;
@@ -130,7 +130,7 @@ void ParticleEmitter::setSpread(float spread)
 
 bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
 {
-    size_t particleCount = m_ParticlesPerSecond * m_ParticleDuration;
+    size_t particleCount = size_t(m_ParticlesPerSecond * m_ParticleDuration);
 
     // Create particle buffers
     BufferParams bufferParams = {};
@@ -189,6 +189,8 @@ bool ParticleEmitter::createBuffers(IGraphicsContext* pGraphicsContext)
     EmitterBuffer emitterBuffer = {};
     createEmitterBuffer(emitterBuffer);
     pGraphicsContext->updateBuffer(m_pEmitterBuffer, 0, &emitterBuffer, sizeof(EmitterBuffer));
+
+    return true;
 }
 
 void ParticleEmitter::ageEmitter(float dt)
@@ -221,8 +223,6 @@ void ParticleEmitter::moveParticles(float dt)
 
 void ParticleEmitter::respawnOldParticles()
 {
-    std::vector<glm::vec4>& positions = m_ParticleStorage.positions;
-    std::vector<glm::vec4>& velocities = m_ParticleStorage.velocities;
     std::vector<float>& ages = m_ParticleStorage.ages;
 
     size_t particleCount = getParticleCount();

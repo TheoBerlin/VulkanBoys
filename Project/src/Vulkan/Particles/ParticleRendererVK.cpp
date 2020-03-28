@@ -116,6 +116,8 @@ void ParticleRendererVK::beginFrame(IScene* pScene)
 
 void ParticleRendererVK::endFrame(IScene* pScene)
 {
+	UNREFERENCED_PARAMETER(pScene);
+
 	uint32_t currentFrame = m_pRenderingHandler->getCurrentFrameIndex();
 
 	m_pProfiler->endFrame();

@@ -584,7 +584,7 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 	createBackBuffers();
 
 	if (m_pParticleEmitterHandler) {
-		m_pParticleEmitterHandler->onWindowResize(width, height);
+		m_pParticleEmitterHandler->onWindowResize();
 	}
 
 	if (m_pShadowMapRenderer) {
