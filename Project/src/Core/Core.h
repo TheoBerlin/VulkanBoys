@@ -38,7 +38,7 @@
 		Type()	= delete; \
 		~Type() = delete; \
 		DECL_NO_COPY(Type)
-	
+
 // Resources
 #define SAFEDELETE(object) if ((object)) { delete (object); (object) = nullptr; }
 
@@ -76,7 +76,7 @@ struct Vertex
 	alignas(16) glm::vec3 Tangent;
 	alignas(16) glm::vec2 TexCoord;
 
-	bool operator==(const Vertex& other) const 
+	bool operator==(const Vertex& other) const
 	{
 		return Position == other.Position && Normal == other.Normal && Tangent == other.Tangent && TexCoord == other.TexCoord;
 	}
@@ -100,13 +100,13 @@ struct Vertex
 	}
 };
 
-namespace std 
+namespace std
 {
-	template<> struct hash<Vertex> 
+	template<> struct hash<Vertex>
 	{
-		size_t operator()(Vertex const& vertex) const 
+		size_t operator()(Vertex const& vertex) const
 		{
-			return 
+			return
 				((hash<glm::vec3>()(vertex.Position) ^
 				(hash<glm::vec3>()(vertex.Normal) << 1)) >> 1) ^
 				(hash<glm::vec2>()(vertex.TexCoord) << 1);
@@ -127,7 +127,7 @@ inline uint32_t textureFormatStride(ETextureFormat format)
 {
 	switch (format)
 	{
-	case ETextureFormat::FORMAT_R8G8B8A8_UNORM:     
+	case ETextureFormat::FORMAT_R8G8B8A8_UNORM:
 	case ETextureFormat::FORMAT_R16G16_FLOAT:		return 4;
 	case ETextureFormat::FORMAT_R16G16B16A16_FLOAT: return 8;
 	case ETextureFormat::FORMAT_R32G32B32A32_FLOAT: return 16;

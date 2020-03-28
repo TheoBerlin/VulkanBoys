@@ -331,33 +331,6 @@ void RenderingHandlerVK::render(IScene* pScene)
 	pSecondaryCommandBuffer->end();
 #endif
 
-	// Submit the rendering handler's command buffer
-	if (m_pParticleEmitterHandler)
-	{
-#if MULTITHREADED
-		TaskDispatcher::execute([&, this]
-			{
-				ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
-				if (pEmitterHandler->gpuComputed())
-				{
-					for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters())
-					{
-						pEmitterHandler->releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
-					}
-				}
-			});
-#else
-		ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
-		if (pEmitterHandler->gpuComputed())
-		{
-			for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters())
-			{
-				pEmitterHandler->releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
-			}
-		}
-#endif
-	}
-
 	if (m_pParticleRenderer)
 	{
 		m_pParticleRenderer->getProfiler()->reset(m_CurrentFrame, m_ppGraphicsCommandBuffers[m_CurrentFrame]);
@@ -388,13 +361,13 @@ void RenderingHandlerVK::render(IScene* pScene)
 		pDevice->executeTransfer(m_ppTransferCommandBuffers[m_CurrentFrame], transferWaitSemphores, transferWaitStages, waitCount, transferSignalSemaphores, 2);
 	}
 
-	//Start renderpass
-	VkClearValue clearValues[] = { m_ClearColor, m_ClearColor, m_ClearColor, m_ClearDepth };
-	m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pGeometryRenderPass, m_pGBuffer->getFrameBuffer(), (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 4, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-
 #if MULTITHREADED
 	TaskDispatcher::waitForTasks();
 #endif
+
+	//Start renderpass
+	VkClearValue clearValues[] = { m_ClearColor, m_ClearColor, m_ClearColor, m_ClearDepth };
+	m_ppGraphicsCommandBuffers[m_CurrentFrame]->beginRenderPass(m_pGeometryRenderPass, m_pGBuffer->getFrameBuffer(), (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, clearValues, 4, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->executeSecondary(m_pMeshRenderer->getGeometryCommandBuffer());
 	m_ppGraphicsCommandBuffers[m_CurrentFrame]->endRenderPass();
@@ -609,6 +582,10 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 	}
 
 	createBackBuffers();
+
+	if (m_pParticleEmitterHandler) {
+		m_pParticleEmitterHandler->onWindowResize();
+	}
 
 	if (m_pShadowMapRenderer) {
 		m_pShadowMapRenderer->onWindowResize(width, height);
@@ -1201,14 +1178,36 @@ void RenderingHandlerVK::submitParticles()
 {
 	ParticleEmitterHandlerVK* pEmitterHandler = reinterpret_cast<ParticleEmitterHandlerVK*>(m_pParticleEmitterHandler);
 
-	// Transfer buffer ownerships to the graphics queue
-	for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters())
-	{
-		if (pEmitterHandler->gpuComputed())
-		{
+	// Transfer depth buffer and particle buffer ownerships between the compute and graphics queue
+	if (pEmitterHandler->gpuComputed()) {
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->releaseImageOwnership(
+			m_pGBuffer->getDepthImage(),
+			VK_ACCESS_MEMORY_READ_BIT,
+			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
+			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+			VK_IMAGE_ASPECT_DEPTH_BIT);
+
+		for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters()) {
+			// Release buffers from graphics after the geometry pass. This will allow the compute queue to update the particles
+			pEmitterHandler->releaseFromGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
+
+			// Particle buffers will be acquired once the particles have been updated
 			pEmitterHandler->acquireForGraphics(reinterpret_cast<BufferVK*>(pEmitter->getPositionsBuffer()), m_ppGraphicsCommandBuffers[m_CurrentFrame]);
 		}
 
+		m_ppGraphicsCommandBuffers[m_CurrentFrame]->acquireImageOwnership(
+			m_pGBuffer->getDepthImage(),
+			VK_ACCESS_MEMORY_READ_BIT,
+			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().computeFamily.value(),
+			m_pGraphicsContext->getDevice()->getQueueFamilyIndices().graphicsFamily.value(),
+			VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+			VK_IMAGE_ASPECT_DEPTH_BIT);
+	}
+
+	for (ParticleEmitter* pEmitter : pEmitterHandler->getParticleEmitters()) {
 		m_pParticleRenderer->submitParticles(pEmitter);
 	}
 }

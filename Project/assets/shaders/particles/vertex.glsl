@@ -7,15 +7,13 @@ struct QuadVertex
 	vec2 TexCoord;
 };
 
-layout(binding = 0) buffer vertexBuffer
+layout (binding = 0) buffer vertexBuffer
 {
 	QuadVertex vertices[];
 };
 
 layout (binding = 1) uniform CameraMatrices
 {
-	//mat4 View;
-	//mat4 Projection;
 	mat4 Projection;
 	mat4 View;
 	mat4 LastProjection;
@@ -27,13 +25,7 @@ layout (binding = 1) uniform CameraMatrices
 	vec4 Up;
 } g_CameraMatrices;
 
-/*layout(binding = 2) uniform CameraDirections
-{
-	vec4 up;
-	vec4 right;
-} g_CameraDirections;*/
-
-layout (binding = 3) uniform EmitterProperties
+layout (binding = 2) uniform EmitterProperties
 {
 	mat4 centeringRotMatrix;
 	vec4 position, direction;
@@ -41,12 +33,12 @@ layout (binding = 3) uniform EmitterProperties
     float particleDuration, initialSpeed, spread, particleCount;
 } g_EmitterProperties;
 
-layout (binding = 4) buffer ParticlePositions
+layout (binding = 3) buffer ParticlePositions
 {
 	vec4 positions[];
 } g_ParticlePositions;
 
-layout(location = 0) out vec2 out_TexCoords;
+layout (location = 0) out vec2 out_TexCoords;
 
 void main()
 {

@@ -28,7 +28,8 @@ struct EmitterBuffer {
     glm::mat4x4 centeringRotMatrix;
     glm::vec4 position, direction;
     glm::vec2 particleSize;
-    float particleDuration, initialSpeed, spread, particleCount;
+    float particleDuration, initialSpeed, spread;
+    uint32_t particleCount;
 };
 
 struct ParticleStorage {

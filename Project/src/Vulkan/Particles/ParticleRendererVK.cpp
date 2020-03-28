@@ -22,6 +22,12 @@
 
 #include <array>
 
+#define BINDING_VERTEX 				0
+#define BINDING_CAMERA 				1
+#define BINDING_EMITTER 			2
+#define BINDING_PARTICLE_POSITIONS	3
+#define BINDING_PARTICLE_TEXTURE	4
+
 ParticleRendererVK::ParticleRendererVK(GraphicsContextVK* pGraphicsContext, RenderingHandlerVK* pRenderingHandler)
 	:m_pGraphicsContext(pGraphicsContext),
 	m_pRenderingHandler(pRenderingHandler),
@@ -110,6 +116,8 @@ void ParticleRendererVK::beginFrame(IScene* pScene)
 
 void ParticleRendererVK::endFrame(IScene* pScene)
 {
+	UNREFERENCED_PARAMETER(pScene);
+
 	uint32_t currentFrame = m_pRenderingHandler->getCurrentFrameIndex();
 
 	m_pProfiler->endFrame();
@@ -176,24 +184,6 @@ bool ParticleRendererVK::createPipelineLayout()
 {
 	DeviceVK* pDevice = m_pGraphicsContext->getDevice();
 
-	// Descriptor Set Layout
-	m_pDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(pDevice);
-
-	// Vertex Buffer
-	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0, 1);
-
-	// Camera Buffer
-	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 1, 1);
-
-	// Camera vectors Buffer
-	//m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 2, 1);
-
-	// Per-emitter Buffer
-	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 3, 1);
-
-	// Per-particle Buffer
-	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, 4, 1);
-
 	// Particle Texture
 	m_pSampler = DBG_NEW SamplerVK(pDevice);
 
@@ -206,7 +196,15 @@ bool ParticleRendererVK::createPipelineLayout()
 	m_pSampler->init(samplerParams);
 
 	VkSampler sampler = m_pSampler->getSampler();
-	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, &sampler, 5, 1);
+
+	// Descriptor Set Layout
+	m_pDescriptorSetLayout = DBG_NEW DescriptorSetLayoutVK(pDevice);
+
+	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, 			BINDING_VERTEX, 1);
+	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 			BINDING_CAMERA, 1);
+	m_pDescriptorSetLayout->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT, 			BINDING_EMITTER, 1);
+	m_pDescriptorSetLayout->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, 			BINDING_PARTICLE_POSITIONS, 1);
+	m_pDescriptorSetLayout->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, &sampler, BINDING_PARTICLE_TEXTURE, 1);
 
 	if (!m_pDescriptorSetLayout->finalize()) {
 		LOG("Failed to finalize descriptor set layout");
@@ -332,17 +330,14 @@ bool ParticleRendererVK::bindDescriptorSet(ParticleEmitter* pEmitter)
 
 		// Camera buffers
 		BufferVK* pCameraBuffer = m_pRenderingHandler->getCameraBufferGraphics();
-		//BufferVK* pCameraDirectionsBuffer	= m_pRenderingHandler->getCameraDirectionsBuffer();
 
-		// TODO: Use constant variables or define macros for binding indices
-		pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer, 0);
-		pDescriptorSet->writeUniformBufferDescriptor(pCameraBuffer, 1);
-		//pDescriptorSet->writeUniformBufferDescriptor(pCameraDirectionsBuffer, 2);
-		pDescriptorSet->writeUniformBufferDescriptor(pEmitterBuffer, 3);
-		pDescriptorSet->writeStorageBufferDescriptor(pPositionsBuffer, 4);
+		pDescriptorSet->writeStorageBufferDescriptor(pVertBuffer, 		BINDING_VERTEX);
+		pDescriptorSet->writeUniformBufferDescriptor(pCameraBuffer, 	BINDING_CAMERA);
+		pDescriptorSet->writeUniformBufferDescriptor(pEmitterBuffer, 	BINDING_EMITTER);
+		pDescriptorSet->writeStorageBufferDescriptor(pPositionsBuffer,	BINDING_PARTICLE_POSITIONS);
 
 		ImageViewVK* pParticleTextureVIew = pParticleTexture->getImageView();
-		pDescriptorSet->writeCombinedImageDescriptors(&pParticleTextureVIew, &m_pSampler, 1, 5);
+		pDescriptorSet->writeCombinedImageDescriptors(&pParticleTextureVIew, &m_pSampler, 1, BINDING_PARTICLE_TEXTURE);
 
 		pEmitter->setDescriptorSetRender(pDescriptorSet);
 	}

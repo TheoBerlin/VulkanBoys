@@ -161,7 +161,7 @@ void Application::init()
 
 	//Create particlehandler
 	m_pParticleEmitterHandler = m_pContext->createParticleEmitterHandler();
-	m_pParticleEmitterHandler->initialize(m_pContext, &m_Camera);
+	m_pParticleEmitterHandler->initialize(m_pContext, m_pRenderingHandler, &m_Camera);
 
 	// Create volumetric light renderer
 	m_pVolumetricLightRenderer = m_pContext->createVolumetricLightRenderer(m_pRenderingHandler, &m_pScene->getLightSetup(), m_pImgui);
@@ -229,9 +229,9 @@ void Application::init()
 	}
 
 	ParticleEmitterInfo emitterInfo = {};
-	emitterInfo.position			= glm::vec3(6.0f, 0.0f, 0.0f);
+	emitterInfo.position			= glm::vec3(6.0f, 0.1f, 0.0f);
 	emitterInfo.direction			= glm::normalize(glm::vec3(0.0f, 0.9f, 0.1f));
-	emitterInfo.particleSize		= glm::vec2(0.2f, 0.2f);
+	emitterInfo.particleSize		= glm::vec2(0.1f, 0.1f);
 	emitterInfo.initialSpeed		= 5.5f;
 	emitterInfo.particleDuration	= 3.0f;
 	emitterInfo.particlesPerSecond	= 200.0f;
@@ -628,6 +628,12 @@ void Application::renderUI(double dt)
 				m_pParticleEmitterHandler->toggleComputationDevice();
 			}
 
+			ImGui::Text("Collisions");
+			const char* btnLabelCollisions = m_pParticleEmitterHandler->collisionsEnabled() ? "On" : "Off";
+			if (ImGui::Button(btnLabelCollisions)) {
+				m_pParticleEmitterHandler->toggleCollisions();
+			}
+
 			std::vector<ParticleEmitter*> particleEmitters = m_pParticleEmitterHandler->getParticleEmitters();
 
 			// Emitter creation
@@ -837,7 +843,6 @@ void Application::renderUI(double dt)
 void Application::render(double dt)
 {
 	UNREFERENCED_PARAMETER(dt);
-
 	m_pRenderingHandler->render(m_pScene);
 }
 
