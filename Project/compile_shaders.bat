@@ -42,4 +42,6 @@
 
 "tools/glslc.exe" -fshader-stage=fragment assets/shaders/volumetricLight/volumetricDirectionalFragment.glsl -o assets/shaders/volumetricLight/volumetricDirectionalFragment.spv
 
+"tools/glslc.exe" -fshader-stage=fragment assets/shaders/volumetricLight/volumetricApplyFragment.glsl -o assets/shaders/volumetricLight/volumetricApplyFragment.spv
+
 pause

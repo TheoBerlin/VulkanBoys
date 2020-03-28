@@ -21,10 +21,11 @@
 #include "Vulkan/SwapChainVK.h"
 #include "Vulkan/SceneVK.h"
 
-#define VERTEX_BINDING              0
-#define VOLUMETRIC_LIGHT_BINDING    1
-#define CAMERA_BINDING              2
-#define DEPTH_BUFFER_BINDING        3
+#define VERTEX_BINDING              		0
+#define VOLUMETRIC_LIGHT_BINDING    		1
+#define CAMERA_BINDING              		2
+#define DEPTH_BUFFER_BINDING        		3
+#define VOLUMETRIC_LIGHT_BUFFER_BINDING		4
 
 VolumetricLightRendererVK::VolumetricLightRendererVK(GraphicsContextVK* pGraphicsContext, RenderingHandlerVK* pRenderingHandler, LightSetup* pLightSetup, ImguiVK* pImguiRenderer)
     :m_pLightSetup(pLightSetup),
@@ -42,12 +43,14 @@ VolumetricLightRendererVK::VolumetricLightRendererVK(GraphicsContextVK* pGraphic
     m_pPipelineLayout(nullptr),
     m_pPipelinePointLight(nullptr),
 	m_pPipelineDirectionalLight(nullptr),
+	m_pPipelineApplyLight(nullptr),
     m_pSampler(nullptr),
 	m_LightBufferImID(nullptr),
 	m_CurrentIndex(0)
 {
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        m_ppCommandBuffers[i] = nullptr;
+        m_ppCommandBuffersBuildLight[i] = nullptr;
+        m_ppCommandBuffersApplyLight[i] = nullptr;
         m_ppCommandPools[i] = nullptr;
 
 		m_pLightBufferImage = nullptr;
@@ -67,7 +70,6 @@ VolumetricLightRendererVK::~VolumetricLightRendererVK()
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		SAFEDELETE(m_ppCommandPools[i]);
-
 	}
 
 	SAFEDELETE(m_pLightBufferPass);
@@ -80,6 +82,7 @@ VolumetricLightRendererVK::~VolumetricLightRendererVK()
 	SAFEDELETE(m_pPipelineLayout);
 	SAFEDELETE(m_pPipelinePointLight);
 	SAFEDELETE(m_pPipelineDirectionalLight);
+	SAFEDELETE(m_pPipelineApplyLight);
 	SAFEDELETE(m_pSphereMesh);
 	SAFEDELETE(m_pSampler);
 }
@@ -148,23 +151,22 @@ void VolumetricLightRendererVK::beginFrame(IScene* pScene)
     // Prepare for frame
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
 
-	m_ppCommandBuffers[frameIndex]->reset(false);
+	m_ppCommandBuffersBuildLight[frameIndex]->reset(false);
 	m_ppCommandPools[frameIndex]->reset();
 	m_pProfiler->reset(frameIndex, m_pRenderingHandler->getCurrentGraphicsCommandBuffer());
 
-	// Needed to begin a secondary buffer
 	VkCommandBufferInheritanceInfo inheritanceInfo = {};
 	inheritanceInfo.sType		= VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
 	inheritanceInfo.pNext		= nullptr;
 	inheritanceInfo.renderPass	= m_pLightBufferPass->getRenderPass();
-	inheritanceInfo.subpass		= 0; // TODO: Don't hardcode this :(
+	inheritanceInfo.subpass		= 0;
 	inheritanceInfo.framebuffer = m_pLightFrameBuffer->getFrameBuffer();
 
-	m_ppCommandBuffers[frameIndex]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
-	m_pProfiler->beginFrame(m_ppCommandBuffers[frameIndex]);
+	m_ppCommandBuffersBuildLight[frameIndex]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
+	m_pProfiler->beginFrame(m_ppCommandBuffersBuildLight[frameIndex]);
 
-	m_ppCommandBuffers[frameIndex]->setViewports(&m_Viewport, 1);
-	m_ppCommandBuffers[frameIndex]->setScissorRects(&m_ScissorRect, 1);
+	m_ppCommandBuffersBuildLight[frameIndex]->setViewports(&m_Viewport, 1);
+	m_ppCommandBuffersBuildLight[frameIndex]->setScissorRects(&m_ScissorRect, 1);
 }
 
 void VolumetricLightRendererVK::endFrame(IScene* pScene)
@@ -174,7 +176,7 @@ void VolumetricLightRendererVK::endFrame(IScene* pScene)
 	m_pProfiler->endFrame();
 
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
-	m_ppCommandBuffers[frameIndex]->end();
+	m_ppCommandBuffersBuildLight[frameIndex]->end();
 }
 
 void VolumetricLightRendererVK::renderLightBuffer()
@@ -185,12 +187,45 @@ void VolumetricLightRendererVK::renderLightBuffer()
 	PushConstants pushConstants = {};
 	pushConstants.raymarchSteps = 64;
 	pushConstants.viewportExtent = {m_Viewport.width, m_Viewport.height};
-	m_ppCommandBuffers[frameIndex]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &pushConstants);
+	m_ppCommandBuffersBuildLight[frameIndex]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &pushConstants);
 
-	m_ppCommandBuffers[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSetCommon, 0, nullptr);
+	m_ppCommandBuffersBuildLight[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSetCommon, 0, nullptr);
 
 	renderPointLights();
 	renderDirectionalLight();
+}
+
+void VolumetricLightRendererVK::applyLightBuffer(RenderPassVK* pRenderPass, FrameBufferVK* pFrameBuffer)
+{
+    // Prepare for frame
+	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
+
+	m_ppCommandBuffersApplyLight[frameIndex]->reset(false);
+	//m_pProfiler->reset(frameIndex, m_pRenderingHandler->getCurrentGraphicsCommandBuffer());
+
+	VkCommandBufferInheritanceInfo inheritanceInfo = {};
+	inheritanceInfo.sType		= VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+	inheritanceInfo.pNext		= nullptr;
+	inheritanceInfo.renderPass	= pRenderPass->getRenderPass();
+	inheritanceInfo.subpass		= 0;
+	inheritanceInfo.framebuffer = pFrameBuffer->getFrameBuffer();
+
+	m_ppCommandBuffersApplyLight[frameIndex]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
+	//m_pProfiler->beginFrame(m_ppCommandBuffersApplyLight[frameIndex]);
+
+	m_ppCommandBuffersApplyLight[frameIndex]->setViewports(&m_Viewport, 1);
+	m_ppCommandBuffersApplyLight[frameIndex]->setScissorRects(&m_ScissorRect, 1);
+
+	m_ppCommandBuffersApplyLight[frameIndex]->bindPipeline(m_pPipelineApplyLight);
+	m_ppCommandBuffersApplyLight[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSetCommon, 0, nullptr);
+
+	//m_pProfiler->beginTimestamp(&m_TimestampDraw);
+	m_ppCommandBuffersApplyLight[frameIndex]->drawInstanced(3, 1, 0, 0);
+	//m_pProfiler->endTimestamp(&m_TimestampDraw);
+
+	// End frame
+	//m_pProfiler->endFrame();
+	m_ppCommandBuffersApplyLight[frameIndex]->end();
 }
 
 void VolumetricLightRendererVK::renderPointLights()
@@ -204,16 +239,16 @@ void VolumetricLightRendererVK::renderPointLights()
 
 	// Bind sphere mesh
 	BufferVK* pIndexBuffer = reinterpret_cast<BufferVK*>(m_pSphereMesh->getIndexBuffer());
-	m_ppCommandBuffers[frameIndex]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	m_ppCommandBuffersBuildLight[frameIndex]->bindIndexBuffer(pIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-	m_ppCommandBuffers[frameIndex]->bindPipeline(m_pPipelinePointLight);
+	m_ppCommandBuffersBuildLight[frameIndex]->bindPipeline(m_pPipelinePointLight);
 
 	for (VolumetricPointLight& pointLight : volumetricPointLights) {
 		DescriptorSetVK* pDescriptorSet = reinterpret_cast<DescriptorSetVK*>(pointLight.getVolumetricLightDescriptorSet());
-		m_ppCommandBuffers[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 1, 1, &pDescriptorSet, 0, nullptr);
+		m_ppCommandBuffersBuildLight[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 1, 1, &pDescriptorSet, 0, nullptr);
 
 		m_pProfiler->beginTimestamp(&m_TimestampDraw);
-		m_ppCommandBuffers[frameIndex]->drawIndexInstanced(m_pSphereMesh->getIndexCount(), 1, 0, 0, 0);
+		m_ppCommandBuffersBuildLight[frameIndex]->drawIndexInstanced(m_pSphereMesh->getIndexCount(), 1, 0, 0, 0);
 		m_pProfiler->endTimestamp(&m_TimestampDraw);
 	}
 }
@@ -226,14 +261,14 @@ void VolumetricLightRendererVK::renderDirectionalLight()
 
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
 
-	m_ppCommandBuffers[frameIndex]->bindPipeline(m_pPipelineDirectionalLight);
+	m_ppCommandBuffersBuildLight[frameIndex]->bindPipeline(m_pPipelineDirectionalLight);
 
 	DirectionalLight* pDirectionalLight = m_pLightSetup->getDirectionalLight();
 	DescriptorSetVK* pDescriptorSet = reinterpret_cast<DescriptorSetVK*>(pDirectionalLight->getDescriptorSet());
-	m_ppCommandBuffers[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 1, 1, &pDescriptorSet, 0, nullptr);
+	m_ppCommandBuffersBuildLight[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 1, 1, &pDescriptorSet, 0, nullptr);
 
 	m_pProfiler->beginTimestamp(&m_TimestampDraw);
-	m_ppCommandBuffers[frameIndex]->drawInstanced(3, 1, 0, 0);
+	m_ppCommandBuffersBuildLight[frameIndex]->drawInstanced(3, 1, 0, 0);
 	m_pProfiler->endTimestamp(&m_TimestampDraw);
 }
 
@@ -285,6 +320,7 @@ void VolumetricLightRendererVK::onWindowResize(uint32_t width, uint32_t height)
 	ImageViewVK* pDepthImageView = pGBuffer->getDepthAttachment();
 
 	m_pDescriptorSetCommon->writeCombinedImageDescriptors(&pDepthImageView, &m_pSampler, 1, DEPTH_BUFFER_BINDING);
+	m_pDescriptorSetCommon->writeCombinedImageDescriptors(&m_pLightBufferImageView, &m_pSampler, 1, VOLUMETRIC_LIGHT_BUFFER_BINDING);
 }
 
 void VolumetricLightRendererVK::renderUI()
@@ -329,7 +365,7 @@ void VolumetricLightRendererVK::renderUI()
 				pDirectionalLight->setParticleG(particleG);
 			}
 
-			if (ImGui::SliderFloat("Scatter Amount", &scatterAmount, 0.0f, 1.0f)) {
+			if (ImGui::SliderFloat("Scatter Amount", &scatterAmount, 0.0f, 20.0f)) {
 				pDirectionalLight->setScatterAmount(scatterAmount);
 			}
 		}
@@ -355,8 +391,13 @@ bool VolumetricLightRendererVK::createCommandPoolAndBuffers()
 			return false;
 		}
 
-		m_ppCommandBuffers[i] = m_ppCommandPools[i]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_SECONDARY);
-		if (m_ppCommandBuffers[i] == nullptr) {
+		m_ppCommandBuffersBuildLight[i] = m_ppCommandPools[i]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+		if (m_ppCommandBuffersBuildLight[i] == nullptr) {
+			return false;
+		}
+
+		m_ppCommandBuffersApplyLight[i] = m_ppCommandPools[i]->allocateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+		if (m_ppCommandBuffersApplyLight[i] == nullptr) {
 			return false;
 		}
 	}
@@ -406,7 +447,7 @@ bool VolumetricLightRendererVK::createRenderPass()
 
 bool VolumetricLightRendererVK::createFrameBuffer()
 {
-	// Make the image half of the backbuffer's resolution
+	// TODO: Make the image half of the backbuffer's resolution
 	VkExtent2D backbufferRes = m_pGraphicsContext->getSwapChain()->getExtent();
 
     ImageParams imageParams = {};
@@ -456,8 +497,8 @@ bool VolumetricLightRendererVK::createPipelineLayout()
 	m_pSampler = new SamplerVK(pDevice);
 
 	SamplerParams samplerParams = {};
-	samplerParams.MinFilter = VkFilter::VK_FILTER_LINEAR;
-	samplerParams.MagFilter = VkFilter::VK_FILTER_LINEAR;
+	samplerParams.MinFilter = VkFilter::VK_FILTER_NEAREST;
+	samplerParams.MagFilter = VkFilter::VK_FILTER_NEAREST;
 	samplerParams.WrapModeU = VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerParams.WrapModeV = samplerParams.WrapModeU;
 	samplerParams.WrapModeW = samplerParams.WrapModeU;
@@ -477,6 +518,8 @@ bool VolumetricLightRendererVK::createPipelineLayout()
 	m_pDescriptorSetLayoutCommon->addBindingStorageBuffer(VK_SHADER_STAGE_VERTEX_BIT, VERTEX_BINDING, 1);
 	m_pDescriptorSetLayoutCommon->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, CAMERA_BINDING, 1);
 	m_pDescriptorSetLayoutCommon->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, &sampler, DEPTH_BUFFER_BINDING, 1);
+	// For applying the light buffer
+	m_pDescriptorSetLayoutCommon->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, &sampler, VOLUMETRIC_LIGHT_BUFFER_BINDING, 1);
 	m_pDescriptorSetLayoutPerLight->addBindingUniformBuffer(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, LIGHT_BUFFER_BINDING, 1);
 	m_pDescriptorSetLayoutPerLight->addBindingCombinedImage(VK_SHADER_STAGE_FRAGMENT_BIT, &sampler, SHADOW_MAP_BINDING, 1);
 
@@ -509,6 +552,7 @@ bool VolumetricLightRendererVK::createPipelineLayout()
 	m_pDescriptorSetCommon->writeStorageBufferDescriptor(pVertexBuffer, VERTEX_BINDING);
 	m_pDescriptorSetCommon->writeUniformBufferDescriptor(m_pRenderingHandler->getCameraBufferGraphics(), CAMERA_BINDING);
 	m_pDescriptorSetCommon->writeCombinedImageDescriptors(&pDepthImageView, &m_pSampler, 1, DEPTH_BUFFER_BINDING);
+	m_pDescriptorSetCommon->writeCombinedImageDescriptors(&m_pLightBufferImageView, &m_pSampler, 1, VOLUMETRIC_LIGHT_BUFFER_BINDING);
 
 	m_pPipelineLayout = DBG_NEW PipelineLayoutVK(pDevice);
 	return m_pPipelineLayout->init(descriptorSetLayouts, {pushConstantRange});
@@ -563,7 +607,7 @@ bool VolumetricLightRendererVK::createPipelines()
 	pVertexShader = m_pGraphicsContext->createShader();
 	pVertexShader->initFromFile(EShader::VERTEX_SHADER, "main", "assets/shaders/fullscreenVertex.spv");
 	if (!pVertexShader->finalize()) {
-        LOG("Failed to create vertex shader for volumetric directional light");
+        LOG("Failed to create fullscreen vertex shader for volumetric directional light");
 		return false;
 	}
 
@@ -586,6 +630,34 @@ bool VolumetricLightRendererVK::createPipelines()
 
 	if (!m_pPipelineDirectionalLight->finalizeGraphics(shaders, m_pLightBufferPass, m_pPipelineLayout)) {
 		LOG("Failed to create volumetric directional light pipeline");
+		return false;
+	}
+
+	SAFEDELETE(pPixelShader);
+
+	// Create pipeline for applying the light buffer
+	pPixelShader = m_pGraphicsContext->createShader();
+	pPixelShader->initFromFile(EShader::PIXEL_SHADER, "main", "assets/shaders/volumetricLight/volumetricApplyFragment.spv");
+	if (!pPixelShader->finalize()) {
+		LOG("Failed to create pixel shader for applying volumetric light buffer");
+		return false;
+	}
+
+	shaders[1] = pPixelShader;
+	m_pPipelineApplyLight = DBG_NEW PipelineVK(m_pGraphicsContext->getDevice());
+
+	blendAttachment.blendEnable			= VK_TRUE;
+	blendAttachment.colorWriteMask		= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT;
+	blendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	blendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	blendAttachment.colorBlendOp		= VK_BLEND_OP_ADD;
+	m_pPipelineApplyLight->addColorBlendAttachment(blendAttachment);
+
+	m_pPipelineApplyLight->setRasterizerState(rasterizerState);
+	m_pPipelineApplyLight->setDepthStencilState(depthStencilState);
+
+	if (!m_pPipelineApplyLight->finalizeGraphics(shaders, m_pRenderingHandler->getBackBufferRenderPass(), m_pPipelineLayout)) {
+		LOG("Failed to create volumetric light buffer application pipeline");
 		return false;
 	}
 

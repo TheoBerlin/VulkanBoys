@@ -40,7 +40,7 @@ public:
     // Renders volumetric light to a light buffer
     void renderLightBuffer();
     // Applies the light buffer to the backbuffer
-    void applyLightBuffer();
+    void applyLightBuffer(RenderPassVK* pRenderPass, FrameBufferVK* pFrameBuffer);
 
     virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
     void onWindowResize(uint32_t width, uint32_t height);
@@ -52,7 +52,8 @@ public:
     RenderPassVK* getLightBufferPass() { return m_pLightBufferPass; }
     const VkViewport& getViewport() const { return m_Viewport; }
 
-    CommandBufferVK* getCommandBuffer(uint32_t frameIndex) { return m_ppCommandBuffers[frameIndex]; }
+    CommandBufferVK* getCommandBufferBuildPass(uint32_t frameIndex) { return m_ppCommandBuffersBuildLight[frameIndex]; }
+    CommandBufferVK* getCommandBufferApplyPass(uint32_t frameIndex) { return m_ppCommandBuffersApplyLight[frameIndex]; }
     ProfilerVK* getProfiler() { return m_pProfiler; }
 
 private:
@@ -92,7 +93,8 @@ private:
     ProfilerVK* m_pProfiler;
     Timestamp m_TimestampDraw;
 
-    CommandBufferVK* m_ppCommandBuffers[MAX_FRAMES_IN_FLIGHT];
+    CommandBufferVK* m_ppCommandBuffersBuildLight[MAX_FRAMES_IN_FLIGHT];
+    CommandBufferVK* m_ppCommandBuffersApplyLight[MAX_FRAMES_IN_FLIGHT];
 	CommandPoolVK* m_ppCommandPools[MAX_FRAMES_IN_FLIGHT];
 
 	DescriptorPoolVK* m_pDescriptorPool;
@@ -102,8 +104,11 @@ private:
 
     PipelineLayoutVK* m_pPipelineLayout;
 
+    // Pipelines for building light buffer
 	PipelineVK* m_pPipelinePointLight;
 	PipelineVK* m_pPipelineDirectionalLight;
+
+	PipelineVK* m_pPipelineApplyLight;
 
     VkViewport m_Viewport;
 	VkRect2D m_ScissorRect;

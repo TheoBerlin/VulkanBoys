@@ -132,7 +132,7 @@ void Application::init()
 	lightSetup.addPointLight(PointLight(glm::vec3( 0.0f, 4.0f, 0.0f), glm::vec4(100.0f)));
 
 	VolumetricLightSettings volumetricLightSettings = {
-		1.0f, 	// Scatter amount
+		10.0f, 	// Scatter amount
 		0.2f 	// Particle G
 	};
 	glm::vec3 sunDirection = glm::normalize(glm::vec3(-0.6f, -0.78f, -0.14f));
@@ -263,7 +263,7 @@ void Application::init()
 
 	//Setup camera
 	m_Camera.setDirection(glm::vec3(0.0f, 0.0f, 1.0f));
-	m_Camera.setPosition(glm::vec3(0.0f, 7.7f, -3.0f));
+	m_Camera.setPosition(glm::vec3(0.0f, 0.0f, -3.0f));
 	m_Camera.setProjection(90.0f, (float)m_pWindow->getWidth(), (float)m_pWindow->getHeight(), 0.0001f, 50.0f);
 	m_Camera.update();
 

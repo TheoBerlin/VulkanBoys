@@ -412,8 +412,9 @@ void RenderingHandlerVK::render(IScene* pScene)
 		m_pVolumetricLightRenderer->beginFrame(pScene);
 
 		m_pVolumetricLightRenderer->updateBuffers();
-
 		m_pVolumetricLightRenderer->renderLightBuffer();
+		m_pVolumetricLightRenderer->applyLightBuffer(m_pBackBufferRenderPass, pBackbuffer);
+
 		m_pVolumetricLightRenderer->endFrame(pScene);
 	}
 
@@ -533,8 +534,7 @@ void RenderingHandlerVK::render(IScene* pScene)
 		VkClearValue clearValue = m_pVolumetricLightRenderer->getLightBufferClearColor();
 
 		m_ppGraphicsCommandBuffers2[m_CurrentFrame]->beginRenderPass(pLightBufferPass, pLightFrameBuffer, (uint32_t)viewport.width, (uint32_t)viewport.height, &clearValue, 1, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-		m_ppGraphicsCommandBuffers2[m_CurrentFrame]->executeSecondary(m_pVolumetricLightRenderer->getCommandBuffer(m_CurrentFrame));
-
+		m_ppGraphicsCommandBuffers2[m_CurrentFrame]->executeSecondary(m_pVolumetricLightRenderer->getCommandBufferBuildPass(m_CurrentFrame));
 		m_ppGraphicsCommandBuffers2[m_CurrentFrame]->endRenderPass();
 	}
 
@@ -542,7 +542,13 @@ void RenderingHandlerVK::render(IScene* pScene)
 
 	//Gather all renderer's data and finalize the frame
 	m_ppGraphicsCommandBuffers2[m_CurrentFrame]->beginRenderPass(m_pBackBufferRenderPass, pBackbuffer, (uint32_t)m_Viewport.width, (uint32_t)m_Viewport.height, nullptr, 0, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+
 	m_ppGraphicsCommandBuffers2[m_CurrentFrame]->executeSecondary(m_pMeshRenderer->getLightCommandBuffer());
+
+	if (m_pVolumetricLightRenderer) {
+		m_ppGraphicsCommandBuffers2[m_CurrentFrame]->executeSecondary(m_pVolumetricLightRenderer->getCommandBufferApplyPass(m_CurrentFrame));
+	}
+
 	m_ppGraphicsCommandBuffers2[m_CurrentFrame]->endRenderPass();
 
 	//Render particles
