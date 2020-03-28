@@ -184,6 +184,29 @@ void ShadowMapRendererVK::setViewport(float width, float height, float minDepth,
 	m_ScissorRect.offset.y		= 0;
 }
 
+void ShadowMapRendererVK::onWindowResize(uint32_t width, uint32_t height)
+{
+	// Delete shadow maps and transform buffers, they will be recreated during the next render call
+	if (m_pScene) {
+		LightSetup& lightSetup = m_pScene->getLightSetup();
+		if (lightSetup.hasDirectionalLight()) {
+			DirectionalLight* pDirectionalLight = lightSetup.getDirectionalLight();
+			delete pDirectionalLight->getFrameBuffer();
+			delete pDirectionalLight->getDepthImageView();
+			delete pDirectionalLight->getDepthImage();
+			delete pDirectionalLight->getTransformBuffer();
+
+			pDirectionalLight->setFrameBuffer(nullptr);
+			pDirectionalLight->setDepthImageView(nullptr);
+			pDirectionalLight->setDepthImage(nullptr);
+			pDirectionalLight->setTransformBuffer(nullptr);
+		}
+	}
+
+	m_Viewport.width = (float)width;
+	m_Viewport.height = (float)height;
+}
+
 bool ShadowMapRendererVK::createCommandPoolAndBuffers()
 {
 	DeviceVK* pDevice		= m_pGraphicsContext->getDevice();

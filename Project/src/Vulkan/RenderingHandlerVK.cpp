@@ -610,6 +610,10 @@ void RenderingHandlerVK::onWindowResize(uint32_t width, uint32_t height)
 
 	createBackBuffers();
 
+	if (m_pShadowMapRenderer) {
+		m_pShadowMapRenderer->onWindowResize(width, height);
+	}
+
 	if (m_pVolumetricLightRenderer) {
 		m_pVolumetricLightRenderer->onWindowResize(width, height);
 	}

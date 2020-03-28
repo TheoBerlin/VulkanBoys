@@ -289,9 +289,6 @@ void VolumetricLightRendererVK::setViewport(float width, float height, float min
 
 void VolumetricLightRendererVK::onWindowResize(uint32_t width, uint32_t height)
 {
-	UNREFERENCED_PARAMETER(width);
-	UNREFERENCED_PARAMETER(height);
-
 	// Refresh volumetric light buffer
 	SAFEDELETE(m_pLightBufferImage);
 	SAFEDELETE(m_pLightBufferImageView);
