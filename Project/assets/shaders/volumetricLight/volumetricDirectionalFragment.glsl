@@ -75,7 +75,7 @@ float phaseFunction(vec3 rayDir)
 
 vec3 calculateLight(vec3 position, vec3 rayDir)
 {
-	return getShadowFactor(position) * u_DirectionalLight.color.xyz * phaseFunction(rayDir) * u_DirectionalLight.scatterAmount;
+	return getShadowFactor(position) * u_DirectionalLight.color.xyz * phaseFunction(rayDir);
 }
 
 void main()
@@ -96,6 +96,7 @@ void main()
 		worldPos += raymarchStep;
 	}
 
+	light *= u_DirectionalLight.scatterAmount;
 	light /= g_PushConstants.raymarchSteps;
     outColor = vec4(light, 1.0);
 }

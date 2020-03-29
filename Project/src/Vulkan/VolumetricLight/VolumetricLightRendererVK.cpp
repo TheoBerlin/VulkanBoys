@@ -35,7 +35,8 @@ VolumetricLightRendererVK::VolumetricLightRendererVK(GraphicsContextVK* pGraphic
 	m_pLightFrameBuffer(nullptr),
     m_pGraphicsContext(pGraphicsContext),
     m_pRenderingHandler(pRenderingHandler),
-    m_pProfiler(nullptr),
+    m_pProfilerBuildBuffer(nullptr),
+    m_pProfilerApplyBuffer(nullptr),
     m_pDescriptorPool(nullptr),
     m_pDescriptorSetLayoutCommon(nullptr),
     m_pDescriptorSetLayoutPerLight(nullptr),
@@ -46,6 +47,7 @@ VolumetricLightRendererVK::VolumetricLightRendererVK(GraphicsContextVK* pGraphic
 	m_pPipelineApplyLight(nullptr),
     m_pSampler(nullptr),
 	m_LightBufferImID(nullptr),
+	m_RaymarchSteps(64),
 	m_CurrentIndex(0)
 {
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -66,7 +68,8 @@ VolumetricLightRendererVK::VolumetricLightRendererVK(GraphicsContextVK* pGraphic
 
 VolumetricLightRendererVK::~VolumetricLightRendererVK()
 {
-    SAFEDELETE(m_pProfiler);
+    SAFEDELETE(m_pProfilerBuildBuffer);
+    SAFEDELETE(m_pProfilerApplyBuffer);
 
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		SAFEDELETE(m_ppCommandPools[i]);
@@ -153,7 +156,7 @@ void VolumetricLightRendererVK::beginFrame(IScene* pScene)
 
 	m_ppCommandBuffersBuildLight[frameIndex]->reset(false);
 	m_ppCommandPools[frameIndex]->reset();
-	m_pProfiler->reset(frameIndex, m_pRenderingHandler->getCurrentGraphicsCommandBuffer());
+	m_pProfilerBuildBuffer->reset(frameIndex, m_pRenderingHandler->getCurrentGraphicsCommandBuffer());
 
 	VkCommandBufferInheritanceInfo inheritanceInfo = {};
 	inheritanceInfo.sType		= VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
@@ -163,7 +166,7 @@ void VolumetricLightRendererVK::beginFrame(IScene* pScene)
 	inheritanceInfo.framebuffer = m_pLightFrameBuffer->getFrameBuffer();
 
 	m_ppCommandBuffersBuildLight[frameIndex]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
-	m_pProfiler->beginFrame(m_ppCommandBuffersBuildLight[frameIndex]);
+	m_pProfilerBuildBuffer->beginFrame(m_ppCommandBuffersBuildLight[frameIndex]);
 
 	m_ppCommandBuffersBuildLight[frameIndex]->setViewports(&m_Viewport, 1);
 	m_ppCommandBuffersBuildLight[frameIndex]->setScissorRects(&m_ScissorRect, 1);
@@ -173,7 +176,7 @@ void VolumetricLightRendererVK::endFrame(IScene* pScene)
 {
 	UNREFERENCED_PARAMETER(pScene);
 
-	m_pProfiler->endFrame();
+	m_pProfilerBuildBuffer->endFrame();
 
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
 	m_ppCommandBuffersBuildLight[frameIndex]->end();
@@ -185,7 +188,7 @@ void VolumetricLightRendererVK::renderLightBuffer()
 
 	// Update push constants
 	PushConstants pushConstants = {};
-	pushConstants.raymarchSteps = 64;
+	pushConstants.raymarchSteps = m_RaymarchSteps;
 	pushConstants.viewportExtent = {m_Viewport.width, m_Viewport.height};
 	m_ppCommandBuffersBuildLight[frameIndex]->pushConstants(m_pPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &pushConstants);
 
@@ -201,7 +204,7 @@ void VolumetricLightRendererVK::applyLightBuffer(RenderPassVK* pRenderPass, Fram
 	uint32_t frameIndex = m_pRenderingHandler->getCurrentFrameIndex();
 
 	m_ppCommandBuffersApplyLight[frameIndex]->reset(false);
-	//m_pProfiler->reset(frameIndex, m_pRenderingHandler->getCurrentGraphicsCommandBuffer());
+	m_pProfilerApplyBuffer->reset(frameIndex, m_pRenderingHandler->getCurrentGraphicsCommandBuffer());
 
 	VkCommandBufferInheritanceInfo inheritanceInfo = {};
 	inheritanceInfo.sType		= VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
@@ -211,7 +214,7 @@ void VolumetricLightRendererVK::applyLightBuffer(RenderPassVK* pRenderPass, Fram
 	inheritanceInfo.framebuffer = pFrameBuffer->getFrameBuffer();
 
 	m_ppCommandBuffersApplyLight[frameIndex]->begin(&inheritanceInfo, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
-	//m_pProfiler->beginFrame(m_ppCommandBuffersApplyLight[frameIndex]);
+	m_pProfilerApplyBuffer->beginFrame(m_ppCommandBuffersApplyLight[frameIndex]);
 
 	m_ppCommandBuffersApplyLight[frameIndex]->setViewports(&m_Viewport, 1);
 	m_ppCommandBuffersApplyLight[frameIndex]->setScissorRects(&m_ScissorRect, 1);
@@ -219,12 +222,10 @@ void VolumetricLightRendererVK::applyLightBuffer(RenderPassVK* pRenderPass, Fram
 	m_ppCommandBuffersApplyLight[frameIndex]->bindPipeline(m_pPipelineApplyLight);
 	m_ppCommandBuffersApplyLight[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 0, 1, &m_pDescriptorSetCommon, 0, nullptr);
 
-	//m_pProfiler->beginTimestamp(&m_TimestampDraw);
 	m_ppCommandBuffersApplyLight[frameIndex]->drawInstanced(3, 1, 0, 0);
-	//m_pProfiler->endTimestamp(&m_TimestampDraw);
 
 	// End frame
-	//m_pProfiler->endFrame();
+	m_pProfilerApplyBuffer->endFrame();
 	m_ppCommandBuffersApplyLight[frameIndex]->end();
 }
 
@@ -247,9 +248,7 @@ void VolumetricLightRendererVK::renderPointLights()
 		DescriptorSetVK* pDescriptorSet = reinterpret_cast<DescriptorSetVK*>(pointLight.getVolumetricLightDescriptorSet());
 		m_ppCommandBuffersBuildLight[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 1, 1, &pDescriptorSet, 0, nullptr);
 
-		m_pProfiler->beginTimestamp(&m_TimestampDraw);
 		m_ppCommandBuffersBuildLight[frameIndex]->drawIndexInstanced(m_pSphereMesh->getIndexCount(), 1, 0, 0, 0);
-		m_pProfiler->endTimestamp(&m_TimestampDraw);
 	}
 }
 
@@ -267,9 +266,7 @@ void VolumetricLightRendererVK::renderDirectionalLight()
 	DescriptorSetVK* pDescriptorSet = reinterpret_cast<DescriptorSetVK*>(pDirectionalLight->getDescriptorSet());
 	m_ppCommandBuffersBuildLight[frameIndex]->bindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pPipelineLayout, 1, 1, &pDescriptorSet, 0, nullptr);
 
-	m_pProfiler->beginTimestamp(&m_TimestampDraw);
 	m_ppCommandBuffersBuildLight[frameIndex]->drawInstanced(3, 1, 0, 0);
-	m_pProfiler->endTimestamp(&m_TimestampDraw);
 }
 
 void VolumetricLightRendererVK::setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY)
@@ -329,6 +326,11 @@ void VolumetricLightRendererVK::renderUI()
 
 	// Display light buffer
 	if (ImGui::Begin("Volumetric Light", NULL, ImGuiWindowFlags_NoResize)) {
+		int raymarchSteps = int(m_RaymarchSteps);
+		if (ImGui::SliderInt("Raymarch steps", &raymarchSteps, 32, 256)) {
+			m_RaymarchSteps = uint32_t(raymarchSteps);
+		}
+
 		// Point lights UI
 		std::vector<VolumetricPointLight>& volumetricPointLights = m_pLightSetup->getVolumetricPointLights();
 		if (!volumetricPointLights.empty()) {
@@ -377,6 +379,12 @@ void VolumetricLightRendererVK::renderUI()
 	}
 
 	ImGui::End();
+}
+
+void VolumetricLightRendererVK::drawProfilerResults()
+{
+	m_pProfilerBuildBuffer->drawResults();
+	m_pProfilerApplyBuffer->drawResults();
 }
 
 bool VolumetricLightRendererVK::createCommandPoolAndBuffers()
@@ -675,8 +683,8 @@ bool VolumetricLightRendererVK::createSphereMesh()
 
 void VolumetricLightRendererVK::createProfiler()
 {
-	m_pProfiler = DBG_NEW ProfilerVK("Volumetric Light Renderer", m_pGraphicsContext->getDevice());
-	m_pProfiler->initTimestamp(&m_TimestampDraw, "Draw");
+	m_pProfilerBuildBuffer = DBG_NEW ProfilerVK("Volumetric Light: Build Light Buffer", m_pGraphicsContext->getDevice());
+	m_pProfilerApplyBuffer = DBG_NEW ProfilerVK("Volumetric Light: Apply Light Buffer", m_pGraphicsContext->getDevice());
 }
 
 bool VolumetricLightRendererVK::createRenderResources(VolumetricPointLight& pointLight)
