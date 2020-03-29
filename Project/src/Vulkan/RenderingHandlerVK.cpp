@@ -660,7 +660,7 @@ void RenderingHandlerVK::drawProfilerUI()
 	}
 
 	if (m_pVolumetricLightRenderer) {
-		m_pVolumetricLightRenderer->getProfiler()->drawResults();
+		m_pVolumetricLightRenderer->drawProfilerResults();
 	}
 }
 
