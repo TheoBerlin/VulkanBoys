@@ -36,6 +36,9 @@ public:
 
 	const VkViewport& getViewport() const { return m_Viewport; }
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
+
+	virtual double getElapsedTime() const override { return m_pProfiler->getElapsedTime(); }
+
 	void onWindowResize(uint32_t width, uint32_t height);
 
 	void submitMesh(const MeshVK* pMesh, const Material* pMaterial, uint32_t transformIndex);

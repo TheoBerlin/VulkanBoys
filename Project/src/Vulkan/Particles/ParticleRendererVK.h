@@ -35,8 +35,10 @@ public:
 	virtual void endFrame(IScene* pScene) override;
 
 	virtual void renderUI() override;
-	
+
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
+
+	virtual double getElapsedTime() const override { return m_pProfiler->getElapsedTime(); }
 
 	void submitParticles(ParticleEmitter* pEmitter);
 

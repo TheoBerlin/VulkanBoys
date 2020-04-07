@@ -106,10 +106,10 @@ void ProfilerVK::writeResults()
     if (vkGetQueryPoolResults(
         m_pDevice->getDevice(), currentQueryPool,
         0, m_NextQuery,                             // First query, query count
-        (m_NextQuery + 1) * sizeof(uint64_t),             // Data size
+        (m_NextQuery + 1) * sizeof(uint64_t),       // Data size
         (void*)m_TimeResults.data(),                // Data pointer
         sizeof(uint64_t),                           // Stride
-        VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT/*VK_QUERY_RESULT_WAIT_BIT*/)
+        VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)
         != VK_SUCCESS)
     {
         LOG("Profiler %s: failed to get query pool results", m_Name.c_str());

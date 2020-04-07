@@ -36,6 +36,13 @@ class Application : public CommonEventHandler
 		float BestFrametime = 0.0f;
 		float WorstFrametime = 0.0f;
 
+		// API profiler results
+		float FrameTimeSumMeshRenderer = 0.0f;
+		float FrameTimeSumShadowmapRenderer = 0.0f;
+		float FrameTimeSumParticleRenderer = 0.0f;
+		float FrameTimeSumRayTracer = 0.0f;
+		float FrameTimeSumVolumetricLighting = 0.0f;
+
 		char TestName[256] = "";
 		int NumRounds = 1;
 	};

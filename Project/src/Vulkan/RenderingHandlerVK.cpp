@@ -305,14 +305,17 @@ void RenderingHandlerVK::render(IScene* pScene)
 	}
 #else
 	m_pMeshRenderer->beginFrame(pVulkanScene);
+	m_pShadowMapRenderer->beginFrame(pVulkanScene);
 
 	auto& graphicsObjects = pVulkanScene->getGraphicsObjects();
 	for (uint32_t i = 0; i < graphicsObjects.size(); i++)
 	{
 		const GraphicsObjectVK& graphicsObject = graphicsObjects[i];
 		m_pMeshRenderer->submitMesh(graphicsObject.pMesh, graphicsObject.pMaterial, graphicsObject.MaterialParametersIndex, i);
+		m_pShadowMapRenderer->submitMesh(graphicsObject.pMesh, graphicsObject.pMaterial, i);
 	}
 	m_pMeshRenderer->endFrame(pVulkanScene);
+	m_pShadowMapRenderer->endFrame(pVulkanScene);
 
 	m_pMeshRenderer->buildLightPass(m_pBackBufferRenderPass, getCurrentBackBuffer());
 
@@ -333,7 +336,6 @@ void RenderingHandlerVK::render(IScene* pScene)
 
 	if (m_pParticleRenderer)
 	{
-		m_pParticleRenderer->getProfiler()->reset(m_CurrentFrame, m_ppGraphicsCommandBuffers[m_CurrentFrame]);
 #if MULTITHREADED
 		m_pParticleRenderer->beginFrame(pVulkanScene);
 		TaskDispatcher::execute([pVulkanScene, this]

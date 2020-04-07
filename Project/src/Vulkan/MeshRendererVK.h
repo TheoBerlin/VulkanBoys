@@ -57,6 +57,8 @@ public:
 	virtual void renderUI() override;
 
 	virtual void setViewport(float width, float height, float minDepth, float maxDepth, float topX, float topY) override;
+	virtual double getElapsedTime() const override { return m_pGPassProfiler->getElapsedTime() + m_pLightPassProfiler->getElapsedTime(); }
+
 	void setClearColor(float r, float g, float b);
 	void setClearColor(const glm::vec3& color);
 	void setSkybox(TextureCubeVK* pSkybox, TextureCubeVK* pIrradiance, TextureCubeVK* pEnvironmentMap);

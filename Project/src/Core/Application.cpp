@@ -554,6 +554,15 @@ void Application::update(double dt)
 		m_TestParameters.WorstFrametime = deltaTimeMS > m_TestParameters.WorstFrametime ? deltaTimeMS : m_TestParameters.WorstFrametime;
 		m_TestParameters.BestFrametime = deltaTimeMS < m_TestParameters.BestFrametime ? deltaTimeMS : m_TestParameters.BestFrametime;
 
+		// API Profiling statistics
+		m_TestParameters.FrameTimeSumMeshRenderer		+= float(m_pMeshRenderer->getElapsedTime());
+		if (m_pRayTracingRenderer) {
+			m_TestParameters.FrameTimeSumRayTracer			+= float(m_pRayTracingRenderer->getElapsedTime());
+		}
+		m_TestParameters.FrameTimeSumShadowmapRenderer	+= float(m_pShadowMapRenderer->getElapsedTime());
+		m_TestParameters.FrameTimeSumParticleRenderer	+= float(m_pParticleRenderer->getElapsedTime());
+		m_TestParameters.FrameTimeSumVolumetricLighting += float(m_pVolumetricLightRenderer->getElapsedTime());
+
 		auto& interpolatedPositionPT = m_pCameraPositionSpline->getTangent(m_CameraSplineTimer);
 		glm::vec3 position = interpolatedPositionPT.position;
 		glm::vec3 heading = interpolatedPositionPT.tangent;
@@ -812,6 +821,12 @@ void Application::renderUI(double dt)
 				m_TestParameters.WorstFrametime = std::numeric_limits<float>::min();
 				m_TestParameters.BestFrametime = std::numeric_limits<float>::max();
 				m_TestParameters.CurrentRound = 0;
+
+				m_TestParameters.FrameTimeSumMeshRenderer		= 0.0f;
+				m_TestParameters.FrameTimeSumRayTracer			= 0.0f;
+				m_TestParameters.FrameTimeSumShadowmapRenderer	= 0.0f;
+				m_TestParameters.FrameTimeSumParticleRenderer	= 0.0f;
+				m_TestParameters.FrameTimeSumVolumetricLighting	= 0.0f;
 			}
 
 			ImGui::Text("Previous Test: %s : %d ", m_TestParameters.TestName, m_TestParameters.NumRounds);
@@ -832,8 +847,13 @@ void Application::renderUI(double dt)
 			ImGui::Text("Worst Frametime: %f", m_TestParameters.WorstFrametime);
 			ImGui::Text("Best Frametime: %f", m_TestParameters.BestFrametime);
 			ImGui::Text("Frame Count: %f", m_TestParameters.FrameCount);
-		}
 
+			ImGui::Text("Average Frametime Mesh Renderer: %f", 			m_TestParameters.FrameTimeSumMeshRenderer		/ m_TestParameters.FrameCount);
+			ImGui::Text("Average Frametime Ray Tracer: %f", 			m_TestParameters.FrameTimeSumRayTracer			/ m_TestParameters.FrameCount);
+			ImGui::Text("Average Frametime ShadowmapRenderer: %f",		m_TestParameters.FrameTimeSumShadowmapRenderer	/ m_TestParameters.FrameCount);
+			ImGui::Text("Average Frametime ParticleRenderer: %f",		m_TestParameters.FrameTimeSumParticleRenderer	/ m_TestParameters.FrameCount);
+			ImGui::Text("Average Frametime VolumetricLighting: %f",		m_TestParameters.FrameTimeSumVolumetricLighting	/ m_TestParameters.FrameCount);
+		}
 	}
 	ImGui::End();
 
@@ -857,11 +877,16 @@ void Application::testFinished()
 
 	if (fileStream.is_open())
 	{
-		fileStream << "Avg. FT\tWorst FT\tBest FT\tFrame Count" << std::endl;
+		fileStream << "Avg. FT\tWorst FT\tBest FT\tFrame Count\tAvg. Mesh Renderer\tAvg. Ray Tracer\tAvg. Shadowmap Renderer\tAvg. Particle Renderer\tAvg. Volumetric Lighting" << std::endl;
 		fileStream << m_TestParameters.AverageFrametime << "\t";
 		fileStream << m_TestParameters.WorstFrametime << "\t";
 		fileStream << m_TestParameters.BestFrametime << "\t";
-		fileStream << (uint32_t)m_TestParameters.FrameCount;
+		fileStream << (uint32_t)m_TestParameters.FrameCount << "\t";
+		fileStream << m_TestParameters.FrameTimeSumMeshRenderer			/ m_TestParameters.FrameCount << "\t";
+		fileStream << m_TestParameters.FrameTimeSumRayTracer			/ m_TestParameters.FrameCount << "\t";
+		fileStream << m_TestParameters.FrameTimeSumShadowmapRenderer	/ m_TestParameters.FrameCount << "\t";
+		fileStream << m_TestParameters.FrameTimeSumParticleRenderer		/ m_TestParameters.FrameCount << "\t";
+		fileStream << m_TestParameters.FrameTimeSumVolumetricLighting	/ m_TestParameters.FrameCount;
 	}
 
 	fileStream.close();

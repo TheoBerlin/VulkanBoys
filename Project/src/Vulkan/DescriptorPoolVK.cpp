@@ -39,11 +39,6 @@ bool DescriptorPoolVK::init(const DescriptorCounts& descriptorCounts, uint32_t d
 {
 	m_DescriptorCapacities = descriptorCounts;
 
-	//size_t descriptorTypeCount = 0;
-	//if (descriptorCounts.m_StorageBuffers > 0) {
-
-	//}
-
 	std::array<VkDescriptorPoolSize, 5> poolSizes;
 	poolSizes[0].type				= VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	poolSizes[0].descriptorCount	= descriptorCounts.m_StorageBuffers;
@@ -69,7 +64,7 @@ bool DescriptorPoolVK::init(const DescriptorCounts& descriptorCounts, uint32_t d
 	poolInfo.flags			= VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
 
 	VK_CHECK_RESULT_RETURN_FALSE(vkCreateDescriptorPool(m_pDevice->getDevice(), &poolInfo, nullptr, &m_DescriptorPool), "Failed to create Descriptor Pool");
-	
+
 	D_LOG("Created descriptorpool. sets=%d, storagebuffers=%d, uniformBuffers=%d, imageSamplers=%d, storageImages=%d, accelerationStructures=%d",
 		descriptorSetCount, descriptorCounts.m_StorageBuffers, descriptorCounts.m_UniformBuffers, descriptorCounts.m_SampledImages, descriptorCounts.m_StorageImages, descriptorCounts.m_AccelerationStructures);
 	return true;

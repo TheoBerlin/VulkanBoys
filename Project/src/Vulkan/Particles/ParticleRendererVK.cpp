@@ -94,6 +94,8 @@ void ParticleRendererVK::beginFrame(IScene* pScene)
 	m_ppCommandBuffers[frameIndex]->reset(false);
 	m_ppCommandPools[frameIndex]->reset();
 
+	m_pProfiler->reset(frameIndex, m_pRenderingHandler->getCurrentGraphicsCommandBuffer());
+
 	// Needed to begin a secondary buffer
 	VkCommandBufferInheritanceInfo inheritanceInfo = {};
 	inheritanceInfo.sType		= VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;

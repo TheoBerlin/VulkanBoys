@@ -39,6 +39,8 @@ public:
     void endTimestamp(Timestamp* pTimestamp);
 
     uint32_t getRecurseDepth() const { return m_RecurseDepth; }
+    // Returns the latest profiler results
+    virtual double getElapsedTime() const override { return m_Time * m_TimestampToMillisec; }
 
 private:
     // Fetches timestamp data from Vulkan and writes it to timestamp objects

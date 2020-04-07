@@ -4,6 +4,7 @@ class Profiler
 {
 public:
     static void progressTimer(float dt);
+    virtual double getElapsedTime() const = 0;
 
 protected:
     static bool m_ProfileFrame;
