@@ -142,7 +142,7 @@ void CopyHandlerVK::copyBufferToImage(BufferVK* pSource, VkDeviceSize sourceOffs
 
 void CopyHandlerVK::generateMips(ImageVK* pImage)
 {
-	D_LOG("CopyHandlerVK::generateMips");
+	//D_LOG("CopyHandlerVK::generateMips");
 
 	CommandBufferVK* pCommandBuffer = getNextGraphicsBuffer();
 	{
