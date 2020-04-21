@@ -48,6 +48,7 @@ public:
     void onWindowResize(uint32_t width, uint32_t height);
 
     virtual void renderUI() override;
+    void drawProfilerResults();
 
     FrameBufferVK* getLightFrameBuffer() { return m_pLightFrameBuffer; }
     VkClearValue getLightBufferClearColor() { return m_LightBufferClearColor; }
@@ -56,7 +57,6 @@ public:
 
     CommandBufferVK* getCommandBufferBuildPass(uint32_t frameIndex) { return m_ppCommandBuffersBuildLight[frameIndex]; }
     CommandBufferVK* getCommandBufferApplyPass(uint32_t frameIndex) { return m_ppCommandBuffersApplyLight[frameIndex]; }
-    ProfilerVK* getProfiler() { return m_pProfiler; }
 
 private:
     struct PushConstants {
@@ -92,8 +92,8 @@ private:
 
     GraphicsContextVK* m_pGraphicsContext;
     RenderingHandlerVK* m_pRenderingHandler;
-    ProfilerVK* m_pProfiler;
-    Timestamp m_TimestampDraw;
+    ProfilerVK* m_pProfilerBuildBuffer;
+    ProfilerVK* m_pProfilerApplyBuffer;
 
     CommandBufferVK* m_ppCommandBuffersBuildLight[MAX_FRAMES_IN_FLIGHT];
     CommandBufferVK* m_ppCommandBuffersApplyLight[MAX_FRAMES_IN_FLIGHT];
@@ -116,6 +116,8 @@ private:
 	VkRect2D m_ScissorRect;
 
     SamplerVK* m_pSampler;
+
+    uint32_t m_RaymarchSteps;
 
     // ImGui resources
     int m_CurrentIndex;

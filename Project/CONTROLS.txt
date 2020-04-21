@@ -1,0 +1,5 @@
+Press 1 to toggle fullscreen
+Press 2 to toggle mouse for camera rotation
+
+W, A, S, D 	- Movement controls
+Q and E 	- Moves the camera up and down relative to rotation

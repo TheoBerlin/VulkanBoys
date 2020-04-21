@@ -500,7 +500,7 @@ void SceneVK::updateMaterials()
 			}
 		}
 
-		
+
 
 		/*void* pDest;
 		m_pMaterialParametersBuffer->map(&pDest);
@@ -673,7 +673,7 @@ void SceneVK::copySceneData(CommandBufferVK* pTransferBuffer)
 	{
 		pTransferBuffer->updateBuffer(m_pTransformsBufferGraphics, 0, m_SceneTransforms.data(), m_SceneTransforms.size() * sizeof(GraphicsObjectTransforms));
 		pTransferBuffer->updateBuffer(m_pTransformsBufferCompute, 0, m_SceneTransforms.data(), m_SceneTransforms.size() * sizeof(GraphicsObjectTransforms));
-		
+
 		m_TransformDataIsDirty = false;
 	}
 
@@ -1506,26 +1506,6 @@ void SceneVK::renderUI()
 		m_DebugParametersDirty = m_DebugParametersDirty || ImGui::SliderFloat("Ambient Occlusion Scale", &m_SceneParameters.AOScale, 0.01f, 1.0f);
 	}
 	ImGui::End();
-
-	if (m_LightSetup.hasDirectionalLight()) {
-		ImGui::SetNextWindowSize(ImVec2(430, 100), ImGuiCond_FirstUseEver);
-
-		if (ImGui::Begin("Directional Light", NULL, ImGuiWindowFlags_NoResize)) {
-			DirectionalLight* pDirectionalLight = m_LightSetup.getDirectionalLight();
-
-			float particleG = pDirectionalLight->getParticleG();
-			float scatterAmount = pDirectionalLight->getScatterAmount();
-
-			if (ImGui::SliderFloat("Particle G", &particleG, 0.0f, 1.0f)) {
-				pDirectionalLight->setParticleG(particleG);
-			}
-
-			if (ImGui::SliderFloat("Scatter Amount", &scatterAmount, 0.0f, 1.0f)) {
-				pDirectionalLight->setScatterAmount(scatterAmount);
-			}
-		}
-		ImGui::End();
-	}
 }
 
 void SceneVK::updateDebugParameters()

@@ -1,0 +1,3 @@
+premake5 vs2019
+compile_shaders.bat
+pause
